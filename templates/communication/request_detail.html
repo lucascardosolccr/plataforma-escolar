@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Solicitação — {{ request_.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">{{ request_.title }}</h1>
+    <p class="text-body-secondary small mb-0">
+      {{ request_.created_at|date:"d/m/Y H:i" }} · {{ request_.get_category_display }}
+      {% if request_.student %} · {{ request_.student.full_name }}{% endif %}
+      · solicitou {{ request_.requester.get_full_name|default:request_.requester.username }}
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <span class="chip">{{ request_.get_status_display }}</span>
+    <a href="{% url 'communication:request_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card"><div class="card-body">
+      <h2 class="h6 text-body-secondary text-uppercase">Detalhes da solicitação</h2>
+      <div class="mb-3">{{ request_.description|linebreaks }}</div>
+      {% if request_.response %}
+        <h3 class="h6 text-body-secondary text-uppercase">Resposta da equipe</h3>
+        <div class="mb-1">{{ request_.response|linebreaks }}</div>
+        <div class="text-body-secondary small">
+          {{ request_.responded_by.get_full_name|default:request_.responded_by.username }}
+          {{ request_.responded_at|date:"d/m/Y H:i" }}
+        </div>
+      {% endif %}
+    </div></div>
+  </div>
+
+  <div class="col-lg-5">
+    {% if form %}
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6 text-body-secondary text-uppercase">Atender solicitação</h2>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% include "partials/_form_fields.html" with f=form %}
+        <button type="submit" class="btn btn-primary w-100 mt-2">Salvar atendimento</button>
+      </form>
+    </div></div>
+    {% endif %}
+
+    <div class="card"><div class="card-body">
+      <h2 class="h6 text-body-secondary text-uppercase">Histórico de atendimento</h2>
+      <ul class="list-unstyled mb-0">
+        {% for log in history %}
+        <li class="mb-2">
+          <div class="small"><strong>{{ log.user.get_full_name|default:log.user.username|default:"Sistema" }}</strong>
+            <span class="chip">{{ log.get_action_display }}</span></div>
+          <div class="text-body-secondary small">{{ log.detail }}</div>
+          <div class="text-body-tertiary small">{{ log.created_at|date:"d/m/Y H:i" }}</div>
+        </li>
+        {% empty %}
+        <li class="text-body-secondary small">Nenhuma atualização além da solicitação original.</li>
+        {% endfor %}
+      </ul>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

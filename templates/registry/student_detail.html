@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% block title %}{{ student.full_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+  <div class="d-flex align-items-center gap-3">
+    {% if student.photo %}
+    <img src="{% url 'student_photo' student.pk %}" alt="Foto de {{ student.full_name }}"
+         class="rounded-circle shadow-sm" width="64" height="64" style="object-fit:cover">
+    {% else %}
+    <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
+         style="width:64px;height:64px;background:linear-gradient(135deg,var(--brand-1),var(--brand-2))">
+      {{ student.first_name|first }}{{ student.last_name|first }}
+    </div>
+    {% endif %}
+    <div>
+      <h1 class="h4 mb-0">{{ student.full_name }}</h1>
+      <div class="text-body-secondary small">
+        {{ student.school.name }} · <span class="chip">{{ student.get_status_display }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'analytics:student_dashboard' student.pk %}" class="btn btn-primary btn-sm">Painel do estudante</a>
+    {% if can_manage %}
+      <a href="{% url 'student_edit' student.pk %}" class="btn btn-outline-primary btn-sm">Editar dados</a>
+    {% endif %}
+    {% if can_request_link %}
+      <a href="{% url 'link_request' %}" class="btn btn-outline-secondary btn-sm">Solicitar vínculo</a>
+    {% endif %}
+  </div>
+</div>
+
+<ul class="nav nav-tabs mt-3" role="tablist" id="studentTabs">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="tab-dados" data-bs-toggle="tab" data-bs-target="#pane-dados" type="button" role="tab">Dados</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-matriculas" data-bs-toggle="tab" data-bs-target="#pane-matriculas" type="button" role="tab">Turmas</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-professores" data-bs-toggle="tab" data-bs-target="#pane-professores" type="button" role="tab">Professores</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-responsaveis" data-bs-toggle="tab" data-bs-target="#pane-responsaveis" type="button" role="tab">Responsáveis</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-pedagogico" data-bs-toggle="tab" data-bs-target="#pane-pedagogico" type="button" role="tab">Pedagógico</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-comunicacao" data-bs-toggle="tab" data-bs-target="#pane-comunicacao" type="button" role="tab">Comunicação</button>
+  </li>
+  {% if logs %}
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-historico" data-bs-toggle="tab" data-bs-target="#pane-historico" type="button" role="tab">Histórico</button>
+  </li>
+  {% endif %}
+</ul>
+
+<div class="tab-content pt-3">
+  <div class="tab-pane fade show active" id="pane-dados" role="tabpanel" aria-labelledby="tab-dados">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="card h-100"><div class="card-body">
+          <h2 class="h6 text-body-secondary text-uppercase">Identificação</h2>
+          <div class="mb-1 fw-semibold">{{ student.full_name }}</div>
+          <div class="text-body-secondary">
+            Status: {{ student.get_status_display }}<br>
+            {% if can_view_birth and student.birth_date %}Nascimento: {{ student.birth_date|date:"d/m/Y" }}{% endif %}
+          </div>
+        </div></div>
+      </div>
+      {% if can_view_notes %}
+      <div class="col-md-6">
+        <div class="card h-100"><div class="card-body">
+          <h2 class="h6 text-body-secondary text-uppercase">Observações da secretaria</h2>
+          <div class="text-body-secondary">{{ student.notes|default:"Sem observações registradas." }}</div>
+        </div></div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="tab-pane fade" id="pane-matriculas" role="tabpanel" aria-labelledby="tab-matriculas">
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead><tr><th>Ano letivo</th><th>Turma</th><th>Série</th><th>Turno</th><th>Status</th><th>Matrícula</th></tr></thead>
+          <tbody>
+            {% for e in enrollments %}
+            <tr>
+              <td>{{ e.school_year.name }}</td>
+              <td class="fw-semibold">{{ e.class_group.name }}</td>
+              <td>{{ e.class_group.grade|default:"—" }}</td>
+              <td>{{ e.class_group.get_turn_display }}</td>
+              <td><span class="chip">{{ e.get_status_display }}</span></td>
+              <td>{{ e.enrollment_number|default:"—" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-body-secondary py-4">Nenhuma matrícula registrada.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane fade" id="pane-professores" role="tabpanel" aria-labelledby="tab-professores">
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead><tr><th>Turma</th><th>Disciplina</th><th>Professor(a)</th></tr></thead>
+          <tbody>
+            {% for a in assignments %}
+            <tr>
+              <td>{{ a.class_group.name }}</td>
+              <td>{{ a.subject.name }}</td>
+              <td>{{ a.teacher.get_full_name|default:a.teacher.username }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center text-body-secondary py-4">
+              {% if is_guardian or user_role == ROLE_PROFESSOR %}
+                Sem informações de professores para você nesta área.
+              {% else %}
+                Nenhuma atribuição de professor para as turmas deste estudante.
+              {% endif %}
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane fade" id="pane-responsaveis" role="tabpanel" aria-labelledby="tab-responsaveis">
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead><tr><th>Responsável</th><th>Relação</th><th>Situação</th></tr></thead>
+          <tbody>
+            {% for l in links %}
+            <tr>
+              <td>{{ l.guardian.get_full_name|default:l.guardian.username }}</td>
+              <td>{{ l.get_relation_display|default:"—" }}</td>
+              <td>
+                {% if l.status == 'aprovado' %}<span class="text-success">Aprovado</span>
+                {% elif l.status == 'pendente' %}<span class="text-warning">Pendente</span>
+                {% else %}<span class="text-danger">Rejeitado</span>{% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center text-body-secondary py-4">Nenhum responsável vinculado.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane fade" id="pane-pedagogico" role="tabpanel" aria-labelledby="tab-pedagogico">
+    <div class="row g-3">
+      {% if user_role == ROLE_RESPONSAVEL %}
+        <div class="col-md-6">
+          <div class="card h-100"><div class="card-body">
+            <h2 class="h6 text-body-secondary text-uppercase">Acompanhamento</h2>
+            <div class="d-grid gap-2">
+              <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:evaluation_list' %}?estudante={{ student.pk }}">Notas e avaliações publicadas</a>
+              <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:activity_list' %}?estudante={{ student.pk }}">Atividades e tarefas</a>
+              <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:attendance_list' %}?estudante={{ student.pk }}">Frequência</a>
+              <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:occurrence_list' %}?estudante={{ student.pk }}">Ocorrências</a>
+              <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:observation_list' %}?estudante={{ student.pk }}">Observações pedagógicas</a>
+              <a class="btn btn-outline-secondary btn-sm" href="{% url 'pedagogy:justification_create' %}?estudante={{ student.pk }}">Justificar falta</a>
+            </div>
+          </div></div>
+        </div>
+      {% else %}
+        <div class="col-md-6">
+          <div class="card h-100"><div class="card-body">
+            <h2 class="h6 text-body-secondary text-uppercase">Acompanhamento</h2>
+            <div class="d-grid gap-2">
+              <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:evaluation_list' %}?estudante={{ student.pk }}">Avaliações e notas</a>
+              <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:activity_list' %}?estudante={{ student.pk }}">Atividades</a>
+              <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:attendance_list' %}?estudante={{ student.pk }}">Frequência</a>
+              <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:occurrence_list' %}?estudante={{ student.pk }}">Ocorrências</a>
+              {% if user_role == ROLE_COORDENACAO or user_role == ROLE_DIRECAO or user_role == ROLE_PROFESSOR %}
+                <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:observation_list' %}?estudante={{ student.pk }}">Observações pedagógicas</a>
+              {% endif %}
+              {% if user_role == ROLE_COORDENACAO or user_role == ROLE_DIRECAO or user_role == ROLE_ADMIN or user_role == ROLE_PROFESSOR %}
+                <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:plan_list' %}?estudante={{ student.pk }}">Plano de acompanhamento</a>
+              {% endif %}
+              <a class="btn btn-outline-secondary btn-sm" href="{% url 'pedagogy:justification_list' %}?estudante={{ student.pk }}">Justificativas de falta</a>
+            </div>
+          </div></div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="tab-pane fade" id="pane-comunicacao" role="tabpanel" aria-labelledby="tab-comunicacao">
+    <div class="row g-3">
+      <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+          <h2 class="h6 text-body-secondary text-uppercase">Conversas sobre {{ student.full_name }}</h2>
+          <ul class="list-unstyled mb-3">
+            {% for t in comm_threads %}
+            <li class="mb-2">
+              <a href="{% url 'communication:thread_detail' t.pk %}" class="text-decoration-none">{{ t.title }}</a>
+              <div class="text-body-secondary small">{{ t.updated_at|date:"d/m/Y H:i" }}</div>
+            </li>
+            {% empty %}
+            <li class="text-body-secondary small mb-3">Nenhuma conversa registrada para este estudante.</li>
+            {% endfor %}
+          </ul>
+          <hr>
+          <h3 class="h6 text-body-secondary text-uppercase">Comunicados individuais</h3>
+          <ul class="list-unstyled mb-0">
+            {% for a in comm_announcements %}
+            <li class="mb-2">
+              <a href="{% url 'communication:announcement_detail' a.pk %}" class="text-decoration-none">{{ a.title }}</a>
+              <div class="text-body-secondary small">{{ a.created_at|date:"d/m/Y" }}</div>
+            </li>
+            {% empty %}
+            <li class="text-body-secondary small mb-3">Nenhum comunicado individual para este estudante.</li>
+            {% endfor %}
+          </ul>
+        </div></div>
+      </div>
+      <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+          <h2 class="h6 text-body-secondary text-uppercase">Ações</h2>
+          <div class="d-grid gap-2">
+            {% if comm_can_message %}
+            <a class="btn btn-outline-primary btn-sm" href="{% url 'communication:thread_create' %}?estudante={{ student.pk }}">Nova conversa sobre este estudante</a>
+            {% endif %}
+            <a class="btn btn-outline-secondary btn-sm" href="{% url 'communication:announcement_list' %}?estudante={{ student.pk }}">Ver comunicados relacionados</a>
+            <a class="btn btn-outline-secondary btn-sm" href="{% url 'communication:request_list' %}">Solicitações de atendimento</a>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  {% if logs %}
+  <div class="tab-pane fade" id="pane-historico" role="tabpanel" aria-labelledby="tab-historico">
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead><tr><th>Data</th><th>Ação</th><th>Responsável</th><th>Detalhe</th></tr></thead>
+          <tbody>
+            {% for log in logs %}
+            <tr>
+              <td>{{ log.created_at|date:"d/m/Y H:i" }}</td>
+              <td><span class="chip">{{ log.get_action_display }}</span></td>
+              <td>{{ log.user.get_full_name|default:log.user.username|default:"—" }}</td>
+              <td>{{ log.detail }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center text-body-secondary py-4">Sem registros.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

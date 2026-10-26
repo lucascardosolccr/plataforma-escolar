@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Perfil do responsável — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card p-4">
+      <div class="d-flex align-items-center gap-3 mb-3">
+        {% if form.instance.photo %}
+        <img src="{% url 'guardian_photo' target.pk %}" alt="" class="rounded-circle shadow-sm" width="64" height="64" style="object-fit:cover">
+        {% else %}
+        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
+             style="width:64px;height:64px;background:linear-gradient(135deg,var(--brand-1),var(--brand-2))">
+          {{ target.first_name|first }}{{ target.last_name|first }}
+        </div>
+        {% endif %}
+        <div>
+          <div class="h5 mb-0">{{ target.get_full_name|default:target.username }}</div>
+          <div class="text-body-secondary small">@{{ target.username }} · {{ target.role_label }}</div>
+        </div>
+      </div>
+
+      <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        {% include "partials/_form_fields.html" with f=form %}
+        <button type="submit" class="btn btn-primary w-100 mt-2">Salvar perfil</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    {% if is_admin %}
+    <div class="card">
+      <div class="card-header bg-transparent"><h2 class="h6 mb-0">Filhos vinculados (aprovados)</h2></div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead><tr><th>Estudante</th><th>Relação</th><th></th></tr></thead>
+          <tbody>
+            {% for l in linked %}
+            <tr>
+              <td class="fw-semibold">{{ l.student.full_name }}</td>
+              <td>{{ l.get_relation_display|default:"—" }}</td>
+              <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{% url 'student_detail' l.student.pk %}">Abrir</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center text-body-secondary py-4">Sem filhos vinculados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">Mantenha seus dados de contato atualizados. A secretaria os utiliza para comunicação.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Relatórios — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <h1 class="h4 mb-0">Relatórios</h1>
+  <p class="text-body-secondary small mb-0">
+    Relatórios disponíveis para o seu perfil. Toda exportação respeita as mesmas permissões da tela.
+  </p>
+</div>
+
+{% for category, items in grouped.items %}
+<div class="mb-4">
+  <h2 class="h6 text-uppercase text-body-secondary">{{ category }}</h2>
+  <div class="row g-3">
+    {% for report in items %}
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100">
+        <div class="card-body d-flex flex-column">
+          <h3 class="h6 mb-1">{{ report.title }}</h3>
+          <p class="small text-body-secondary flex-grow-1">{{ report.description }}</p>
+          <a href="{% url 'analytics:report_detail' report.slug %}" class="btn btn-sm btn-outline-primary">Abrir</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% empty %}
+<div class="alert alert-info">Nenhum relatório disponível para o seu perfil.</div>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Frequência — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <h1 class="h4 mb-0">Frequência</h1>
+  <p class="text-body-secondary small mb-0">Registros de presença, atraso e falta por turma.</p>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr><th>Turma</th><th>Ano letivo</th><th class="text-end">Ações</th></tr></thead>
+      <tbody>
+        {% for c in classes %}
+        <tr>
+          <td class="fw-semibold">{{ c.name }}</td>
+          <td>{{ c.school_year.name }}</td>
+          <td class="text-end">
+            <a href="{% url 'pedagogy:attendance_class' c.pk %}" class="btn btn-sm btn-outline-primary">Ver mapa</a>
+            {% if can_register %}
+              <a href="{% url 'pedagogy:attendance_register' c.pk %}" class="btn btn-sm btn-primary">Registrar</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3" class="text-center text-body-secondary py-4">Nenhuma turma disponível para o seu perfil.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

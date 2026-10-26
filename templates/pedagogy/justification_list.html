@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Justificativas de falta — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">Justificativas de falta</h1>
+    <p class="text-body-secondary small mb-0">
+      {% if user_role == ROLE_RESPONSAVEL %}Enviadas pela família; a secretaria decide.
+      {% elif user_role == ROLE_PROFESSOR %}Estudantes das suas turmas.
+      {% else %}Recebidas, em análise, aprovadas e recusadas.{% endif %}
+    </p>
+  </div>
+  {% if can_manage %}
+    <a href="{% url 'pedagogy:justification_list' %}" class="btn btn-sm btn-outline-secondary">Recarregar</a>
+  {% endif %}
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-center">
+      <div class="col-auto">
+        <label class="col-form-label small text-uppercase text-body-secondary">Situação</label>
+      </div>
+      <div class="col-auto">
+        <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">Todas</option>
+          {% for value, label in status_choices %}
+          <option value="{{ value }}"{% if status == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr><th>Estudante</th><th>Período</th><th>Motivo</th><th>Situação</th><th>Parecer</th><th class="text-end">Ações</th></tr></thead>
+      <tbody>
+        {% for j in justifications %}
+        <tr>
+          <td class="fw-semibold">{{ j.student.full_name }}</td>
+          <td>{{ j.start_date|date:"d/m/Y" }} a {{ j.end_date|date:"d/m/Y" }}</td>
+          <td class="text-truncate" style="max-width:280px">{{ j.reason }}</td>
+          <td>
+            {% if j.status == 'aprovada' %}<span class="chip text-success">Aprovada</span>
+            {% elif j.status == 'recusada' %}<span class="chip text-danger">Recusada</span>
+            {% elif j.status == 'em_analise' %}<span class="chip text-warning">Em análise</span>
+            {% else %}<span class="chip">Recebida</span>{% endif %}
+          </td>
+          <td class="text-truncate" style="max-width:200px">{{ j.note|default:"—" }}</td>
+          <td class="text-end">
+            {% if can_manage %}
+              {% if j.status == 'recebida' or j.status == 'em_analise' %}
+                <form method="post" action="{% url 'pedagogy:justification_resolve' j.pk 'aprovar' %}" class="d-inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="note" value="">
+                  <button class="btn btn-sm btn-outline-success" type="submit"
+                          onclick="return confirm('Aprovar esta justificativa? A frequência oficial não é alterada automaticamente.');">Aprovar</button>
+                </form>
+                <form method="post" action="{% url 'pedagogy:justification_resolve' j.pk 'recusar' %}" class="d-inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="note" value="">
+                  <button class="btn btn-sm btn-outline-danger" type="submit"
+                          onclick="return confirm('Recusar esta justificativa?');">Recusar</button>
+                </form>
+              {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-body-secondary py-4">Nenhuma justificativa.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="alert alert-info mt-3">
+  A aprovação de uma justificativa <strong>não altera</strong> a frequência oficial. Registre a correção
+  na tela de frequência se a escola decidir. Todo o processo fica na auditoria.
+</div>
+{% endblock %}

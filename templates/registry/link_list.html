@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Vínculos — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">Vínculos responsável–estudante</h1>
+    <p class="text-body-secondary small mb-0">
+      {% if can_manage %}Validação de vínculos pendentes.{% else %}Acompanhe o status das suas solicitações.{% endif %}
+    </p>
+  </div>
+  {% if can_manage %}
+  <a href="{% url 'link_create' %}" class="btn btn-primary btn-sm">+ Criar vínculo validado</a>
+  {% endif %}
+</div>
+
+<div class="mb-3 d-flex gap-2 flex-wrap">
+  <a class="btn btn-sm {% if not status %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{% url 'link_list' %}">Todos</a>
+  <a class="btn btn-sm {% if status == 'pendente' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?status=pendente">Pendentes</a>
+  <a class="btn btn-sm {% if status == 'aprovado' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?status=aprovado">Aprovados</a>
+  <a class="btn btn-sm {% if status == 'rejeitado' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?status=rejeitado">Rejeitados</a>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Responsável</th>
+          <th>Estudante</th>
+          <th>Relação</th>
+          <th>Situação</th>
+          {% if can_manage %}<th class="text-end">Ações</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in links %}
+        <tr>
+          <td>{{ l.guardian.get_full_name|default:l.guardian.username }}</td>
+          <td class="fw-semibold">{{ l.student.full_name }}</td>
+          <td>{{ l.get_relation_display|default:"—" }}</td>
+          <td>
+            {% if l.status == 'aprovado' %}<span class="text-success">Aprovado</span>
+            {% elif l.status == 'pendente' %}<span class="text-warning">Pendente</span>
+            {% else %}
+              <span class="text-danger" title="{{ l.rejection_reason }}">Rejeitado</span>
+            {% endif %}
+          </td>
+          {% if can_manage %}
+          <td class="text-end">
+            {% if l.status == 'pendente' or l.status == 'rejeitado' %}
+            <div class="d-inline-flex gap-1 align-items-center">
+              <form method="post" action="{% url 'link_approve' l.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-success" type="submit">Aprovar</button>
+              </form>
+              <form method="post" action="{% url 'link_reject' l.pk %}" class="d-inline-flex gap-1">
+                {% csrf_token %}
+                <input type="text" name="reason" class="form-control form-control-sm" placeholder="Motivo" style="max-width:140px">
+                <button class="btn btn-sm btn-outline-danger" type="submit">Rejeitar</button>
+              </form>
+            </div>
+            {% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="{% if can_manage %}5{% else %}4{% endif %}" class="text-center text-body-secondary py-4">Nenhum vínculo.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

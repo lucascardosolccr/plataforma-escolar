@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Painel institucional{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">Painel institucional</h1>
+    <p class="text-body-secondary small mb-0">{{ user.school.name }} · Gerado em {{ generated_at|date:"d/m/Y H:i" }}</p>
+  </div>
+  <a href="{% url 'analytics:report_detail' 'institucional' %}" class="btn btn-outline-primary btn-sm">Relatório institucional</a>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
+    <div class="text-body-secondary small text-uppercase">Estudantes ativos</div>
+    <div class="fs-4 fw-semibold">{{ data.students }}</div>
+  </div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
+    <div class="text-body-secondary small text-uppercase">Frequência global</div>
+    <div class="fs-4 fw-semibold">{% if data.attendance_percent is not None %}{{ data.attendance_percent }}%{% else %}—{% endif %}</div>
+  </div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
+    <div class="text-body-secondary small text-uppercase">Ocorrências em aberto</div>
+    <div class="fs-4 fw-semibold">{{ data.occurrences_open }}</div>
+  </div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
+    <div class="text-body-secondary small text-uppercase">Planos ativos</div>
+    <div class="fs-4 fw-semibold">{{ data.plans_active }}</div>
+  </div></div></div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header bg-transparent fw-semibold">Frequência por turma (%)</div>
+      <div class="card-body">{{ class_chart }}</div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header bg-transparent fw-semibold">Indicadores</div>
+      <div class="card-body">
+        <table class="table table-sm mb-0">
+          <tbody>
+            <tr><td>Turmas</td><td class="text-end">{{ data.class_groups }}</td></tr>
+            <tr><td>Professores com atribuição</td><td class="text-end">{{ data.teachers }}</td></tr>
+            <tr><td>Vínculos pendentes</td><td class="text-end">{{ data.links_pending }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-transparent fw-semibold">Turmas</div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr><th>Turma</th><th>Ano letivo</th><th class="text-end">Estudantes</th><th class="text-end">Frequência</th><th class="text-end"></th></tr></thead>
+      <tbody>
+        {% for c in classes %}
+        <tr>
+          <td class="fw-semibold">{{ c.class_group.name }}</td>
+          <td>{{ c.class_group.school_year }}</td>
+          <td class="text-end">{{ c.students }}</td>
+          <td class="text-end">{% if c.attendance is not None %}{{ c.attendance }}%{% else %}—{% endif %}</td>
+          <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'analytics:class_dashboard' c.class_group.pk %}">Painel</a></td>
+        </tr>
+        {% empty %}<tr><td colspan="5" class="text-body-secondary">Nenhuma turma cadastrada.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

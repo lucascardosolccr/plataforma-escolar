@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Ocorrências — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">Ocorrências</h1>
+    <p class="text-body-secondary small mb-0">
+      {% if user_role == ROLE_RESPONSAVEL %}Apenas ocorrências dos seus filhos.
+      {% elif user_role == ROLE_PROFESSOR %}Apenas estudantes das suas turmas.
+      {% else %}Histórico escolar com atualizações auditadas.{% endif %}
+    </p>
+  </div>
+  {% if can_manage %}
+    <a href="{% url 'pedagogy:occurrence_create' %}" class="btn btn-primary">+ Nova ocorrência</a>
+  {% endif %}
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-center">
+      <div class="col-auto">
+        <label class="col-form-label small text-uppercase text-body-secondary">Situação</label>
+      </div>
+      <div class="col-auto">
+        <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">Todas</option>
+          {% for value, label in occurrence_status_choices %}
+          <option value="{{ value }}"{% if status == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr><th>Data</th><th>Estudante</th><th>Descrição</th><th>Situação</th><th>Registrada por</th><th class="text-end"></th></tr></thead>
+      <tbody>
+        {% for o in occurrences %}
+        <tr>
+          <td>{{ o.date|date:"d/m/Y" }}</td>
+          <td class="fw-semibold">{{ o.student.full_name }}</td>
+          <td class="text-truncate" style="max-width:320px">{{ o.description }}</td>
+          <td><span class="chip">{{ o.get_status_display }}</span></td>
+          <td>{{ o.recorded_by.get_full_name|default:o.recorded_by.username|default:"—" }}</td>
+          <td class="text-end"><a href="{% url 'pedagogy:occurrence_detail' o.pk %}" class="btn btn-sm btn-outline-secondary">Ver</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-body-secondary py-4">Nenhuma ocorrência.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

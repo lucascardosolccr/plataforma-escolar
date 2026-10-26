@@ -1,0 +1,193 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-br" data-bs-theme="{{ theme }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Plataforma Escolar{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="d-flex flex-column min-vh-100">
+{% if user.is_authenticated %}
+<nav class="navbar navbar-expand-lg navbar-theme border-bottom shadow-sm sticky-top">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="{% url 'home' %}">
+      <span class="brand-mark">📚</span>
+      <span>Plataforma Escolar</span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain"
+            aria-controls="navMain" aria-expanded="false" aria-label="Alternar menu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navMain">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'home' %} active{% endif %}" href="{% url 'home' %}">Início</a></li>
+
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle{% if request.resolver_match.app_name == 'analytics' %} active{% endif %}" href="#" data-bs-toggle="dropdown">Painéis</a>
+          <ul class="dropdown-menu shadow">
+            {% if user_role == ROLE_ADMIN or user_role == ROLE_DIRECAO or user_role == ROLE_COORDENACAO %}
+              <li><a class="dropdown-item" href="{% url 'analytics:institutional_dashboard' %}">Painel institucional</a></li>
+            {% endif %}
+            {% if user_role == ROLE_ADMIN or user_role == ROLE_SECRETARIA %}
+              <li><a class="dropdown-item" href="{% url 'analytics:secretaria_panel' %}">Painel da secretaria</a></li>
+            {% endif %}
+            <li><a class="dropdown-item" href="{% url 'analytics:report_hub' %}">Relatórios</a></li>
+          </ul>
+        </li>
+
+        {% if user_role == ROLE_RESPONSAVEL %}
+          <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'my_children' %} active{% endif %}" href="{% url 'my_children' %}">Meus filhos</a></li>
+          <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'link_list' %} active{% endif %}" href="{% url 'link_list' %}">Vínculos</a></li>
+          <li class="nav-item"><a class="nav-link{% if request.resolver_match.app_name == 'pedagogy' %} active{% endif %}" href="{% url 'pedagogy:evaluation_list' %}">Notas</a></li>
+          <li class="nav-item"><a class="nav-link{% if request.resolver_match.app_name == 'pedagogy' and request.resolver_match.url_name == 'justification_create' %} active{% endif %}" href="{% url 'pedagogy:justification_create' %}">Justificar falta</a></li>
+        {% endif %}
+
+        {% if user_role == ROLE_PROFESSOR %}
+          <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'my_classrooms' %} active{% endif %}" href="{% url 'my_classrooms' %}">Minhas turmas</a></li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Pedagógico</a>
+            <ul class="dropdown-menu shadow">
+              <li><a class="dropdown-item" href="{% url 'pedagogy:evaluation_list' %}">Avaliações</a></li>
+              <li><a class="dropdown-item" href="{% url 'pedagogy:activity_list' %}">Atividades</a></li>
+              <li><a class="dropdown-item" href="{% url 'pedagogy:attendance_list' %}">Frequência</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="{% url 'pedagogy:occurrence_list' %}">Ocorrências</a></li>
+              <li><a class="dropdown-item" href="{% url 'pedagogy:observation_list' %}">Observações</a></li>
+              <li><a class="dropdown-item" href="{% url 'pedagogy:justification_list' %}">Justificativas</a></li>
+            </ul>
+          </li>
+        {% endif %}
+
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle{% if request.resolver_match.app_name == 'communication' %} active{% endif %}" href="#" data-bs-toggle="dropdown">Comunicação</a>
+          <ul class="dropdown-menu shadow">
+            <li><a class="dropdown-item" href="{% url 'communication:notification_list' %}">Central de notificações</a></li>
+            <li><a class="dropdown-item" href="{% url 'communication:thread_list' %}">Mensagens com famílias</a></li>
+            <li><a class="dropdown-item" href="{% url 'communication:announcement_list' %}">Comunicados</a></li>
+            <li><a class="dropdown-item" href="{% url 'communication:request_list' %}">Solicitações de atendimento</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'communication:thread_create' %}">+ Nova mensagem</a></li>
+          </ul>
+        </li>
+
+        {% if user_is_staff and user_role != ROLE_PROFESSOR %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Cadastro</a>
+            <ul class="dropdown-menu shadow">
+              <li><a class="dropdown-item" href="{% url 'student_list' %}">Estudantes</a></li>
+              {% if user_role == ROLE_SECRETARIA or user_role == ROLE_ADMIN %}
+                <li><a class="dropdown-item" href="{% url 'guardian_list' %}">Responsáveis</a></li>
+                <li><a class="dropdown-item" href="{% url 'link_list' %}">Vínculos</a></li>
+                <li><a class="dropdown-item" href="{% url 'enrollment_list' %}">Matrículas</a></li>
+              {% endif %}
+            </ul>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Acadêmico</a>
+            <ul class="dropdown-menu shadow">
+              <li><a class="dropdown-item" href="{% url 'class_group_list' %}">Turmas</a></li>
+              <li><a class="dropdown-item" href="{% url 'subject_list' %}">Disciplinas</a></li>
+              <li><a class="dropdown-item" href="{% url 'school_year_list' %}">Anos letivos</a></li>
+              {% if user_role == ROLE_SECRETARIA or user_role == ROLE_COORDENACAO or user_role == ROLE_ADMIN %}
+                <li><a class="dropdown-item" href="{% url 'assignment_list' %}">Atribuições</a></li>
+              {% endif %}
+            </ul>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Pedagógico</a>
+            <ul class="dropdown-menu shadow">
+              <li><a class="dropdown-item" href="{% url 'pedagogy:evaluation_list' %}">Avaliações e notas</a></li>
+              <li><a class="dropdown-item" href="{% url 'pedagogy:activity_list' %}">Atividades</a></li>
+              <li><a class="dropdown-item" href="{% url 'pedagogy:attendance_list' %}">Frequência</a></li>
+              <li><a class="dropdown-item" href="{% url 'pedagogy:occurrence_list' %}">Ocorrências</a></li>
+              {% if user_role == ROLE_COORDENACAO or user_role == ROLE_DIRECAO %}
+                <li><a class="dropdown-item" href="{% url 'pedagogy:observation_list' %}">Observações</a></li>
+                <li><a class="dropdown-item" href="{% url 'pedagogy:plan_list' %}">Planos de acompanhamento</a></li>
+              {% endif %}
+              {% if user_role == ROLE_SECRETARIA or user_role == ROLE_ADMIN or user_role == ROLE_COORDENACAO or user_role == ROLE_DIRECAO %}
+                <li><a class="dropdown-item" href="{% url 'pedagogy:justification_list' %}">Justificativas</a></li>
+              {% endif %}
+              {% if user_role == ROLE_SECRETARIA or user_role == ROLE_ADMIN %}
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{% url 'pedagogy:config_edit' %}">Regras e limites</a></li>
+              {% endif %}
+            </ul>
+          </li>
+        {% endif %}
+
+        {% if user_role == ROLE_ADMIN %}
+          <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'user_list' %} active{% endif %}" href="{% url 'user_list' %}">Usuários</a></li>
+        {% endif %}
+      </ul>
+      <ul class="navbar-nav align-items-lg-center gap-2">
+        <li class="nav-item">
+          <span class="badge text-bg-info d-inline-flex align-items-center gap-1">
+            <span class="role-dot" aria-hidden="true"></span>{{ user_role_label }}
+          </span>
+        </li>
+        {% if user.school %}
+        <li class="nav-item d-none d-lg-inline text-body-secondary small">{{ user.school.name }}</li>
+        {% endif %}
+        <li class="nav-item">
+          <a class="btn btn-outline-secondary btn-sm position-relative" href="{% url 'communication:notification_list' %}" aria-label="Central de notificações">
+            <span aria-hidden="true">🔔</span>
+            {% if unread_notifications %}
+            <span class="notif-badge">{{ unread_notifications }}</span>
+            {% endif %}
+          </a>
+        </li>
+        <li class="nav-item">
+          <button class="btn btn-outline-secondary btn-sm theme-toggle" type="button" aria-label="Alternar tema">
+            <span class="theme-icon">🌙</span>
+          </button>
+        </li>
+        <li class="nav-item dropdown">
+          <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            {{ user.first_name }} {{ user.last_name }}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow">
+            <li><a class="dropdown-item" href="{% url 'password_change' %}">Alterar senha</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="dropdown-item">Sair</button>
+              </form>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+{% endif %}
+
+<main class="flex-grow-1 py-4">
+  <div class="container-fluid px-3 px-md-4">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+    {% block content %}{% endblock %}
+  </div>
+</main>
+
+<footer class="footer-theme border-top py-3 mt-auto">
+  <div class="container-fluid px-3 px-md-4 d-flex flex-wrap justify-content-between align-items-center gap-2 text-body-secondary small">
+    <span>Plataforma Escolar Integrada — software livre, sem custos de assinatura.</span>
+    <span>{% now "Y" %} · Página segura e autenticada</span>
+  </div>
+</footer>
+
+<script src="{% static 'vendor/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'js/theme.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

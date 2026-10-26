@@ -1,0 +1,31 @@
+{% extends "partials/form_card.html" %}
+{% block title %}{% if obj %}Editar atividade{% else %}Nova atividade{% endif %} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6 col-md-8">
+    <div class="card p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h1 class="h4 mb-0">{% if obj %}Editar atividade{% else %}Nova atividade{% endif %}</h1>
+          <p class="text-body-secondary small mb-0">Somente turmas e disciplinas da sua atribuição.</p>
+        </div>
+        <a href="{% url 'pedagogy:activity_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+      </div>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% include "partials/_form_fields.html" with f=form %}
+        {% if obj %}
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-grow-1">Salvar</button>
+            <button type="submit" name="_delete" value="1" class="btn btn-outline-danger"
+                    onclick="return confirm('Excluir esta atividade? As entregas registradas também serão excluídas.');">Excluir</button>
+          </div>
+        {% else %}
+          <button type="submit" class="btn btn-primary w-100 mt-2">Criar atividade</button>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

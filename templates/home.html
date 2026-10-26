@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Início — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="row g-3 align-items-center mb-4">
+  <div class="col">
+    <h1 class="h3 mb-0">Olá, {{ user.first_name|default:user.username }}</h1>
+    <p class="text-body-secondary mb-0">
+      {% if user.school %}{{ user.school.name }} · {% endif %}{{ user_role_label }}
+    </p>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100"><div class="card-body">
+      <div class="text-body-secondary small text-uppercase">Perfil</div>
+      <div class="fs-5 fw-semibold">{{ user_role_label }}</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100"><div class="card-body">
+      <div class="text-body-secondary small text-uppercase">Escola</div>
+      <div class="fs-5 fw-semibold">{{ user.school.name|default:"—" }}</div>
+    </div></div>
+  </div>
+  {% if user_count is not None %}
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100"><div class="card-body">
+      <div class="text-body-secondary small text-uppercase">Usuários ativos</div>
+      <div class="fs-3 fw-bold">{{ user_count }}</div>
+    </div></div>
+  </div>
+  {% elif student_count is not None %}
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100"><div class="card-body">
+      <div class="text-body-secondary small text-uppercase">Estudantes</div>
+      <div class="fs-3 fw-bold">{{ student_count }}</div>
+    </div></div>
+  </div>
+  {% elif child_count is not None %}
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100"><div class="card-body">
+      <div class="text-body-secondary small text-uppercase">Filhos vinculados</div>
+      <div class="fs-3 fw-bold">{{ child_count }}</div>
+    </div></div>
+  </div>
+  {% elif assignment_count is not None %}
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100"><div class="card-body">
+      <div class="text-body-secondary small text-uppercase">Atribuições</div>
+      <div class="fs-3 fw-bold">{{ assignment_count }}</div>
+    </div></div>
+  </div>
+  {% else %}
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100"><div class="card-body">
+      <div class="text-body-secondary small text-uppercase">Acesso</div>
+      <div class="fs-5 fw-semibold">{% now "d/m/Y H:i" %}</div>
+    </div></div>
+  </div>
+  {% endif %}
+  {% if pending_links is not None %}
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100"><div class="card-body">
+      <div class="text-body-secondary small text-uppercase">Vínculos pendentes</div>
+      <div class="fs-3 fw-bold {% if pending_links %}text-warning{% endif %}">{{ pending_links }}</div>
+    </div></div>
+  </div>
+  {% endif %}
+</div>
+
+<h2 class="h5 mb-3">Ações rápidas</h2>
+<div class="row g-3">
+  {% if user_role == ROLE_ADMIN %}
+    {% include "partials/home_card.html" with url_name='user_list' title="Gestão de usuários" desc="Criar contas profissionais e auditar operações." %}
+    {% include "partials/home_card.html" with url_name='student_list' title="Estudantes" desc="Prontuários e cadastro." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:evaluation_list' title="Avaliações e notas" desc="Acompanhamento geral." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:attendance_list' title="Frequência" desc="Registros por turma." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:occurrence_list' title="Ocorrências" desc="Histórico disciplinar." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:justification_list' title="Justificativas" desc="Analisadas pela secretaria." %}
+    {% include "partials/home_card.html" with url_name='analytics:institutional_dashboard' title="Painel institucional" desc="Indicadores consolidados de toda a escola." %}
+    {% include "partials/home_card.html" with url_name='analytics:secretaria_panel' title="Painel da secretaria" desc="Vínculos, matrículas e pendências." %}
+    {% include "partials/home_card.html" with url_name='analytics:report_hub' title="Relatórios" desc="Exportar em CSV e imprimir/PDF." %}
+  {% elif user_role == ROLE_SECRETARIA %}
+    {% include "partials/home_card.html" with url_name='student_list' title="Estudantes" desc="Cadastro e prontuários." %}
+    {% include "partials/home_card.html" with url_name='link_list' title="Vínculos pendentes" desc="Validar solicitações de responsáveis." %}
+    {% include "partials/home_card.html" with url_name='enrollment_list' title="Matrículas" desc="Estudante × turma × ano letivo." %}
+    {% include "partials/home_card.html" with url_name='class_group_list' title="Turmas" desc="Organização por ano letivo." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:justification_list' title="Justificativas de falta" desc="Aprovar ou recusar — não alteram a frequência oficial." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:config_edit' title="Regras e limites" desc="Fórmulas de média e limite de faltas." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:attendance_list' title="Frequência" desc="Acompanhamento por turma." %}
+    {% include "partials/home_card.html" with url_name='analytics:secretaria_panel' title="Painel da secretaria" desc="Vínculos, matrículas e pendências." %}
+    {% include "partials/home_card.html" with url_name='analytics:report_hub' title="Relatórios" desc="Exportar em CSV e imprimir/PDF." %}
+  {% elif user_role == ROLE_COORDENACAO %}
+    {% include "partials/home_card.html" with url_name='student_list' title="Estudantes" desc="Acompanhamento pedagógico." %}
+    {% include "partials/home_card.html" with url_name='subject_list' title="Disciplinas" desc="Componentes curriculares." %}
+    {% include "partials/home_card.html" with url_name='assignment_list' title="Atribuições" desc="Professor × turma × disciplina." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:plan_create' title="Plano de acompanhamento" desc="Novo plano individual." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:observation_create' title="Observação pedagógica" desc="Registrar acompanhamento." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:occurrence_create' title="Ocorrência" desc="Registrar na escola inteira." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:evaluation_list' title="Avaliações e notas" desc="Acompanhamento." %}
+    {% include "partials/home_card.html" with url_name='analytics:institutional_dashboard' title="Painel institucional" desc="Indicadores consolidados de toda a escola." %}
+    {% include "partials/home_card.html" with url_name='analytics:report_hub' title="Relatórios" desc="Exportar em CSV e imprimir/PDF." %}
+  {% elif user_role == ROLE_DIRECAO %}
+    {% include "partials/home_card.html" with url_name='student_list' title="Estudantes" desc="Visão institucional." %}
+    {% include "partials/home_card.html" with url_name='school_year_list' title="Anos letivos" desc="Períodos letivos." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:evaluation_list' title="Avaliações e notas" desc="Acompanhamento geral." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:occurrence_list' title="Ocorrências" desc="Visão institucional." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:observation_list' title="Observações" desc="Visão pedagógica." %}
+  {% elif user_role == ROLE_PROFESSOR %}
+    {% include "partials/home_card.html" with url_name='my_classrooms' title="Minhas turmas" desc="Estudantes das suas atribuições." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:evaluation_create' title="Nova avaliação" desc="Criar e publicar para a família." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:activity_create' title="Nova atividade" desc="Lançar tarefas e controlar entregas." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:attendance_list' title="Frequência" desc="Registrar presenças e faltas." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:occurrence_create' title="Ocorrência" desc="Registrar ocorrências da sua turma." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:observation_create' title="Observação pedagógica" desc="Registrar acompanhamento." %}
+    {% include "partials/home_card.html" with url_name='communication:thread_create' title="Mensagem à família" desc="Responder dúvidas e solicitações." %}
+    {% include "partials/home_card.html" with url_name='analytics:report_hub' title="Relatórios" desc="Dificuldades, atividades e indicadores das suas turmas." %}
+  {% elif user_role == ROLE_RESPONSAVEL %}
+    {% include "partials/home_card.html" with url_name='my_children' title="Meus filhos" desc="Acompanhe cada estudante." %}
+    {% include "partials/home_card.html" with url_name='link_request' title="Solicitar vínculo" desc="Vincular um novo estudante." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:evaluation_list' title="Notas e avaliações" desc="Veja somente avaliações publicadas." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:activity_list' title="Atividades" desc="Tarefas das turmas dos seus filhos." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:justification_create' title="Justificar falta" desc="Enviar justificativa — analisada pela secretaria." %}
+    {% include "partials/home_card.html" with url_name='communication:thread_create' title="Mensagens" desc="Conversar com professores e setores da escola." %}
+    {% include "partials/home_card.html" with url_name='communication:announcement_list' title="Comunicados" desc="Avisos da escola e das turmas dos filhos." %}
+    {% include "partials/home_card.html" with url_name='communication:request_create' title="Solicitação" desc="Pedidos de atendimento com acompanhamento do status." %}
+    {% include "partials/home_card.html" with url_name='analytics:report_hub' title="Relatórios" desc="Boletim, evolução e frequência dos seus filhos." %}
+  {% endif %}
+  {% include "partials/home_card.html" with url_name='password_change' title="Alterar senha" desc="Mantenha sua conta segura." %}
+</div>
+
+<div class="alert alert-info mt-4 d-flex align-items-center gap-2" role="alert">
+  <span>📬</span>
+  <span>A central de comunicação (mensagens, comunicados e solicitações) e os painéis/relatórios exportáveis funcionam 100% dentro da plataforma, sem serviços pagos.</span>
+</div>
+{% endblock %}

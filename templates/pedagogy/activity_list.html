@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Atividades — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">Atividades</h1>
+    <p class="text-body-secondary small mb-0">Tarefas, trabalhos e entregas por turma e disciplina.</p>
+  </div>
+  {% if can_manage %}
+    <a href="{% url 'pedagogy:activity_create' %}" class="btn btn-primary">+ Nova atividade</a>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr><th>Título</th><th>Disciplina</th><th>Turma</th><th>Publicada em</th><th>Prazo</th><th class="text-end">Ações</th></tr></thead>
+      <tbody>
+        {% for a in activities %}
+        <tr>
+          <td class="fw-semibold">{{ a.title }}</td>
+          <td>{{ a.subject.name }}</td>
+          <td>{{ a.class_group.name }}</td>
+          <td>{{ a.published_date|date:"d/m/Y" }}</td>
+          <td>{{ a.deadline|date:"d/m/Y"|default:"—" }}</td>
+          <td class="text-end">
+            {% if can_manage %}
+              <a href="{% url 'pedagogy:activity_submissions' a.pk %}" class="btn btn-sm btn-outline-primary">Entregas</a>
+              <a href="{% url 'pedagogy:activity_edit' a.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-body-secondary py-4">Nenhuma atividade registrada.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

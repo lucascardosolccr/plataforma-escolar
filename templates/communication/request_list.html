@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Solicitações de atendimento — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">Solicitações de atendimento</h1>
+    <p class="text-body-secondary small mb-0">
+      {% if user_role == ROLE_RESPONSAVEL %}
+        Acompanhe o andamento dos seus pedidos (recebida → análise → resposta).
+      {% else %}
+        Solicitações das famílias com status de atendimento.
+      {% endif %}
+    </p>
+  </div>
+  {% if can_create %}
+    <a href="{% url 'communication:request_create' %}" class="btn btn-primary btn-sm">+ Nova solicitação</a>
+  {% endif %}
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-center">
+      <div class="col-auto">
+        <label class="col-form-label small text-uppercase text-body-secondary">Situação</label>
+      </div>
+      <div class="col-auto">
+        <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">Todas</option>
+          {% for value, label in status_choices %}
+          <option value="{{ value }}"{% if status == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr><th>Data</th><th>Solicitação</th><th>Solicitante</th><th>Estudante</th><th>Situação</th><th class="text-end"></th></tr></thead>
+      <tbody>
+        {% for r in requests %}
+        <tr>
+          <td class="text-nowrap">{{ r.created_at|date:"d/m/Y" }}</td>
+          <td>
+            <div class="fw-semibold">{{ r.title }}</div>
+            <div class="text-body-secondary small">{{ r.get_category_display }}</div>
+          </td>
+          <td>{{ r.requester.get_full_name|default:r.requester.username }}</td>
+          <td>{{ r.student.full_name|default:"—" }}</td>
+          <td><span class="chip">{{ r.get_status_display }}</span></td>
+          <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{% url 'communication:request_detail' r.pk %}">Ver</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-body-secondary py-4">Nenhuma solicitação.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

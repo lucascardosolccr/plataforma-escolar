@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Comunicado — {{ announcement.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">{{ announcement.title }}</h1>
+    <p class="text-body-secondary small mb-0">
+      {{ announcement.created_at|date:"d/m/Y H:i" }} · {{ announcement.get_scope_display }} ·
+      {{ announcement.get_audience_display }}
+      {% if announcement.class_group %} · {{ announcement.class_group }}{% endif %}
+      {% if announcement.student %} · {{ announcement.student.full_name }}{% endif %}
+      {% if announcement.created_by %} · por {{ announcement.created_by.get_full_name|default:announcement.created_by.username }}{% endif %}
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <span class="chip {% if has_read %}text-success{% endif %}">
+      {% if has_read %}✓ lido{% else %}não lido{% endif %}
+    </span>
+    <a href="{% url 'communication:announcement_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    {{ announcement.body|linebreaks }}
+  </div>
+</div>
+
+{% if user_is_staff %}
+<div class="card mt-3">
+  <div class="card-body">
+    <h2 class="h6 text-body-secondary text-uppercase">Confirmações de leitura</h2>
+    <ul class="list-unstyled mb-0 d-flex flex-wrap gap-2">
+      {% for name in reader_names %}
+      <li><span class="chip">✓ {{ name.0|default:"—" }} {{ name.1 }}</span></li>
+      {% empty %}
+      <li class="text-body-secondary small">Nenhuma confirmação ainda.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Turmas — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">Turmas</h1>
+    <p class="text-body-secondary small mb-0">Organização das turmas por ano letivo.</p>
+  </div>
+  {% if can_manage %}<a href="{% url 'class_group_create' %}" class="btn btn-primary">+ Nova turma</a>{% endif %}
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr><th>Turma</th><th>Série</th><th>Turno</th><th>Ano letivo</th>{% if can_manage %}<th class="text-end">Ações</th>{% endif %}</tr></thead>
+      <tbody>
+        {% for g in class_groups %}
+        <tr>
+          <td class="fw-semibold">{{ g.name }}</td>
+          <td>{{ g.grade|default:"—" }}</td>
+          <td>{{ g.get_turn_display }}</td>
+          <td>{{ g.school_year.name }}</td>
+          {% if can_manage %}
+          <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{% url 'class_group_edit' g.pk %}">Editar</a></td>
+          {% endif %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="{% if can_manage %}5{% else %}4{% endif %}" class="text-center text-body-secondary py-4">Nenhuma turma cadastrada.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

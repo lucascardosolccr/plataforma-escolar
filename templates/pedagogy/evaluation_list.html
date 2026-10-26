@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Avaliações e notas — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">Avaliações e notas</h1>
+    <p class="text-body-secondary small mb-0">
+      {% if user_role == ROLE_RESPONSAVEL %}Notas publicadas pelos professores para a família.
+      {% else %}Provas, trabalhos e lançamento de notas por turma e disciplina.{% endif %}
+    </p>
+  </div>
+  {% if can_edit_any %}
+    <a href="{% url 'pedagogy:evaluation_create' %}" class="btn btn-primary">+ Nova avaliação</a>
+  {% endif %}
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-center">
+      <div class="col-auto">
+        <label class="col-form-label small text-uppercase text-body-secondary">Situação</label>
+      </div>
+      <div class="col-auto">
+        <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">Todas</option>
+          <option value="rascunho"{% if status == 'rascunho' %} selected{% endif %}>Rascunho</option>
+          <option value="publicada"{% if status == 'publicada' %} selected{% endif %}>Publicada</option>
+        </select>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr><th>Disciplina</th><th>Turma</th><th>Título</th><th>Data</th><th>Peso</th><th>Situação</th><th class="text-end">Média</th><th class="text-end">Ações</th></tr></thead>
+      <tbody>
+        {% for row in rows %}
+        {% with ev=row.eval %}
+        <tr>
+          <td>{{ ev.subject.name }}</td>
+          <td>{{ ev.class_group.name }}</td>
+          <td class="fw-semibold">{{ ev.title }}</td>
+          <td>{{ ev.date|date:"d/m/Y" }}</td>
+          <td>{{ ev.weight }}</td>
+          <td>
+            {% if ev.status == 'publicada' %}<span class="chip text-success">Publicada</span>
+            {% else %}<span class="chip text-warning">Rascunho</span>{% endif %}
+          </td>
+          <td class="text-end">
+            {% if row.avg is not None %}
+              <span class="fw-semibold {% if row.rule and row.avg >= row.rule.passing_grade %}text-success{% else %}text-danger{% endif %}">{{ row.avg|floatformat:2 }}</span>
+            {% else %}—{% endif %}
+          </td>
+          <td class="text-end">
+            {% if can_edit_any %}
+              <a href="{% url 'pedagogy:evaluation_grade' ev.pk %}" class="btn btn-sm btn-outline-primary" title="Lançar/editar notas">Notas</a>
+              <a href="{% url 'pedagogy:evaluation_edit' ev.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
+              {% if ev.status == 'rascunho' %}
+                <form method="post" action="{% url 'pedagogy:evaluation_publish' ev.pk %}" class="d-inline"
+                      onsubmit="return confirm('Publicar esta avaliação? A família passará a visualizar as notas.');">
+                  {% csrf_token %}
+                  <button class="btn btn-sm btn-outline-success" type="submit">Publicar</button>
+                </form>
+              {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+        {% endwith %}
+        {% empty %}
+        <tr><td colspan="8" class="text-center text-body-secondary py-4">
+          {% if user_role == ROLE_RESPONSAVEL %}Nenhuma avaliação publicada para os seus filhos ainda.{% else %}Nenhuma avaliação registrada.{% endif %}
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

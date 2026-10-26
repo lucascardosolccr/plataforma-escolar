@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load pedagogy_extras %}
+{% block title %}Frequência — {{ class_group.name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">Frequência — {{ class_group.name }}</h1>
+    <p class="text-body-secondary small mb-0">Limite de faltas desta escola: <strong>{{ max_absences }}%</strong></p>
+  </div>
+  <div class="d-flex gap-2">
+    {% if user_role == ROLE_RESPONSAVEL %}
+      <span class="chip">Mostrando apenas seus filhos</span>
+    {% endif %}
+    {% if can_register %}
+      <a href="{% url 'pedagogy:attendance_register' class_group.pk %}" class="btn btn-primary btn-sm">+ Registrar novo dia</a>
+    {% endif %}
+    <a href="{% url 'pedagogy:attendance_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Estudante</th>
+          <th class="text-center text-success" title="Presente">P</th>
+          <th class="text-center text-warning" title="Atraso">A</th>
+          <th class="text-center text-danger" title="Falta">F</th>
+          <th class="text-end">Faltas</th>
+          {% for d in dates %}<th class="text-center small" title="{{ d|date:'d/m/Y' }}">{{ d|date:"d/m" }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for st in students %}
+        <tr>
+          <td class="fw-semibold">{{ st.full_name }}</td>
+          {% with s=summary|getitem:st.pk %}
+          {% if s %}
+          <td class="text-center text-success">{{ s.presente }}</td>
+          <td class="text-center text-warning">{{ s.atraso }}</td>
+          <td class="text-center text-danger">{{ s.falta }}</td>
+          <td class="text-end">
+            {% if s.falta %}<span class="chip text-danger fw-semibold">{{ s.falta }}</span>{% else %}<span class="text-body-secondary">0</span>{% endif %}
+          </td>
+          {% else %}
+          <td class="text-center">0</td>
+          <td class="text-center">0</td>
+          <td class="text-center">0</td>
+          <td class="text-end text-body-secondary">0</td>
+          {% endif %}
+          {% endwith %}
+          {% for d in dates %}
+            <td class="text-center small">
+              {% with r=grid|getitem:d %}
+                {% if r %}
+                  <span class="{% if r.status == 'presente' %}text-success{% elif r.status == 'atraso' %}text-warning{% else %}text-danger{% endif %} fw-bold">
+                    {{ r.get_status_display|first|upper }}
+                  </span>
+                {% else %}
+                  <span class="text-body-tertiary">·</span>
+                {% endif %}
+              {% endwith %}
+            </td>
+          {% endfor %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-body-secondary py-4">Nenhum estudante matriculado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="text-body-secondary small mt-2">
+  Legenda: P = presente · A = atraso · F = falta. Faltas <strong>oficiais</strong> não mudam automaticamente por justificativa da família.
+</div>
+{% endblock %}

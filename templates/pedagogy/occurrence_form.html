@@ -1,0 +1,23 @@
+{% extends "partials/form_card.html" %}
+{% block title %}Nova ocorrência — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6 col-md-8">
+    <div class="card p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h1 class="h4 mb-0">Nova ocorrência</h1>
+          <p class="text-body-secondary small mb-0">Descrição objetiva dos fatos; histórico fica registrado na auditoria.</p>
+        </div>
+        <a href="{% url 'pedagogy:occurrence_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+      </div>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% include "partials/_form_fields.html" with f=form %}
+        <button type="submit" class="btn btn-primary w-100 mt-2">Registrar ocorrência</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

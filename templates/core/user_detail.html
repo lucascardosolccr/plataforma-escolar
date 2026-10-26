@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Detalhes do usuário — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">{{ target_user.first_name }} {{ target_user.last_name }}</h1>
+    <p class="text-body-secondary small mb-0">@{{ target_user.username }} · {{ target_user.role_label }} · {{ target_user.school.name|default:"Sem escola" }}</p>
+  </div>
+  <a href="{% url 'user_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-body-secondary small text-uppercase">E-mail</div>
+      <div>{{ target_user.email|default:"—" }}</div>
+    </div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-body-secondary small text-uppercase">Situação</div>
+      <div>{% if target_user.is_active %}✅ Ativo{% else %}⛔ Inativo{% endif %}</div>
+    </div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-body-secondary small text-uppercase">Último acesso</div>
+      <div>{{ target_user.last_login|date:"d/m/Y H:i"|default:"Nunca acessou" }}</div>
+    </div></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-transparent"><h2 class="h6 mb-0">Registros de auditoria (últimos 50)</h2></div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr><th>Data</th><th>Ação</th><th>Registro</th><th>Detalhe</th><th>IP</th></tr></thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td>{{ log.created_at|date:"d/m/Y H:i" }}</td>
+          <td><span class="chip">{{ log.get_action_display }}</span></td>
+          <td>{{ log.target_type }}{% if log.target_id %} #{{ log.target_id }}{% endif %}</td>
+          <td>{{ log.detail|default:"—" }}</td>
+          <td class="text-body-secondary">{{ log.ip_address|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-body-secondary py-4">Nenhum registro de auditoria.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

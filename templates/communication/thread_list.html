@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Mensagens — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">Mensagens</h1>
+    <p class="text-body-secondary small mb-0">
+      {% if user_role == ROLE_RESPONSAVEL %}Conversas com professores e setores da escola.
+      {% else %}Responda dúvidas e solicitações das famílias.{% endif %}
+    </p>
+  </div>
+  <a href="{% url 'communication:thread_create' %}" class="btn btn-primary btn-sm">+ Nova mensagem</a>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-center">
+      <div class="col-auto">
+        <label class="col-form-label small text-uppercase text-body-secondary">Estudante</label>
+      </div>
+      <div class="col-auto">
+        <input type="text" name="estudante" value="{{ student_id|default:'' }}" class="form-control form-control-sm" placeholder="ID do estudante" style="width:130px">
+      </div>
+      <div class="col-auto"><button type="submit" class="btn btn-outline-secondary btn-sm">Filtrar</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <ul class="list-group list-group-flush">
+    {% for thread, unread in threads %}
+    <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div>
+        <a href="{% url 'communication:thread_detail' thread.pk %}" class="fw-semibold text-decoration-none">
+          {{ thread.title }}
+          {% if unread %}<span class="badge text-bg-danger ms-1">{{ unread }} não lida{{ unread|pluralize }}</span>{% endif %}
+        </a>
+        <div class="text-body-secondary small">
+          {% for p in thread.participants.all %}{% if p.pk != user.pk %}{{ p.get_full_name|default:p.username }} · {{ p.role_label }}{% endif %}{% endfor %}
+          {% if thread.student %} · {{ thread.student.full_name }}{% endif %}
+          · {{ thread.updated_at|date:"d/m/Y H:i" }}
+        </div>
+      </div>
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'communication:thread_detail' thread.pk %}">Abrir</a>
+    </li>
+    {% empty %}
+    <li class="list-group-item text-center text-body-secondary py-4">Nenhuma conversa.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{% if enrollment %}Editar{% else %}Nova{% endif %} matrícula — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6 col-md-8">
+    <div class="card p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h1 class="h4 mb-0">{% if enrollment %}Editar matrícula{% else %}Nova matrícula{% endif %}</h1>
+          <p class="text-body-secondary small mb-0">Vincule um estudante a uma turma no ano letivo.</p>
+        </div>
+        <a href="{% url 'enrollment_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+      </div>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% include "partials/_form_fields.html" with f=form %}
+        <button type="submit" class="btn btn-primary w-100 mt-2">Salvar matrícula</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

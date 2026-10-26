@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}{{ plan.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">{{ plan.title }}</h1>
+    <p class="text-body-secondary small mb-0">
+      {{ plan.student.full_name }} · {{ plan.get_status_display }} ·
+      Criado por {{ plan.created_by.get_full_name|default:plan.created_by.username|default:"—" }} em {{ plan.created_at|date:"d/m/Y" }}
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    {% if user_role == ROLE_COORDENACAO %}
+      <form method="post" class="d-inline">
+        {% csrf_token %}
+        <input type="hidden" name="_action" value="set_status">
+        <select name="status" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
+          {% for value, label in status_choices %}
+          <option value="{{ value }}"{% if plan.status == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    {% endif %}
+    <a href="{% url 'pedagogy:plan_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card"><div class="card-body">
+      <h2 class="h6 text-body-secondary text-uppercase">Objetivos e estratégias</h2>
+      <div>{{ plan.description|linebreaks }}</div>
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    {% if note_form %}
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6 text-body-secondary text-uppercase">Registrar evolução</h2>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="_action" value="add_note">
+        {% include "partials/_form_fields.html" with f=note_form %}
+        <button type="submit" class="btn btn-primary w-100 mt-2">Registrar</button>
+      </form>
+    </div></div>
+    {% endif %}
+
+    <div class="card"><div class="card-body">
+      <h2 class="h6 text-body-secondary text-uppercase">Evoluções</h2>
+      <ul class="list-unstyled mb-0">
+        {% for n in notes %}
+        <li class="mb-3">
+          <div class="text-body-secondary small">{{ n.created_at|date:"d/m/Y H:i" }} · {{ n.created_by.get_full_name|default:n.created_by.username|default:"—" }}</div>
+          <div>{{ n.note|linebreaks }}</div>
+        </li>
+        {% empty %}
+        <li class="text-body-secondary small">Nenhuma evolução registrada até o momento.</li>
+        {% endfor %}
+      </ul>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

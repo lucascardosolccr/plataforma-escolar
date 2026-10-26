@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Painel da turma — {{ class_group }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">Painel da turma {{ class_group }}</h1>
+    <p class="text-body-secondary small mb-0">
+      Ano letivo {{ class_group.school_year }} · {{ students_count }} estudante(s)
+      · Gerado em {{ generated_at|date:"d/m/Y H:i" }}
+    </p>
+  </div>
+  <a href="{% url 'analytics:report_detail' 'turma_indicadores' %}?class={{ class_group.pk }}" class="btn btn-outline-primary btn-sm">Indicadores (CSV)</a>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header bg-transparent fw-semibold">Média da turma por disciplina</div>
+      <div class="card-body">
+        {{ subject_chart }}
+        <a class="small" data-bs-toggle="collapse" href="#tab-class" role="button">Ver dados que fundamentam</a>
+        <div class="collapse mt-2" id="tab-class">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Disciplina</th><th class="text-end">Média</th><th class="text-end">Avaliações</th><th>Situação</th></tr></thead>
+            <tbody>
+              {% for a in subject_averages %}
+              <tr>
+                <td>{{ a.subject.name }}</td>
+                <td class="text-end">{{ a.average|default:"—" }}</td>
+                <td class="text-end">{{ a.count }}</td>
+                <td>{% if a.below %}<span class="chip text-danger">Abaixo da média</span>{% else %}<span class="chip text-success">Na média</span>{% endif %}</td>
+              </tr>
+              {% empty %}<tr><td colspan="4" class="text-body-secondary">Sem notas publicadas.</td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header bg-transparent fw-semibold">Frequência da turma</div>
+      <div class="card-body">
+        {{ attendance_gauge }}
+        <p class="small text-body-secondary mb-0">Presença = registros de "presente" mais "atraso" sobre o total de registros da turma.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-transparent fw-semibold">Estudantes que merecem atenção</div>
+  <div class="card-body">
+    <p class="small text-body-secondary">Sinal objetivo para avaliação da equipe pedagógica (não é diagnóstico): média abaixo do esperado, faltas próximas do limite ou ocorrência em aberto.</p>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead><tr><th>Estudante</th><th>Motivos</th><th class="text-end"></th></tr></thead>
+        <tbody>
+          {% for row in attention %}
+          <tr>
+            <td class="fw-semibold">{{ row.student }}</td>
+            <td>{% for r in row.reasons %}<span class="chip text-warning">{{ r }}</span> {% endfor %}</td>
+            <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'analytics:student_dashboard' row.student.pk %}">Painel</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" class="text-body-secondary">Nenhum alerta no momento.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load pedagogy_extras %}
+{% load l10n %}
+{% block title %}Regras e limites — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">Regras e limites</h1>
+    <p class="text-body-secondary small mb-0">
+      {{ user.school.name }} · Fórmulas de média e limite de faltas. O sistema nunca presume a fórmula.
+    </p>
+  </div>
+  <a href="{% url 'home' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card"><div class="card-body">
+      <h2 class="h6 text-body-secondary text-uppercase">Limite de faltas</h2>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="_config" value="1">
+        {% include "partials/_form_fields.html" with f=form %}
+        <button type="submit" class="btn btn-primary w-100 mt-2">Salvar limite</button>
+      </form>
+    </div></div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-body">
+        <h2 class="h6 text-body-secondary text-uppercase">Regras por disciplina</h2>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead><tr><th>Disciplina</th><th>Fórmula de média</th><th>Aprovação ≥</th><th class="text-end">Editar</th></tr></thead>
+            <tbody>
+              {% for s in subjects %}
+              {% with r=rules|getitem:s.pk %}
+              <tr>
+                <td class="fw-semibold">{{ s.name }}</td>
+                <td>{% if r %}{{ r.get_formula_display }}{% else %}<span class="text-body-secondary">Não definida</span>{% endif %}</td>
+                <td>{% if r %}{{ r.passing_grade }}{% else %}<span class="text-body-secondary">—</span>{% endif %}</td>
+                <td class="text-end">
+                  {% if r %}
+                    <form method="post" action="{% url 'pedagogy:academic_rule_edit' s.pk %}" class="row g-1">
+                      {% csrf_token %}
+                      <div class="col">
+                        <select name="formula" class="form-select form-select-sm">
+                          {% for value, label in formula_choices %}
+                          <option value="{{ value }}"{% if r.formula == value %} selected{% endif %}>{{ label }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      <div class="col-3">
+                        <input type="number" name="passing_grade" step="0.5" min="0" max="100"
+                               value="{{ r.passing_grade|unlocalize }}" class="form-control form-control-sm">
+                      </div>
+                      <div class="col-auto">
+                        <button class="btn btn-sm btn-outline-primary" type="submit">Salvar</button>
+                      </div>
+                    </form>
+                  {% else %}
+                    <form method="post" action="{% url 'pedagogy:academic_rule_edit' s.pk %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="subject" value="{{ s.pk }}">
+                      <select name="formula" class="form-select form-select-sm d-inline-block w-auto">
+                        {% for value, label in formula_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                      </select>
+                      <input type="number" name="passing_grade" step="0.5" min="0" max="100" value="6.00"
+                             class="form-control-sm d-inline-block w-auto">
+                      <button class="btn btn-sm btn-outline-primary" type="submit">Salvar</button>
+                    </form>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endwith %}
+              {% empty %}
+              <tr><td colspan="4" class="text-center text-body-secondary py-4">Nenhuma disciplina cadastrada.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

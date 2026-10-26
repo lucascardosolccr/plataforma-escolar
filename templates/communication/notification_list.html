@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Central de notificações — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">Central de notificações</h1>
+    <p class="text-body-secondary small mb-0">
+      Avisos internos da plataforma — novas notas, prazos, comunicados, mensagens e solicitações.
+    </p>
+  </div>
+  <form method="post" action="{% url 'communication:notification_read_all' %}">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-outline-secondary btn-sm">Marcar todas como lidas</button>
+  </form>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-center">
+      <div class="col-auto">
+        <label class="col-form-label small text-uppercase text-body-secondary">Tipo</label>
+      </div>
+      <div class="col-auto">
+        <select name="tipo" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">Todos</option>
+          {% for value, label in kind_choices %}
+          <option value="{{ value }}"{% if kind == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr><th>Data</th><th>Tipo</th><th>Notificação</th><th class="text-end"></th></tr></thead>
+      <tbody>
+        {% for n in notifications %}
+        <tr class="{% if not n.is_read %}table-active fw-semibold{% endif %}">
+          <td class="text-nowrap">{{ n.created_at|date:"d/m/Y H:i" }}</td>
+          <td><span class="chip">{{ n.get_kind_display }}</span></td>
+          <td>
+            <div>{{ n.title }}</div>
+            {% if n.body %}<div class="text-body-secondary small">{{ n.body|truncatechars:140 }}</div>{% endif %}
+          </td>
+          <td class="text-end text-nowrap">
+            {% if n.url %}
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'communication:notification_read' n.pk %}">Abrir</a>
+            {% else %}
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'communication:notification_list' %}">Lida</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-body-secondary py-4">Nenhuma notificação.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Conversa — {{ thread.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">{{ thread.title }}</h1>
+    <p class="text-body-secondary small mb-0">
+      {% if other %}{{ other.get_full_name|default:other.username }} · {{ other.role_label }}{% endif %}
+      {% if thread.student %} · {{ thread.student.full_name }}{% endif %}
+      · iniciada em {{ thread.created_at|date:"d/m/Y" }}
+    </p>
+  </div>
+  <a href="{% url 'communication:thread_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-body">
+        {% for m in thread.messages.all %}
+        <div class="d-flex {% if m.sender_id == user.pk %}justify-content-end{% endif %} mb-3">
+          <div class="{% if m.sender_id == user.pk %}text-end{% else %}text-start{% endif %}" style="max-width:85%">
+            <div class="p-3 rounded-3 {% if m.sender_id == user.pk %}bg-primary-subtle{% else %}bg-secondary-subtle{% endif %}">
+              <div class="fw-semibold small">{{ m.sender.get_full_name|default:m.sender.username|default:"—" }}</div>
+              <div class="mb-1">{{ m.body|linebreaksbr }}</div>
+              <div class="text-body-secondary small">
+                {{ m.created_at|date:"d/m/Y H:i" }}
+                {% if m.read_at %}<span class="ms-1">↩ lida {{ m.read_at|date:"d/m H:i" }}</span>{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-center text-body-secondary py-4">Nenhuma mensagem.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card"><div class="card-body">
+      <h2 class="h6 text-body-secondary text-uppercase">Responder</h2>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% include "partials/_form_fields.html" with f=form %}
+        <button type="submit" class="btn btn-primary w-100 mt-2">Enviar mensagem</button>
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

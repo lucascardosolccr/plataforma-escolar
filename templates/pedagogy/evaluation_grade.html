@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load pedagogy_extras %}
+{% block title %}Lançar notas — {{ evaluation.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">Lançar notas</h1>
+    <p class="text-body-secondary small mb-0">
+      {{ evaluation.title }} · {{ evaluation.class_group.name }} · {{ evaluation.subject.name }}
+      · {{ evaluation.date|date:"d/m/Y" }}
+    </p>
+  </div>
+  <a href="{% url 'pedagogy:evaluation_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+</div>
+
+{% if evaluation.status == 'rascunho' %}
+<div class="alert alert-warning">Esta avaliação ainda está em <strong>rascunho</strong> — os responsáveis não visualizam as notas. Quando estiver completa, <a href="{% url 'pedagogy:evaluation_publish' evaluation.pk %}">publique-a</a>.</div>
+{% endif %}
+
+<form method="post" novalidate>
+  {% csrf_token %}
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <label for="id_observation_all" class="form-label">{{ form.observation_all.label }}</label>
+      {{ form.observation_all }}
+      {% for error in form.observation_all.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead><tr><th class="w-50">Estudante</th><th class="text-center">Nota (0,00–100,00)</th></tr></thead>
+        <tbody>
+          {% for student, field_name in form.grades %}
+          <tr>
+            <td class="fw-semibold">{{ student.full_name }}</td>
+            <td class="text-center">{{ form|getitem:field_name }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <button type="submit" class="btn btn-primary mt-3">Salvar notas</button>
+</form>
+{% endblock %}

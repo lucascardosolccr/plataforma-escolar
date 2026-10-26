@@ -1,0 +1,120 @@
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+from django.utils import timezone
+
+
+class School(models.Model):
+    name = models.CharField("nome", max_length=200)
+    code = models.SlugField("código", max_length=50, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "escola"
+        verbose_name_plural = "escolas"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class Role(models.TextChoices):
+    ADMIN = "admin", "Administrador"
+    DIRECAO = "direcao", "Direção"
+    COORDENACAO = "coordenacao", "Coordenação Pedagógica"
+    SECRETARIA = "secretaria", "Secretaria"
+    PROFESSOR = "professor", "Professor"
+    RESPONSAVEL = "responsavel", "Responsável"
+
+
+STAFF_ROLES = [
+    Role.ADMIN,
+    Role.DIRECAO,
+    Role.COORDENACAO,
+    Role.SECRETARIA,
+    Role.PROFESSOR,
+]
+
+
+class User(AbstractUser):
+    role = models.CharField(
+        "perfil",
+        max_length=20,
+        choices=Role.choices,
+        default=Role.RESPONSAVEL,
+    )
+    school = models.ForeignKey(
+        School,
+        verbose_name="escola",
+        on_delete=models.PROTECT,
+        related_name="users",
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = "usuário"
+        verbose_name_plural = "usuários"
+
+    @property
+    def role_label(self):
+        return Role(self.role).label
+
+    @property
+    def is_staff_role(self):
+        return self.role in [r.value for r in STAFF_ROLES]
+
+
+class AuditLog(models.Model):
+    ACTION_CHOICES = [
+        ("login", "Login"),
+        ("login_failed", "Falha de login"),
+        ("logout", "Logout"),
+        ("create", "Criação"),
+        ("update", "Atualização"),
+        ("delete", "Exclusão"),
+        ("approve", "Aprovação"),
+        ("reject", "Rejeição"),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="audit_logs",
+        verbose_name="usuário",
+    )
+    school = models.ForeignKey(
+        School,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="audit_logs",
+        verbose_name="escola",
+    )
+    action = models.CharField("ação", max_length=20, choices=ACTION_CHOICES)
+    target_type = models.CharField("tipo de registro", max_length=100, blank=True)
+    target_id = models.CharField("identificador", max_length=50, blank=True)
+    detail = models.TextField("detalhes", blank=True)
+    ip_address = models.GenericIPAddressField("IP", null=True, blank=True)
+    created_at = models.DateTimeField("data", auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "registro de auditoria"
+        verbose_name_plural = "registros de auditoria"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.created_at:%Y-%m-%d %H:%M} {self.action} {self.target_type}"
+
+
+def create_audit_log(*, user, action, request=None, target=None, detail="", school=None, target_id=None):
+    return AuditLog.objects.create(
+        user=user,
+        school=school or getattr(user, "school", None),
+        action=action,
+        target_type=target.__class__.__name__ if target else "",
+        target_id=target_id if target_id is not None else (getattr(target, "pk", "") if target else ""),
+        detail=detail,
+        ip_address=getattr(request, "META", {}).get("REMOTE_ADDR"),
+    )

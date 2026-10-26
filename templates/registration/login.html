@@ -1,0 +1,51 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-br" data-bs-theme="{{ theme }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrar — Plataforma Escolar</title>
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="auth-shell">
+  <div class="p-3">
+    <div class="card p-4 shadow auth-card mx-auto">
+      <div class="text-center mb-4">
+        <span class="brand-mark mb-2">📚</span>
+        <h1 class="h4 mb-1 fw-bold">Plataforma Escolar</h1>
+        <p class="text-body-secondary mb-0 small">Acesso restrito à comunidade escolar</p>
+      </div>
+
+      {% if form.errors %}
+        <div class="alert alert-danger" role="alert">
+          Usuário ou senha incorretos. Verifique os dados e tente novamente.
+        </div>
+      {% endif %}
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label for="id_username" class="form-label">Usuário</label>
+          <input type="text" name="username" class="form-control" id="id_username" required autofocus autocomplete="username">
+        </div>
+        <div class="mb-3">
+          <label for="id_password" class="form-label">Senha</label>
+          <input type="password" name="password" class="form-control" id="id_password" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Entrar</button>
+        <input type="hidden" name="next" value="{{ next }}">
+      </form>
+
+      <div class="text-center mt-4 small text-body-secondary">
+        É responsável e ainda não tem acesso?
+        <a href="{% url 'signup' %}">Criar conta de responsável</a>.
+      </div>
+      <div class="text-center mt-2 small text-body-secondary">
+        Esqueceu a senha? Entre em contato com a secretaria ou o administrador.
+      </div>
+    </div>
+  </div>
+  <script src="{% static 'js/theme.js' %}"></script>
+</body>
+</html>

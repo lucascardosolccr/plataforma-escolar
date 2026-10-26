@@ -3,7 +3,9 @@ from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import connection
 from django.test import TestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -527,6 +529,67 @@ class ActivityTests(PedagogyBase):
         self.assertEqual(resp.status_code, 200)
         act.refresh_from_db()
         self.assertEqual(act.status, Activity.Status.PUBLISHED)
+
+
+class ActivityQueryBudgetTests(PedagogyBase):
+    """O numero de consultas nao pode crescer com o volume de dados.
+
+    Mede a mesma pagina com pouco e com muito dado. Se a diferenca crescer
+    junto com as linhas, ha N+1 e a tela degrada na escola real, onde ha
+    centenas de estudantes e atividades.
+    """
+
+    def _seed(self, n_students, n_activities):
+        for i in range(n_students):
+            student = Student.objects.create(
+                school=self.school, first_name=f"Aluno{i}"
+            )
+            Enrollment.objects.create(
+                school=self.school, student=student, class_group=self.turma,
+                school_year=self.year,
+            )
+            GuardianLink.objects.create(
+                school=self.school, guardian=self.resp, student=student,
+                status="aprovado",
+            )
+        for i in range(n_activities):
+            Activity.objects.create(
+                school=self.school, class_group=self.turma, subject=self.mat,
+                title=f"Atividade {i}", description="x", created_by=self.prof,
+                status=Activity.Status.PUBLISHED, published_date=date(2026, 3, 1),
+            )
+
+    def _count(self, url):
+        self.login("resp")
+        with CaptureQueriesContext(connection) as ctx:
+            resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        return len(ctx)
+
+    def test_family_list_query_count_is_flat(self):
+        url = reverse("pedagogy:activity_list")
+        self._seed(2, 2)
+        small = self._count(url)
+        self._seed(25, 25)
+        large = self._count(url)
+        self.assertLessEqual(
+            large,
+            small + 2,
+            f"consultas subiram de {small} para {large} ao crescer o volume: "
+            "indica N+1 na lista da familia",
+        )
+
+    def test_student_record_query_count_is_flat(self):
+        url = reverse("student_detail", args=[self.ana.pk])
+        self._seed(2, 2)
+        small = self._count(url)
+        self._seed(25, 25)
+        large = self._count(url)
+        self.assertLessEqual(
+            large,
+            small + 2,
+            f"consultas subiram de {small} para {large}: indica N+1 na ficha",
+        )
 
 
 @override_settings(MEDIA_ROOT=tempfile.mkdtemp(prefix="escola-test-media-"))

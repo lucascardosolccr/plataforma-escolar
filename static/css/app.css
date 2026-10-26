@@ -109,6 +109,29 @@ a[href]:not(:visited):not(:hover):not(:focus-visible) { color: var(--bs-link-col
   padding: .6rem 1rem;
 }
 
+/* Indicador da tela inicial. Uma faixa fina na borda esquerda separa o número
+   do restante do conteúdo sem precisar de cor de fundo. */
+.stat-card {
+  border-left: 3px solid var(--brand-1);
+}
+
+/* Card inteiro clicável (usa stretched-link). Precisa de retorno visual, senão
+   nada indica que a área é acionável. */
+.card-hover {
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  border-color: var(--brand-1);
+  box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .1);
+}
+/* O foco vem do stretched-link interno; o contorno precisa aparecer no card. */
+.card-hover:focus-within {
+  border-color: var(--brand-1);
+  outline: 2px solid var(--brand-1);
+  outline-offset: 2px;
+}
+
 /* Telas de acesso (login e cadastro), que não usam base.html. */
 .auth-shell {
   min-height: 100vh;
@@ -234,6 +257,22 @@ a[href]:not(:visited):not(:hover):not(:focus-visible) { color: var(--bs-link-col
   h2 { font-size: calc(1.4rem + 3vw); }
   h3 { font-size: calc(1.2rem + 2vw); }
   .lead { font-size: calc(1rem + 2vw); }
+}
+
+/* Quem pediu menos movimento no sistema operacional não recebe transição nem
+   animação. A interface continua inteira; só para de se mexer. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .card-hover:hover {
+    transform: none;
+  }
 }
 
 /* Impressão */

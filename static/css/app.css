@@ -68,10 +68,17 @@ h6 {
   color: var(--bs-secondary-color);
 }
 
-/* Estados de texto */
-.text-success { color: var(--bs-success); }
-.text-warning { color: var(--bs-warning); }
-.text-danger { color: var(--bs-danger); }
+/* Estados de texto.
+   Usa os tokens *-text-emphasis, não as cores puras: `--bs-warning` é #ffc107,
+   que sobre fundo claro dá cerca de 1,6:1 e fica ilegível — e a plataforma usa
+   .text-warning para informação que precisa ser lida (contagem de atrasos,
+   pendências). Os tokens de ênfase já acompanham o tema claro e o escuro.
+   O `!important` é necessário, não decorativo: as utilidades de cor do
+   Bootstrap são declaradas com !important, então sem ele estas regras não
+   ganham e a cor ilegível continua valendo. */
+.text-success { color: var(--bs-success-text-emphasis) !important; }
+.text-warning { color: var(--bs-warning-text-emphasis) !important; }
+.text-danger { color: var(--bs-danger-text-emphasis) !important; }
 .text-primary { color: var(--brand-1); }
 
 /* Estados de foco e hover */
@@ -92,11 +99,41 @@ a:focus-visible { outline: 2px solid var(--brand-1); outline-offset: 2px; }
   pointer-events: none;
 }
 
-/* Melhoria de contraste em links */
-a[href]:not(:visited):not(:hover):not(:focus-visible) { color: var(--bs-link-color); }
+/* Cor de link.
+   As exclusões são obrigatórias: um `a` que também é componente (botão, item
+   de menu, marca) traz a própria cor de texto, e esta regra vence por
+   especificidade. Sem elas, todo `<a class="btn btn-primary">` ficava com
+   texto azul sobre fundo azul — contraste 1:1, rótulo invisível. */
+a[href]:not(.btn):not(.nav-link):not(.dropdown-item):not(.navbar-brand):not(.stretched-link):not(:visited):not(:hover):not(:focus-visible) {
+  color: var(--bs-link-color);
+}
 
 /* Estados de botão */
 .btn:focus-visible { outline: 2px solid var(--brand-1); outline-offset: 2px; }
+
+/* Botões de contorno no tema escuro.
+   O Bootstrap não reajusta .btn-outline-* para fundo escuro: o cinza #6c757d e
+   o azul #0d6efd ficam em torno de 3,3:1 sobre a superfície escura, abaixo do
+   mínimo de 4,5:1 para texto. A plataforma usa esses botões para quase toda
+   ação secundária, então o rótulo precisa ser legível. */
+[data-bs-theme="dark"] .btn-outline-secondary {
+  --bs-btn-color: #ced4da;
+  --bs-btn-border-color: #6c757d;
+  --bs-btn-hover-bg: #495057;
+  --bs-btn-hover-border-color: #adb5bd;
+  --bs-btn-hover-color: #fff;
+}
+[data-bs-theme="dark"] .btn-outline-primary {
+  --bs-btn-color: #9ec5fe;
+  --bs-btn-border-color: #6ea8fe;
+  --bs-btn-hover-bg: #0a58ca;
+  --bs-btn-hover-border-color: #9ec5fe;
+  --bs-btn-hover-color: #fff;
+}
+[data-bs-theme="dark"] .btn-outline-danger {
+  --bs-btn-color: #f1aeaa;
+  --bs-btn-border-color: #ea868f;
+}
 
 /* Table improvements */
 .table thead th {

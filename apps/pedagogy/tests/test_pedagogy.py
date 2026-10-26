@@ -440,6 +440,41 @@ class ActivityTests(PedagogyBase):
         resp = self.client.get(reverse("pedagogy:activity_list"))
         self.assertContains(resp, "Prazo encerrado")
 
+    def test_family_sees_submission_registered_by_teacher(self):
+        """Entrega vem do registro do professor, nunca da visualizacao."""
+        act = self.make_activity()
+        self.login("resp")
+        resp = self.client.get(reverse("pedagogy:activity_list"))
+        self.assertNotContains(resp, "Entrega registrada")
+
+        Submission.objects.create(
+            school=self.school, activity=act, student=self.ana,
+            status="entregue", updated_by=self.prof,
+        )
+        resp = self.client.get(reverse("pedagogy:activity_list"))
+        self.assertContains(resp, "Entrega registrada pelo professor")
+
+    def test_teacher_can_filter_activities_by_date(self):
+        self.make_activity(title="Antiga", published_date=date(2026, 3, 1))
+        self.make_activity(title="Recente", published_date=date(2026, 6, 1))
+        self.login("prof")
+        url = reverse("pedagogy:activity_list")
+        resp = self.client.get(url, {"de": "2026-05-01"})
+        self.assertContains(resp, "Recente")
+        self.assertNotContains(resp, "Antiga")
+        resp = self.client.get(url, {"ate": "2026-04-01"})
+        self.assertContains(resp, "Antiga")
+        self.assertNotContains(resp, "Recente")
+
+    def test_malformed_date_filter_is_ignored(self):
+        self.make_activity(title="Continua visivel")
+        self.login("prof")
+        resp = self.client.get(
+            reverse("pedagogy:activity_list"), {"de": "nao-e-data"}
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Continua visivel")
+
     def test_family_sees_empty_state_without_activities(self):
         self.login("resp")
         resp = self.client.get(reverse("pedagogy:activity_list"))

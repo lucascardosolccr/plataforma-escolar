@@ -86,6 +86,16 @@ def _teacher_assignments(user):
     )
 
 
+def _parse_date(value):
+    """Data vinda da URL. Valor invalido e ignorado em vez de virar erro 500."""
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _guardian_child_ids(user):
     """(filhos aprovados, turmas ativas desses filhos) para responsável."""
     from apps.registry.models import GuardianLink
@@ -303,13 +313,27 @@ def _family_rows(user, student_filter=None):
         student__in=children or [None]
     ).values_list("student_id", "class_group_id"):
         enrolled.setdefault(enr[0], set()).add(enr[1])
+    # Entrega registrada pelo PROFESSOR. Numa consulta para todos os pares,
+    # para a contagem de consultas nao crescer com o volume.
+    submissions = {
+        (s.activity_id, s.student_id): s
+        for s in Submission.objects.filter(
+            activity__in=activities, student__in=children or [None]
+        )
+    }
     rows = []
     for act in activities:
         for student in children:
             if act.class_group_id in enrolled.get(student.pk, ()):
                 key, label = act.family_situation()
                 rows.append(
-                    {"activity": act, "student": student, "state": key, "state_label": label}
+                    {
+                        "activity": act,
+                        "student": student,
+                        "state": key,
+                        "state_label": label,
+                        "submission": submissions.get((act.pk, student.pk)),
+                    }
                 )
     order = {"a_vencer": 0, "pendente": 1, "publicada": 2, "encerrada": 3, "cancelada": 4}
     rows.sort(key=lambda r: (order.get(r["state"], 9), r["activity"].deadline or date.max))
@@ -401,6 +425,12 @@ def activity_list(request):
     subject_filter = request.GET.get("disciplina")
     if subject_filter:
         qs = qs.filter(subject_id=subject_filter)
+    date_from = _parse_date(request.GET.get("de"))
+    if date_from:
+        qs = qs.filter(published_date__gte=date_from)
+    date_to = _parse_date(request.GET.get("ate"))
+    if date_to:
+        qs = qs.filter(published_date__lte=date_to)
 
     activities = list(
         qs.annotate(attachment_count=Count("attachments")).order_by(
@@ -439,6 +469,8 @@ def activity_list(request):
             "subjects": subjects,
             "class_filter": class_filter,
             "subject_filter": subject_filter,
+            "date_from": request.GET.get("de", ""),
+            "date_to": request.GET.get("ate", ""),
             "activity_status_choices": Activity.Status.choices,
         },
     )

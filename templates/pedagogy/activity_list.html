@@ -44,7 +44,15 @@
         {% endfor %}
       </select>
     </div>
-    <div class="col-6 col-md-3 d-flex gap-2">
+    <div class="col-6 col-md-3">
+      <label class="form-label small mb-1" for="f-de">Publicada de</label>
+      <input type="date" class="form-control form-control-sm" id="f-de" name="de" value="{{ date_from }}">
+    </div>
+    <div class="col-6 col-md-3">
+      <label class="form-label small mb-1" for="f-ate">até</label>
+      <input type="date" class="form-control form-control-sm" id="f-ate" name="ate" value="{{ date_to }}">
+    </div>
+    <div class="col-12 col-md-6 d-flex gap-2">
       <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
       <a href="{% url 'pedagogy:activity_list' %}" class="btn btn-sm btn-outline-secondary">Limpar</a>
     </div>
@@ -91,7 +99,7 @@
         {% empty %}
         <tr>
           <td colspan="7" class="text-center text-body-secondary py-4">
-            {% if status or class_filter or subject_filter %}
+            {% if status or class_filter or subject_filter or date_from or date_to %}
               Nenhuma atividade corresponde ao filtro.
               <a href="{% url 'pedagogy:activity_list' %}">Ver todas</a>.
             {% else %}

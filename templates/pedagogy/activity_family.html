@@ -52,6 +52,18 @@
             <span class="chip">👦 {{ r.student.full_name }}</span>
             <span class="chip chip-state state-{{ r.state }}">{{ r.state_label }}</span>
           </div>
+          {% if r.submission %}
+            <p class="small mb-2">
+              {% if r.submission.status == 'entregue' %}
+                <span class="text-success fw-semibold">✓ Entrega registrada pelo professor</span>
+              {% else %}
+                <span class="text-danger fw-semibold">✗ Registrada como não entregue</span>
+              {% endif %}
+              {% if r.submission.comment %}
+                <span class="d-block text-body-secondary">{{ r.submission.comment }}</span>
+              {% endif %}
+            </p>
+          {% endif %}
           <h2 class="h6 mb-1">
             <a href="{% url 'pedagogy:activity_detail' r.activity.pk %}">{{ r.activity.title }}</a>
           </h2>

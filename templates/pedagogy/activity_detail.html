@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}{{ activity.title }} — Atividade de casa — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-1">{{ activity.title }}</h1>
+    <p class="text-body-secondary small mb-0">
+      {{ activity.subject.name }} · Turma {{ activity.class_group.name }}
+      {% if activity.created_by %}· Prof. {{ activity.created_by.get_full_name|default:activity.created_by.username }}{% endif %}
+    </p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <span class="chip chip-state state-{{ state }}">{{ state_label }}</span>
+    <a href="{% url 'pedagogy:activity_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+  </div>
+</div>
+
+{% if can_manage and activity.status == 'rascunho' %}
+  <div class="alert alert-warning" role="alert">
+    <strong>Rascunho.</strong> Esta é a prévia exata do que a família verá. Nenhum
+    responsável tem acesso a ela enquanto não for publicada.
+  </div>
+{% elif can_manage and activity.status == 'publicada' and activity.published_date > today %}
+  <div class="alert alert-info" role="alert">
+    <strong>Agendada.</strong> A família passa a ver esta atividade em
+    {{ activity.published_date|date:"d/m/Y" }}.
+  </div>
+{% endif %}
+
+{% if activity.status == 'cancelada' %}
+  <div class="alert alert-secondary" role="alert">
+    <strong>Atividade cancelada.</strong>
+    {% if activity.cancel_reason %}{{ activity.cancel_reason }}{% endif %}
+    <span class="d-block small mt-1">
+      O registro é mantido no histórico escolar; nada foi apagado.
+    </span>
+  </div>
+{% endif %}
+
+{% if students %}
+  <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
+    <span class="text-body-secondary small">Atribuída a:</span>
+    {% for s in students %}<span class="chip">👦 {{ s.full_name }}</span>{% endfor %}
+  </div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-body">
+        <h2 class="h6 text-body-secondary mb-2">Instruções</h2>
+        {% if activity.description %}
+          <div class="activity-instructions mb-0">{{ activity.description }}</div>
+        {% else %}
+          <p class="text-body-secondary mb-0">Sem instruções registradas.</p>
+        {% endif %}
+
+        {% if activity.materials %}
+          <hr>
+          <h2 class="h6 text-body-secondary mb-2">Materiais necessários</h2>
+          <div class="activity-instructions mb-0">{{ activity.materials }}</div>
+        {% endif %}
+
+        {% if activity.criteria %}
+          <hr>
+          <h2 class="h6 text-body-secondary mb-2">Critérios de avaliação</h2>
+          <div class="activity-instructions mb-0">{{ activity.criteria }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h2 class="h6 text-body-secondary mb-3">Datas</h2>
+        <dl class="row small mb-0 g-0">
+          <dt class="col-6 fw-normal text-body-secondary">Publicação</dt>
+          <dd class="col-6 mb-2">{{ activity.published_date|date:"d/m/Y" }}</dd>
+          <dt class="col-6 fw-normal text-body-secondary">Entrega</dt>
+          <dd class="col-6 mb-2">
+            {% if activity.deadline %}<strong>{{ activity.deadline|date:"d/m/Y" }}</strong>{% else %}—{% endif %}
+          </dd>
+          {% if activity.class_date %}
+            <dt class="col-6 fw-normal text-body-secondary">Aula de referência</dt>
+            <dd class="col-6 mb-0">{{ activity.class_date|date:"d/m/Y" }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h2 class="h6 text-body-secondary mb-2">Anexos de apoio</h2>
+        {% if activity.attachments.all %}
+          <ul class="list-unstyled mb-0 small">
+            {% for att in activity.attachments.all %}
+              <li class="mb-2 d-flex align-items-start gap-2">
+                <span aria-hidden="true">📎</span>
+                <a href="{% url 'pedagogy:activity_attachment' activity.pk att.pk %}">{{ att.original_name }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-body-secondary small mb-0">Nenhum anexo.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if can_manage %}
+<div class="card mt-3">
+  <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <p class="text-body-secondary small mb-0">
+      Alcança <strong>{{ reach }}</strong> estudante{{ reach|pluralize:"s" }} com matrícula
+      ativa nesta turma. Editar atualiza a atividade para toda a turma de uma vez.
+    </p>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{% url 'pedagogy:activity_submissions' activity.pk %}" class="btn btn-sm btn-outline-primary">Acompanhar entregas</a>
+      <a href="{% url 'pedagogy:activity_edit' activity.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
+      {% if activity.status != 'cancelada' %}
+        <a href="{% url 'pedagogy:activity_cancel' activity.pk %}" class="btn btn-sm btn-outline-danger">Cancelar atividade</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

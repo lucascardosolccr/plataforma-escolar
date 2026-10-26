@@ -1,30 +1,76 @@
 {% extends "partials/form_card.html" %}
-{% block title %}{% if obj %}Editar atividade{% else %}Nova atividade{% endif %} — Plataforma Escolar{% endblock %}
+{% block title %}{% if obj %}Editar atividade{% else %}Nova atividade de casa{% endif %} — Plataforma Escolar{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
-  <div class="col-lg-6 col-md-8">
+  <div class="col-xl-7 col-lg-9">
     <div class="card p-4">
-      <div class="d-flex justify-content-between align-items-center mb-3">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <div>
-          <h1 class="h4 mb-0">{% if obj %}Editar atividade{% else %}Nova atividade{% endif %}</h1>
-          <p class="text-body-secondary small mb-0">Somente turmas e disciplinas da sua atribuição.</p>
+          <h1 class="h4 mb-0">{% if obj %}Editar atividade{% else %}Nova atividade de casa{% endif %}</h1>
+          <p class="text-body-secondary small mb-0">
+            Somente turmas e disciplinas da sua atribuição. A atividade vale para a
+            turma inteira — não é preciso lançar aluno por aluno.
+          </p>
         </div>
-        <a href="{% url 'pedagogy:activity_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+        <a href="{% if obj %}{% url 'pedagogy:activity_detail' obj.pk %}{% else %}{% url 'pedagogy:activity_list' %}{% endif %}"
+           class="btn btn-outline-secondary btn-sm">Voltar</a>
       </div>
-      <form method="post" novalidate>
+
+      <form method="post" enctype="multipart/form-data" novalidate>
         {% csrf_token %}
         {% include "partials/_form_fields.html" with f=form %}
-        {% if obj %}
-          <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary flex-grow-1">Salvar</button>
-            <button type="submit" name="_delete" value="1" class="btn btn-outline-danger"
-                    onclick="return confirm('Excluir esta atividade? As entregas registradas também serão excluídas.');">Excluir</button>
+
+        {% if obj and obj.attachments.all %}
+          <div class="mb-3">
+            <p class="form-label small mb-1">Anexos já enviados</p>
+            <ul class="list-unstyled mb-0 small">
+              {% for att in obj.attachments.all %}
+                <li class="mb-1">
+                  <span aria-hidden="true">📎</span>
+                  <a href="{% url 'pedagogy:activity_attachment' obj.pk att.pk %}">{{ att.original_name }}</a>
+                </li>
+              {% endfor %}
+            </ul>
+            <p class="text-body-secondary small mb-0 mt-1">
+              Enviar novos arquivos acrescenta à lista; os atuais são mantidos.
+            </p>
           </div>
-        {% else %}
-          <button type="submit" class="btn btn-primary w-100 mt-2">Criar atividade</button>
         {% endif %}
+
+        <div class="d-flex flex-wrap gap-2 mt-2">
+          {% if obj %}
+            {% if obj.status == 'rascunho' %}
+              <button type="submit" class="btn btn-outline-secondary">Salvar rascunho</button>
+              <button type="submit" name="_publish" value="1" class="btn btn-primary flex-grow-1">
+                Publicar para a turma
+              </button>
+            {% else %}
+              <button type="submit" class="btn btn-primary flex-grow-1">Salvar alterações</button>
+            {% endif %}
+          {% else %}
+            <button type="submit" class="btn btn-outline-secondary">Salvar como rascunho</button>
+            <button type="submit" name="_publish" value="1" class="btn btn-primary flex-grow-1">
+              Publicar para a turma
+            </button>
+          {% endif %}
+        </div>
+        <p class="text-body-secondary small mb-0 mt-2">
+          Rascunho fica visível só para você. A família passa a ver a atividade a
+          partir da data de publicação informada.
+        </p>
       </form>
+
+      {% if obj and obj.status != 'cancelada' %}
+        <hr>
+        <p class="text-body-secondary small mb-2">
+          Precisa tornar esta atividade sem efeito? Use o cancelamento: o registro
+          permanece no histórico escolar e nas entregas já lançadas.
+        </p>
+        <a href="{% url 'pedagogy:activity_cancel' obj.pk %}" class="btn btn-outline-danger btn-sm">
+          Cancelar atividade
+        </a>
+      {% endif %}
     </div>
   </div>
 </div>

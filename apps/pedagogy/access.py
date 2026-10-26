@@ -35,6 +35,60 @@ def can_view_evaluations(user):
     )
 
 
+def can_manage_activities(user, class_group=None, subject=None):
+    """Publica/edita/cancela atividade de casa.
+
+    Só o professor com atribuição no PAR turma+disciplina. Validar os dois
+    juntos importa: um professor de Matemática na turma A e de Português na
+    turma B não pode publicar Português para a turma A.
+    """
+    if class_group is None:
+        return user.is_authenticated and user.role == Role.PROFESSOR.value
+    return _teacher_of(user, class_group, subject)
+
+
+def can_view_activity(user, activity):
+    """Quem pode abrir uma atividade específica.
+
+    Coordenação, direção, secretaria e administração acompanham as atividades
+    da própria escola. O professor vê as turmas em que leciona. O responsável
+    vê apenas o que já foi publicado para a turma de um filho vinculado —
+    rascunho e atividade agendada nunca chegam à família.
+    """
+    if not user.is_authenticated or user.school_id != activity.school_id:
+        return False
+    if user.role in (
+        Role.COORDENACAO.value,
+        Role.DIRECAO.value,
+        Role.SECRETARIA.value,
+        Role.ADMIN.value,
+    ):
+        return True
+    if user.role == Role.PROFESSOR.value:
+        return _teacher_of(user, activity.class_group)
+    if user.role == Role.RESPONSAVEL.value:
+        if not activity.is_visible_to_family:
+            return False
+        return _guardian_class_ids(user, activity.class_group_id)
+    return False
+
+
+def _guardian_class_ids(user, class_group_id):
+    """Responsável tem filho vinculado e matriculado nesta turma?
+
+    Considera qualquer matrícula, não apenas a ativa: um estudante transferido
+    não perde o histórico de atividades que já lhe foram atribuídas.
+    """
+    from apps.registry.models import GuardianLink
+
+    child_ids = GuardianLink.objects.filter(
+        guardian=user, status="aprovado"
+    ).values_list("student_id", flat=True)
+    return Enrollment.objects.filter(
+        student_id__in=child_ids, class_group_id=class_group_id
+    ).exists()
+
+
 def can_register_attendance(user, class_group):
     return _teacher_of(user, class_group)
 

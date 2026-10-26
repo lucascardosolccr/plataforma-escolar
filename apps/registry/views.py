@@ -125,11 +125,14 @@ def student_detail(request, student_id):
 
     comm = _student_comms(request.user, student)
 
+    from apps.pedagogy.views import student_activity_rows
+
     return render(
         request,
         "registry/student_detail.html",
         {
             "student": student,
+            "activity_rows": student_activity_rows(student),
             "enrollments": enrollments,
             "links": links,
             "assignments": assignments,

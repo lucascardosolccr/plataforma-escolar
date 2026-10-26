@@ -3,6 +3,7 @@ from django.utils import timezone
 
 from apps.academics.models import ClassGroup, SchoolYear, Subject
 from apps.core.models import School, User
+from apps.core.uploads import safe_attachment_path, validate_attachment
 from apps.registry.models import Student
 
 
@@ -111,7 +112,19 @@ class Grade(models.Model):
 
 
 class Activity(models.Model):
-    """Atividade, trabalho, tarefa ou avaliação lançada para uma turma/disciplina."""
+    """Atividade de casa / tarefa lançada para uma turma e disciplina.
+
+    A atividade pertence à TURMA, não a cada estudante: existe um único
+    registro e o alcance é derivado das matrículas da turma. Isso faz com que
+    quem entra na turma depois passe a ver as atividades vigentes e com que
+    editar a atividade atualize todos de uma vez, sem cópias divergentes.
+    O acompanhamento individual fica em ``Submission``.
+    """
+
+    class Status(models.TextChoices):
+        DRAFT = "rascunho", "Rascunho"
+        PUBLISHED = "publicada", "Publicada"
+        CANCELED = "cancelada", "Cancelada"
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, verbose_name="escola")
     class_group = models.ForeignKey(
@@ -119,22 +132,104 @@ class Activity(models.Model):
     )
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, verbose_name="disciplina")
     title = models.CharField("título", max_length=200)
-    description = models.TextField("descrição", blank=True)
+    description = models.TextField("instruções", blank=True)
     criteria = models.TextField("critérios de avaliação", blank=True)
-    deadline = models.DateField("prazo", null=True, blank=True)
+    materials = models.TextField(
+        "materiais necessários e orientações complementares", blank=True
+    )
+    deadline = models.DateField("data de entrega", null=True, blank=True)
     published_date = models.DateField("data de publicação", default=timezone.localdate)
+    class_date = models.DateField(
+        "data da aula de referência",
+        null=True,
+        blank=True,
+        help_text="Aula a que a atividade se refere, quando fizer sentido.",
+    )
+    status = models.CharField(
+        "situação", max_length=10, choices=Status.choices, default=Status.PUBLISHED
+    )
+    cancel_reason = models.CharField(
+        "motivo do cancelamento", max_length=255, blank=True
+    )
     created_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name="activities_created"
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField("atualizada em", auto_now=True)
 
     class Meta:
         ordering = ["-published_date", "-created_at"]
+        indexes = [
+            models.Index(fields=["school", "class_group", "status"]),
+            models.Index(fields=["class_group", "status", "published_date"]),
+        ]
         verbose_name = "atividade"
         verbose_name_plural = "atividades"
 
     def __str__(self):
         return f"{self.title} — {self.class_group}"
+
+    @property
+    def is_visible_to_family(self):
+        """Família vê apenas o que foi publicado e cuja data já chegou."""
+        return (
+            self.status == self.Status.PUBLISHED
+            and self.published_date <= timezone.localdate()
+        )
+
+    def family_situation(self, today=None):
+        """Rótulo de acompanhamento mostrado à família.
+
+        Deriva do prazo; nunca de visualização. Ver uma atividade não a conclui.
+        """
+        today = today or timezone.localdate()
+        if self.status == self.Status.CANCELED:
+            return "cancelada", "Cancelada"
+        if self.status == self.Status.DRAFT:
+            return "rascunho", "Rascunho"
+        if self.published_date > today:
+            return "agendada", "Agendada"
+        if not self.deadline:
+            return "publicada", "Publicada"
+        if self.deadline < today:
+            return "encerrada", "Prazo encerrado"
+        if (self.deadline - today).days <= 2:
+            return "a_vencer", "A vencer"
+        return "pendente", "Pendente"
+
+
+class ActivityAttachment(models.Model):
+    """Arquivo de apoio da atividade.
+
+    O arquivo nunca é exposto por URL pública de mídia: o download passa por
+    uma view que confere o vínculo de quem pede (ver pedagogy.views).
+    """
+
+    activity = models.ForeignKey(
+        Activity,
+        on_delete=models.CASCADE,
+        related_name="attachments",
+        verbose_name="atividade",
+    )
+    file = models.FileField(
+        "arquivo",
+        upload_to=safe_attachment_path,
+        validators=[validate_attachment],
+    )
+    original_name = models.CharField("nome do arquivo", max_length=255)
+    size = models.PositiveIntegerField("tamanho em bytes", default=0)
+    uploaded_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, verbose_name="enviado por"
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["uploaded_at"]
+        verbose_name = "anexo da atividade"
+        verbose_name_plural = "anexos da atividade"
+
+    def __str__(self):
+        return f"{self.original_name} — {self.activity.title}"
 
 
 class Submission(models.Model):

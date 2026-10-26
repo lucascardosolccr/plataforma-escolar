@@ -12,7 +12,14 @@ urlpatterns = [
     path("avaliacoes/<int:pk>/publicar/", views.evaluation_publish, name="evaluation_publish"),
     path("atividades/", views.activity_list, name="activity_list"),
     path("atividades/nova/", views.activity_create, name="activity_create"),
+    path("atividades/<int:pk>/", views.activity_detail, name="activity_detail"),
     path("atividades/<int:pk>/editar/", views.activity_edit, name="activity_edit"),
+    path("atividades/<int:pk>/cancelar/", views.activity_cancel, name="activity_cancel"),
+    path(
+        "atividades/<int:pk>/anexo/<int:attachment_id>/",
+        views.activity_attachment,
+        name="activity_attachment",
+    ),
     path(
         "atividades/<int:pk>/entregas/",
         views.activity_submissions,

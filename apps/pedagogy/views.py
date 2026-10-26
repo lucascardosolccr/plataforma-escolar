@@ -3,7 +3,8 @@ from datetime import date
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Avg
+from django.db.models import Avg, Count
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -15,12 +16,14 @@ from apps.communication.services import (
     notify_justification_resolved,
 )
 from apps.core.models import AuditLog, Role, create_audit_log
-from apps.registry.models import Enrollment, Student
+from apps.core.uploads import attachment_content_type
+from apps.registry.models import Enrollment, GuardianLink, Student
 
 from . import access as acc
 from .forms import (
     AbsenceJustificationForm,
     AcademicRuleForm,
+    ActivityCancelForm,
     ActivityForm,
     AttendanceBatchForm,
     EvaluationForm,
@@ -37,6 +40,7 @@ from .models import (
     AbsenceJustification,
     AcademicRule,
     Activity,
+    ActivityAttachment,
     AttendanceRecord,
     Evaluation,
     Grade,
@@ -253,12 +257,133 @@ def evaluation_publish(request, pk):
     return redirect("pedagogy:evaluation_list")
 
 
-# ---------- Atividades e entregas ----------
+# ---------- Atividades de casa e entregas ----------
+
+def _guardian_visible_activities(user):
+    """Atividades que a família pode ver.
+
+    Abrange QUALQUER matrícula dos filhos vinculados, não só a ativa, para que
+    transferência de turma não apague o histórico já atribuído ao estudante.
+    Rascunho e atividade com data de publicação futura ficam de fora.
+    """
+    child_ids = GuardianLink.objects.filter(
+        guardian=user, status="aprovado"
+    ).values_list("student_id", flat=True)
+    class_ids = Enrollment.objects.filter(student_id__in=child_ids).values_list(
+        "class_group_id", flat=True
+    )
+    return Activity.objects.filter(
+        school=user.school,
+        class_group_id__in=class_ids,
+        published_date__lte=timezone.localdate(),
+    ).exclude(status=Activity.Status.DRAFT)
+
+
+def _family_rows(user, student_filter=None):
+    """Uma linha por (atividade, filho) para a família saber de quem é a tarefa.
+
+    Um responsável com mais de um filho precisa distinguir a qual estudante
+    cada atividade pertence, inclusive quando os dois estão na mesma turma.
+    """
+    links = (
+        GuardianLink.objects.filter(guardian=user, status="aprovado")
+        .select_related("student")
+        .order_by("student__first_name")
+    )
+    children = [link.student for link in links]
+    if student_filter:
+        children = [s for s in children if s.pk == student_filter]
+    activities = list(
+        _guardian_visible_activities(user)
+        .select_related("subject", "class_group", "created_by")
+        .prefetch_related("attachments")[:300]
+    )
+    enrolled = {}
+    for enr in Enrollment.objects.filter(
+        student__in=children or [None]
+    ).values_list("student_id", "class_group_id"):
+        enrolled.setdefault(enr[0], set()).add(enr[1])
+    rows = []
+    for act in activities:
+        for student in children:
+            if act.class_group_id in enrolled.get(student.pk, ()):
+                key, label = act.family_situation()
+                rows.append(
+                    {"activity": act, "student": student, "state": key, "state_label": label}
+                )
+    order = {"a_vencer": 0, "pendente": 1, "publicada": 2, "encerrada": 3, "cancelada": 4}
+    rows.sort(key=lambda r: (order.get(r["state"], 9), r["activity"].deadline or date.max))
+    return rows, children
+
+
+def student_activity_rows(student, limit=20):
+    """Atividades atribuídas a um estudante, para a ficha individual.
+
+    Percorre todas as matrículas do estudante, não só a ativa, para que o
+    histórico sobreviva a uma transferência de turma. Rascunho e atividade
+    agendada ficam fora: não foram atribuídas a ninguém ainda.
+    """
+    class_ids = Enrollment.objects.filter(student=student).values_list(
+        "class_group_id", flat=True
+    )
+    activities = (
+        Activity.objects.filter(
+            class_group_id__in=class_ids,
+            published_date__lte=timezone.localdate(),
+        )
+        .exclude(status=Activity.Status.DRAFT)
+        .select_related("subject", "class_group")
+        .order_by("-published_date", "-created_at")[:limit]
+    )
+    submissions = {
+        s.activity_id: s
+        for s in Submission.objects.filter(student=student, activity__in=activities)
+    }
+    rows = []
+    for act in activities:
+        state, label = act.family_situation()
+        rows.append(
+            {
+                "activity": act,
+                "state": state,
+                "state_label": label,
+                "submission": submissions.get(act.pk),
+            }
+        )
+    return rows
+
 
 def activity_list(request):
     user = request.user
     acc.require(acc.can_view_evaluations(user))
-    qs = Activity.objects.filter(school=user.school).select_related("subject", "class_group")
+
+    if user.role == Role.RESPONSAVEL.value:
+        student_filter = request.GET.get("estudante")
+        student_pk = None
+        if student_filter:
+            student = get_object_or_404(Student, pk=student_filter, school=user.school)
+            # Sem este bloqueio o parâmetro da URL viraria consulta a aluno alheio.
+            if student.pk not in _guardian_child_ids(user)[0]:
+                raise PermissionDenied
+            student_pk = student.pk
+        rows, children = _family_rows(user, student_filter=student_pk)
+        state = request.GET.get("situacao")
+        if state in ("a_vencer", "pendente", "encerrada", "cancelada"):
+            rows = [r for r in rows if r["state"] == state]
+        return render(
+            request,
+            "pedagogy/activity_family.html",
+            {
+                "rows": rows,
+                "children": children,
+                "student_id": student_pk,
+                "state": state,
+            },
+        )
+
+    qs = Activity.objects.filter(school=user.school).select_related(
+        "subject", "class_group", "created_by"
+    )
     student_id = request.GET.get("estudante")
     if student_id:
         student = get_object_or_404(Student, pk=student_id, school=user.school)
@@ -266,15 +391,55 @@ def activity_list(request):
         qs = qs.filter(class_group=class_group.class_group) if class_group else qs.none()
     if user.role == Role.PROFESSOR.value:
         qs = qs.filter(class_group_id__in=_teacher_assignments(user).values("class_group_id"))
-    elif user.role == Role.RESPONSAVEL.value:
-        qs = qs.filter(class_group_id__in=_guardian_child_ids(user)[1])
+
+    status = request.GET.get("status")
+    if status in dict(Activity.Status.choices):
+        qs = qs.filter(status=status)
+    class_filter = request.GET.get("turma")
+    if class_filter:
+        qs = qs.filter(class_group_id=class_filter)
+    subject_filter = request.GET.get("disciplina")
+    if subject_filter:
+        qs = qs.filter(subject_id=subject_filter)
+
+    activities = list(
+        qs.annotate(attachment_count=Count("attachments")).order_by(
+            "-published_date", "-created_at"
+        )[:200]
+    )
+    today = timezone.localdate()
+    rows = [
+        {
+            "activity": act,
+            "state_label": act.family_situation(today)[1],
+            "state": act.family_situation(today)[0],
+            "can_manage": acc.can_manage_activities(user, act.class_group, act.subject),
+        }
+        for act in activities
+    ]
+    if user.role == Role.PROFESSOR.value:
+        classes = ClassGroup.objects.filter(
+            pk__in=_teacher_assignments(user).values("class_group_id")
+        )
+        subjects = user.school.subjects.filter(
+            pk__in=_teacher_assignments(user).values("subject_id")
+        )
+    else:
+        classes = ClassGroup.objects.filter(school=user.school)
+        subjects = user.school.subjects.all()
     return render(
         request,
         "pedagogy/activity_list.html",
         {
-            "activities": qs.order_by("-published_date", "-created_at")[:200],
+            "rows": rows,
             "student_id": student_id,
             "can_manage": user.role == Role.PROFESSOR.value,
+            "status": status,
+            "classes": classes,
+            "subjects": subjects,
+            "class_filter": class_filter,
+            "subject_filter": subject_filter,
+            "activity_status_choices": Activity.Status.choices,
         },
     )
 
@@ -283,48 +448,171 @@ def _get_managed_activity(user, pk):
     act = get_object_or_404(
         Activity.objects.select_related("class_group", "subject"), pk=pk, school=user.school
     )
-    acc.require(
-        user.role == Role.PROFESSOR.value
-        and acc.can_manage_evaluations(user, act.class_group, act.subject)
-    )
+    acc.require(acc.can_manage_activities(user, act.class_group, act.subject))
     return act
+
+
+def activity_detail(request, pk):
+    """Tela única da atividade: serve de prévia ao professor e de leitura à
+    família, com o mesmo conteúdo que a família recebe."""
+    user = request.user
+    act = get_object_or_404(
+        Activity.objects.select_related(
+            "class_group", "subject", "created_by", "school"
+        ).prefetch_related("attachments"),
+        pk=pk,
+    )
+    acc.require(acc.can_view_activity(user, act))
+    students = []
+    if user.role == Role.RESPONSAVEL.value:
+        child_ids = _guardian_child_ids(user)[0]
+        students = list(
+            Student.objects.filter(
+                pk__in=child_ids, enrollments__class_group=act.class_group
+            ).distinct()
+        )
+    state, state_label = act.family_situation()
+    return render(
+        request,
+        "pedagogy/activity_detail.html",
+        {
+            "activity": act,
+            "students": students,
+            "state": state,
+            "state_label": state_label,
+            "today": timezone.localdate(),
+            "reach": _enrolled_students(act.class_group).count(),
+            "can_manage": acc.can_manage_activities(user, act.class_group, act.subject),
+        },
+    )
+
+
+def _save_attachments(request, act, form):
+    for upload in form.cleaned_data.get("attachments") or []:
+        ActivityAttachment.objects.create(
+            activity=act,
+            file=upload,
+            original_name=upload.name[:255],
+            size=upload.size,
+            uploaded_by=request.user,
+        )
 
 
 def activity_create(request):
     user = request.user
-    acc.require(user.role == Role.PROFESSOR.value)
-    form = ActivityForm(request.POST or None, user=user, school=user.school)
+    acc.require(acc.can_manage_activities(user))
+    form = ActivityForm(
+        request.POST or None, request.FILES or None, user=user, school=user.school
+    )
     if request.method == "POST" and form.is_valid():
+        publish = bool(request.POST.get("_publish"))
         with transaction.atomic():
             act = form.save(commit=False)
             act.school = user.school
             act.created_by = user
+            act.status = (
+                Activity.Status.PUBLISHED if publish else Activity.Status.DRAFT
+            )
             act.save()
-            _log(request, "create", act, f"Criou a atividade {act.title} ({act.class_group})")
-            notify_activity_created(act)
-        messages.success(request, "Atividade registrada.")
-        return redirect("pedagogy:activity_list")
+            _save_attachments(request, act, form)
+            _log(
+                request,
+                "create",
+                act,
+                f"Criou a atividade {act.title} ({act.class_group}) "
+                f"como {act.get_status_display().lower()}",
+            )
+            if act.status == Activity.Status.PUBLISHED:
+                notify_activity_created(act)
+        messages.success(
+            request,
+            "Atividade publicada para a turma."
+            if publish
+            else "Rascunho salvo. A família ainda não vê esta atividade.",
+        )
+        return redirect("pedagogy:activity_detail", pk=act.pk)
     return render(request, "pedagogy/activity_form.html", {"form": form, "obj": None})
 
 
 def activity_edit(request, pk):
     user = request.user
     act = _get_managed_activity(user, pk)
-    form = ActivityForm(request.POST or None, instance=act, user=user, school=user.school)
-    if request.method == "POST":
-        if request.POST.get("_delete"):
-            with transaction.atomic():
-                act.delete()
-                _log(request, "delete", act, f"Excluiu a atividade {act.title}", target_id=act.pk)
-            messages.success(request, "Atividade excluída.")
-            return redirect("pedagogy:activity_list")
-        if form.is_valid():
-            with transaction.atomic():
-                form.save()
-                _log(request, "update", act, f"Atualizou a atividade {act.title}")
-            messages.success(request, "Atividade atualizada.")
-            return redirect("pedagogy:activity_list")
+    was_draft = act.status == Activity.Status.DRAFT
+    form = ActivityForm(
+        request.POST or None,
+        request.FILES or None,
+        instance=act,
+        user=user,
+        school=user.school,
+    )
+    if request.method == "POST" and form.is_valid():
+        publish = bool(request.POST.get("_publish"))
+        with transaction.atomic():
+            act = form.save()
+            _save_attachments(request, act, form)
+            if publish and was_draft:
+                act.status = Activity.Status.PUBLISHED
+                act.save(update_fields=["status"])
+            _log(request, "update", act, f"Atualizou a atividade {act.title}")
+            if publish and was_draft:
+                notify_activity_created(act)
+        messages.success(
+            request,
+            "Atividade publicada para a turma."
+            if publish and was_draft
+            else "Atividade atualizada para toda a turma.",
+        )
+        return redirect("pedagogy:activity_detail", pk=act.pk)
     return render(request, "pedagogy/activity_form.html", {"form": form, "obj": act})
+
+
+def activity_cancel(request, pk):
+    """Cancela sem apagar: o histórico escolar e as entregas são preservados."""
+    user = request.user
+    act = _get_managed_activity(user, pk)
+    if act.status == Activity.Status.CANCELED:
+        messages.warning(request, "Esta atividade já está cancelada.")
+        return redirect("pedagogy:activity_detail", pk=act.pk)
+    form = ActivityCancelForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            act.status = Activity.Status.CANCELED
+            act.cancel_reason = form.cleaned_data["cancel_reason"]
+            act.save(update_fields=["status", "cancel_reason", "updated_at"])
+            _log(
+                request,
+                "update",
+                act,
+                f"Cancelou a atividade {act.title}: {act.cancel_reason}",
+            )
+        messages.success(
+            request, "Atividade cancelada. O histórico foi preservado."
+        )
+        return redirect("pedagogy:activity_detail", pk=act.pk)
+    return render(
+        request, "pedagogy/activity_cancel.html", {"form": form, "activity": act}
+    )
+
+
+def activity_attachment(request, pk, attachment_id):
+    """Download conferido no servidor: sem isto o anexo de uma turma vazaria
+    para qualquer pessoa autenticada que adivinhasse o identificador."""
+    att = get_object_or_404(
+        ActivityAttachment.objects.select_related(
+            "activity", "activity__class_group", "activity__school"
+        ),
+        pk=attachment_id,
+        activity_id=pk,
+    )
+    acc.require(acc.can_view_activity(request.user, att.activity))
+    if not att.file:
+        raise Http404("Anexo indisponível.")
+    return FileResponse(
+        att.file.open("rb"),
+        content_type=attachment_content_type(att.file.name),
+        as_attachment=True,
+        filename=att.original_name or "anexo",
+    )
 
 
 def activity_submissions(request, pk):

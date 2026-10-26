@@ -165,7 +165,7 @@
             <h2 class="h6 text-body-secondary text-uppercase">Acompanhamento</h2>
             <div class="d-grid gap-2">
               <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:evaluation_list' %}?estudante={{ student.pk }}">Notas e avaliações publicadas</a>
-              <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:activity_list' %}?estudante={{ student.pk }}">Atividades e tarefas</a>
+              <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:activity_list' %}?estudante={{ student.pk }}">Atividades de casa</a>
               <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:attendance_list' %}?estudante={{ student.pk }}">Frequência</a>
               <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:occurrence_list' %}?estudante={{ student.pk }}">Ocorrências</a>
               <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:observation_list' %}?estudante={{ student.pk }}">Observações pedagógicas</a>
@@ -179,7 +179,7 @@
             <h2 class="h6 text-body-secondary text-uppercase">Acompanhamento</h2>
             <div class="d-grid gap-2">
               <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:evaluation_list' %}?estudante={{ student.pk }}">Avaliações e notas</a>
-              <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:activity_list' %}?estudante={{ student.pk }}">Atividades</a>
+              <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:activity_list' %}?estudante={{ student.pk }}">Atividades de casa</a>
               <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:attendance_list' %}?estudante={{ student.pk }}">Frequência</a>
               <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:occurrence_list' %}?estudante={{ student.pk }}">Ocorrências</a>
               {% if user_role == ROLE_COORDENACAO or user_role == ROLE_DIRECAO or user_role == ROLE_PROFESSOR %}
@@ -193,6 +193,43 @@
           </div></div>
         </div>
       {% endif %}
+
+      <div class="col-md-6">
+        <div class="card h-100"><div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h2 class="h6 text-body-secondary text-uppercase mb-0">Atividades de casa</h2>
+            <a class="small" href="{% url 'pedagogy:activity_list' %}?estudante={{ student.pk }}">Ver todas</a>
+          </div>
+          <p class="text-body-secondary small">
+            Publicadas para a turma do estudante. A tarefa é da turma, não individual.
+          </p>
+          {% if activity_rows %}
+            <ul class="list-unstyled mb-0">
+              {% for r in activity_rows %}
+                <li class="d-flex flex-wrap justify-content-between align-items-start gap-2 py-2 border-top">
+                  <div class="me-auto">
+                    <a href="{% url 'pedagogy:activity_detail' r.activity.pk %}" class="fw-semibold">{{ r.activity.title }}</a>
+                    <div class="text-body-secondary small">
+                      {{ r.activity.subject.name }} · {{ r.activity.class_group.name }}
+                      {% if r.activity.deadline %}· entrega {{ r.activity.deadline|date:"d/m/Y" }}{% endif %}
+                    </div>
+                  </div>
+                  <div class="d-flex flex-column align-items-end gap-1">
+                    <span class="chip chip-state state-{{ r.state }}">{{ r.state_label }}</span>
+                    {% if r.submission %}
+                      <span class="chip">{{ r.submission.get_status_display }}</span>
+                    {% endif %}
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-body-secondary small mb-0 border-top pt-2">
+              Nenhuma atividade publicada para a turma deste estudante.
+            </p>
+          {% endif %}
+        </div></div>
+      </div>
     </div>
   </div>
 

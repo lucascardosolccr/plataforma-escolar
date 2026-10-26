@@ -40,9 +40,10 @@
 
         {% if user_role == ROLE_RESPONSAVEL %}
           <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'my_children' %} active{% endif %}" href="{% url 'my_children' %}">Meus filhos</a></li>
+          <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'activity_list' or request.resolver_match.url_name == 'activity_detail' %} active{% endif %}" href="{% url 'pedagogy:activity_list' %}">Atividades de casa</a></li>
+          <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'evaluation_list' %} active{% endif %}" href="{% url 'pedagogy:evaluation_list' %}">Notas</a></li>
           <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'link_list' %} active{% endif %}" href="{% url 'link_list' %}">Vínculos</a></li>
-          <li class="nav-item"><a class="nav-link{% if request.resolver_match.app_name == 'pedagogy' %} active{% endif %}" href="{% url 'pedagogy:evaluation_list' %}">Notas</a></li>
-          <li class="nav-item"><a class="nav-link{% if request.resolver_match.app_name == 'pedagogy' and request.resolver_match.url_name == 'justification_create' %} active{% endif %}" href="{% url 'pedagogy:justification_create' %}">Justificar falta</a></li>
+          <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'justification_create' %} active{% endif %}" href="{% url 'pedagogy:justification_create' %}">Justificar falta</a></li>
         {% endif %}
 
         {% if user_role == ROLE_PROFESSOR %}
@@ -51,7 +52,7 @@
             <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Pedagógico</a>
             <ul class="dropdown-menu shadow">
               <li><a class="dropdown-item" href="{% url 'pedagogy:evaluation_list' %}">Avaliações</a></li>
-              <li><a class="dropdown-item" href="{% url 'pedagogy:activity_list' %}">Atividades</a></li>
+              <li><a class="dropdown-item" href="{% url 'pedagogy:activity_list' %}">Atividades de casa</a></li>
               <li><a class="dropdown-item" href="{% url 'pedagogy:attendance_list' %}">Frequência</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="{% url 'pedagogy:occurrence_list' %}">Ocorrências</a></li>
@@ -100,7 +101,7 @@
             <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Pedagógico</a>
             <ul class="dropdown-menu shadow">
               <li><a class="dropdown-item" href="{% url 'pedagogy:evaluation_list' %}">Avaliações e notas</a></li>
-              <li><a class="dropdown-item" href="{% url 'pedagogy:activity_list' %}">Atividades</a></li>
+              <li><a class="dropdown-item" href="{% url 'pedagogy:activity_list' %}">Atividades de casa</a></li>
               <li><a class="dropdown-item" href="{% url 'pedagogy:attendance_list' %}">Frequência</a></li>
               <li><a class="dropdown-item" href="{% url 'pedagogy:occurrence_list' %}">Ocorrências</a></li>
               {% if user_role == ROLE_COORDENACAO or user_role == ROLE_DIRECAO %}

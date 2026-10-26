@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Atividades de casa — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <h1 class="h4 mb-1">Atividades de casa</h1>
+  <p class="text-body-secondary small mb-0">
+    Tarefas publicadas pelos professores para a turma de cada filho. As atividades são
+    da turma, não individuais — toda a turma recebe a mesma tarefa.
+  </p>
+</div>
+
+{% if children|length > 1 or state %}
+<div class="card mb-3">
+  <form method="get" class="row g-2 align-items-end p-3 mb-0">
+    {% if children|length > 1 %}
+    <div class="col-sm-5 col-md-4">
+      <label class="form-label small mb-1" for="f-estudante">Filho</label>
+      <select class="form-select form-select-sm" id="f-estudante" name="estudante">
+        <option value="">Todos</option>
+        {% for c in children %}
+          <option value="{{ c.pk }}"{% if student_id == c.pk %} selected{% endif %}>{{ c.full_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="col-sm-5 col-md-4">
+      <label class="form-label small mb-1" for="f-situacao">Situação</label>
+      <select class="form-select form-select-sm" id="f-situacao" name="situacao">
+        <option value="">Todas</option>
+        <option value="a_vencer"{% if state == 'a_vencer' %} selected{% endif %}>A vencer</option>
+        <option value="pendente"{% if state == 'pendente' %} selected{% endif %}>Pendente</option>
+        <option value="encerrada"{% if state == 'encerrada' %} selected{% endif %}>Prazo encerrado</option>
+        <option value="cancelada"{% if state == 'cancelada' %} selected{% endif %}>Cancelada</option>
+      </select>
+    </div>
+    <div class="col-sm-2 d-flex gap-2">
+      <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
+      <a href="{% url 'pedagogy:activity_list' %}" class="btn btn-sm btn-outline-secondary">Limpar</a>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+{% if rows %}
+  <div class="row g-3">
+    {% for r in rows %}
+    <div class="col-12 col-lg-6">
+      <div class="card h-100">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+            <span class="chip">👦 {{ r.student.full_name }}</span>
+            <span class="chip chip-state state-{{ r.state }}">{{ r.state_label }}</span>
+          </div>
+          <h2 class="h6 mb-1">
+            <a href="{% url 'pedagogy:activity_detail' r.activity.pk %}">{{ r.activity.title }}</a>
+          </h2>
+          <p class="text-body-secondary small mb-2">
+            {{ r.activity.subject.name }} · Turma {{ r.activity.class_group.name }}
+          </p>
+          <dl class="row small mb-2 g-0">
+            <dt class="col-5 fw-normal text-body-secondary">Publicada em</dt>
+            <dd class="col-7 mb-0">{{ r.activity.published_date|date:"d/m/Y" }}</dd>
+            <dt class="col-5 fw-normal text-body-secondary">Entrega até</dt>
+            <dd class="col-7 mb-0">
+              {% if r.activity.deadline %}<strong>{{ r.activity.deadline|date:"d/m/Y" }}</strong>{% else %}<span class="text-body-secondary">sem prazo definido</span>{% endif %}
+            </dd>
+          </dl>
+          {% if r.activity.status == 'cancelada' and r.activity.cancel_reason %}
+            <p class="small text-body-secondary mb-2">
+              <strong>Cancelada:</strong> {{ r.activity.cancel_reason }}
+            </p>
+          {% endif %}
+          <div class="mt-auto d-flex flex-wrap align-items-center gap-2">
+            <a href="{% url 'pedagogy:activity_detail' r.activity.pk %}" class="btn btn-sm btn-outline-primary">Ver instruções</a>
+            {% with n=r.activity.attachments.all|length %}
+              {% if n %}<span class="chip">📎 {{ n }} anexo{{ n|pluralize:"s" }}</span>{% endif %}
+            {% endwith %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card">
+    <div class="card-body text-center text-body-secondary py-5">
+      <p class="mb-1 fw-semibold">Nenhuma atividade de casa por aqui.</p>
+      <p class="small mb-0">
+        {% if state or student_id %}
+          Nenhuma atividade corresponde ao filtro escolhido.
+          <a href="{% url 'pedagogy:activity_list' %}">Ver todas</a>.
+        {% elif children %}
+          Quando um professor publicar uma tarefa para a turma, ela aparece aqui.
+        {% else %}
+          Você ainda não tem nenhum estudante vinculado e aprovado.
+          <a href="{% url 'link_list' %}">Ver meus vínculos</a>.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

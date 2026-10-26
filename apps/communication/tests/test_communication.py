@@ -50,10 +50,10 @@ class CommunicationBase(TestCase):
         )
         self.year = SchoolYear.objects.create(school=self.school, name="2026")
         self.turma = ClassGroup.objects.create(
-            school=self.school, school_year=self.year, name="1Âº Ano A"
+            school=self.school, school_year=self.year, name="1º Ano A"
         )
         self.turma_b = ClassGroup.objects.create(
-            school=self.school, school_year=self.year, name="1Âº Ano B"
+            school=self.school, school_year=self.year, name="1º Ano B"
         )
         self.mat = Subject.objects.create(school=self.school, name="Matemática")
         TeacherAssignment.objects.create(
@@ -99,7 +99,8 @@ class NotificationEventTests(CommunicationBase):
             ).exists()
         )
 
-    def test_activity_creation_notifies_guardian(self):
+    def test_activity_publication_notifies_guardian(self):
+        """Publicar avisa a família, e o aviso nomeia o estudante."""
         self.login("prof")
         self.client.post(
             reverse("pedagogy:activity_create"),
@@ -107,16 +108,34 @@ class NotificationEventTests(CommunicationBase):
                 "class_group": self.turma.pk,
                 "subject": self.mat.pk,
                 "title": "Tarefa de casa",
+                "description": "Resolver os exercícios 1 a 10.",
                 "deadline": "2026-04-10",
-                "description": "",
                 "criteria": "",
+                "published_date": "2026-03-01",
+                "_publish": "1",
+            },
+        )
+        notif = Notification.objects.filter(
+            user=self.resp, kind="atividade", title__contains="Tarefa de casa"
+        ).first()
+        self.assertIsNotNone(notif)
+        self.assertIn("Ana", notif.body)
+
+    def test_activity_draft_does_not_notify_guardian(self):
+        """Rascunho não avisa ninguém: nada foi publicado à família ainda."""
+        self.login("prof")
+        self.client.post(
+            reverse("pedagogy:activity_create"),
+            {
+                "class_group": self.turma.pk,
+                "subject": self.mat.pk,
+                "title": "Ainda rascunho",
+                "description": "Texto em elaboração.",
                 "published_date": "2026-03-01",
             },
         )
-        self.assertTrue(
-            Notification.objects.filter(
-                user=self.resp, kind="atividade", title__contains="Tarefa de casa"
-            ).exists()
+        self.assertEqual(
+            Notification.objects.filter(title__contains="Ainda rascunho").count(), 0
         )
 
     def test_justification_resolution_notifies_requester(self):

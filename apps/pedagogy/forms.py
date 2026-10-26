@@ -3,6 +3,7 @@ from django.utils import timezone
 
 from apps.academics.models import ClassGroup, Subject, TeacherAssignment
 from apps.core.models import Role, User
+from apps.core.uploads import MAX_ATTACHMENT_SIZE_MB, validate_attachment
 
 from .models import (
     AbsenceJustification,
@@ -125,22 +126,73 @@ class GradeBatchForm(forms.Form):
         )
 
 
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    """Campo de vários arquivos: o FileField padrão só valida o último."""
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", MultipleFileInput())
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        if not data:
+            return []
+        files = data if isinstance(data, (list, tuple)) else [data]
+        return [super(MultipleFileField, self).clean(f, initial) for f in files]
+
+
 class ActivityForm(forms.ModelForm):
+    # Os validadores ficam no campo do FORMULÁRIO de propósito: ActivityAttachment
+    # é criado com objects.create(), que não executa validadores de modelo. Sem
+    # isto um executável passaria direto para o disco.
+    attachments = MultipleFileField(
+        label="Anexos de apoio",
+        required=False,
+        validators=[validate_attachment],
+        help_text=(
+            f"Opcional. Até {MAX_ATTACHMENT_SIZE_MB} MB por arquivo. "
+            "PDF, imagem, documento, planilha ou apresentação."
+        ),
+    )
+
     class Meta:
         model = Activity
-        fields = ["class_group", "subject", "title", "description", "criteria", "deadline", "published_date"]
+        fields = [
+            "class_group",
+            "subject",
+            "title",
+            "description",
+            "materials",
+            "criteria",
+            "class_date",
+            "published_date",
+            "deadline",
+        ]
         widgets = {
+            "description": forms.Textarea(attrs={"rows": 5}),
+            "materials": forms.Textarea(attrs={"rows": 2}),
+            "criteria": forms.Textarea(attrs={"rows": 2}),
             "deadline": forms.DateInput(format=r"%Y-%m-%d", attrs={"type": "date"}),
             "published_date": forms.DateInput(format=r"%Y-%m-%d", attrs={"type": "date"}),
+            "class_date": forms.DateInput(format=r"%Y-%m-%d", attrs={"type": "date"}),
         }
         labels = {
             "class_group": "Turma",
             "subject": "Disciplina",
             "title": "Título",
-            "description": "Descrição",
+            "description": "Instruções para o estudante",
+            "materials": "Materiais necessários",
             "criteria": "Critérios de avaliação",
-            "deadline": "Prazo",
+            "class_date": "Data da aula de referência",
+            "deadline": "Data de entrega",
             "published_date": "Data de publicação",
+        }
+        help_texts = {
+            "description": "Detalhe o que deve ser feito. É o texto que a família lê.",
+            "published_date": "A família passa a ver a atividade a partir desta data.",
         }
 
     def __init__(self, *args, user=None, school=None, **kwargs):
@@ -148,18 +200,75 @@ class ActivityForm(forms.ModelForm):
         self.user = user
         self.school = school
         self.fields["published_date"].required = False
-        self.fields["published_date"].initial = timezone.localdate()
+        if not self.instance.pk:
+            self.fields["published_date"].initial = timezone.localdate()
+        self.fields["title"].required = True
+        self.fields["description"].required = True
         if school:
-            self.fields["class_group"].queryset = ClassGroup.objects.filter(school=school)
+            self.fields["class_group"].queryset = ClassGroup.objects.filter(
+                school=school
+            ).select_related("school_year")
             self.fields["subject"].queryset = school.subjects.all()
         if user and user.role == Role.PROFESSOR.value:
-            assigned = TeacherAssignment.objects.filter(teacher=user, school=school)
+            self._assignments = TeacherAssignment.objects.filter(
+                teacher=user, school=school
+            )
             self.fields["class_group"].queryset = ClassGroup.objects.filter(
-                pk__in=assigned.values("class_group_id")
-            )
+                pk__in=self._assignments.values("class_group_id")
+            ).select_related("school_year")
             self.fields["subject"].queryset = school.subjects.filter(
-                pk__in=assigned.values("subject_id")
+                pk__in=self._assignments.values("subject_id")
             )
+
+    def clean(self):
+        cleaned = super().clean()
+        class_group = cleaned.get("class_group")
+        subject = cleaned.get("subject")
+        published = cleaned.get("published_date") or timezone.localdate()
+        deadline = cleaned.get("deadline")
+
+        # Os querysets acima restringem turma e disciplina isoladamente, o que
+        # ainda permitiria combinar uma turma de uma atribuição com a
+        # disciplina de outra. O par é conferido aqui, no servidor.
+        if (
+            class_group
+            and subject
+            and self.user
+            and self.user.role == Role.PROFESSOR.value
+        ):
+            if not TeacherAssignment.objects.filter(
+                teacher=self.user,
+                school=self.school,
+                class_group=class_group,
+                subject=subject,
+            ).exists():
+                raise forms.ValidationError(
+                    f"Você não tem atribuição de {subject} na turma "
+                    f"{class_group}. Escolha uma combinação da sua atribuição."
+                )
+
+        if deadline and deadline < published:
+            self.add_error(
+                "deadline",
+                "A data de entrega não pode ser anterior à data de publicação.",
+            )
+        return cleaned
+
+    def clean_published_date(self):
+        return self.cleaned_data.get("published_date") or timezone.localdate()
+
+
+class ActivityCancelForm(forms.Form):
+    """Cancelamento exige motivo: a atividade continua no histórico escolar."""
+
+    cancel_reason = forms.CharField(
+        label="Motivo do cancelamento",
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={"placeholder": "Ex.: aula remarcada; conteúdo adiado"}
+        ),
+        help_text="Fica visível à família junto da atividade cancelada.",
+    )
 
 
 class SubmissionForm(forms.ModelForm):

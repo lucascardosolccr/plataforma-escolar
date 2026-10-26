@@ -60,9 +60,13 @@ def notify_evaluation_published(evaluation, request=None):
 
 
 def notify_activity_created(activity):
-    """Avisa famílias sobre atividade/prazo (alertas de prazos)."""
-    from django.contrib.auth import get_user_model
+    """Avisa as famílias de uma atividade publicada para a turma.
 
+    Uma notificação por (responsável, estudante) e com o nome do estudante no
+    texto: quem tem mais de um filho precisa saber de quem é a tarefa. A
+    unicidade por par também evita avisar duas vezes o mesmo responsável pelo
+    mesmo filho quando existe mais de um vínculo registrado.
+    """
     from apps.registry.models import Enrollment, GuardianLink
 
     student_ids = list(
@@ -70,26 +74,41 @@ def notify_activity_created(activity):
             class_group=activity.class_group, status="ativo"
         ).values_list("student_id", flat=True)
     )
-    guardian_ids = list(
-        GuardianLink.objects.filter(
-            student_id__in=student_ids, status="aprovado"
-        ).values_list("guardian_id", flat=True)
-    )
-    if not guardian_ids:
+    if not student_ids:
         return
-    User = get_user_model()
-    guardians = User.objects.filter(pk__in=guardian_ids, is_active=True)
-    notify_many(
-        activity.school,
-        guardians,
-        Notification.Kind.ACTIVITY,
-        f"Atividade publicada: {activity.title}",
-        body=(
-            f"Atividade de {activity.subject} da turma {activity.class_group}."
-            + (f" Prazo: {activity.deadline:%d/%m/%Y}." if activity.deadline else "")
-        ),
-        url=reverse("pedagogy:activity_list"),
+    links = (
+        GuardianLink.objects.filter(
+            student_id__in=student_ids, status="aprovado", guardian__is_active=True
+        )
+        .select_related("guardian", "student")
+        .distinct()
     )
+    url = reverse("pedagogy:activity_detail", args=[activity.pk])
+    prazo = (
+        f" Entrega até {activity.deadline:%d/%m/%Y}." if activity.deadline else ""
+    )
+    seen = set()
+    pending = []
+    for link in links:
+        key = (link.guardian_id, link.student_id)
+        if key in seen:
+            continue
+        seen.add(key)
+        pending.append(
+            Notification(
+                school=activity.school,
+                user=link.guardian,
+                kind=Notification.Kind.ACTIVITY,
+                title=f"Nova atividade de casa: {activity.title}",
+                body=(
+                    f"{link.student} — {activity.subject}, turma "
+                    f"{activity.class_group}.{prazo}"
+                ),
+                url=url,
+            )
+        )
+    if pending:
+        Notification.objects.bulk_create(pending)
 
 
 def notify_justification_resolved(justification, decision_label):

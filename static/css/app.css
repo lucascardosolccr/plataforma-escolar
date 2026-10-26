@@ -109,11 +109,103 @@ a[href]:not(:visited):not(:hover):not(:focus-visible) { color: var(--bs-link-col
   padding: .6rem 1rem;
 }
 
-/* Chip styles refinados */
+/* Superfícies da moldura (navbar/rodapé). Usam as variáveis do Bootstrap,
+   portanto acompanham data-bs-theme sem regras duplicadas por tema. */
+.navbar-theme {
+  background-color: var(--bs-body-bg);
+  border-color: var(--bs-border-color) !important;
+}
+.footer-theme {
+  background-color: var(--bs-tertiary-bg);
+  border-color: var(--bs-border-color) !important;
+}
+
+.brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: .5rem;
+  background: linear-gradient(135deg, var(--brand-1), var(--brand-2));
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+/* Ponto do perfil: decorativo, por isso aria-hidden no HTML. */
+.role-dot {
+  display: inline-block;
+  width: .5rem;
+  height: .5rem;
+  border-radius: 50%;
+  background-color: currentColor;
+  opacity: .75;
+}
+
+.notif-badge {
+  position: absolute;
+  top: -.35rem;
+  right: -.35rem;
+  min-width: 1.15rem;
+  padding: 0 .3rem;
+  border-radius: 999px;
+  background-color: var(--bs-danger);
+  color: #fff;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  line-height: 1.15rem;
+  text-align: center;
+}
+
+/* Chip: rótulo compacto de apoio (turma, situação, contagem). */
 .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .15rem .55rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 999px;
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-body-color);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+  white-space: nowrap;
   transition: background-color .15s ease, color .15s ease;
 }
 .chip:hover { background-color: var(--bs-tertiary-bg); }
+
+/* Situação da atividade de casa. O prazo define a cor, então a urgência é
+   legível de relance sem depender só do texto. */
+.chip-state { font-weight: 600; }
+.chip-state.state-a_vencer {
+  background-color: var(--bs-warning-bg-subtle);
+  border-color: var(--bs-warning-border-subtle);
+  color: var(--bs-warning-text-emphasis);
+}
+.chip-state.state-pendente,
+.chip-state.state-publicada {
+  background-color: var(--bs-info-bg-subtle);
+  border-color: var(--bs-info-border-subtle);
+  color: var(--bs-info-text-emphasis);
+}
+.chip-state.state-encerrada {
+  background-color: var(--bs-danger-bg-subtle);
+  border-color: var(--bs-danger-border-subtle);
+  color: var(--bs-danger-text-emphasis);
+}
+.chip-state.state-cancelada,
+.chip-state.state-rascunho,
+.chip-state.state-agendada {
+  background-color: var(--bs-secondary-bg);
+  border-color: var(--bs-border-color);
+  color: var(--bs-secondary-color);
+}
+
+/* Instruções da atividade: preserva os parágrafos digitados pelo professor
+   sem permitir HTML (o template usa linebreaks, não safe). */
+.activity-instructions {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 
 /* Estados de disabled */
 .btn:disabled { opacity: .65; pointer-events: none; }

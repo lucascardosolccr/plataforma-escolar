@@ -61,6 +61,12 @@ Copie `.env.example` para `.env` e ajuste. Opcional — se não existir `.env`, 
 | `DJANGO_ALLOWED_HOSTS` | Hosts permitidos, separados por vírgula | `127.0.0.1,localhost` |
 | `DJANGO_SECRET_KEY` | Chave secreta. Se ausente, é gerada em `.secret_key` automaticamente | gerada |
 | `DJANGO_TZ` | Fuso horário | `America/Sao_Paulo` |
+| `DJANGO_SSL` | `1` **somente se a plataforma for servida por HTTPS**. Liga de uma vez o redirecionamento para HTTPS, o HSTS e os cookies de sessão/CSRF restritos a conexão segura | `0` |
+
+> **Atenção com `DJANGO_SSL`:** ativá-lo sem HTTPS faz o navegador deixar de
+> enviar os cookies de sessão e de CSRF, e o login para de funcionar. Mantenha
+> `0` em rede local por HTTP. Com `1` e HTTPS, `python manage.py check --deploy`
+> não reporta nenhuma advertência.
 
 > O arquivo `.secret_key` e o `.env` **nunca** devem ser compartilhados nem versionados.
 >
@@ -74,7 +80,18 @@ Copie `.env.example` para `.env` e ajuste. Opcional — se não existir `.env`, 
 python -m pytest
 ```
 
-Fases 3 a 7: **142 testes** cobrindo autenticação, autorização, auditoria e RBAC (perfil,
+**175 testes.** Se vier de uma versão anterior, aplique as migrações antes de
+subir o servidor — a atividade de casa acrescentou campos e a tabela de anexos:
+
+```bash
+python manage.py migrate
+```
+
+Faça o backup do `db.sqlite3` antes (seção 5). A migração é aditiva: as
+atividades que já existirem ficam como **publicadas**, mantendo o
+comportamento anterior.
+
+Cobertura — autenticação, autorização, auditoria e RBAC (perfil,
 elevação de privilégio, isolamento entre escolas), cadastro escolar (vínculos
 responsável-filho, matrículas, turmas, disciplinas e atribuições), o pedagógico
 (avaliações/notas, atividades/entregas, frequência, ocorrências, observações,
@@ -82,6 +99,13 @@ planos, justificativas de falta e regras configuráveis), a comunicação
 (mensagens, comunicados, notificações internas e solicitações) e os painéis e
 relatórios (métricas determinísticas, RBAC dos painéis, escopo dos relatórios,
 exportação CSV e gráficos SVG).
+
+Atividades de casa — publicação e rascunho, alcance por turma, aluno
+matriculado depois da publicação, aluno transferido, turma sem estudantes,
+par turma+disciplina cruzado, responsável sem vínculo, acesso a rascunho pelo
+identificador, anexo executável recusado, anexo de rascunho bloqueado,
+cancelamento preservando histórico e **orçamento de consultas** (a mesma tela
+medida com 2 e com 27 estudantes/atividades, falhando se houver N+1).
 
 ---
 
@@ -202,7 +226,7 @@ diretamente.
 ### Pedagógico (Fase 4)
 
 - ✔ **Avaliações e notas**: professor cria avaliações apenas nas turmas/disciplinas que leciona, lança notas em lote e publica (só a publicação torna as notas visíveis à família); edição/exclusão bloqueada após publicar.
-- ✔ **Atividades e entregas**: criação de atividades por turma/disciplina, prazo e recursos, além do acompanhamento das entregas dos estudantes.
+- ✔ **Atividades de casa e entregas**: publicação por turma/disciplina com rascunho, anexos de apoio, cancelamento com motivo e área própria da família (detalhes na seção 9).
 - ✔ **Frequência**: visualização por turma e registro em lote (presente/atraso/falta), com mapa de presença por turma.
 - ✔ **Ocorrências**: registro objetivo com providências/encaminhamento, histórico de alterações em auditoria e fila de acompanhamento.
 - ✔ **Observações pedagógicas**: dificuldades, habilidades e estratégias por estudante — **invisíveis a administração e secretaria**.
@@ -248,6 +272,51 @@ diretamente.
 - ✔ **Manual de utilização** por perfil (`Manual de Utilização.md`).
 - ✔ **Instruções de instalação** (seção 2), **backup e recuperação** (seção 5) e **operação/segurança** (seção 6) mantidas e conferidas.
 - ✔ **Custo zero revalidado**: nenhuma biblioteca nova (as mesmas 4 dependências), **nenhuma chamada a serviço externo** em runtime (Bootstrap, CSS e JS locais; gráficos SVG no servidor; PDF pela impressão do navegador).
+
+## 9. Atividades de casa por turma
+
+A atividade pertence à **turma**, não a cada estudante: existe um único
+registro e o alcance é derivado das matrículas. Isso faz com que quem entra na
+turma depois passe a ver as atividades vigentes e com que editar a atividade
+atualize todos de uma vez, sem cópias divergentes.
+
+**Professor** (`/atividades/`, menu Pedagógico → Atividades de casa)
+
+1. Escolhe turma e disciplina — apenas combinações da **sua atribuição**: um
+   professor de Matemática na turma A e de Português na turma B não publica
+   Português para a turma A.
+2. Preenche título e instruções (ambos obrigatórios — é o texto que a família
+   lê), e, se fizer sentido, materiais necessários, critérios, data da aula de
+   referência, data de publicação e data de entrega.
+3. Anexa arquivos de apoio (PDF, imagem, documento, planilha, apresentação —
+   até 10 MB cada; executáveis e compactados são recusados).
+4. **Salva como rascunho** ou **publica para a turma**. Rascunho é visível só
+   para o professor.
+5. Acompanha as entregas por estudante, filtra por turma, disciplina, situação
+   e período, e vê a prévia exata do que a família recebe.
+
+**Família** (`/atividades/`, menu Atividades de casa)
+
+Um cartão por atividade **e por filho**, de modo que quem tem mais de um
+estudante sabe de quem é a tarefa. A situação vem do prazo: *a vencer*,
+*pendente*, *prazo encerrado*, *cancelada*. A atividade também aparece na aba
+Pedagógico da ficha de cada estudante.
+
+**O que a família nunca vê**: rascunho, atividade com data de publicação
+futura, e qualquer atividade de turma em que não tenha filho matriculado —
+inclusive tentando o identificador direto na URL. Os anexos não têm URL
+pública: o download passa por uma view que confere o vínculo de quem pede.
+
+**Cancelar em vez de excluir**: cancelar exige motivo e preserva a atividade,
+os anexos e as entregas já lançadas. O histórico escolar não é apagado, e a
+família vê a atividade marcada como cancelada com o motivo.
+
+**Conclusão não é visualização**: a família só vê "entrega registrada" quando o
+**professor** registrou a entrega. Abrir a atividade não conclui nada.
+
+**Aluno transferido**: a visibilidade considera qualquer matrícula do estudante,
+não apenas a ativa, para que a mudança de turma não apague o histórico de
+atividades já atribuídas.
 
 ### Limitações conhecidas
 

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load pedagogy_extras %}
+{% load pedagogy_extras form_extras %}
 {% block title %}Lançar notas — {{ evaluation.title }} — Plataforma Escolar{% endblock %}
 
 {% block content %}
@@ -23,7 +23,7 @@
   <div class="card mb-3">
     <div class="card-body py-2">
       <label for="id_observation_all" class="form-label">{{ form.observation_all.label }}</label>
-      {{ form.observation_all }}
+      {{ form.observation_all|bs }}
       {% for error in form.observation_all.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
     </div>
   </div>
@@ -36,7 +36,7 @@
           {% for student, field_name in form.grades %}
           <tr>
             <td class="fw-semibold">{{ student.full_name }}</td>
-            <td class="text-center">{{ form|getitem:field_name }}</td>
+            <td class="text-center">{{ form|getitem:field_name|bs }}</td>
           </tr>
           {% endfor %}
         </tbody>

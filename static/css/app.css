@@ -109,6 +109,23 @@ a[href]:not(:visited):not(:hover):not(:focus-visible) { color: var(--bs-link-col
   padding: .6rem 1rem;
 }
 
+/* Telas de acesso (login e cadastro), que não usam base.html. */
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--bs-tertiary-bg);
+}
+.auth-card {
+  width: 100%;
+  max-width: 26rem;
+}
+/* O cadastro tem bem mais campos que o login. */
+.auth-card-wide {
+  width: 100%;
+  max-width: 33rem;
+}
+
 /* Superfícies da moldura (navbar/rodapé). Usam as variáveis do Bootstrap,
    portanto acompanham data-bs-theme sem regras duplicadas por tema. */
 .navbar-theme {

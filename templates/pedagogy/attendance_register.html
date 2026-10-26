@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load pedagogy_extras %}
+{% load pedagogy_extras form_extras %}
 {% block title %}Registrar frequência — {{ class_group.name }} — Plataforma Escolar{% endblock %}
 
 {% block content %}
@@ -18,7 +18,7 @@
       <div class="col-auto">
         <label for="id_date" class="form-label mb-0">{{ form.date.label }}</label>
       </div>
-      <div class="col-auto">{{ form.date }}</div>
+      <div class="col-auto">{{ form.date|bs }}</div>
       {% for error in form.date.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
     </div>
   </div>
@@ -31,7 +31,7 @@
           {% for student, field_name in form.rows %}
           <tr>
             <td class="fw-semibold">{{ student.full_name }}</td>
-            <td>{{ form|getitem:field_name }}</td>
+            <td>{{ form|getitem:field_name|bs }}</td>
           </tr>
           {% empty %}
           <tr><td colspan="2" class="text-center text-body-secondary py-4">Nenhum estudante matriculado.</td></tr>

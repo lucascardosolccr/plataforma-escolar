@@ -43,6 +43,7 @@
         {% if user_role == ROLE_RESPONSAVEL %}
           <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'my_children' %} active{% endif %}" href="{% url 'my_children' %}">Meus filhos</a></li>
           <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'activity_list' or request.resolver_match.url_name == 'activity_detail' %} active{% endif %}" href="{% url 'pedagogy:activity_list' %}">Atividades de casa</a></li>
+          <li class="nav-item"><a class="nav-link{% if 'group_work' in request.resolver_match.url_name %} active{% endif %}" href="{% url 'pedagogy:group_work_list' %}">Trabalhos em grupo</a></li>
           <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'evaluation_list' %} active{% endif %}" href="{% url 'pedagogy:evaluation_list' %}">Notas</a></li>
           <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'link_list' %} active{% endif %}" href="{% url 'link_list' %}">Vínculos</a></li>
           <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'justification_create' %} active{% endif %}" href="{% url 'pedagogy:justification_create' %}">Justificar falta</a></li>
@@ -50,6 +51,7 @@
 
         {% if user_role == ROLE_ESTUDANTE %}
           <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'activity_list' or request.resolver_match.url_name == 'activity_detail' %} active{% endif %}" href="{% url 'pedagogy:activity_list' %}">Minhas atividades</a></li>
+          <li class="nav-item"><a class="nav-link{% if 'group_work' in request.resolver_match.url_name %} active{% endif %}" href="{% url 'pedagogy:group_work_list' %}">Trabalhos em grupo</a></li>
           <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'evaluation_list' %} active{% endif %}" href="{% url 'pedagogy:evaluation_list' %}">Minhas notas</a></li>
           <li class="nav-item"><a class="nav-link{% if request.resolver_match.app_name == 'pedagogy' and 'attendance' in request.resolver_match.url_name %} active{% endif %}" href="{% url 'pedagogy:attendance_list' %}">Minha frequência</a></li>
         {% endif %}
@@ -61,6 +63,7 @@
             <ul class="dropdown-menu shadow">
               <li><a class="dropdown-item" href="{% url 'pedagogy:evaluation_list' %}">Avaliações</a></li>
               <li><a class="dropdown-item" href="{% url 'pedagogy:activity_list' %}">Atividades de casa</a></li>
+              <li><a class="dropdown-item" href="{% url 'pedagogy:group_work_list' %}">Trabalhos em grupo</a></li>
               <li><a class="dropdown-item" href="{% url 'pedagogy:attendance_list' %}">Frequência</a></li>
               <li><hr class="dropdown-divider"></li>
               <li><a class="dropdown-item" href="{% url 'pedagogy:occurrence_list' %}">Ocorrências</a></li>
@@ -112,6 +115,7 @@
             <ul class="dropdown-menu shadow">
               <li><a class="dropdown-item" href="{% url 'pedagogy:evaluation_list' %}">Avaliações e notas</a></li>
               <li><a class="dropdown-item" href="{% url 'pedagogy:activity_list' %}">Atividades de casa</a></li>
+              <li><a class="dropdown-item" href="{% url 'pedagogy:group_work_list' %}">Trabalhos em grupo</a></li>
               <li><a class="dropdown-item" href="{% url 'pedagogy:attendance_list' %}">Frequência</a></li>
               <li><a class="dropdown-item" href="{% url 'pedagogy:occurrence_list' %}">Ocorrências</a></li>
               {% if user_role == ROLE_COORDENACAO or user_role == ROLE_DIRECAO %}

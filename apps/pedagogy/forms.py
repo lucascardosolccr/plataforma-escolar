@@ -14,6 +14,7 @@ from .models import (
     AcademicRule,
     Activity,
     Evaluation,
+    GroupWork,
     InterventionPlan,
     Occurrence,
     PedagogicalObservation,
@@ -260,6 +261,167 @@ class ActivityForm(forms.ModelForm):
 
     def clean_published_date(self):
         return self.cleaned_data.get("published_date") or timezone.localdate()
+
+
+class GroupWorkForm(forms.ModelForm):
+    attachments = MultipleFileField(
+        label="Arquivos de apoio",
+        required=False,
+        validators=[validate_attachment, validate_attachment_content],
+        help_text=(
+            f"Opcional. Até {MAX_ATTACHMENT_SIZE_MB} MB por arquivo. "
+            "PDF, imagem, documento, planilha ou apresentação."
+        ),
+    )
+
+    class Meta:
+        model = GroupWork
+        fields = [
+            "class_group",
+            "subject",
+            "title",
+            "description",
+            "objectives",
+            "guidelines",
+            "materials",
+            "presentation",
+            "published_date",
+            "deadline",
+            "delivery_mode",
+            "notes",
+        ]
+        widgets = {
+            "description": forms.Textarea(attrs={"rows": 5}),
+            "objectives": forms.Textarea(attrs={"rows": 2}),
+            "guidelines": forms.Textarea(attrs={"rows": 2}),
+            "materials": forms.Textarea(attrs={"rows": 2}),
+            "notes": forms.Textarea(attrs={"rows": 2}),
+            "published_date": forms.DateInput(format=r"%Y-%m-%d", attrs={"type": "date"}),
+            "deadline": forms.DateInput(format=r"%Y-%m-%d", attrs={"type": "date"}),
+        }
+        labels = {
+            "class_group": "Turma",
+            "subject": "Disciplina",
+            "title": "Título do trabalho",
+            "description": "O que deve ser feito",
+            "objectives": "Objetivos pedagógicos",
+            "guidelines": "Orientações e critérios de avaliação",
+            "materials": "Materiais necessários",
+            "presentation": "Forma de apresentação ou entrega",
+            "published_date": "Data de publicação",
+            "deadline": "Prazo de entrega",
+            "delivery_mode": "Registro da entrega",
+            "notes": "Observações complementares",
+        }
+        help_texts = {
+            "description": "É o texto que o estudante e a família leem.",
+            "published_date": "A família passa a ver o trabalho a partir desta data.",
+        }
+
+    def __init__(self, *args, user=None, school=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        self.school = school
+        self.fields["published_date"].required = False
+        if not self.instance.pk:
+            self.fields["published_date"].initial = timezone.localdate()
+        self.fields["title"].required = True
+        self.fields["description"].required = True
+        # Só título e enunciado são exigidos: o prompt pede para não obrigar
+        # campo que a atividade não precisa.
+        for nome in ("objectives", "guidelines", "materials", "presentation", "notes"):
+            self.fields[nome].required = False
+        if school:
+            self.fields["class_group"].queryset = ClassGroup.objects.filter(
+                school=school
+            ).select_related("school_year")
+            self.fields["subject"].queryset = school.subjects.all()
+        if user and user.role == Role.PROFESSOR.value:
+            assigned = TeacherAssignment.objects.filter(teacher=user, school=school)
+            self.fields["class_group"].queryset = ClassGroup.objects.filter(
+                pk__in=assigned.values("class_group_id")
+            ).select_related("school_year")
+            self.fields["subject"].queryset = school.subjects.filter(
+                pk__in=assigned.values("subject_id")
+            )
+        if self.instance.pk:
+            # Trocar a turma depois de formar os grupos deixaria integrantes de
+            # outra turma no trabalho. A turma fica travada após a criação.
+            self.fields["class_group"].disabled = True
+            self.fields["class_group"].help_text = (
+                "A turma não muda depois da criação, para os grupos não "
+                "ficarem com estudantes de outra turma."
+            )
+
+    def clean(self):
+        cleaned = super().clean()
+        class_group = cleaned.get("class_group") or getattr(
+            self.instance, "class_group", None
+        )
+        subject = cleaned.get("subject")
+        published = cleaned.get("published_date") or timezone.localdate()
+        deadline = cleaned.get("deadline")
+
+        # Os querysets restringem turma e disciplina isoladamente; o PAR é
+        # conferido aqui, no servidor.
+        if (
+            class_group
+            and subject
+            and self.user
+            and self.user.role == Role.PROFESSOR.value
+        ):
+            if not TeacherAssignment.objects.filter(
+                teacher=self.user,
+                school=self.school,
+                class_group=class_group,
+                subject=subject,
+            ).exists():
+                raise forms.ValidationError(
+                    f"Você não tem atribuição de {subject} na turma "
+                    f"{class_group}. Escolha uma combinação da sua atribuição."
+                )
+
+        if deadline and deadline < published:
+            self.add_error(
+                "deadline", "O prazo não pode ser anterior à data de publicação."
+            )
+        return cleaned
+
+    def clean_published_date(self):
+        return self.cleaned_data.get("published_date") or timezone.localdate()
+
+
+class WorkGroupForm(forms.Form):
+    """Criação de um grupo dentro do trabalho."""
+
+    name = forms.CharField(
+        label="Nome do grupo",
+        max_length=80,
+        widget=forms.TextInput(attrs={"placeholder": "Ex.: Grupo 1, Equipe Azul"}),
+    )
+
+    def __init__(self, *args, group_work=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.group_work = group_work
+
+    def clean_name(self):
+        nome = self.cleaned_data["name"].strip()
+        if self.group_work and self.group_work.groups.filter(name__iexact=nome).exists():
+            raise forms.ValidationError("Já existe um grupo com este nome.")
+        return nome
+
+
+class GroupWorkCancelForm(forms.Form):
+    """Cancelamento exige motivo: o trabalho fica no histórico escolar."""
+
+    cancel_reason = forms.CharField(
+        label="Motivo do cancelamento",
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={"placeholder": "Ex.: conteúdo adiado para o próximo bimestre"}
+        ),
+        help_text="Fica visível à família junto do trabalho cancelado.",
+    )
 
 
 class ActivityCancelForm(forms.Form):

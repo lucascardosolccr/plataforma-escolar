@@ -111,6 +111,55 @@ def notify_activity_created(activity):
         Notification.objects.bulk_create(pending)
 
 
+def notify_group_work_published(work):
+    """Avisa as famílias de um trabalho em grupo publicado.
+
+    Uma notificação por (responsável, estudante), nomeando o estudante — quem
+    tem mais de um filho precisa saber de quem é o trabalho. O aviso não diz
+    a composição do grupo: ela fica na tela, atrás da verificação de vínculo.
+    """
+    from apps.registry.models import Enrollment, GuardianLink
+
+    student_ids = list(
+        Enrollment.objects.filter(
+            class_group=work.class_group, status="ativo"
+        ).values_list("student_id", flat=True)
+    )
+    if not student_ids:
+        return
+    links = (
+        GuardianLink.objects.filter(
+            student_id__in=student_ids, status="aprovado", guardian__is_active=True
+        )
+        .select_related("guardian", "student")
+        .distinct()
+    )
+    url = reverse("pedagogy:group_work_detail", args=[work.pk])
+    prazo = f" Entrega até {work.deadline:%d/%m/%Y}." if work.deadline else ""
+    seen = set()
+    pending = []
+    for link in links:
+        key = (link.guardian_id, link.student_id)
+        if key in seen:
+            continue
+        seen.add(key)
+        pending.append(
+            Notification(
+                school=work.school,
+                user=link.guardian,
+                kind=Notification.Kind.ACTIVITY,
+                title=f"Novo trabalho em grupo: {work.title}",
+                body=(
+                    f"{link.student} — {work.subject}, turma "
+                    f"{work.class_group}.{prazo}"
+                ),
+                url=url,
+            )
+        )
+    if pending:
+        Notification.objects.bulk_create(pending)
+
+
 def notify_justification_resolved(justification, decision_label):
     requester = justification.submitted_by
     if not requester:

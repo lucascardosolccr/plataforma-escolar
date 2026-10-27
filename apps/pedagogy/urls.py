@@ -25,6 +25,22 @@ urlpatterns = [
         views.activity_submissions,
         name="activity_submissions",
     ),
+    path("trabalhos/", views.group_work_list, name="group_work_list"),
+    path("trabalhos/novo/", views.group_work_create, name="group_work_create"),
+    path("trabalhos/<int:pk>/", views.group_work_detail, name="group_work_detail"),
+    path("trabalhos/<int:pk>/editar/", views.group_work_edit, name="group_work_edit"),
+    path("trabalhos/<int:pk>/grupos/", views.group_work_groups, name="group_work_groups"),
+    path(
+        "trabalhos/<int:pk>/entregas/",
+        views.group_work_deliveries,
+        name="group_work_deliveries",
+    ),
+    path("trabalhos/<int:pk>/cancelar/", views.group_work_cancel, name="group_work_cancel"),
+    path(
+        "trabalhos/<int:pk>/anexo/<int:attachment_id>/",
+        views.group_work_attachment,
+        name="group_work_attachment",
+    ),
     path("frequencia/", views.attendance_list, name="attendance_list"),
     path(
         "frequencia/turma/<int:class_group_id>/",

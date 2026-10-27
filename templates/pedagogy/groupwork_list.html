@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Trabalhos em grupo — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">Trabalhos em grupo</h1>
+    <p class="text-body-secondary small mb-0">
+      Um trabalho por turma, com os grupos e integrantes dentro dele — não um
+      trabalho por aluno.
+    </p>
+  </div>
+  {% if can_manage %}
+    <a href="{% url 'pedagogy:group_work_create' %}" class="btn btn-primary">+ Novo trabalho</a>
+  {% endif %}
+</div>
+
+<div class="card mb-3">
+  <form method="get" class="row g-2 align-items-end p-3 mb-0">
+    <div class="col-6 col-md-3">
+      <label class="form-label small mb-1" for="f-turma">Turma</label>
+      <select class="form-select form-select-sm" id="f-turma" name="turma">
+        <option value="">Todas</option>
+        {% for c in classes %}
+          <option value="{{ c.pk }}"{% if class_filter == c.pk|stringformat:"s" %} selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-3">
+      <label class="form-label small mb-1" for="f-disciplina">Disciplina</label>
+      <select class="form-select form-select-sm" id="f-disciplina" name="disciplina">
+        <option value="">Todas</option>
+        {% for s in subjects %}
+          <option value="{{ s.pk }}"{% if subject_filter == s.pk|stringformat:"s" %} selected{% endif %}>{{ s.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-3">
+      <label class="form-label small mb-1" for="f-status">Situação</label>
+      <select class="form-select form-select-sm" id="f-status" name="status">
+        <option value="">Todas</option>
+        {% for value, label in status_choices %}
+          <option value="{{ value }}"{% if status == value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-3 d-flex gap-2">
+      <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
+      <a href="{% url 'pedagogy:group_work_list' %}" class="btn btn-sm btn-outline-secondary">Limpar</a>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Título</th>
+          <th>Disciplina</th>
+          <th>Turma</th>
+          <th>Grupos</th>
+          <th>Situação</th>
+          <th>Prazo</th>
+          <th class="text-end">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="fw-semibold">
+            <a href="{% url 'pedagogy:group_work_detail' r.work.pk %}">{{ r.work.title }}</a>
+          </td>
+          <td>{{ r.work.subject.name }}</td>
+          <td>{{ r.work.class_group.name }}</td>
+          <td>
+            {% if r.work.group_count %}
+              <span class="chip">{{ r.work.group_count }} grupo{{ r.work.group_count|pluralize:"s" }}</span>
+              <span class="chip">{{ r.work.member_count }} aluno{{ r.work.member_count|pluralize:"s" }}</span>
+            {% else %}
+              <span class="chip chip-state state-rascunho">sem grupos</span>
+            {% endif %}
+          </td>
+          <td><span class="chip chip-state state-{{ r.state }}">{{ r.state_label }}</span></td>
+          <td>{{ r.work.deadline|date:"d/m/Y"|default:"—" }}</td>
+          <td class="text-end">
+            {% if r.can_manage %}
+              <a href="{% url 'pedagogy:group_work_groups' r.work.pk %}" class="btn btn-sm btn-outline-primary">Grupos</a>
+              <a href="{% url 'pedagogy:group_work_edit' r.work.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
+            {% else %}
+              <a href="{% url 'pedagogy:group_work_detail' r.work.pk %}" class="btn btn-sm btn-outline-secondary">Ver</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center text-body-secondary py-4">
+            {% if status or class_filter or subject_filter %}
+              Nenhum trabalho corresponde ao filtro.
+              <a href="{% url 'pedagogy:group_work_list' %}">Ver todos</a>.
+            {% else %}
+              Nenhum trabalho em grupo registrado.
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/_pager.html" %}
+{% endblock %}

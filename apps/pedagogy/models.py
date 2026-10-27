@@ -278,6 +278,282 @@ class Submission(models.Model):
         return f"{self.student} — {self.activity}: {self.get_status_display()}"
 
 
+class GroupWork(models.Model):
+    """Trabalho em grupo: UMA entidade compartilhada pela turma.
+
+    Quatro alunos num grupo não geram quatro trabalhos. O trabalho pertence à
+    turma, os grupos pertencem ao trabalho e os integrantes pertencem ao
+    grupo. Assim editar o enunciado atualiza todos de uma vez e a composição
+    do grupo tem um só lugar de verdade.
+    """
+
+    class Status(models.TextChoices):
+        DRAFT = "rascunho", "Rascunho"
+        PUBLISHED = "publicada", "Publicada"
+        CANCELED = "cancelada", "Cancelada"
+
+    class DeliveryMode(models.TextChoices):
+        GROUP = "grupo", "Uma entrega por grupo"
+        INDIVIDUAL = "individual", "Uma entrega por integrante"
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, verbose_name="escola")
+    class_group = models.ForeignKey(
+        ClassGroup, on_delete=models.CASCADE, verbose_name="turma"
+    )
+    subject = models.ForeignKey(
+        Subject, on_delete=models.CASCADE, verbose_name="disciplina"
+    )
+    title = models.CharField("título", max_length=200)
+    description = models.TextField("o que deve ser feito")
+    objectives = models.TextField("objetivos pedagógicos", blank=True)
+    guidelines = models.TextField("orientações e critérios de avaliação", blank=True)
+    materials = models.TextField("materiais necessários", blank=True)
+    presentation = models.CharField(
+        "forma de apresentação ou entrega",
+        max_length=200,
+        blank=True,
+        help_text="Ex.: cartaz, seminário de 10 minutos, arquivo impresso.",
+    )
+    notes = models.TextField("observações complementares", blank=True)
+    published_date = models.DateField("data de publicação", default=timezone.localdate)
+    deadline = models.DateField("prazo de entrega", null=True, blank=True)
+    delivery_mode = models.CharField(
+        "forma de registro da entrega",
+        max_length=12,
+        choices=DeliveryMode.choices,
+        default=DeliveryMode.GROUP,
+        help_text=(
+            "Define se a entrega é registrada uma vez para o grupo ou "
+            "separadamente para cada integrante. Nunca se marca o grupo "
+            "inteiro a partir de um só integrante."
+        ),
+    )
+    status = models.CharField(
+        "situação", max_length=10, choices=Status.choices, default=Status.PUBLISHED
+    )
+    cancel_reason = models.CharField(
+        "motivo do cancelamento", max_length=255, blank=True
+    )
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="group_works_created"
+    )
+    created_at = models.DateTimeField("criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("atualizado em", auto_now=True)
+
+    class Meta:
+        ordering = ["-published_date", "-created_at"]
+        indexes = [
+            models.Index(fields=["school", "class_group", "status"]),
+            models.Index(fields=["class_group", "status", "published_date"]),
+        ]
+        verbose_name = "trabalho em grupo"
+        verbose_name_plural = "trabalhos em grupo"
+
+    def __str__(self):
+        return f"{self.title} — {self.class_group}"
+
+    @property
+    def is_visible_to_family(self):
+        """Família e estudante só veem o que foi publicado e cuja data chegou."""
+        return (
+            self.status == self.Status.PUBLISHED
+            and self.published_date <= timezone.localdate()
+        )
+
+    def situation(self, today=None):
+        """Rótulo de acompanhamento. Deriva do prazo, nunca de visualização."""
+        today = today or timezone.localdate()
+        if self.status == self.Status.CANCELED:
+            return "cancelada", "Cancelado"
+        if self.status == self.Status.DRAFT:
+            return "rascunho", "Rascunho"
+        if self.published_date > today:
+            return "agendada", "Agendado"
+        if not self.deadline:
+            return "publicada", "Atribuído"
+        if self.deadline < today:
+            return "encerrada", "Prazo encerrado"
+        if (self.deadline - today).days <= 2:
+            return "a_vencer", "A vencer"
+        return "pendente", "Em andamento"
+
+
+class WorkGroup(models.Model):
+    """Um grupo dentro de um trabalho."""
+
+    group_work = models.ForeignKey(
+        GroupWork,
+        on_delete=models.CASCADE,
+        related_name="groups",
+        verbose_name="trabalho",
+    )
+    name = models.CharField("nome do grupo", max_length=80)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["group_work", "name"], name="uniq_group_name_per_work"
+            )
+        ]
+        verbose_name = "grupo do trabalho"
+        verbose_name_plural = "grupos do trabalho"
+
+    def __str__(self):
+        return f"{self.name} — {self.group_work.title}"
+
+    def active_members(self):
+        return self.members.filter(removed_at__isnull=True).select_related("student")
+
+
+class WorkGroupMember(models.Model):
+    """Participação de um estudante num grupo.
+
+    Sair do grupo marca ``removed_at`` em vez de apagar a linha: a §7.4 do
+    prompt exige preservar o histórico de participação, e uma composição
+    apagada não se reconstrói depois.
+    """
+
+    group = models.ForeignKey(
+        WorkGroup,
+        on_delete=models.CASCADE,
+        related_name="members",
+        verbose_name="grupo",
+    )
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name="work_group_memberships",
+        verbose_name="estudante",
+    )
+    added_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    added_at = models.DateTimeField(auto_now_add=True)
+    removed_at = models.DateTimeField("saiu em", null=True, blank=True)
+
+    class Meta:
+        ordering = ["student__first_name", "student__last_name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["group", "student"], name="uniq_member_per_group"
+            )
+        ]
+        indexes = [models.Index(fields=["student", "removed_at"])]
+        verbose_name = "integrante do grupo"
+        verbose_name_plural = "integrantes do grupo"
+
+    def __str__(self):
+        saiu = " (saiu)" if self.removed_at else ""
+        return f"{self.student} em {self.group.name}{saiu}"
+
+
+class GroupWorkAttachment(models.Model):
+    """Arquivo de apoio do trabalho, servido só por view que confere vínculo."""
+
+    group_work = models.ForeignKey(
+        GroupWork,
+        on_delete=models.CASCADE,
+        related_name="attachments",
+        verbose_name="trabalho",
+    )
+    file = models.FileField(
+        "arquivo", upload_to=safe_attachment_path, validators=[validate_attachment]
+    )
+    original_name = models.CharField("nome do arquivo", max_length=255)
+    size = models.PositiveIntegerField("tamanho em bytes", default=0)
+    uploaded_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, verbose_name="enviado por"
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["uploaded_at"]
+        verbose_name = "anexo do trabalho"
+        verbose_name_plural = "anexos do trabalho"
+
+    def __str__(self):
+        return f"{self.original_name} — {self.group_work.title}"
+
+
+class GroupWorkDelivery(models.Model):
+    """Entrega registrada pelo PROFESSOR.
+
+    Quando ``delivery_mode`` é "grupo", existe uma linha por grupo e
+    ``student`` fica nulo. Quando é "individual", existe uma linha por
+    integrante. As duas restrições abaixo impedem a mistura — sem elas, um
+    registro de grupo e outro individual poderiam coexistir e ninguém saberia
+    qual vale.
+    """
+
+    class Status(models.TextChoices):
+        DELIVERED = "entregue", "Entregue"
+        LATE = "atrasado", "Entregue com atraso"
+        NOT_DELIVERED = "nao_entregue", "Não entregue"
+
+    group_work = models.ForeignKey(
+        GroupWork,
+        on_delete=models.CASCADE,
+        related_name="deliveries",
+        verbose_name="trabalho",
+    )
+    group = models.ForeignKey(
+        WorkGroup,
+        on_delete=models.CASCADE,
+        related_name="deliveries",
+        verbose_name="grupo",
+    )
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="group_work_deliveries",
+        verbose_name="integrante",
+    )
+    status = models.CharField(
+        "situação", max_length=12, choices=Status.choices, default=Status.DELIVERED
+    )
+    grade = models.DecimalField(
+        "nota do trabalho",
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=(
+            "Opcional. Não entra no cálculo da média da disciplina, que usa "
+            "apenas as avaliações."
+        ),
+    )
+    comment = models.TextField("observação do professor", blank=True)
+    delivered_at = models.DateField("data da entrega", null=True, blank=True)
+    registered_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["group"],
+                condition=models.Q(student__isnull=True),
+                name="uniq_group_delivery",
+            ),
+            models.UniqueConstraint(
+                fields=["group", "student"],
+                condition=models.Q(student__isnull=False),
+                name="uniq_member_delivery",
+            ),
+        ]
+        verbose_name = "entrega do trabalho"
+        verbose_name_plural = "entregas do trabalho"
+
+    def __str__(self):
+        quem = self.student or self.group
+        return f"{quem} — {self.get_status_display()}"
+
+
 class AttendanceRecord(models.Model):
     """Frequência oficial: presente / atraso / falta, por estudante, turma e data."""
 

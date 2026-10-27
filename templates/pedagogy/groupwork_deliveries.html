@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Entregas — {{ work.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-0">Registrar entregas</h1>
+    <p class="text-body-secondary small mb-0">
+      {{ work.title }} · {{ work.class_group.name }} · {{ work.subject.name }}
+      {% if work.deadline %}· Prazo {{ work.deadline|date:"d/m/Y" }}{% endif %}
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'pedagogy:group_work_detail' work.pk %}" class="btn btn-outline-secondary btn-sm">Ver trabalho</a>
+    <a href="{% url 'pedagogy:group_work_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+  </div>
+</div>
+
+<div class="alert alert-info" role="alert">
+  <p class="mb-0 small">
+    {% if por_grupo %}
+      Este trabalho está configurado como <strong>uma entrega por grupo</strong>:
+      o registro vale para o grupo inteiro. Para registrar integrante por
+      integrante, mude a forma de entrega na
+      <a href="{% url 'pedagogy:group_work_edit' work.pk %}">edição do trabalho</a>.
+    {% else %}
+      Este trabalho está configurado como <strong>uma entrega por integrante</strong>:
+      cada estudante tem o próprio registro, e marcar um não marca os colegas.
+    {% endif %}
+  </p>
+</div>
+
+{% if rows %}
+<form method="post" novalidate>
+  {% csrf_token %}
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>{% if por_grupo %}Grupo{% else %}Integrante{% endif %}</th>
+            <th style="min-width:11rem">Situação</th>
+            <th style="min-width:8rem">Data</th>
+            <th style="min-width:6rem">Nota</th>
+            <th style="min-width:12rem">Observação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td class="fw-semibold">
+              {% if por_grupo %}
+                {{ r.group.name }}
+                <span class="d-block text-body-secondary small fw-normal">
+                  {% for m in r.members %}{{ m.student.full_name }}{% if not forloop.last %}, {% endif %}{% empty %}sem integrantes{% endfor %}
+                </span>
+              {% else %}
+                {{ r.student.full_name }}
+                <span class="d-block text-body-secondary small fw-normal">{{ r.group.name }}</span>
+              {% endif %}
+            </td>
+            <td>
+              <select name="status_{{ r.chave }}" class="form-select form-select-sm"
+                      aria-label="Situação da entrega">
+                <option value=""{% if not r.delivery %} selected{% endif %}>— sem registro —</option>
+                {% for value, label in status_choices %}
+                  <option value="{{ value }}"{% if r.delivery.status == value %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td>
+              <input type="date" name="data_{{ r.chave }}" class="form-control form-control-sm"
+                     value="{{ r.delivery.delivered_at|date:'Y-m-d' }}"
+                     aria-label="Data da entrega">
+            </td>
+            <td>
+              <input type="text" inputmode="decimal" name="nota_{{ r.chave }}"
+                     class="form-control form-control-sm" placeholder="—"
+                     value="{{ r.delivery.grade|default_if_none:'' }}"
+                     aria-label="Nota do trabalho">
+            </td>
+            <td>
+              <input type="text" name="obs_{{ r.chave }}" maxlength="500"
+                     class="form-control form-control-sm" placeholder="Opcional"
+                     value="{{ r.delivery.comment|default:'' }}"
+                     aria-label="Observação do professor">
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <button type="submit" class="btn btn-primary mt-3">Salvar entregas</button>
+  <p class="text-body-secondary small mt-2 mb-0">
+    Quem ficar em <em>sem registro</em> não recebe nenhum lançamento. A nota do
+    trabalho é opcional e não entra na média da disciplina.
+  </p>
+</form>
+{% else %}
+<div class="card">
+  <div class="card-body text-center text-body-secondary py-5">
+    <p class="fw-semibold mb-1">Nenhum grupo com integrantes.</p>
+    <p class="small mb-0">
+      <a href="{% url 'pedagogy:group_work_groups' work.pk %}">Organize os grupos</a>
+      antes de registrar entregas.
+    </p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

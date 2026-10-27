@@ -233,6 +233,47 @@
       <div class="col-md-6">
         <div class="card h-100"><div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-2">
+            <h2 class="h6 text-body-secondary text-uppercase mb-0">Trabalhos em grupo</h2>
+            <a class="small" href="{% url 'pedagogy:group_work_list' %}">Ver todos</a>
+          </div>
+          <p class="text-body-secondary small">
+            Com o grupo de {{ student.first_name }} e os colegas que participam dele.
+          </p>
+          {% if group_work_rows %}
+            <ul class="list-unstyled mb-0">
+              {% for r in group_work_rows %}
+                <li class="py-2 border-top">
+                  <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                    <a href="{% url 'pedagogy:group_work_detail' r.work.pk %}" class="fw-semibold">{{ r.work.title }}</a>
+                    <span class="chip chip-state state-{{ r.state }}">{{ r.state_label }}</span>
+                  </div>
+                  <div class="text-body-secondary small">
+                    {{ r.work.subject.name }} · {{ r.work.class_group.name }}
+                    {% if r.work.deadline %}· prazo {{ r.work.deadline|date:"d/m/Y" }}{% endif %}
+                  </div>
+                  <div class="small mt-1">
+                    <strong>{{ r.group.name }}</strong>
+                    {% if r.colleagues %}
+                      — com
+                      {% for c in r.colleagues %}{% if can_open_colleagues %}<a href="{% url 'student_detail' c.pk %}">{{ c.full_name }}</a>{% else %}{{ c.full_name }}{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}
+                    {% else %}
+                      <span class="text-body-secondary">— único integrante</span>
+                    {% endif %}
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-body-secondary small mb-0 border-top pt-2">
+              Nenhum trabalho em grupo atribuído a este estudante.
+            </p>
+          {% endif %}
+        </div></div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="card h-100"><div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
             <h2 class="h6 text-body-secondary text-uppercase mb-0">Atividades de casa</h2>
             <a class="small" href="{% url 'pedagogy:activity_list' %}?estudante={{ student.pk }}">Ver todas</a>
           </div>

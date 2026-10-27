@@ -1,10 +1,11 @@
+import random
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, Q
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -14,6 +15,7 @@ from apps.communication.services import (
     notify_activity_created,
     notify_attendance_limit,
     notify_evaluation_published,
+    notify_group_work_published,
     notify_justification_resolved,
 )
 from apps.core.models import AuditLog, Role, create_audit_log
@@ -27,6 +29,9 @@ from .forms import (
     AcademicRuleForm,
     ActivityCancelForm,
     ActivityForm,
+    GroupWorkCancelForm,
+    GroupWorkForm,
+    WorkGroupForm,
     AttendanceBatchForm,
     EvaluationForm,
     GradeBatchForm,
@@ -46,12 +51,17 @@ from .models import (
     AttendanceRecord,
     Evaluation,
     Grade,
+    GroupWork,
+    GroupWorkAttachment,
+    GroupWorkDelivery,
     InterventionPlan,
     Occurrence,
     PedagogicalObservation,
     PlanNote,
     SchoolConfig,
     Submission,
+    WorkGroup,
+    WorkGroupMember,
 )
 
 
@@ -790,6 +800,672 @@ def activity_submissions(request, pk):
         request,
         "pedagogy/activity_submissions.html",
         {"activity": act, "students": students, "existing": existing},
+    )
+
+
+# ---------- Trabalhos em grupo ----------
+
+def _enrolled_in(class_group):
+    return _enrolled_students(class_group)
+
+
+def _group_rows(work, groups):
+    """Grupos com integrantes ativos e os que saíram, para a tela do professor."""
+    rows = []
+    for g in groups.prefetch_related("members__student"):
+        membros = [m for m in g.members.all() if m.removed_at is None]
+        saidos = [m for m in g.members.all() if m.removed_at is not None]
+        rows.append({"group": g, "members": membros, "former": saidos})
+    return rows
+
+
+def _visible_group_works(user):
+    """Trabalhos publicados das turmas em que o usuário tem vínculo."""
+    if user.role == Role.RESPONSAVEL.value:
+        child_ids = GuardianLink.objects.filter(
+            guardian=user, status="aprovado"
+        ).values_list("student_id", flat=True)
+        class_ids = Enrollment.objects.filter(
+            student_id__in=child_ids
+        ).values_list("class_group_id", flat=True)
+    elif user.role == Role.ESTUDANTE.value:
+        class_ids = acc._student_class_ids(user)
+    else:
+        class_ids = []
+    return (
+        GroupWork.objects.filter(
+            school=user.school,
+            class_group_id__in=class_ids,
+            published_date__lte=timezone.localdate(),
+        )
+        .exclude(status=GroupWork.Status.DRAFT)
+        .select_related("subject", "class_group", "created_by")
+    )
+
+
+def _family_work_rows(user, student_filter=None):
+    """Uma linha por (trabalho, estudante) com o grupo daquele estudante.
+
+    A §7.3 exige que fique explícito de quem é o registro que se está vendo e
+    qual é a composição do grupo DAQUELE estudante — não a dos outros grupos.
+    """
+    alvos = []
+    if user.role == Role.RESPONSAVEL.value:
+        links = (
+            GuardianLink.objects.filter(guardian=user, status="aprovado")
+            .select_related("student")
+            .order_by("student__first_name")
+        )
+        alvos = [l.student for l in links]
+    elif user.role == Role.ESTUDANTE.value:
+        own = acc.own_student(user)
+        alvos = [own] if own is not None else []
+    if student_filter:
+        alvos = [s for s in alvos if s.pk == student_filter]
+    if not alvos:
+        return [], []
+
+    works = list(_visible_group_works(user).prefetch_related("attachments"))
+    # Uma consulta para todas as participações relevantes.
+    membros = (
+        WorkGroupMember.objects.filter(
+            group__group_work__in=works,
+            student__in=alvos,
+            removed_at__isnull=True,
+        )
+        .select_related("group", "student")
+        .prefetch_related("group__members__student")
+    )
+    por_par = {(m.group.group_work_id, m.student_id): m for m in membros}
+
+    rows = []
+    for w in works:
+        for st in alvos:
+            m = por_par.get((w.pk, st.pk))
+            if m is None:
+                continue  # o estudante não participa de nenhum grupo deste trabalho
+            colegas = [
+                x.student
+                for x in m.group.members.all()
+                if x.removed_at is None and x.student_id != st.pk
+            ]
+            state, label = w.situation()
+            rows.append(
+                {
+                    "work": w,
+                    "student": st,
+                    "group": m.group,
+                    "colleagues": colegas,
+                    "state": state,
+                    "state_label": label,
+                }
+            )
+    ordem = {"a_vencer": 0, "pendente": 1, "publicada": 2, "encerrada": 3, "cancelada": 4}
+    rows.sort(key=lambda r: (ordem.get(r["state"], 9), r["work"].deadline or date.max))
+    return rows, alvos
+
+
+def student_group_work_rows(student, limit=20):
+    """Trabalhos em grupo do estudante, para a ficha individual.
+
+    Percorre qualquer matrícula, não só a ativa, para a transferência de turma
+    não apagar o histórico de participação.
+    """
+    membros = (
+        WorkGroupMember.objects.filter(student=student, removed_at__isnull=True)
+        .exclude(group__group_work__status=GroupWork.Status.DRAFT)
+        .filter(group__group_work__published_date__lte=timezone.localdate())
+        .select_related(
+            "group", "group__group_work", "group__group_work__subject",
+            "group__group_work__class_group",
+        )
+        .prefetch_related("group__members__student")
+        .order_by("-group__group_work__published_date")[:limit]
+    )
+    rows = []
+    for m in membros:
+        w = m.group.group_work
+        state, label = w.situation()
+        rows.append(
+            {
+                "work": w,
+                "group": m.group,
+                "colleagues": [
+                    x.student
+                    for x in m.group.members.all()
+                    if x.removed_at is None and x.student_id != student.pk
+                ],
+                "state": state,
+                "state_label": label,
+            }
+        )
+    return rows
+
+
+def group_work_list(request):
+    user = request.user
+    acc.require(acc.can_view_evaluations(user))
+
+    if user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
+        student_pk = None
+        student_filter = request.GET.get("estudante")
+        if student_filter:
+            student = get_object_or_404(Student, pk=student_filter, school=user.school)
+            permitidos = (
+                _guardian_child_ids(user)[0]
+                if user.role == Role.RESPONSAVEL.value
+                else [getattr(acc.own_student(user), "pk", None)]
+            )
+            if student.pk not in permitidos:
+                raise PermissionDenied
+            student_pk = student.pk
+        rows, alvos = _family_work_rows(user, student_filter=student_pk)
+        state = request.GET.get("situacao")
+        if state in ("a_vencer", "pendente", "encerrada", "cancelada"):
+            rows = [r for r in rows if r["state"] == state]
+        page = paginate(request, rows)
+        return render(
+            request,
+            "pedagogy/groupwork_family.html",
+            {
+                "rows": page,
+                "page": page,
+                "children": alvos,
+                "is_student": user.role == Role.ESTUDANTE.value,
+                "student_id": student_pk,
+                "state": state,
+            },
+        )
+
+    qs = GroupWork.objects.filter(school=user.school).select_related(
+        "subject", "class_group", "created_by"
+    )
+    if user.role == Role.PROFESSOR.value:
+        qs = qs.filter(
+            class_group_id__in=_teacher_assignments(user).values("class_group_id")
+        )
+    status = request.GET.get("status")
+    if status in dict(GroupWork.Status.choices):
+        qs = qs.filter(status=status)
+    class_filter = request.GET.get("turma")
+    if class_filter:
+        qs = qs.filter(class_group_id=class_filter)
+    subject_filter = request.GET.get("disciplina")
+    if subject_filter:
+        qs = qs.filter(subject_id=subject_filter)
+
+    page = paginate(
+        request,
+        qs.annotate(
+            group_count=Count("groups", distinct=True),
+            member_count=Count(
+                "groups__members",
+                filter=Q(groups__members__removed_at__isnull=True),
+                distinct=True,
+            ),
+        ).order_by("-published_date", "-created_at"),
+    )
+    today = timezone.localdate()
+    pares = (
+        set(_teacher_assignments(user).values_list("class_group_id", "subject_id"))
+        if user.role == Role.PROFESSOR.value
+        else set()
+    )
+    rows = []
+    for w in page:
+        state, label = w.situation(today)
+        rows.append(
+            {
+                "work": w,
+                "state": state,
+                "state_label": label,
+                "can_manage": (w.class_group_id, w.subject_id) in pares,
+            }
+        )
+    if user.role == Role.PROFESSOR.value:
+        classes = ClassGroup.objects.filter(
+            pk__in=_teacher_assignments(user).values("class_group_id")
+        )
+        subjects = user.school.subjects.filter(
+            pk__in=_teacher_assignments(user).values("subject_id")
+        )
+    else:
+        classes = ClassGroup.objects.filter(school=user.school)
+        subjects = user.school.subjects.all()
+    return render(
+        request,
+        "pedagogy/groupwork_list.html",
+        {
+            "rows": rows,
+            "page": page,
+            "can_manage": user.role == Role.PROFESSOR.value,
+            "status": status,
+            "classes": classes,
+            "subjects": subjects,
+            "class_filter": class_filter,
+            "subject_filter": subject_filter,
+            "status_choices": GroupWork.Status.choices,
+        },
+    )
+
+
+def _get_managed_work(user, pk):
+    work = get_object_or_404(
+        GroupWork.objects.select_related("class_group", "subject"),
+        pk=pk,
+        school=user.school,
+    )
+    acc.require(acc.can_manage_group_works(user, work.class_group, work.subject))
+    return work
+
+
+def group_work_detail(request, pk):
+    """Tela central da §7.3: o trabalho, o prazo, a turma e QUEM participa.
+
+    Serve de prévia ao professor e de leitura à família e ao estudante, com a
+    composição recortada pelo que cada um pode ver.
+    """
+    user = request.user
+    work = get_object_or_404(
+        GroupWork.objects.select_related(
+            "class_group", "subject", "created_by", "school"
+        ).prefetch_related("attachments"),
+        pk=pk,
+    )
+    acc.require(acc.can_view_group_work(user, work))
+
+    grupos = acc.visible_groups_for(user, work)
+    state, state_label = work.situation()
+    meus = acc.group_work_students_for(user, work)
+    # Quando é a família ou o estudante, marca a qual estudante o registro se
+    # refere — exigência explícita do item 6 da §7.3.
+    destaque = {s.pk for s in meus}
+    can_manage = acc.can_manage_group_works(user, work.class_group, work.subject)
+    sem_grupo = []
+    if can_manage:
+        com_grupo = set(
+            WorkGroupMember.objects.filter(
+                group__group_work=work, removed_at__isnull=True
+            ).values_list("student_id", flat=True)
+        )
+        sem_grupo = [
+            s for s in _enrolled_in(work.class_group) if s.pk not in com_grupo
+        ]
+    return render(
+        request,
+        "pedagogy/groupwork_detail.html",
+        {
+            "work": work,
+            "group_rows": _group_rows(work, grupos),
+            "state": state,
+            "state_label": state_label,
+            "today": timezone.localdate(),
+            "viewer_students": meus,
+            "highlight_ids": destaque,
+            "can_manage": can_manage,
+            "ungrouped": sem_grupo,
+            "reach": _enrolled_in(work.class_group).count(),
+            "sees_all_groups": can_manage
+            or user.role
+            in (
+                Role.COORDENACAO.value,
+                Role.DIRECAO.value,
+                Role.SECRETARIA.value,
+                Role.ADMIN.value,
+            ),
+        },
+    )
+
+
+def _save_work_attachments(request, work, form):
+    for upload in form.cleaned_data.get("attachments") or []:
+        GroupWorkAttachment.objects.create(
+            group_work=work,
+            file=upload,
+            original_name=upload.name[:255],
+            size=upload.size,
+            uploaded_by=request.user,
+        )
+
+
+def group_work_create(request):
+    user = request.user
+    acc.require(acc.can_manage_group_works(user))
+    form = GroupWorkForm(
+        request.POST or None, request.FILES or None, user=user, school=user.school
+    )
+    if request.method == "POST" and form.is_valid():
+        publish = bool(request.POST.get("_publish"))
+        with transaction.atomic():
+            work = form.save(commit=False)
+            work.school = user.school
+            work.created_by = user
+            work.status = (
+                GroupWork.Status.PUBLISHED if publish else GroupWork.Status.DRAFT
+            )
+            work.save()
+            _save_work_attachments(request, work, form)
+            _log(
+                request,
+                "create",
+                work,
+                f"Criou o trabalho em grupo {work.title} ({work.class_group}) "
+                f"como {work.get_status_display().lower()}",
+            )
+            if work.status == GroupWork.Status.PUBLISHED:
+                notify_group_work_published(work)
+        messages.success(
+            request,
+            "Trabalho criado. Agora organize os grupos."
+            if not publish
+            else "Trabalho publicado. Organize os grupos para a turma saber quem é quem.",
+        )
+        return redirect("pedagogy:group_work_groups", pk=work.pk)
+    return render(request, "pedagogy/groupwork_form.html", {"form": form, "obj": None})
+
+
+def group_work_edit(request, pk):
+    user = request.user
+    work = _get_managed_work(user, pk)
+    was_draft = work.status == GroupWork.Status.DRAFT
+    form = GroupWorkForm(
+        request.POST or None,
+        request.FILES or None,
+        instance=work,
+        user=user,
+        school=user.school,
+    )
+    if request.method == "POST" and form.is_valid():
+        publish = bool(request.POST.get("_publish"))
+        with transaction.atomic():
+            work = form.save()
+            _save_work_attachments(request, work, form)
+            if publish and was_draft:
+                work.status = GroupWork.Status.PUBLISHED
+                work.save(update_fields=["status"])
+            _log(request, "update", work, f"Atualizou o trabalho {work.title}")
+            if publish and was_draft:
+                notify_group_work_published(work)
+        messages.success(
+            request,
+            "Trabalho publicado para a turma."
+            if publish and was_draft
+            else "Trabalho atualizado para toda a turma.",
+        )
+        return redirect("pedagogy:group_work_detail", pk=work.pk)
+    return render(request, "pedagogy/groupwork_form.html", {"form": form, "obj": work})
+
+
+def group_work_groups(request, pk):
+    """Tela única de organização dos grupos.
+
+    Criar grupo, distribuir automaticamente e atribuir cada estudante
+    acontecem aqui. A §7.2 pede explicitamente para não espalhar isso por
+    telas desconectadas.
+    """
+    user = request.user
+    work = _get_managed_work(user, pk)
+    estudantes = list(_enrolled_in(work.class_group))
+    form = WorkGroupForm(group_work=work)
+
+    if request.method == "POST":
+        acao = request.POST.get("_acao", "")
+
+        if acao == "criar":
+            form = WorkGroupForm(request.POST, group_work=work)
+            if form.is_valid():
+                g = WorkGroup.objects.create(
+                    group_work=work, name=form.cleaned_data["name"]
+                )
+                _log(request, "create", work, f"Criou o grupo {g.name} em {work.title}")
+                messages.success(request, f"Grupo {g.name} criado.")
+                return redirect("pedagogy:group_work_groups", pk=work.pk)
+
+        elif acao == "remover_grupo":
+            g = get_object_or_404(WorkGroup, pk=request.POST.get("grupo"), group_work=work)
+            nome = g.name
+            with transaction.atomic():
+                g.delete()
+                _log(request, "delete", work, f"Removeu o grupo {nome} de {work.title}")
+            messages.success(request, f"Grupo {nome} removido.")
+            return redirect("pedagogy:group_work_groups", pk=work.pk)
+
+        elif acao == "sortear":
+            try:
+                quantos = int(request.POST.get("quantidade", "0"))
+            except (TypeError, ValueError):
+                quantos = 0
+            if quantos < 1:
+                messages.error(request, "Informe quantos grupos deseja formar.")
+            elif not estudantes:
+                messages.error(request, "Esta turma não tem estudantes matriculados.")
+            else:
+                with transaction.atomic():
+                    work.groups.all().delete()
+                    criados = [
+                        WorkGroup.objects.create(
+                            group_work=work, name=f"Grupo {i + 1}"
+                        )
+                        for i in range(quantos)
+                    ]
+                    sorteados = list(estudantes)
+                    random.shuffle(sorteados)
+                    for i, st in enumerate(sorteados):
+                        WorkGroupMember.objects.create(
+                            group=criados[i % quantos], student=st, added_by=user
+                        )
+                    _log(
+                        request,
+                        "update",
+                        work,
+                        f"Sorteou {quantos} grupo(s) em {work.title}",
+                    )
+                messages.success(
+                    request,
+                    f"{quantos} grupo(s) formados por sorteio. "
+                    "Revise e ajuste antes de considerar pronto.",
+                )
+                return redirect("pedagogy:group_work_groups", pk=work.pk)
+
+        elif acao == "atribuir":
+            grupos = {str(g.pk): g for g in work.groups.all()}
+            mudancas = 0
+            with transaction.atomic():
+                for st in estudantes:
+                    escolhido = request.POST.get(f"grupo_{st.pk}", "")
+                    atual = WorkGroupMember.objects.filter(
+                        group__group_work=work, student=st, removed_at__isnull=True
+                    ).first()
+                    if escolhido and escolhido in grupos:
+                        destino = grupos[escolhido]
+                        if atual and atual.group_id == destino.pk:
+                            continue
+                        if atual:
+                            # Sai do grupo anterior sem apagar o histórico.
+                            atual.removed_at = timezone.now()
+                            atual.save(update_fields=["removed_at"])
+                        membro = WorkGroupMember.objects.filter(
+                            group=destino, student=st
+                        ).first()
+                        if membro:
+                            membro.removed_at = None
+                            membro.added_by = user
+                            membro.save(update_fields=["removed_at", "added_by"])
+                        else:
+                            WorkGroupMember.objects.create(
+                                group=destino, student=st, added_by=user
+                            )
+                        mudancas += 1
+                    elif atual:
+                        atual.removed_at = timezone.now()
+                        atual.save(update_fields=["removed_at"])
+                        mudancas += 1
+                if mudancas:
+                    _log(
+                        request,
+                        "update",
+                        work,
+                        f"Ajustou a composição dos grupos de {work.title} "
+                        f"({mudancas} alteração/ões)",
+                    )
+            messages.success(
+                request,
+                f"{mudancas} alteração(ões) na composição."
+                if mudancas
+                else "Nenhuma alteração na composição.",
+            )
+            return redirect("pedagogy:group_work_groups", pk=work.pk)
+
+    atual = {
+        m.student_id: m.group_id
+        for m in WorkGroupMember.objects.filter(
+            group__group_work=work, removed_at__isnull=True
+        )
+    }
+    grupos = list(work.groups.prefetch_related("members__student"))
+    return render(
+        request,
+        "pedagogy/groupwork_groups.html",
+        {
+            "work": work,
+            "form": form,
+            "groups": grupos,
+            "group_rows": _group_rows(work, work.groups.all()),
+            "students": estudantes,
+            "current": atual,
+            "ungrouped": [s for s in estudantes if s.pk not in atual],
+        },
+    )
+
+
+def group_work_cancel(request, pk):
+    """Cancela sem apagar: o trabalho, os grupos e as entregas permanecem."""
+    user = request.user
+    work = _get_managed_work(user, pk)
+    if work.status == GroupWork.Status.CANCELED:
+        messages.warning(request, "Este trabalho já está cancelado.")
+        return redirect("pedagogy:group_work_detail", pk=work.pk)
+    form = GroupWorkCancelForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            work.status = GroupWork.Status.CANCELED
+            work.cancel_reason = form.cleaned_data["cancel_reason"]
+            work.save(update_fields=["status", "cancel_reason", "updated_at"])
+            _log(
+                request,
+                "update",
+                work,
+                f"Cancelou o trabalho {work.title}: {work.cancel_reason}",
+            )
+        messages.success(request, "Trabalho cancelado. O histórico foi preservado.")
+        return redirect("pedagogy:group_work_detail", pk=work.pk)
+    return render(
+        request, "pedagogy/groupwork_cancel.html", {"form": form, "work": work}
+    )
+
+
+def group_work_attachment(request, pk, attachment_id):
+    """Download conferido no servidor, como nos anexos de atividade."""
+    att = get_object_or_404(
+        GroupWorkAttachment.objects.select_related(
+            "group_work", "group_work__class_group", "group_work__school"
+        ),
+        pk=attachment_id,
+        group_work_id=pk,
+    )
+    acc.require(acc.can_view_group_work(request.user, att.group_work))
+    if not att.file:
+        raise Http404("Anexo indisponível.")
+    return FileResponse(
+        att.file.open("rb"),
+        content_type=attachment_content_type(att.file.name),
+        as_attachment=True,
+        filename=att.original_name or "anexo",
+    )
+
+
+def group_work_deliveries(request, pk):
+    """Registro da entrega pelo professor, respeitando o modo escolhido.
+
+    No modo "grupo" há uma linha por grupo; no modo "individual", uma por
+    integrante. Nunca se marca o grupo inteiro a partir de um integrante.
+    """
+    user = request.user
+    work = _get_managed_work(user, pk)
+    por_grupo = work.delivery_mode == GroupWork.DeliveryMode.GROUP
+    grupos = list(work.groups.prefetch_related("members__student"))
+
+    if request.method == "POST":
+        with transaction.atomic():
+            n = 0
+            for g in grupos:
+                membros = [m for m in g.members.all() if m.removed_at is None]
+                alvos = [None] if por_grupo else [m.student for m in membros]
+                for alvo in alvos:
+                    chave = f"{g.pk}_{alvo.pk if alvo else 'grupo'}"
+                    status = request.POST.get(f"status_{chave}", "")
+                    if status not in dict(GroupWorkDelivery.Status.choices):
+                        continue
+                    GroupWorkDelivery.objects.update_or_create(
+                        group_work=work,
+                        group=g,
+                        student=alvo,
+                        defaults={
+                            "status": status,
+                            "grade": _parse_grade(
+                                request.POST.get(f"nota_{chave}", "")
+                            ),
+                            "comment": request.POST.get(f"obs_{chave}", "").strip()[
+                                :500
+                            ],
+                            "delivered_at": _parse_date(
+                                request.POST.get(f"data_{chave}", "")
+                            ),
+                            "registered_by": user,
+                        },
+                    )
+                    n += 1
+            _log(request, "update", work, f"Registrou {n} entrega(s) de {work.title}")
+        messages.success(request, f"{n} registro(s) de entrega salvos.")
+        return redirect("pedagogy:group_work_deliveries", pk=work.pk)
+
+    existentes = {
+        (d.group_id, d.student_id): d
+        for d in GroupWorkDelivery.objects.filter(group_work=work)
+    }
+    linhas = []
+    for g in grupos:
+        membros = [m for m in g.members.all() if m.removed_at is None]
+        if por_grupo:
+            linhas.append(
+                {
+                    "group": g,
+                    "members": membros,
+                    "student": None,
+                    "chave": f"{g.pk}_grupo",
+                    "delivery": existentes.get((g.pk, None)),
+                }
+            )
+        else:
+            for m in membros:
+                linhas.append(
+                    {
+                        "group": g,
+                        "members": membros,
+                        "student": m.student,
+                        "chave": f"{g.pk}_{m.student_id}",
+                        "delivery": existentes.get((g.pk, m.student_id)),
+                    }
+                )
+    return render(
+        request,
+        "pedagogy/groupwork_deliveries.html",
+        {
+            "work": work,
+            "rows": linhas,
+            "por_grupo": por_grupo,
+            "status_choices": GroupWorkDelivery.Status.choices,
+        },
     )
 
 

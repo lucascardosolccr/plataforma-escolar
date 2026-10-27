@@ -18,16 +18,20 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.academics.models import ClassGroup, SchoolYear, Subject, TeacherAssignment
-from apps.core.models import Role, School, User
+from apps.core.models import AuditLog, Role, School, User
 from apps.pedagogy.models import (
     Activity,
     AttendanceRecord,
     Evaluation,
     Grade,
+    GroupWork,
+    GroupWorkDelivery,
     Occurrence,
     PedagogicalObservation,
     SchoolConfig,
     Submission,
+    WorkGroup,
+    WorkGroupMember,
 )
 from apps.registry.models import Enrollment, GuardianLink, GuardianProfile, Student
 
@@ -62,6 +66,44 @@ TAREFAS = [
     ("Reescrita do final", "Reescrever o final da história com outro desfecho."),
     ("Caça-palavras de sinônimos", "Completar e escrever uma frase com três das palavras."),
 ]
+TRABALHOS = [
+    (
+        "Pesquisa sobre o meio ambiente",
+        "Pesquisar a nascente mais próxima da escola, registrar em fotos ou "
+        "desenhos e montar um cartaz explicando o que o grupo encontrou.",
+        "Cartaz e apresentação de 10 minutos",
+    ),
+    (
+        "Linha do tempo da cidade",
+        "Montar uma linha do tempo com cinco acontecimentos importantes da "
+        "cidade, dizendo onde o grupo encontrou cada informação.",
+        "Painel em cartolina",
+    ),
+    (
+        "Feira de experimentos",
+        "Escolher um experimento simples, repetir três vezes, anotar o que "
+        "mudou em cada tentativa e explicar o resultado para a turma.",
+        "Demonstração ao vivo",
+    ),
+    (
+        "Mapa do bairro",
+        "Desenhar o mapa do bairro marcando escola, praça e pontos de ônibus, "
+        "e escrever uma legenda.",
+        "Mapa desenhado à mão",
+    ),
+    (
+        "Jornal da turma",
+        "Escrever quatro notícias curtas sobre a escola e organizar em formato "
+        "de jornal, com título e autoria de cada texto.",
+        "Jornal impresso de duas páginas",
+    ),
+    (
+        "Leitura dramatizada",
+        "Escolher um trecho do livro lido no bimestre e preparar uma leitura "
+        "dramatizada, dividindo as falas entre os integrantes.",
+        "Apresentação em sala",
+    ),
+]
 
 
 class Command(BaseCommand):
@@ -92,25 +134,83 @@ class Command(BaseCommand):
 
     # ---------------------------------------------------------------- limpar
     def _limpar(self):
+        """Remove a escola de demonstração inteira.
+
+        A ordem abaixo é obrigatória: várias chaves estrangeiras são PROTECT
+        (``Evaluation.class_group``, ``Enrollment.school_year``, entre outras),
+        então apagar a turma antes dos registros pedagógicos levanta
+        ProtectedError e deixa a escola pela metade.
+        """
+        from apps.communication.models import (
+            Announcement,
+            Message,
+            Notification,
+            ServiceRequest,
+            Thread,
+        )
+        from apps.pedagogy.models import (
+            AbsenceJustification,
+            AcademicRule,
+            InterventionPlan,
+        )
+        from apps.registry.models import GuardianProfile
+
         school = School.objects.filter(code=DEMO_CODE).first()
         if not school:
             self.stdout.write("Nada a remover: escola de demonstração não existe.")
             return
+
+        contas = list(User.objects.filter(school=school).values_list("pk", flat=True))
+        estudantes = list(
+            Student.objects.filter(school=school).values_list("pk", flat=True)
+        )
+
         with transaction.atomic():
-            # Contas de estudante primeiro: Student.user é SET_NULL, então
-            # apagar o estudante não leva a conta embora.
-            contas = list(
-                User.objects.filter(school=school).values_list("pk", flat=True)
-            )
-            Student.objects.filter(school=school).delete()
+            # 1. Pedagógico que referencia turma, disciplina ou estudante.
+            GroupWork.objects.filter(school=school).delete()
+            Activity.objects.filter(school=school).delete()
+            Submission.objects.filter(school=school).delete()
+            Grade.objects.filter(school=school).delete()
+            Evaluation.objects.filter(school=school).delete()
+            AttendanceRecord.objects.filter(school=school).delete()
+            AbsenceJustification.objects.filter(school=school).delete()
+            Occurrence.objects.filter(school=school).delete()
+            PedagogicalObservation.objects.filter(school=school).delete()
+            InterventionPlan.objects.filter(school=school).delete()
+            AcademicRule.objects.filter(school=school).delete()
+            SchoolConfig.objects.filter(school=school).delete()
+
+            # 2. Comunicação.
+            Message.objects.filter(thread__school=school).delete()
+            Thread.objects.filter(school=school).delete()
+            Announcement.objects.filter(school=school).delete()
+            ServiceRequest.objects.filter(school=school).delete()
+            Notification.objects.filter(school=school).delete()
+
+            # 3. Cadastro.
+            GuardianLink.objects.filter(school=school).delete()
+            GuardianProfile.objects.filter(user_id__in=contas).delete()
             Enrollment.objects.filter(school=school).delete()
+            Student.objects.filter(pk__in=estudantes).delete()
+
+            # 4. Acadêmico.
+            TeacherAssignment.objects.filter(school=school).delete()
             ClassGroup.objects.filter(school=school).delete()
             Subject.objects.filter(school=school).delete()
             SchoolYear.objects.filter(school=school).delete()
+
+            # 5. Contas e a escola. A auditoria sai antes porque aponta para
+            # o usuário com SET_NULL e deixaria linhas sem dono.
+            AuditLog.objects.filter(user_id__in=contas).delete()
+            AuditLog.objects.filter(school=school).delete()
             User.objects.filter(pk__in=contas).delete()
             school.delete()
+
+        restante = School.objects.filter(code=DEMO_CODE).count()
         self.stdout.write(
             self.style.SUCCESS("Escola de demonstração removida por completo.")
+            if restante == 0
+            else self.style.ERROR("A escola não saiu; verifique as dependências.")
         )
 
     # ----------------------------------------------------------------- criar
@@ -313,6 +413,100 @@ class Command(BaseCommand):
                         )
             Submission.objects.bulk_create(entregas)
 
+            # --- trabalhos em grupo ---
+            for turma in turmas:
+                matriculados = [
+                    e.student
+                    for e in Enrollment.objects.filter(
+                        class_group=turma, status="ativo"
+                    ).select_related("student")
+                ]
+                profs_turma = {
+                    a.subject_id: a.teacher
+                    for a in TeacherAssignment.objects.filter(class_group=turma)
+                }
+                for k, (titulo, enunciado, apresentacao) in enumerate(TRABALHOS):
+                    disc = disciplinas[k % len(disciplinas)]
+                    publicado = hoje - timedelta(days=rnd.randint(2, 40))
+                    if k == 0:
+                        status, prazo = GroupWork.Status.DRAFT, None
+                    elif k == 1:
+                        status = GroupWork.Status.CANCELED
+                        prazo = publicado + timedelta(days=10)
+                    else:
+                        status = GroupWork.Status.PUBLISHED
+                        prazo = publicado + timedelta(
+                            days=rnd.choice([2, 8, 15, 21, -4])
+                        )
+                    work = GroupWork.objects.create(
+                        school=school,
+                        class_group=turma,
+                        subject=disc,
+                        title=f"{titulo} — {turma.name}",
+                        description=enunciado,
+                        objectives=(
+                            "Trabalhar pesquisa, organização da informação e "
+                            "apresentação em equipe."
+                        ),
+                        guidelines="Participação de todos, clareza e fontes citadas.",
+                        materials="Cartolina, cola, tesoura sem ponta e revistas.",
+                        presentation=apresentacao,
+                        published_date=publicado,
+                        deadline=prazo,
+                        delivery_mode=(
+                            GroupWork.DeliveryMode.INDIVIDUAL
+                            if k % 3 == 2
+                            else GroupWork.DeliveryMode.GROUP
+                        ),
+                        status=status,
+                        cancel_reason=(
+                            "Apresentação remarcada para o próximo bimestre."
+                            if status == GroupWork.Status.CANCELED
+                            else ""
+                        ),
+                        created_by=profs_turma.get(disc.pk, professores[0]),
+                    )
+                    if not matriculados:
+                        continue
+                    # Grupos de 3 a 4 integrantes, como numa turma real.
+                    sorteados = list(matriculados)
+                    rnd.shuffle(sorteados)
+                    tamanho = rnd.choice([3, 4])
+                    for i in range(0, len(sorteados), tamanho):
+                        fatia = sorteados[i : i + tamanho]
+                        if not fatia:
+                            continue
+                        g = WorkGroup.objects.create(
+                            group_work=work, name=f"Grupo {i // tamanho + 1}"
+                        )
+                        WorkGroupMember.objects.bulk_create(
+                            WorkGroupMember(
+                                group=g, student=st, added_by=work.created_by
+                            )
+                            for st in fatia
+                        )
+                    # Registra entrega de parte dos grupos publicados.
+                    if status == GroupWork.Status.PUBLISHED and rnd.random() < 0.6:
+                        for g in work.groups.all():
+                            membros = [m.student for m in g.active_members()]
+                            if work.delivery_mode == GroupWork.DeliveryMode.GROUP:
+                                alvos = [None]
+                            else:
+                                alvos = membros
+                            for alvo in alvos:
+                                if rnd.random() < 0.75:
+                                    GroupWorkDelivery.objects.create(
+                                        group_work=work,
+                                        group=g,
+                                        student=alvo,
+                                        status=rnd.choice(
+                                            ["entregue", "entregue", "atrasado"]
+                                        ),
+                                        grade=round(rnd.uniform(6, 10), 2),
+                                        delivered_at=prazo or publicado,
+                                        registered_by=work.created_by,
+                                    )
+
             # --- avaliações e notas ---
             notas = []
             for turma in turmas:
@@ -413,6 +607,9 @@ class Command(BaseCommand):
         w(f"  disciplinas ......... {Subject.objects.filter(school=school).count()}")
         w(f"  atividades .......... {Activity.objects.filter(school=school).count()}")
         w(f"  entregas ............ {Submission.objects.filter(school=school).count()}")
+        w(f"  trabalhos em grupo .. {GroupWork.objects.filter(school=school).count()}")
+        w(f"  grupos .............. {WorkGroup.objects.filter(group_work__school=school).count()}")
+        w(f"  participações ....... {WorkGroupMember.objects.filter(group__group_work__school=school).count()}")
         w(f"  notas ............... {Grade.objects.filter(school=school).count()}")
         w(f"  frequência .......... {AttendanceRecord.objects.filter(school=school).count()}")
         w(f"  contas .............. {User.objects.filter(school=school).count()}")

@@ -130,7 +130,8 @@
     {% include "partials/home_card.html" with url_name='my_children' title="Meus filhos" desc="Acompanhe cada estudante." %}
     {% include "partials/home_card.html" with url_name='link_request' title="Solicitar vínculo" desc="Vincular um novo estudante." %}
     {% include "partials/home_card.html" with url_name='pedagogy:evaluation_list' title="Notas e avaliações" desc="Veja somente avaliações publicadas." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:activity_list' title="Atividades" desc="Tarefas das turmas dos seus filhos." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:activity_list' title="Atividades de casa" desc="Tarefas das turmas dos seus filhos." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:group_work_list' title="Trabalhos em grupo" desc="O grupo de cada filho e os colegas que participam dele." %}
     {% include "partials/home_card.html" with url_name='pedagogy:justification_create' title="Justificar falta" desc="Enviar justificativa — analisada pela secretaria." %}
     {% include "partials/home_card.html" with url_name='communication:thread_create' title="Mensagens" desc="Conversar com professores e setores da escola." %}
     {% include "partials/home_card.html" with url_name='communication:announcement_list' title="Comunicados" desc="Avisos da escola e das turmas dos filhos." %}
@@ -138,6 +139,7 @@
     {% include "partials/home_card.html" with url_name='analytics:report_hub' title="Relatórios" desc="Boletim, evolução e frequência dos seus filhos." %}
   {% elif user_role == ROLE_ESTUDANTE %}
     {% include "partials/home_card.html" with url_name='pedagogy:activity_list' title="Minhas atividades" desc="Tarefas publicadas para a sua turma, com os prazos." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:group_work_list' title="Trabalhos em grupo" desc="Seu grupo e os colegas que participam dele." %}
     {% include "partials/home_card.html" with url_name='pedagogy:evaluation_list' title="Minhas notas" desc="Somente avaliações já publicadas pelo professor." %}
     {% include "partials/home_card.html" with url_name='pedagogy:attendance_list' title="Minha frequência" desc="Presenças, atrasos e faltas registradas." %}
     {% if own_student %}

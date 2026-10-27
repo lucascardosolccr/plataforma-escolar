@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}{{ work.title }} — Trabalho em grupo — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-1">{{ work.title }}</h1>
+    <p class="text-body-secondary small mb-0">
+      {{ work.subject.name }} · Turma {{ work.class_group.name }}
+      {% if work.created_by %}· Prof. {{ work.created_by.get_full_name|default:work.created_by.username }}{% endif %}
+    </p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <span class="chip chip-state state-{{ state }}">{{ state_label }}</span>
+    <a href="{% url 'pedagogy:group_work_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+  </div>
+</div>
+
+{% if can_manage and work.status == 'rascunho' %}
+  <div class="alert alert-warning" role="alert">
+    <strong>Rascunho.</strong> Esta é a prévia exata do que a turma verá. Nenhum
+    estudante ou responsável tem acesso enquanto não for publicado.
+  </div>
+{% elif can_manage and work.status == 'publicada' and work.published_date > today %}
+  <div class="alert alert-info" role="alert">
+    <strong>Agendado.</strong> A turma passa a ver este trabalho em
+    {{ work.published_date|date:"d/m/Y" }}.
+  </div>
+{% endif %}
+
+{% if work.status == 'cancelada' %}
+  <div class="alert alert-secondary" role="alert">
+    <strong>Trabalho cancelado.</strong>
+    {% if work.cancel_reason %}{{ work.cancel_reason }}{% endif %}
+    <span class="d-block small mt-1">
+      Os grupos e as entregas registradas ficam no histórico; nada foi apagado.
+    </span>
+  </div>
+{% endif %}
+
+{% if viewer_students %}
+  <div class="alert alert-primary d-flex flex-wrap align-items-center gap-2" role="alert">
+    <span class="small">Você está vendo este trabalho no registro de:</span>
+    {% for s in viewer_students %}<strong>{{ s.full_name }}</strong>{% if not forloop.last %}<span>·</span>{% endif %}{% endfor %}
+  </div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h2 class="h6 text-body-secondary mb-2">O que deve ser feito</h2>
+        <div class="activity-instructions mb-0">{{ work.description }}</div>
+
+        {% if work.objectives %}
+          <hr>
+          <h2 class="h6 text-body-secondary mb-2">Objetivos pedagógicos</h2>
+          <div class="activity-instructions mb-0">{{ work.objectives }}</div>
+        {% endif %}
+
+        {% if work.guidelines %}
+          <hr>
+          <h2 class="h6 text-body-secondary mb-2">Orientações e critérios</h2>
+          <div class="activity-instructions mb-0">{{ work.guidelines }}</div>
+        {% endif %}
+
+        {% if work.materials %}
+          <hr>
+          <h2 class="h6 text-body-secondary mb-2">Materiais necessários</h2>
+          <div class="activity-instructions mb-0">{{ work.materials }}</div>
+        {% endif %}
+
+        {% if work.notes %}
+          <hr>
+          <h2 class="h6 text-body-secondary mb-2">Observações</h2>
+          <div class="activity-instructions mb-0">{{ work.notes }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+          <h2 class="h6 text-body-secondary mb-0">
+            {% if sees_all_groups %}Grupos e integrantes{% else %}O seu grupo{% endif %}
+          </h2>
+          {% if can_manage %}
+            <a href="{% url 'pedagogy:group_work_groups' work.pk %}" class="btn btn-sm btn-outline-primary">Organizar grupos</a>
+          {% endif %}
+        </div>
+
+        {% if not sees_all_groups %}
+          <p class="text-body-secondary small">
+            A composição dos outros grupos da turma não é mostrada aqui.
+          </p>
+        {% endif %}
+
+        {% if group_rows %}
+          <div class="row g-3">
+            {% for row in group_rows %}
+            <div class="col-md-6">
+              <div class="card h-100 border">
+                <div class="card-body">
+                  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                    <h3 class="h6 mb-0">{{ row.group.name }}</h3>
+                    <span class="chip">{{ row.members|length }} integrante{{ row.members|length|pluralize:"s" }}</span>
+                  </div>
+                  <ol class="mb-0 small ps-3">
+                    {% for m in row.members %}
+                      <li class="{% if m.student_id in highlight_ids %}fw-bold{% endif %}">
+                        {% if sees_all_groups %}
+                          <a href="{% url 'student_detail' m.student.pk %}">{{ m.student.full_name }}</a>
+                        {% else %}
+                          {% comment %}
+                            Nome em texto puro: a lista de integrantes não é
+                            caminho para a ficha dos colegas.
+                          {% endcomment %}
+                          {{ m.student.full_name }}
+                        {% endif %}
+                        {% if m.student_id in highlight_ids %}<span class="chip ms-1">este registro</span>{% endif %}
+                      </li>
+                    {% empty %}
+                      <li class="text-body-secondary">Nenhum integrante neste grupo.</li>
+                    {% endfor %}
+                  </ol>
+                  {% if row.former and sees_all_groups %}
+                    <p class="small text-body-secondary mb-0 mt-2">
+                      Saíram do grupo:
+                      {% for m in row.former %}{{ m.student.full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                    </p>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-body-secondary mb-0">
+            {% if can_manage %}
+              Nenhum grupo formado ainda.
+              <a href="{% url 'pedagogy:group_work_groups' work.pk %}">Organizar agora</a>.
+            {% else %}
+              Os grupos ainda não foram organizados pelo professor.
+            {% endif %}
+          </p>
+        {% endif %}
+
+        {% if can_manage and ungrouped %}
+          <div class="alert alert-warning small mt-3 mb-0" role="alert">
+            <strong>{{ ungrouped|length }} estudante{{ ungrouped|length|pluralize:"s" }} sem grupo:</strong>
+            {% for s in ungrouped %}{{ s.full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h2 class="h6 text-body-secondary mb-3">Datas e entrega</h2>
+        <dl class="row small mb-0 g-0">
+          <dt class="col-6 fw-normal text-body-secondary">Publicação</dt>
+          <dd class="col-6 mb-2">{{ work.published_date|date:"d/m/Y" }}</dd>
+          <dt class="col-6 fw-normal text-body-secondary">Prazo</dt>
+          <dd class="col-6 mb-2">
+            {% if work.deadline %}<strong>{{ work.deadline|date:"d/m/Y" }}</strong>{% else %}—{% endif %}
+          </dd>
+          {% if work.presentation %}
+            <dt class="col-6 fw-normal text-body-secondary">Apresentação</dt>
+            <dd class="col-6 mb-2">{{ work.presentation }}</dd>
+          {% endif %}
+          <dt class="col-6 fw-normal text-body-secondary">Entrega</dt>
+          <dd class="col-6 mb-0">{{ work.get_delivery_mode_display }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h2 class="h6 text-body-secondary mb-2">Arquivos de apoio</h2>
+        {% if work.attachments.all %}
+          <ul class="list-unstyled mb-0 small">
+            {% for att in work.attachments.all %}
+              <li class="mb-2 d-flex align-items-start gap-2">
+                <span aria-hidden="true">📎</span>
+                <a href="{% url 'pedagogy:group_work_attachment' work.pk att.pk %}">{{ att.original_name }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-body-secondary small mb-0">Nenhum arquivo.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if can_manage %}
+<div class="card mt-3">
+  <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <p class="text-body-secondary small mb-0">
+      Alcança <strong>{{ reach }}</strong> estudante{{ reach|pluralize:"s" }} com matrícula
+      ativa nesta turma. Editar atualiza o trabalho para todos os grupos de uma vez.
+    </p>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{% url 'pedagogy:group_work_groups' work.pk %}" class="btn btn-sm btn-outline-primary">Organizar grupos</a>
+      <a href="{% url 'pedagogy:group_work_deliveries' work.pk %}" class="btn btn-sm btn-outline-primary">Registrar entregas</a>
+      <a href="{% url 'pedagogy:group_work_edit' work.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
+      {% if work.status != 'cancelada' %}
+        <a href="{% url 'pedagogy:group_work_cancel' work.pk %}" class="btn btn-sm btn-outline-danger">Cancelar trabalho</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}{% if is_student %}Meus trabalhos em grupo{% else %}Trabalhos em grupo{% endif %} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <h1 class="h4 mb-1">{% if is_student %}Meus trabalhos em grupo{% else %}Trabalhos em grupo{% endif %}</h1>
+  <p class="text-body-secondary small mb-0">
+    {% if is_student %}
+      Trabalhos atribuídos pelos seus professores, com o seu grupo e os colegas
+      que participam dele.
+    {% else %}
+      Trabalhos atribuídos à turma de cada filho, com a composição do grupo de
+      que ele participa.
+    {% endif %}
+  </p>
+</div>
+
+{% if children|length > 1 or state %}
+<div class="card mb-3">
+  <form method="get" class="row g-2 align-items-end p-3 mb-0">
+    {% if children|length > 1 %}
+    <div class="col-sm-5 col-md-4">
+      <label class="form-label small mb-1" for="f-estudante">Filho</label>
+      <select class="form-select form-select-sm" id="f-estudante" name="estudante">
+        <option value="">Todos</option>
+        {% for c in children %}
+          <option value="{{ c.pk }}"{% if student_id == c.pk %} selected{% endif %}>{{ c.full_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="col-sm-5 col-md-4">
+      <label class="form-label small mb-1" for="f-situacao">Situação</label>
+      <select class="form-select form-select-sm" id="f-situacao" name="situacao">
+        <option value="">Todas</option>
+        <option value="a_vencer"{% if state == 'a_vencer' %} selected{% endif %}>A vencer</option>
+        <option value="pendente"{% if state == 'pendente' %} selected{% endif %}>Em andamento</option>
+        <option value="encerrada"{% if state == 'encerrada' %} selected{% endif %}>Prazo encerrado</option>
+        <option value="cancelada"{% if state == 'cancelada' %} selected{% endif %}>Cancelado</option>
+      </select>
+    </div>
+    <div class="col-sm-2 d-flex gap-2">
+      <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
+      <a href="{% url 'pedagogy:group_work_list' %}" class="btn btn-sm btn-outline-secondary">Limpar</a>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+{% if rows %}
+  <div class="row g-3">
+    {% for r in rows %}
+    <div class="col-12 col-lg-6">
+      <div class="card h-100">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+            {% if is_student %}
+              <span class="chip">{{ r.work.class_group.name }}</span>
+            {% else %}
+              <span class="chip">👦 {{ r.student.full_name }}</span>
+            {% endif %}
+            <span class="chip chip-state state-{{ r.state }}">{{ r.state_label }}</span>
+          </div>
+
+          <h2 class="h6 mb-1">
+            <a href="{% url 'pedagogy:group_work_detail' r.work.pk %}">{{ r.work.title }}</a>
+          </h2>
+          <p class="text-body-secondary small mb-2">
+            {{ r.work.subject.name }} · Turma {{ r.work.class_group.name }}
+          </p>
+
+          <dl class="row small mb-2 g-0">
+            <dt class="col-5 fw-normal text-body-secondary">Publicado em</dt>
+            <dd class="col-7 mb-0">{{ r.work.published_date|date:"d/m/Y" }}</dd>
+            <dt class="col-5 fw-normal text-body-secondary">Prazo</dt>
+            <dd class="col-7 mb-0">
+              {% if r.work.deadline %}<strong>{{ r.work.deadline|date:"d/m/Y" }}</strong>{% else %}<span class="text-body-secondary">sem prazo definido</span>{% endif %}
+            </dd>
+          </dl>
+
+          <div class="border-top pt-2 mb-2">
+            <p class="small mb-1">
+              <strong>{{ r.group.name }}</strong>
+              {% if not is_student %}— grupo de {{ r.student.first_name }}{% endif %}
+            </p>
+            {% if r.colleagues %}
+              {% comment %}
+                Nomes em texto puro: a composição do grupo é informação
+                necessária, mas não dá acesso à ficha dos colegas.
+              {% endcomment %}
+              <p class="small text-body-secondary mb-0">
+                Com {% for c in r.colleagues %}{{ c.full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+              </p>
+            {% else %}
+              <p class="small text-body-secondary mb-0">
+                {% if is_student %}Você é o único integrante deste grupo.{% else %}Único integrante do grupo.{% endif %}
+              </p>
+            {% endif %}
+          </div>
+
+          {% if r.work.status == 'cancelada' and r.work.cancel_reason %}
+            <p class="small text-body-secondary mb-2">
+              <strong>Cancelado:</strong> {{ r.work.cancel_reason }}
+            </p>
+          {% endif %}
+
+          <div class="mt-auto d-flex flex-wrap align-items-center gap-2">
+            <a href="{% url 'pedagogy:group_work_detail' r.work.pk %}" class="btn btn-sm btn-outline-primary">Ver o trabalho</a>
+            {% with n=r.work.attachments.all|length %}
+              {% if n %}<span class="chip">📎 {{ n }} arquivo{{ n|pluralize:"s" }}</span>{% endif %}
+            {% endwith %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card">
+    <div class="card-body text-center text-body-secondary py-5">
+      <p class="mb-1 fw-semibold">Nenhum trabalho em grupo por aqui.</p>
+      <p class="small mb-0">
+        {% if state or student_id %}
+          Nenhum trabalho corresponde ao filtro escolhido.
+          <a href="{% url 'pedagogy:group_work_list' %}">Ver todos</a>.
+        {% elif children %}
+          {% if is_student %}
+            Quando um professor te colocar num grupo, o trabalho aparece aqui.
+          {% else %}
+            Quando um professor publicar um trabalho e formar os grupos, ele aparece aqui.
+          {% endif %}
+        {% elif is_student %}
+          Você ainda não tem matrícula ativa em nenhuma turma. Procure a secretaria.
+        {% else %}
+          Você ainda não tem nenhum estudante vinculado e aprovado.
+          <a href="{% url 'link_list' %}">Ver meus vínculos</a>.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+{% endif %}
+{% include "partials/_pager.html" %}
+{% endblock %}

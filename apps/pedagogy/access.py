@@ -122,6 +122,97 @@ def _guardian_class_ids(user, class_group_id):
     ).exists()
 
 
+def can_manage_group_works(user, class_group=None, subject=None):
+    """Cria/edita/publica trabalho em grupo e organiza os grupos.
+
+    Mesma regra das atividades: só o professor com atribuição no PAR
+    turma+disciplina.
+    """
+    if class_group is None:
+        return user.is_authenticated and user.role == Role.PROFESSOR.value
+    return _teacher_of(user, class_group, subject)
+
+
+def can_view_group_work(user, work):
+    """Quem pode abrir um trabalho em grupo.
+
+    O responsável e o estudante só alcançam o que foi publicado e cuja data
+    já chegou, e apenas quando há vínculo com a turma — rascunho e trabalho
+    agendado não chegam à família nem por identificador na URL.
+    """
+    if not user.is_authenticated or user.school_id != work.school_id:
+        return False
+    if user.role in (
+        Role.COORDENACAO.value,
+        Role.DIRECAO.value,
+        Role.SECRETARIA.value,
+        Role.ADMIN.value,
+    ):
+        return True
+    if user.role == Role.PROFESSOR.value:
+        return _teacher_of(user, work.class_group)
+    if not work.is_visible_to_family:
+        return False
+    if user.role == Role.RESPONSAVEL.value:
+        return _guardian_class_ids(user, work.class_group_id)
+    if user.role == Role.ESTUDANTE.value:
+        return work.class_group_id in _student_class_ids(user)
+    return False
+
+
+def group_work_students_for(user, work):
+    """Estudantes do ponto de vista de quem está olhando.
+
+    Devolve os estudantes pelos quais este usuário vê o trabalho: os filhos
+    vinculados matriculados na turma, ou ele mesmo. Vazio para a equipe, que
+    vê o trabalho inteiro e não "pelo" aluno nenhum.
+    """
+    from apps.registry.models import Enrollment, GuardianLink, Student
+
+    if user.role == Role.RESPONSAVEL.value:
+        child_ids = GuardianLink.objects.filter(
+            guardian=user, status="aprovado"
+        ).values_list("student_id", flat=True)
+        matriculados = Enrollment.objects.filter(
+            student_id__in=child_ids, class_group=work.class_group
+        ).values_list("student_id", flat=True)
+        return list(
+            Student.objects.filter(pk__in=matriculados).order_by(
+                "first_name", "last_name"
+            )
+        )
+    if user.role == Role.ESTUDANTE.value:
+        own = own_student(user)
+        return [own] if own is not None else []
+    return []
+
+
+def visible_groups_for(user, work):
+    """Quais grupos deste trabalho o usuário pode ver a composição.
+
+    A equipe e o professor da turma veem todos os grupos. O responsável e o
+    estudante veem apenas o grupo de que participam — saber quem são os
+    colegas do próprio grupo é necessário para organizar o trabalho; a
+    composição dos OUTROS grupos não é.
+    """
+    todos = work.groups.all()
+    if user.role in (
+        Role.COORDENACAO.value,
+        Role.DIRECAO.value,
+        Role.SECRETARIA.value,
+        Role.ADMIN.value,
+    ):
+        return todos
+    if user.role == Role.PROFESSOR.value and _teacher_of(user, work.class_group):
+        return todos
+    alvos = [s.pk for s in group_work_students_for(user, work)]
+    if not alvos:
+        return todos.none()
+    return todos.filter(
+        members__student_id__in=alvos, members__removed_at__isnull=True
+    ).distinct()
+
+
 def can_register_attendance(user, class_group):
     return _teacher_of(user, class_group)
 

@@ -133,7 +133,7 @@ def student_detail(request, student_id):
 
     comm = _student_comms(request.user, student)
 
-    from apps.pedagogy.views import student_activity_rows
+    from apps.pedagogy.views import student_activity_rows, student_group_work_rows
 
     return render(
         request,
@@ -141,6 +141,11 @@ def student_detail(request, student_id):
         {
             "student": student,
             "activity_rows": student_activity_rows(student),
+            "group_work_rows": student_group_work_rows(student),
+            # A composição do grupo é informação necessária, mas só a equipe
+            # pode navegar dela para a ficha dos colegas.
+            "can_open_colleagues": can_manage_registry(request.user)
+            or request.user.role == Role.PROFESSOR.value,
             "enrollments": enrollments,
             "links": links,
             "assignments": assignments,

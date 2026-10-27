@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% load pedagogy_extras form_extras %}
+{% block title %}Organizar grupos — {{ work.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-1">Organizar grupos</h1>
+    <p class="text-body-secondary small mb-0">
+      {{ work.title }} · {{ work.subject.name }} · Turma {{ work.class_group.name }}
+    </p>
+  </div>
+  <a href="{% url 'pedagogy:group_work_detail' work.pk %}" class="btn btn-outline-secondary btn-sm">Ver trabalho</a>
+</div>
+
+{% if not students %}
+  <div class="card">
+    <div class="card-body text-center text-body-secondary py-5">
+      <p class="fw-semibold mb-1">Esta turma não tem estudantes matriculados.</p>
+      <p class="small mb-0">
+        Cadastre as matrículas da turma {{ work.class_group.name }} antes de formar grupos.
+      </p>
+    </div>
+  </div>
+{% else %}
+
+<div class="row g-3 mb-3">
+  <div class="col-md-6">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6 mb-2">Criar um grupo</h2>
+      <form method="post" class="row g-2 align-items-start" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="_acao" value="criar">
+        <div class="col-sm-8">
+          {{ form.name|bs }}
+          {% for e in form.name.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="col-sm-4">
+          <button type="submit" class="btn btn-primary w-100">Criar</button>
+        </div>
+      </form>
+      <p class="text-body-secondary small mb-0 mt-2">
+        Para um trabalho de toda a turma, crie um único grupo e coloque todos nele.
+      </p>
+    </div></div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6 mb-2">Sortear grupos</h2>
+      <form method="post" class="row g-2 align-items-start"
+            onsubmit="return confirm('Sortear vai refazer os grupos deste trabalho desde o início. Continuar?');">
+        {% csrf_token %}
+        <input type="hidden" name="_acao" value="sortear">
+        <div class="col-sm-8">
+          <label class="visually-hidden" for="qtd-grupos">Quantos grupos</label>
+          <input type="number" min="1" max="{{ students|length }}" name="quantidade" id="qtd-grupos"
+                 class="form-control" placeholder="Quantos grupos">
+        </div>
+        <div class="col-sm-4">
+          <button type="submit" class="btn btn-outline-secondary w-100">Sortear</button>
+        </div>
+      </form>
+      <p class="text-body-secondary small mb-0 mt-2">
+        Distribui os {{ students|length }} estudantes ao acaso. Você revisa e
+        ajusta abaixo antes de considerar pronto.
+      </p>
+    </div></div>
+  </div>
+</div>
+
+{% if groups %}
+<div class="card mb-3">
+  <div class="card-body">
+    <h2 class="h6 mb-3">Grupos formados</h2>
+    <div class="row g-3">
+      {% for row in group_rows %}
+      <div class="col-md-6 col-lg-4">
+        <div class="card h-100 border"><div class="card-body">
+          <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+            <h3 class="h6 mb-0">{{ row.group.name }}</h3>
+            <form method="post" class="m-0"
+                  onsubmit="return confirm('Remover o grupo {{ row.group.name|escapejs }}? Os integrantes ficam sem grupo.');">
+              {% csrf_token %}
+              <input type="hidden" name="_acao" value="remover_grupo">
+              <input type="hidden" name="grupo" value="{{ row.group.pk }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger"
+                      aria-label="Remover o grupo {{ row.group.name }}">Remover</button>
+            </form>
+          </div>
+          <ol class="small mb-0 ps-3">
+            {% for m in row.members %}
+              <li>{{ m.student.full_name }}</li>
+            {% empty %}
+              <li class="text-body-secondary">Sem integrantes.</li>
+            {% endfor %}
+          </ol>
+        </div></div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<form method="post" novalidate>
+  {% csrf_token %}
+  <input type="hidden" name="_acao" value="atribuir">
+  <div class="card">
+    <div class="card-header bg-transparent d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <h2 class="h6 mb-0">Quem fica em cada grupo</h2>
+      {% if ungrouped %}
+        <span class="chip">{{ ungrouped|length }} sem grupo</span>
+      {% else %}
+        <span class="chip">todos distribuídos</span>
+      {% endif %}
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead><tr><th>Estudante</th><th style="min-width:14rem">Grupo</th></tr></thead>
+        <tbody>
+          {% for st in students %}
+          <tr>
+            <td class="fw-semibold">{{ st.full_name }}</td>
+            <td>
+              <select name="grupo_{{ st.pk }}" class="form-select form-select-sm"
+                      aria-label="Grupo de {{ st.full_name }}">
+                <option value="">— sem grupo —</option>
+                {% for g in groups %}
+                  <option value="{{ g.pk }}"{% if current|getitem:st.pk == g.pk %} selected{% endif %}>{{ g.name }}</option>
+                {% endfor %}
+              </select>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% if groups %}
+    <button type="submit" class="btn btn-primary mt-3">Salvar composição</button>
+    <p class="text-body-secondary small mt-2 mb-0">
+      Tirar alguém de um grupo preserva o registro da participação anterior —
+      o histórico não é apagado.
+    </p>
+  {% else %}
+    <p class="text-body-secondary small mt-3 mb-0">
+      Crie ao menos um grupo acima para poder distribuir os estudantes.
+    </p>
+  {% endif %}
+</form>
+{% endif %}
+{% endblock %}

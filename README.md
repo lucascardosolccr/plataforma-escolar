@@ -80,16 +80,17 @@ Copie `.env.example` para `.env` e ajuste. Opcional — se não existir `.env`, 
 python -m pytest
 ```
 
-**175 testes.** Se vier de uma versão anterior, aplique as migrações antes de
-subir o servidor — a atividade de casa acrescentou campos e a tabela de anexos:
+**310 testes.** Se vier de uma versão anterior, aplique as migrações antes de
+subir o servidor — a atividade de casa, a conta do estudante e os trabalhos em
+grupo acrescentaram campos e tabelas:
 
 ```bash
 python manage.py migrate
 ```
 
-Faça o backup do `db.sqlite3` antes (seção 5). A migração é aditiva: as
-atividades que já existirem ficam como **publicadas**, mantendo o
-comportamento anterior.
+Faça o backup antes (`python manage.py backupdb`, seção 5). Todas as migrações
+são aditivas: as atividades que já existirem ficam como **publicadas**,
+mantendo o comportamento anterior, e nenhuma coluna existente é removida.
 
 Cobertura — autenticação, autorização, auditoria e RBAC (perfil,
 elevação de privilégio, isolamento entre escolas), cadastro escolar (vínculos
@@ -106,6 +107,14 @@ par turma+disciplina cruzado, responsável sem vínculo, acesso a rascunho pelo
 identificador, anexo executável recusado, anexo de rascunho bloqueado,
 cancelamento preservando histórico e **orçamento de consultas** (a mesma tela
 medida com 2 e com 27 estudantes/atividades, falhando se houver N+1).
+
+Trabalhos em grupo — os 15 cenários da seção 7.7 do Prompt 5, mais: o
+responsável **não** vê a composição dos outros grupos, os nomes dos colegas
+**não** são links para a ficha deles, mover integrante preserva a participação
+anterior, reentrar não duplica, aluno de outra turma é recusado, grupo de um
+integrante, turma sem estudantes, entrega individual não marca os colegas,
+nota do trabalho não entra na média da disciplina e **nenhuma sintaxe de
+template vaza** para a página.
 
 ---
 
@@ -262,6 +271,7 @@ diretamente.
 
 - ✔ **Avaliações e notas**: professor cria avaliações apenas nas turmas/disciplinas que leciona, lança notas em lote e publica (só a publicação torna as notas visíveis à família); edição/exclusão bloqueada após publicar.
 - ✔ **Atividades de casa e entregas**: publicação por turma/disciplina com rascunho, anexos de apoio, cancelamento com motivo e área própria da família (detalhes na seção 9).
+- ✔ **Trabalhos em grupo**: um trabalho por turma, com grupos e integrantes dentro dele; a família e o estudante veem o grupo e os colegas, sem acesso aos dados privados deles (detalhes na seção 10).
 - ✔ **Frequência**: visualização por turma e registro em lote (presente/atraso/falta), com mapa de presença por turma.
 - ✔ **Ocorrências**: registro objetivo com providências/encaminhamento, histórico de alterações em auditoria e fila de acompanhamento.
 - ✔ **Observações pedagógicas**: dificuldades, habilidades e estratégias por estudante — **invisíveis a administração e secretaria**.
@@ -353,7 +363,46 @@ família vê a atividade marcada como cancelada com o motivo.
 não apenas a ativa, para que a mudança de turma não apague o histórico de
 atividades já atribuídas.
 
-## 10. Escola de demonstração
+## 10. Trabalhos em grupo
+
+O trabalho é **uma entidade compartilhada**: quatro alunos num grupo não geram
+quatro trabalhos. O trabalho pertence à turma, os grupos pertencem ao trabalho e
+os integrantes pertencem ao grupo — então editar o enunciado atualiza todos de
+uma vez, e a composição tem um só lugar de verdade.
+
+**Professor** (`/trabalhos/`, menu Pedagógico → Trabalhos em grupo)
+
+1. Cria o trabalho: turma e disciplina da **sua atribuição**, título e enunciado
+   (os únicos obrigatórios), mais objetivos, critérios, materiais, forma de
+   apresentação, datas e arquivos de apoio conforme precisar.
+2. Organiza os grupos **numa única tela**: cria grupos pelo nome, ou usa
+   **Sortear** para distribuir ao acaso e depois revisar, e atribui cada
+   estudante por um seletor. Para trabalho coletivo, basta um grupo com todos.
+3. Publica. A família é avisada, com o nome do estudante no aviso.
+4. Registra entregas, com nota e observação opcionais.
+
+**Forma de entrega** é explícita e escolhida no trabalho: *uma por grupo* ou
+*uma por integrante*. Marcar um integrante nunca marca os colegas.
+
+**Família e estudante** (`/trabalhos/`) veem um cartão por trabalho **e por
+filho**, dizendo de quem é o registro, qual é o grupo, e **quem são os colegas
+daquele grupo** — informação necessária para organizar o trabalho.
+
+**O recorte de privacidade**, que é o ponto delicado:
+
+- O responsável e o estudante veem **apenas o grupo de que participam**. A
+  composição dos outros grupos da turma não aparece.
+- Os nomes dos colegas são **texto puro, não links**: saber quem está no grupo
+  não abre caminho para a ficha, as notas, os contatos ou os documentos deles.
+  Só a equipe navega da composição para o registro individual.
+- Rascunho e trabalho com data futura não chegam à família, nem pelo
+  identificador na URL. Anexos passam por view que confere o vínculo.
+
+**Histórico:** tirar alguém de um grupo marca a saída em vez de apagar a linha,
+e cancelar o trabalho preserva grupos, integrantes e entregas. Transferência de
+turma não apaga a participação anterior.
+
+## 11. Escola de demonstração
 
 Para conhecer a plataforma, treinar a equipe ou avaliar o comportamento com
 volume antes de cadastrar dados reais:
@@ -375,7 +424,7 @@ usam a mesma senha, impressa no fim do comando.
 > real, e os estudantes fictícios não aparecem nas listagens dela. Os nomes são
 > inventados — nunca use dados de estudantes reais para demonstrar ou testar.
 
-## 11. Acesso do próprio estudante
+## 12. Acesso do próprio estudante
 
 Opcional, e desligado por padrão: um estudante só tem login se a escola criar.
 

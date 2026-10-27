@@ -10,6 +10,7 @@ Regras gerais (matriz RBAC do Prompt 1, seções 5–8 e 10):
 """
 
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 
 from apps.academics.models import TeacherAssignment
 from apps.core.models import Role, STAFF_ROLES, User
@@ -177,45 +178,134 @@ def can_view_announcements(user):
     return user.is_authenticated and user.school_id is not None
 
 
-def can_view_announcement(user, announcement):
+def _own_student(user):
+    from apps.registry.access import student_of
+
+    return student_of(user)
+
+
+def _scope_q(class_ids, student_ids):
+    """Comunicados cuja abrangência alcança estas turmas/estes estudantes.
+
+    ``student_ids=None`` deixa os individuais de fora.
+    """
+    q = Q(scope=Announcement.Scope.INSTITUCIONAL) | Q(
+        scope=Announcement.Scope.TURMA, class_group_id__in=list(class_ids)
+    )
+    if student_ids is not None:
+        q |= Q(scope=Announcement.Scope.INDIVIDUAL, student_id__in=list(student_ids))
+    return q
+
+
+FAMILY_AUDIENCE = (Announcement.Audience.FAMILIA, Announcement.Audience.TODOS)
+STAFF_AUDIENCE = (Announcement.Audience.EQUIPE, Announcement.Audience.TODOS)
+
+
+def announcement_q(user):
+    """Filtro único de "quem vê qual comunicado": lista, detalhe, prontuário
+    e notificações usam a mesma regra.
+
+    - Gestão (direção, coordenação, secretaria, administração): todos da
+      escola, pois administra os comunicados.
+    - Professor: institucionais, os das próprias turmas e os individuais dos
+      próprios estudantes — qualquer que seja o público. Ser "da equipe" não
+      dá acesso a comunicado individual de estudante de outra turma.
+    - Responsável: público família/todos, dos filhos com vínculo aprovado.
+    - Estudante: público família/todos, institucionais e da própria turma.
+      Os individuais são dirigidos aos responsáveis e não aparecem a ele.
+    """
     if not can_view_announcements(user):
-        return False
-    if announcement.school_id != user.school_id:
-        return False
-    if user.role == Role.RESPONSAVEL.value:
-        if announcement.audience not in (Announcement.Audience.FAMILIA, Announcement.Audience.TODOS):
-            return False
-        if announcement.scope == Announcement.Scope.INSTITUCIONAL:
-            return True
-        if announcement.scope == Announcement.Scope.TURMA:
-            return (
-                announcement.class_group_id is not None
-                and announcement.class_group_id in _guardian_class_ids(user)
-            )
-        if announcement.scope == Announcement.Scope.INDIVIDUAL:
-            return (
-                announcement.student_id is not None
-                and announcement.student_id in _guardian_child_ids(user)
-            )
-        return False
-    # Profissionais
+        return Q(pk__in=[])
+    if user.role in MANAGE_STAFF:
+        return Q()
     if user.role == Role.PROFESSOR.value:
-        if announcement.audience in (Announcement.Audience.EQUIPE, Announcement.Audience.TODOS):
-            return True
-        if announcement.scope == Announcement.Scope.INSTITUCIONAL:
-            return True
-        if announcement.scope == Announcement.Scope.TURMA:
-            return (
-                announcement.class_group_id is not None
-                and announcement.class_group_id in _teacher_class_ids(user)
-            )
-        if announcement.scope == Announcement.Scope.INDIVIDUAL:
-            return (
-                announcement.student_id is not None
-                and announcement.student_id in _teacher_student_ids(user)
-            )
+        return _scope_q(_teacher_class_ids(user), _teacher_student_ids(user))
+    if user.role == Role.RESPONSAVEL.value:
+        return Q(audience__in=FAMILY_AUDIENCE) & _scope_q(
+            _guardian_class_ids(user), _guardian_child_ids(user)
+        )
+    if user.role == Role.ESTUDANTE.value:
+        own = _own_student(user)
+        if own is None:
+            return Q(pk__in=[])
+        class_ids = Enrollment.objects.filter(student=own, status="ativo").values_list(
+            "class_group_id", flat=True
+        )
+        return Q(audience__in=FAMILY_AUDIENCE) & _scope_q(class_ids, None)
+    return Q(pk__in=[])
+
+
+def can_view_announcement(user, announcement):
+    if not can_view_announcements(user) or announcement.school_id != user.school_id:
         return False
-    return True
+    return Announcement.objects.filter(
+        announcement_q(user), pk=announcement.pk
+    ).exists()
+
+
+def announcement_recipients(announcement):
+    """Quem é avisado de um comunicado: exatamente quem pode abri-lo.
+
+    Antes, o público "todos" ignorava a abrangência: um comunicado individual
+    sobre um estudante avisava todas as famílias da escola, com o começo do
+    texto na notificação.
+    """
+    from apps.registry.models import Student
+
+    ann = announcement
+    users = User.objects.filter(school=ann.school, is_active=True)
+    ids = set()
+
+    if ann.scope == Announcement.Scope.INSTITUCIONAL:
+        student_ids = None  # todos
+    elif ann.scope == Announcement.Scope.TURMA:
+        student_ids = set(
+            Enrollment.objects.filter(
+                class_group_id=ann.class_group_id, status="ativo"
+            ).values_list("student_id", flat=True)
+        )
+    else:
+        student_ids = {ann.student_id} if ann.student_id else set()
+
+    if ann.audience in STAFF_AUDIENCE:
+        ids |= set(users.filter(role__in=MANAGE_STAFF).values_list("pk", flat=True))
+        teachers = TeacherAssignment.objects.filter(school=ann.school)
+        if ann.scope == Announcement.Scope.TURMA:
+            teachers = teachers.filter(class_group_id=ann.class_group_id)
+        elif ann.scope == Announcement.Scope.INDIVIDUAL:
+            teachers = teachers.filter(
+                class_group_id__in=Enrollment.objects.filter(
+                    student_id__in=student_ids, status="ativo"
+                ).values("class_group_id")
+            )
+        ids |= set(
+            users.filter(
+                role=Role.PROFESSOR.value,
+                pk__in=teachers.values("teacher_id"),
+            ).values_list("pk", flat=True)
+        )
+
+    if ann.audience in FAMILY_AUDIENCE:
+        links = GuardianLink.objects.filter(school=ann.school, status="aprovado")
+        if student_ids is not None:
+            links = links.filter(student_id__in=student_ids)
+        ids |= set(
+            users.filter(
+                role=Role.RESPONSAVEL.value, pk__in=links.values("guardian_id")
+            ).values_list("pk", flat=True)
+        )
+        if ann.scope != Announcement.Scope.INDIVIDUAL:
+            contas = Student.objects.filter(school=ann.school, user__isnull=False)
+            if student_ids is not None:
+                contas = contas.filter(pk__in=student_ids)
+            ids |= set(
+                users.filter(
+                    role=Role.ESTUDANTE.value, pk__in=contas.values("user_id")
+                ).values_list("pk", flat=True)
+            )
+
+    ids.discard(ann.created_by_id)
+    return users.filter(pk__in=ids)
 
 
 # ---------- Solicitações ----------

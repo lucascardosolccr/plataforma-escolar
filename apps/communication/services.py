@@ -283,45 +283,18 @@ def notify_thread_message(thread, message):
 
 
 def notify_announcement_created(announcement):
-    """Notifica toda a audiência-alvo de um comunicado (família/equipe/todos)."""
-    from django.contrib.auth import get_user_model
+    """Notifica exatamente quem pode abrir o comunicado (ver
+    ``access.announcement_recipients``)."""
+    from .access import announcement_recipients
 
-    from apps.core.models import STAFF_ROLES
-    from apps.registry.models import Enrollment, GuardianLink
-
-    User = get_user_model()
-    staff_roles = [r.value for r in STAFF_ROLES]
-    recipients = User.objects.filter(school=announcement.school, is_active=True)
-    if announcement.audience == Announcement.Audience.FAMILIA:
-        recipients = recipients.exclude(role__in=staff_roles)
-        if announcement.scope == Announcement.Scope.TURMA and announcement.class_group_id:
-            student_ids = list(
-                Enrollment.objects.filter(
-                    class_group_id=announcement.class_group_id, status="ativo"
-                ).values_list("student_id", flat=True)
-            )
-            guardian_ids = list(
-                GuardianLink.objects.filter(
-                    student_id__in=student_ids, status="aprovado"
-                ).values_list("guardian_id", flat=True)
-            )
-            recipients = recipients.filter(pk__in=guardian_ids)
-        elif announcement.scope == Announcement.Scope.INDIVIDUAL and announcement.student_id:
-            guardian_ids = list(
-                GuardianLink.objects.filter(
-                    student_id=announcement.student_id, status="aprovado"
-                ).values_list("guardian_id", flat=True)
-            )
-            recipients = recipients.filter(pk__in=guardian_ids)
-    elif announcement.audience == Announcement.Audience.EQUIPE:
-        recipients = recipients.filter(role__in=staff_roles)
+    recipients = list(announcement_recipients(announcement))
     notify_many(
         announcement.school,
         recipients,
         Notification.Kind.ANNOUNCEMENT,
         f"Comunicado: {announcement.title}",
         body=announcement.body[:200],
-        url=reverse("communication:announcement_list"),
+        url=reverse("communication:announcement_detail", args=[announcement.pk]),
     )
 
 

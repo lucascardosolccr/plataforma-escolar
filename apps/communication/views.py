@@ -228,30 +228,7 @@ def announcement_list(request):
 
 
 def _visible_announcements(user, qs):
-    from django.db.models import Q
-
-    if user.role == Role.RESPONSAVEL.value:
-        child_ids = acc._guardian_child_ids(user)
-        class_ids = acc._guardian_class_ids(user)
-        access_q = (
-            Q(scope=Announcement.Scope.INSTITUCIONAL)
-            | (Q(scope=Announcement.Scope.TURMA) & Q(class_group_id__in=class_ids))
-            | (Q(scope=Announcement.Scope.INDIVIDUAL) & Q(student_id__in=child_ids))
-        )
-        return qs.filter(Q(audience__in=[Announcement.Audience.FAMILIA.value,
-                                         Announcement.Audience.TODOS.value]), access_q)
-    if user.role == Role.PROFESSOR.value:
-        class_ids = acc._teacher_class_ids(user)
-        student_ids = acc._teacher_student_ids(user)
-        everyone = Q(audience__in=[Announcement.Audience.EQUIPE.value,
-                                   Announcement.Audience.TODOS.value])
-        own = Q(audience=Announcement.Audience.FAMILIA.value, scope=Announcement.Scope.INSTITUCIONAL) | (
-            Q(scope=Announcement.Scope.TURMA) & Q(class_group_id__in=class_ids)
-        ) | (
-            Q(scope=Announcement.Scope.INDIVIDUAL) & Q(student_id__in=student_ids)
-        )
-        return qs.filter(everyone | own)
-    return qs
+    return qs.filter(acc.announcement_q(user))
 
 
 def announcement_create(request):

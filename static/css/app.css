@@ -321,3 +321,6 @@ a[href]:not(.btn):not(.nav-link):not(.dropdown-item):not(.navbar-brand):not(.str
   thead { display: table-header-group; }
   tfoot { display: table-footer-group; }
 }
+/* Rótulo de menu numa linha só: quebrado em duas ou três linhas, a barra
+   ficava alta e o menu da conta saía pela borda direita da tela. */
+.navbar-nav .nav-link { white-space: nowrap; }

@@ -555,7 +555,15 @@ def enrollment_list(request):
         qs = qs.filter(school_year_id=year_id)
     if status in ("ativo", "transferido", "concluido", "desistente"):
         qs = qs.filter(status=status)
-    page = paginate(request, qs.order_by("-school_year__name"))
+    # Ordem estável e com as matrículas do mesmo estudante lado a lado: depois
+    # de uma transferência, a antiga e a nova aparecem juntas.
+    page = paginate(
+        request,
+        qs.order_by(
+            "-school_year__name", "student__first_name", "student__last_name",
+            "student_id", "registered_at",
+        ),
+    )
     return render(
         request,
         "registry/enrollment_list.html",
@@ -671,8 +679,8 @@ def enrollment_transfer(request, enrollment_id):
             "form": form,
             "heading": "Transferir de turma",
             "subheading": (
-                f"{enrollment.student.full_name} — hoje em {enrollment.class_group} "
-                f"({enrollment.school_year})"
+                f"{enrollment.student.full_name} — hoje em "
+                f"{enrollment.class_group.name}, ano letivo {enrollment.school_year.name}"
             ),
             "back_url": reverse("enrollment_list"),
             "submit_label": "Confirmar transferência",

@@ -60,7 +60,17 @@ def notify_evaluation_published(evaluation, request=None):
     )
 
 
-def _notify_class_families(item, title, url, detail=""):
+def _group_work_member_ids(work):
+    from apps.pedagogy.models import WorkGroupMember
+
+    return list(
+        WorkGroupMember.objects.filter(
+            group__group_work=work, removed_at__isnull=True
+        ).values_list("student_id", flat=True).distinct()
+    )
+
+
+def _notify_class_families(item, title, url, detail="", student_ids=None):
     """Avisa responsáveis e estudantes com conta de uma publicação da turma.
 
     Uma notificação por (responsável, estudante) e com o nome do estudante no
@@ -69,14 +79,18 @@ def _notify_class_families(item, title, url, detail=""):
     mesmo filho quando existe mais de um vínculo registrado. O aviso nunca
     traz dado individual de colega (como a composição de um grupo): isso fica
     na tela, atrás da verificação de vínculo.
+
+    ``student_ids`` restringe o público (os integrantes de um trabalho em
+    grupo); sem ele, vale a turma inteira.
     """
     from apps.registry.models import Enrollment, GuardianLink, Student
 
-    student_ids = list(
-        Enrollment.objects.filter(
-            class_group=item.class_group, status="ativo"
-        ).values_list("student_id", flat=True)
-    )
+    if student_ids is None:
+        student_ids = list(
+            Enrollment.objects.filter(
+                class_group=item.class_group, status="ativo"
+            ).values_list("student_id", flat=True)
+        )
     if not student_ids:
         return
     links = (
@@ -136,13 +150,18 @@ def notify_activity_created(activity):
     )
 
 
-def notify_group_work_published(work):
-    """Avisa as famílias de um trabalho em grupo publicado."""
+def notify_group_work_published(work, member_ids=None):
+    """Avisa as famílias dos integrantes de um trabalho em grupo publicado.
+
+    Só quem está num grupo: para o estudante sem grupo, o aviso levaria a uma
+    tela sem nada que lhe diga respeito.
+    """
     _notify_class_families(
         work,
         f"Novo trabalho em grupo: {work.title}",
         reverse("pedagogy:group_work_detail", args=[work.pk]),
         _prazo(work),
+        student_ids=member_ids if member_ids is not None else _group_work_member_ids(work),
     )
 
 
@@ -159,6 +178,14 @@ def announce_publication(item):
 
     if item.status != "publicada" or item.published_date > timezone.localdate():
         return False
+    member_ids = None
+    if not isinstance(item, Activity):
+        # Trabalho em grupo sem composição ainda não diz nada a ninguém: o
+        # aviso espera os grupos serem formados (a tela de grupos chama esta
+        # função de novo ao salvar).
+        member_ids = _group_work_member_ids(item)
+        if not member_ids:
+            return False
     agora = timezone.now()
     claimed = type(item).objects.filter(
         pk=item.pk, notified_at__isnull=True
@@ -169,7 +196,7 @@ def announce_publication(item):
     if isinstance(item, Activity):
         notify_activity_created(item)
     else:
-        notify_group_work_published(item)
+        notify_group_work_published(item, member_ids)
     return True
 
 
@@ -191,7 +218,8 @@ def notify_publication_canceled(item):
         title = f"Trabalho em grupo cancelado: {item.title}"
         url = reverse("pedagogy:group_work_detail", args=[item.pk])
     motivo = f" Motivo: {item.cancel_reason}" if item.cancel_reason else ""
-    _notify_class_families(item, title, url, motivo)
+    publico = None if isinstance(item, Activity) else _group_work_member_ids(item)
+    _notify_class_families(item, title, url, motivo, student_ids=publico)
 
 
 def deliver_due_publications(school=None):

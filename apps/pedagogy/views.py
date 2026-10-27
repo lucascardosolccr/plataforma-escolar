@@ -822,12 +822,22 @@ def _enrolled_in(class_group):
 
 
 def _group_rows(work, groups):
-    """Grupos com integrantes ativos e os que saíram, para a tela do professor."""
+    """Grupos com integrantes ativos e os que saíram, para a tela do professor.
+
+    ``removable`` segue a mesma regra da ação de remover: grupo com entrega,
+    ou com integrantes num trabalho já fora do rascunho, tem histórico.
+    """
+    com_entrega = set(work.deliveries.values_list("group_id", flat=True))
     rows = []
     for g in groups.prefetch_related("members__student"):
         membros = [m for m in g.members.all() if m.removed_at is None]
         saidos = [m for m in g.members.all() if m.removed_at is not None]
-        rows.append({"group": g, "members": membros, "former": saidos})
+        removable = g.pk not in com_entrega and (
+            work.status == GroupWork.Status.DRAFT or not (membros or saidos)
+        )
+        rows.append(
+            {"group": g, "members": membros, "former": saidos, "removable": removable}
+        )
     return rows
 
 
@@ -1167,9 +1177,10 @@ def group_work_create(request):
             announce_publication(work)
         messages.success(
             request,
-            "Trabalho criado. Agora organize os grupos."
+            "Rascunho criado. Agora organize os grupos."
             if not publish
-            else "Trabalho publicado. Organize os grupos para a turma saber quem é quem.",
+            else "Trabalho publicado. Organize os grupos: as famílias dos "
+            "integrantes são avisadas quando a composição for salva.",
         )
         return redirect("pedagogy:group_work_groups", pk=work.pk)
     return render(request, "pedagogy/groupwork_form.html", {"form": form, "obj": None})
@@ -1215,6 +1226,14 @@ def group_work_groups(request, pk):
     work = _get_managed_work(user, pk)
     estudantes = list(_enrolled_in(work.class_group))
     form = WorkGroupForm(group_work=work)
+    cancelado = work.status == GroupWork.Status.CANCELED
+    tem_entregas = work.deliveries.exists()
+
+    if request.method == "POST" and cancelado:
+        # Trabalho cancelado é registro histórico: a composição fica como
+        # estava no cancelamento.
+        messages.error(request, "Trabalho cancelado: a composição dos grupos não muda mais.")
+        return redirect("pedagogy:group_work_groups", pk=work.pk)
 
     if request.method == "POST":
         acao = request.POST.get("_acao", "")
@@ -1232,6 +1251,20 @@ def group_work_groups(request, pk):
         elif acao == "remover_grupo":
             g = get_object_or_404(WorkGroup, pk=request.POST.get("grupo"), group_work=work)
             nome = g.name
+            # Apagar o grupo apagaria em cascata integrantes e entregas (com
+            # nota). Só se apaga grupo sem histórico: sem entrega registrada e
+            # que nunca teve integrante num trabalho já visível à família.
+            com_historico = g.deliveries.exists() or (
+                work.status != GroupWork.Status.DRAFT and g.members.exists()
+            )
+            if com_historico:
+                messages.error(
+                    request,
+                    f"O grupo {nome} já tem histórico (integrantes ou entregas) "
+                    "e não é apagado. Para desfazê-lo, retire os integrantes: "
+                    "a saída fica registrada.",
+                )
+                return redirect("pedagogy:group_work_groups", pk=work.pk)
             with transaction.atomic():
                 g.delete()
                 _log(request, "delete", work, f"Removeu o grupo {nome} de {work.title}")
@@ -1243,7 +1276,20 @@ def group_work_groups(request, pk):
                 quantos = int(request.POST.get("quantidade", "0"))
             except (TypeError, ValueError):
                 quantos = 0
-            if quantos < 1:
+            ja_divulgado = work.status != GroupWork.Status.DRAFT and WorkGroupMember.objects.filter(
+                group__group_work=work
+            ).exists()
+            if tem_entregas or ja_divulgado:
+                # O sorteio recomeça do zero (apaga grupos e integrantes).
+                # Depois de a família ver a composição, ou com entrega
+                # registrada, isso destruiria histórico.
+                messages.error(
+                    request,
+                    "O sorteio refaz todos os grupos e só é possível enquanto "
+                    "a composição não foi divulgada nem há entregas. Ajuste os "
+                    "integrantes um a um abaixo.",
+                )
+            elif quantos < 1:
                 messages.error(request, "Informe quantos grupos deseja formar.")
             elif not estudantes:
                 messages.error(request, "Esta turma não tem estudantes matriculados.")
@@ -1268,6 +1314,7 @@ def group_work_groups(request, pk):
                         work,
                         f"Sorteou {quantos} grupo(s) em {work.title}",
                     )
+                    announce_publication(work)
                 messages.success(
                     request,
                     f"{quantos} grupo(s) formados por sorteio. "
@@ -1316,6 +1363,7 @@ def group_work_groups(request, pk):
                         f"Ajustou a composição dos grupos de {work.title} "
                         f"({mudancas} alteração/ões)",
                     )
+                    announce_publication(work)
             messages.success(
                 request,
                 f"{mudancas} alteração(ões) na composição."
@@ -1342,6 +1390,9 @@ def group_work_groups(request, pk):
             "students": estudantes,
             "current": atual,
             "ungrouped": [s for s in estudantes if s.pk not in atual],
+            "read_only": cancelado,
+            "can_draw": not tem_entregas
+            and not (work.status != GroupWork.Status.DRAFT and atual),
         },
     )
 

@@ -19,7 +19,7 @@ from apps.core.middleware import ScheduledPublicationMiddleware
 from apps.core.models import AuditLog, Role
 from apps.registry.models import Enrollment, GuardianLink, Student
 
-from ..models import Activity, GroupWork
+from ..models import Activity, GroupWork, WorkGroup, WorkGroupMember
 from .test_pedagogy import PedagogyBase, User
 
 
@@ -349,6 +349,8 @@ class PublicationNoticeTests(PedagogyBase):
             title="Maquete", description="Construir a maquete.",
             created_by=self.prof, published_date=self.today + timedelta(days=2),
         )
+        g = WorkGroup.objects.create(group_work=work, name="Grupo 1")
+        WorkGroupMember.objects.create(group=g, student=self.ana)
         self.assertFalse(announce_publication(work))
         GroupWork.objects.filter(pk=work.pk).update(published_date=self.today)
         self.assertEqual(deliver_due_publications(), 1)

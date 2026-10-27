@@ -212,11 +212,27 @@ class CriacaoEPublicacaoTests(GroupWorkBase):
         self.client.post(
             reverse("pedagogy:group_work_create"), self.payload(_publish="1")
         )
+        work = GroupWork.objects.get(title="Pesquisa sobre o meio ambiente")
+        # Sem grupos, o aviso espera: a família abriria uma tela sem o grupo.
+        self.assertFalse(Notification.objects.filter(user=self.resp_ana).exists())
+        g = self.make_group(work, "Grupo 1", [])
+        self.client.post(
+            reverse("pedagogy:group_work_groups", args=[work.pk]),
+            {"_acao": "atribuir", f"grupo_{self.ana.pk}": g.pk},
+        )
         notif = Notification.objects.filter(
             user=self.resp_ana, title__contains="Pesquisa sobre o meio ambiente"
         ).first()
         self.assertIsNotNone(notif)
         self.assertIn("Ana", notif.body)
+        # Bruno não está em grupo nenhum: a família dele não é avisada.
+        self.assertFalse(Notification.objects.filter(user=self.resp_bruno).exists())
+        # Salvar a composição de novo não avisa em dobro.
+        self.client.post(
+            reverse("pedagogy:group_work_groups", args=[work.pk]),
+            {"_acao": "atribuir", f"grupo_{self.ana.pk}": g.pk, f"grupo_{self.bruno.pk}": g.pk},
+        )
+        self.assertEqual(Notification.objects.filter(user=self.resp_ana).count(), 1)
 
     def test_draft_does_not_notify(self):
         from apps.communication.models import Notification
@@ -343,13 +359,84 @@ class FormacaoDeGruposTests(GroupWorkBase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "não tem estudantes matriculados")
 
-    def test_removing_a_group_is_audited(self):
-        g = self.make_group(self.work, "Grupo 1", [self.ana])
+    def test_removing_an_empty_group_is_audited(self):
+        g = self.make_group(self.work, "Grupo 1", [])
         self.client.post(self.url, {"_acao": "remover_grupo", "grupo": g.pk})
         self.assertFalse(WorkGroup.objects.filter(pk=g.pk).exists())
         self.assertTrue(
             AuditLog.objects.filter(detail__contains="Removeu o grupo Grupo 1").exists()
         )
+
+    def test_group_with_history_is_not_deleted(self):
+        """Apagar o grupo apagaria em cascata a participação e as entregas."""
+        g = self.make_group(self.work, "Grupo 1", [self.ana])
+        resp = self.client.post(
+            self.url, {"_acao": "remover_grupo", "grupo": g.pk}, follow=True
+        )
+        self.assertTrue(WorkGroup.objects.filter(pk=g.pk).exists())
+        self.assertTrue(WorkGroupMember.objects.filter(group=g, student=self.ana).exists())
+        self.assertContains(resp, "já tem histórico")
+
+    def test_group_with_delivery_is_not_deleted_even_in_draft(self):
+        rascunho = self.make_work(title="Rascunho", status=GroupWork.Status.DRAFT)
+        g = self.make_group(rascunho, "Grupo 1", [self.ana])
+        GroupWorkDelivery.objects.create(group_work=rascunho, group=g, grade=Decimal("8"))
+        self.client.post(
+            reverse("pedagogy:group_work_groups", args=[rascunho.pk]),
+            {"_acao": "remover_grupo", "grupo": g.pk},
+        )
+        self.assertTrue(GroupWorkDelivery.objects.filter(group=g).exists())
+
+    def test_draft_group_without_deliveries_may_be_deleted(self):
+        rascunho = self.make_work(title="Rascunho", status=GroupWork.Status.DRAFT)
+        g = self.make_group(rascunho, "Grupo 1", [self.ana])
+        self.client.post(
+            reverse("pedagogy:group_work_groups", args=[rascunho.pk]),
+            {"_acao": "remover_grupo", "grupo": g.pk},
+        )
+        self.assertFalse(WorkGroup.objects.filter(pk=g.pk).exists())
+
+    def test_draw_does_not_wipe_published_composition(self):
+        g = self.make_group(self.work, "Grupo 1", [self.ana, self.bruno])
+        resp = self.client.post(
+            self.url, {"_acao": "sortear", "quantidade": "2"}, follow=True
+        )
+        self.assertTrue(WorkGroup.objects.filter(pk=g.pk).exists())
+        self.assertEqual(self.work.groups.count(), 1)
+        self.assertContains(resp, "só é possível enquanto")
+
+    def test_draw_does_not_wipe_deliveries(self):
+        rascunho = self.make_work(title="Rascunho", status=GroupWork.Status.DRAFT)
+        g = self.make_group(rascunho, "Grupo 1", [self.ana])
+        GroupWorkDelivery.objects.create(group_work=rascunho, group=g, grade=Decimal("9"))
+        self.client.post(
+            reverse("pedagogy:group_work_groups", args=[rascunho.pk]),
+            {"_acao": "sortear", "quantidade": "2"},
+        )
+        self.assertEqual(GroupWorkDelivery.objects.filter(group_work=rascunho).count(), 1)
+
+    def test_draw_still_works_before_composition_exists(self):
+        self.client.post(self.url, {"_acao": "sortear", "quantidade": "2"})
+        self.assertEqual(self.work.groups.count(), 2)
+        self.assertEqual(
+            WorkGroupMember.objects.filter(group__group_work=self.work).count(), 4
+        )
+
+    def test_canceled_work_composition_is_frozen(self):
+        g = self.make_group(self.work, "Grupo 1", [self.ana])
+        self.work.status = GroupWork.Status.CANCELED
+        self.work.save()
+        self.client.post(self.url, {"_acao": "atribuir", f"grupo_{self.ana.pk}": ""})
+        self.client.post(self.url, {"_acao": "criar", "name": "Grupo 2"})
+        self.assertTrue(
+            WorkGroupMember.objects.filter(
+                group=g, student=self.ana, removed_at__isnull=True
+            ).exists()
+        )
+        self.assertEqual(self.work.groups.count(), 1)
+        resp = self.client.get(self.url)
+        self.assertContains(resp, "não pode mais ser alterada")
+        self.assertNotContains(resp, "Salvar composição")
 
 
 class VisualizacaoTests(GroupWorkBase):

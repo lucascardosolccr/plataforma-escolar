@@ -13,7 +13,14 @@
   <a href="{% url 'pedagogy:group_work_detail' work.pk %}" class="btn btn-outline-secondary btn-sm">Ver trabalho</a>
 </div>
 
-{% if not students %}
+{% if read_only %}
+  <div class="alert alert-secondary" role="status">
+    Este trabalho foi cancelado. A composição abaixo é o registro de como os
+    grupos estavam e não pode mais ser alterada.
+  </div>
+{% endif %}
+
+{% if not students and not group_rows %}
   <div class="card">
     <div class="card-body text-center text-body-secondary py-5">
       <p class="fw-semibold mb-1">Esta turma não tem estudantes matriculados.</p>
@@ -24,6 +31,7 @@
   </div>
 {% else %}
 
+{% if not read_only %}
 <div class="row g-3 mb-3">
   <div class="col-md-6">
     <div class="card h-100"><div class="card-body">
@@ -48,6 +56,7 @@
   <div class="col-md-6">
     <div class="card h-100"><div class="card-body">
       <h2 class="h6 mb-2">Sortear grupos</h2>
+      {% if can_draw %}
       <form method="post" class="row g-2 align-items-start"
             onsubmit="return confirm('Sortear vai refazer os grupos deste trabalho desde o início. Continuar?');">
         {% csrf_token %}
@@ -65,9 +74,17 @@
         Distribui os {{ students|length }} estudantes ao acaso. Você revisa e
         ajusta abaixo antes de considerar pronto.
       </p>
+      {% else %}
+      <p class="text-body-secondary small mb-0">
+        Indisponível: a composição já foi divulgada à família ou há entregas
+        registradas, e o sorteio refaria tudo do zero. Ajuste os integrantes um
+        a um abaixo — cada saída fica registrada.
+      </p>
+      {% endif %}
     </div></div>
   </div>
 </div>
+{% endif %}
 
 {% if groups %}
 <div class="card mb-3">
@@ -79,6 +96,7 @@
         <div class="card h-100 border"><div class="card-body">
           <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
             <h3 class="h6 mb-0">{{ row.group.name }}</h3>
+            {% if not read_only and row.removable %}
             <form method="post" class="m-0"
                   onsubmit="return confirm('Remover o grupo {{ row.group.name|escapejs }}? Os integrantes ficam sem grupo.');">
               {% csrf_token %}
@@ -87,6 +105,7 @@
               <button type="submit" class="btn btn-sm btn-outline-danger"
                       aria-label="Remover o grupo {{ row.group.name }}">Remover</button>
             </form>
+            {% endif %}
           </div>
           <ol class="small mb-0 ps-3">
             {% for m in row.members %}
@@ -103,6 +122,7 @@
 </div>
 {% endif %}
 
+{% if not read_only %}
 <form method="post" novalidate>
   {% csrf_token %}
   <input type="hidden" name="_acao" value="atribuir">
@@ -149,5 +169,6 @@
     </p>
   {% endif %}
 </form>
+{% endif %}
 {% endif %}
 {% endblock %}

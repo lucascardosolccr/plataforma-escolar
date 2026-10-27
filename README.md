@@ -113,19 +113,47 @@ medida com 2 e com 27 estudantes/atividades, falhando se houver N+1).
 
 Tudo que precisa ser preservado cabe em **duas coisas**: o banco (`db.sqlite3`) e a pasta `media/`.
 
-### Backup (parar o servidor antes, no mesmo horário da rotina)
+### Backup do banco — com a plataforma no ar
+
+```bash
+python manage.py backupdb
+```
+
+Grava em `backups/db-AAAAMMDD-HHMMSS.sqlite3`, **confere a integridade** do
+arquivo gerado e conserva os 10 mais recentes (`--manter N` muda, `--destino`
+escolhe outra pasta). Se o arquivo não passar na verificação, ele é descartado
+e o comando falha — nunca deixa um backup inútil parecendo válido.
+
+> **Por que não copiar o arquivo direto:** copiar `db.sqlite3` com o servidor
+> rodando pode capturá-lo no meio de uma transação e produzir um backup
+> corrompido, e a corrupção só aparece na hora de restaurar. O comando usa a
+> API de backup do SQLite, que copia página por página respeitando o bloqueio,
+> então não é preciso parar o servidor.
+
+### Backup dos arquivos enviados
+
+A pasta `media/` (fotos e anexos) é só cópia de arquivos:
 
 ```powershell
 # Windows (PowerShell)
-Copy-Item db.sqlite3 "backup\db.sqlite3-$(Get-Date -Format yyyyMMdd-HHmm)"
-Copy-Item media -Recurse "backup\media-$(Get-Date -Format yyyyMMdd-HHmm)" -Force
+Copy-Item media -Recurse "backups\media-$(Get-Date -Format yyyyMMdd-HHmm)" -Force
 ```
 
 ### Restauração
 
-1. Pare o servidor.
-2. Substitua `db.sqlite3` e a pasta `media/` pelos arquivos do backup.
-3. Inicie o servidor e confira o login.
+```bash
+# 1. Pare o servidor.
+# 2. Restaure:
+python manage.py backupdb --restaurar backups\db-20261026-214801.sqlite3
+# 3. Restaure a pasta media/ do backup correspondente.
+# 4. Inicie o servidor e confira o login.
+```
+
+A restauração **verifica o backup antes de tocar no banco atual** e guarda o
+banco que havia em `db.sqlite3.antes-da-restauracao`. Se o arquivo estiver
+corrompido, ela é interrompida e nada é alterado — restaurar de um arquivo ruim
+sobre o único banco bom é a maneira mais fácil de transformar um incidente
+recuperável em perda definitiva.
 
 Recomendação: manter o backup em **mídia externa (HD/pendrive)** ou em outra máquina — também gratuito.
 

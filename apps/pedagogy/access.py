@@ -64,6 +64,54 @@ def _student_class_ids(user):
     )
 
 
+def enrollments_by_student(student_ids, class_group_id=None):
+    """{estudante: [matrículas]} numa consulta, para checar o alcance em lote."""
+    qs = Enrollment.objects.filter(student_id__in=list(student_ids))
+    if class_group_id is not None:
+        qs = qs.filter(class_group_id=class_group_id)
+    out = {}
+    for enr in qs.only("student_id", "class_group_id", "started_on", "ended_on"):
+        out.setdefault(enr.student_id, []).append(enr)
+    return out
+
+
+def reaches(enrollments, item):
+    """A publicação para a turma (atividade ou trabalho) alcança o estudante?
+
+    Alcança quando alguma matrícula dele naquela turma cobre a publicação: o
+    histórico sobrevive à transferência, mas o que a turma antiga recebe
+    depois da saída não chega a quem saiu (ver ``Enrollment.covers``).
+    """
+    return any(
+        enr.class_group_id == item.class_group_id
+        and enr.covers(item.published_date, item.deadline)
+        for enr in enrollments
+    )
+
+
+def _approved_child_ids(user):
+    from apps.registry.models import GuardianLink
+
+    return list(
+        GuardianLink.objects.filter(guardian=user, status="aprovado").values_list(
+            "student_id", flat=True
+        )
+    )
+
+
+def _family_reaches(user, item):
+    """Algum estudante pelo qual este usuário responde é alcançado pelo item?"""
+    if user.role == Role.RESPONSAVEL.value:
+        student_ids = _approved_child_ids(user)
+    elif user.role == Role.ESTUDANTE.value:
+        own = own_student(user)
+        student_ids = [own.pk] if own is not None else []
+    else:
+        return False
+    por_aluno = enrollments_by_student(student_ids, item.class_group_id)
+    return any(reaches(enrs, item) for enrs in por_aluno.values())
+
+
 def can_manage_activities(user, class_group=None, subject=None):
     """Publica/edita/cancela atividade de casa.
 
@@ -95,31 +143,14 @@ def can_view_activity(user, activity):
         return True
     if user.role == Role.PROFESSOR.value:
         return _teacher_of(user, activity.class_group)
-    if user.role == Role.RESPONSAVEL.value:
+    if user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
         if not activity.is_visible_to_family:
             return False
-        return _guardian_class_ids(user, activity.class_group_id)
-    if user.role == Role.ESTUDANTE.value:
-        if not activity.is_visible_to_family:
-            return False
-        return activity.class_group_id in _student_class_ids(user)
+        # Qualquer matrícula conta, não só a ativa: o transferido não perde o
+        # que já lhe foi atribuído. Mas só dentro do período em que esteve na
+        # turma.
+        return _family_reaches(user, activity)
     return False
-
-
-def _guardian_class_ids(user, class_group_id):
-    """Responsável tem filho vinculado e matriculado nesta turma?
-
-    Considera qualquer matrícula, não apenas a ativa: um estudante transferido
-    não perde o histórico de atividades que já lhe foram atribuídas.
-    """
-    from apps.registry.models import GuardianLink
-
-    child_ids = GuardianLink.objects.filter(
-        guardian=user, status="aprovado"
-    ).values_list("student_id", flat=True)
-    return Enrollment.objects.filter(
-        student_id__in=child_ids, class_group_id=class_group_id
-    ).exists()
 
 
 def can_manage_group_works(user, class_group=None, subject=None):
@@ -153,11 +184,7 @@ def can_view_group_work(user, work):
         return _teacher_of(user, work.class_group)
     if not work.is_visible_to_family:
         return False
-    if user.role == Role.RESPONSAVEL.value:
-        return _guardian_class_ids(user, work.class_group_id)
-    if user.role == Role.ESTUDANTE.value:
-        return work.class_group_id in _student_class_ids(user)
-    return False
+    return _family_reaches(user, work)
 
 
 def group_work_students_for(user, work):
@@ -167,17 +194,15 @@ def group_work_students_for(user, work):
     vinculados matriculados na turma, ou ele mesmo. Vazio para a equipe, que
     vê o trabalho inteiro e não "pelo" aluno nenhum.
     """
-    from apps.registry.models import Enrollment, GuardianLink, Student
+    from apps.registry.models import Student
 
     if user.role == Role.RESPONSAVEL.value:
-        child_ids = GuardianLink.objects.filter(
-            guardian=user, status="aprovado"
-        ).values_list("student_id", flat=True)
-        matriculados = Enrollment.objects.filter(
-            student_id__in=child_ids, class_group=work.class_group
-        ).values_list("student_id", flat=True)
+        por_aluno = enrollments_by_student(
+            _approved_child_ids(user), work.class_group_id
+        )
+        alcancados = [sid for sid, enrs in por_aluno.items() if reaches(enrs, work)]
         return list(
-            Student.objects.filter(pk__in=matriculados).order_by(
+            Student.objects.filter(pk__in=alcancados).order_by(
                 "first_name", "last_name"
             )
         )

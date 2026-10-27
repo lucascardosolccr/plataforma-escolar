@@ -1,5 +1,6 @@
 from django import forms
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from apps.academics.models import ClassGroup, SchoolYear
 from apps.core.models import Role, User
@@ -127,7 +128,14 @@ class GuardianLinkAdminForm(forms.ModelForm):
 class EnrollmentForm(forms.ModelForm):
     class Meta:
         model = Enrollment
-        fields = ["student", "class_group", "school_year", "enrollment_number", "status"]
+        fields = [
+            "student", "class_group", "school_year", "enrollment_number", "status",
+            "started_on", "ended_on",
+        ]
+        widgets = {
+            "started_on": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "ended_on": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+        }
 
     def __init__(self, *args, school=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -136,6 +144,14 @@ class EnrollmentForm(forms.ModelForm):
             self.fields["student"].queryset = Student.objects.filter(school=school)
             self.fields["class_group"].queryset = ClassGroup.objects.filter(school=school)
             self.fields["school_year"].queryset = SchoolYear.objects.filter(school=school)
+        if self.instance.pk:
+            self.fields["class_group"].help_text = (
+                "Para mudar o estudante de turma, use “Transferir” na lista de "
+                "matrículas: assim o histórico da turma anterior é preservado."
+            )
+        else:
+            # Saída não faz sentido numa matrícula que está sendo criada.
+            del self.fields["ended_on"]
 
     def clean(self):
         cleaned = super().clean()
@@ -145,17 +161,81 @@ class EnrollmentForm(forms.ModelForm):
             raise ValidationError("Turma de outra escola selecionada.")
         if cleaned["school_year"].school_id != self.school.id:
             raise ValidationError("Ano letivo de outra escola selecionado.")
-        existing = Enrollment.objects.filter(
-            school=self.school,
-            student=cleaned["student"],
-            school_year=cleaned["school_year"],
-        ).exclude(pk=self.instance.pk)
-        if cleaned.get("status") and cleaned["status"] != "desistente" and existing.exists():
+        if (
+            self.instance.pk
+            and cleaned["class_group"].pk != self.instance.class_group_id
+        ):
+            # Trocar a turma no lugar faz a matrícula "nunca ter estado" na
+            # turma anterior: atividades e trabalhos já atribuídos somem da
+            # ficha e da área da família.
             raise ValidationError(
-                "Este estudante já possui matrícula ativa ou concluída neste ano letivo."
+                "A turma de uma matrícula existente não é alterada pela edição. "
+                "Use “Transferir” para mudar o estudante de turma sem apagar o "
+                "histórico da turma anterior."
             )
+        if cleaned.get("status") == "ativo":
+            outra_ativa = Enrollment.objects.filter(
+                school=self.school,
+                student=cleaned["student"],
+                school_year=cleaned["school_year"],
+                status="ativo",
+            ).exclude(pk=self.instance.pk)
+            if outra_ativa.exists():
+                raise ValidationError(
+                    "Este estudante já possui matrícula ativa neste ano letivo. "
+                    "Para mudar de turma, use “Transferir”."
+                )
         if cleaned["class_group"].school_year_id != cleaned["school_year"].id:
             raise ValidationError(
                 "A turma escolhida não pertence ao ano letivo selecionado."
             )
+        inicio, fim = cleaned.get("started_on"), cleaned.get("ended_on")
+        if inicio and fim and fim < inicio:
+            raise ValidationError("A saída da turma não pode ser anterior à entrada.")
         return cleaned
+
+    def save(self, commit=True):
+        enrollment = super().save(commit=False)
+        # A data de saída acompanha o status: sem ela, uma publicação feita
+        # para a turma depois da saída continuaria chegando à família.
+        if enrollment.status == "ativo":
+            enrollment.ended_on = None
+        elif enrollment.ended_on is None:
+            enrollment.ended_on = timezone.localdate()
+        if commit:
+            enrollment.save()
+        return enrollment
+
+
+class EnrollmentTransferForm(forms.Form):
+    """Transferência de turma dentro do mesmo ano letivo.
+
+    Encerra a matrícula atual (status "transferido", com data de saída) e abre
+    uma nova na turma de destino. As duas ficam registradas: o histórico da
+    turma anterior continua na ficha e na área da família.
+    """
+
+    class_group = forms.ModelChoiceField(
+        queryset=ClassGroup.objects.none(), label="Nova turma"
+    )
+    date = forms.DateField(
+        label="Data da transferência",
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+        help_text="Último dia na turma atual e primeiro na nova.",
+    )
+
+    def __init__(self, *args, enrollment=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.enrollment = enrollment
+        self.fields["class_group"].queryset = ClassGroup.objects.filter(
+            school=enrollment.school, school_year=enrollment.school_year
+        ).exclude(pk=enrollment.class_group_id)
+        self.fields["date"].initial = timezone.localdate()
+
+    def clean_date(self):
+        value = self.cleaned_data["date"]
+        if self.enrollment.started_on and value < self.enrollment.started_on:
+            raise ValidationError(
+                "A transferência não pode ser anterior à entrada na turma atual."
+            )
+        return value

@@ -384,6 +384,11 @@ class Command(BaseCommand):
                         )
                     )
             Activity.objects.bulk_create(atividades)
+            # Dados de demonstração nascem como "já avisados": sem isto, a
+            # primeira página aberta dispararia avisos de tudo ao mesmo tempo.
+            Activity.objects.filter(school=school).exclude(
+                status=Activity.Status.DRAFT
+            ).update(notified_at=timezone.now())
 
             # Entregas de parte das atividades publicadas.
             entregas = []
@@ -465,6 +470,9 @@ class Command(BaseCommand):
                             else ""
                         ),
                         created_by=profs_turma.get(disc.pk, professores[0]),
+                        notified_at=(
+                            None if status == GroupWork.Status.DRAFT else timezone.now()
+                        ),
                     )
                     if not matriculados:
                         continue

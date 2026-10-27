@@ -151,6 +151,10 @@ class Activity(models.Model):
     cancel_reason = models.CharField(
         "motivo do cancelamento", max_length=255, blank=True
     )
+    # Quando a família foi avisada. Fica vazio enquanto a data de publicação
+    # não chega: avisar antes mandaria um link que ainda responde "acesso
+    # negado". Também impede aviso duplicado (ver communication.services).
+    notified_at = models.DateTimeField("família avisada em", null=True, blank=True)
     created_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name="activities_created"
     )
@@ -334,6 +338,7 @@ class GroupWork(models.Model):
     cancel_reason = models.CharField(
         "motivo do cancelamento", max_length=255, blank=True
     )
+    notified_at = models.DateTimeField("família avisada em", null=True, blank=True)
     created_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name="group_works_created"
     )

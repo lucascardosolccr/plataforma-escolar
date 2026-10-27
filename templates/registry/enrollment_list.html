@@ -43,9 +43,22 @@
           <td>{{ e.class_group.name }}</td>
           <td>{{ e.school_year.name }}</td>
           <td>{{ e.enrollment_number|default:"—" }}</td>
-          <td><span class="chip">{{ e.get_status_display }}</span></td>
-          <td class="text-end">
-            <a class="btn btn-sm btn-outline-secondary" href="{% url 'enrollment_edit' e.pk %}">Editar</a>
+          <td>
+            <span class="chip">{{ e.get_status_display }}</span>
+            {% if e.started_on or e.ended_on %}
+            <div class="small text-body-secondary mt-1">
+              {% if e.started_on %}desde {{ e.started_on|date:"d/m/Y" }}{% endif %}
+              {% if e.ended_on %}até {{ e.ended_on|date:"d/m/Y" }}{% endif %}
+            </div>
+            {% endif %}
+          </td>
+          <td class="text-end text-nowrap">
+            {% if e.status == "ativo" %}
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'enrollment_transfer' e.pk %}"
+               aria-label="Transferir {{ e.student.full_name }} de turma">Transferir</a>
+            {% endif %}
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'enrollment_edit' e.pk %}"
+               aria-label="Editar matrícula de {{ e.student.full_name }}">Editar</a>
           </td>
         </tr>
         {% empty %}

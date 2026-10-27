@@ -5,6 +5,7 @@ conforme a seção 10 do Prompt 1.
 """
 
 from django.urls import reverse
+from django.utils import timezone
 
 from .models import Announcement, Notification
 
@@ -59,19 +60,21 @@ def notify_evaluation_published(evaluation, request=None):
     )
 
 
-def notify_activity_created(activity):
-    """Avisa as famílias de uma atividade publicada para a turma.
+def _notify_class_families(item, title, url, detail=""):
+    """Avisa responsáveis e estudantes com conta de uma publicação da turma.
 
     Uma notificação por (responsável, estudante) e com o nome do estudante no
     texto: quem tem mais de um filho precisa saber de quem é a tarefa. A
     unicidade por par também evita avisar duas vezes o mesmo responsável pelo
-    mesmo filho quando existe mais de um vínculo registrado.
+    mesmo filho quando existe mais de um vínculo registrado. O aviso nunca
+    traz dado individual de colega (como a composição de um grupo): isso fica
+    na tela, atrás da verificação de vínculo.
     """
-    from apps.registry.models import Enrollment, GuardianLink
+    from apps.registry.models import Enrollment, GuardianLink, Student
 
     student_ids = list(
         Enrollment.objects.filter(
-            class_group=activity.class_group, status="ativo"
+            class_group=item.class_group, status="ativo"
         ).values_list("student_id", flat=True)
     )
     if not student_ids:
@@ -83,10 +86,7 @@ def notify_activity_created(activity):
         .select_related("guardian", "student")
         .distinct()
     )
-    url = reverse("pedagogy:activity_detail", args=[activity.pk])
-    prazo = (
-        f" Entrega até {activity.deadline:%d/%m/%Y}." if activity.deadline else ""
-    )
+    contexto = f"{item.subject}, turma {item.class_group}.{detail}"
     seen = set()
     pending = []
     for link in links:
@@ -96,68 +96,125 @@ def notify_activity_created(activity):
         seen.add(key)
         pending.append(
             Notification(
-                school=activity.school,
+                school=item.school,
                 user=link.guardian,
                 kind=Notification.Kind.ACTIVITY,
-                title=f"Nova atividade de casa: {activity.title}",
-                body=(
-                    f"{link.student} — {activity.subject}, turma "
-                    f"{activity.class_group}.{prazo}"
-                ),
+                title=title,
+                body=f"{link.student} — {contexto}",
+                url=url,
+            )
+        )
+    # O próprio estudante, quando a escola criou acesso para ele.
+    for student in Student.objects.filter(
+        pk__in=student_ids, user__isnull=False, user__is_active=True
+    ).select_related("user"):
+        pending.append(
+            Notification(
+                school=item.school,
+                user=student.user,
+                kind=Notification.Kind.ACTIVITY,
+                title=title,
+                body=contexto,
                 url=url,
             )
         )
     if pending:
         Notification.objects.bulk_create(pending)
+
+
+def _prazo(item):
+    return f" Entrega até {item.deadline:%d/%m/%Y}." if item.deadline else ""
+
+
+def notify_activity_created(activity):
+    """Avisa as famílias de uma atividade publicada para a turma."""
+    _notify_class_families(
+        activity,
+        f"Nova atividade de casa: {activity.title}",
+        reverse("pedagogy:activity_detail", args=[activity.pk]),
+        _prazo(activity),
+    )
 
 
 def notify_group_work_published(work):
-    """Avisa as famílias de um trabalho em grupo publicado.
+    """Avisa as famílias de um trabalho em grupo publicado."""
+    _notify_class_families(
+        work,
+        f"Novo trabalho em grupo: {work.title}",
+        reverse("pedagogy:group_work_detail", args=[work.pk]),
+        _prazo(work),
+    )
 
-    Uma notificação por (responsável, estudante), nomeando o estudante — quem
-    tem mais de um filho precisa saber de quem é o trabalho. O aviso não diz
-    a composição do grupo: ela fica na tela, atrás da verificação de vínculo.
+
+def announce_publication(item):
+    """Avisa a família de uma atividade ou trabalho, uma única vez, na data certa.
+
+    Publicação com data futura não avisa agora: o link responderia "acesso
+    negado" até a data chegar. Ela é avisada depois, por
+    ``deliver_due_publications``. A marcação de ``notified_at`` é feita com um
+    UPDATE condicional antes de criar os avisos, então duas requisições ao
+    mesmo tempo não avisam em dobro. Devolve True se avisou.
     """
-    from apps.registry.models import Enrollment, GuardianLink
+    from apps.pedagogy.models import Activity
 
-    student_ids = list(
-        Enrollment.objects.filter(
-            class_group=work.class_group, status="ativo"
-        ).values_list("student_id", flat=True)
-    )
-    if not student_ids:
+    if item.status != "publicada" or item.published_date > timezone.localdate():
+        return False
+    agora = timezone.now()
+    claimed = type(item).objects.filter(
+        pk=item.pk, notified_at__isnull=True
+    ).update(notified_at=agora)
+    if not claimed:
+        return False
+    item.notified_at = agora
+    if isinstance(item, Activity):
+        notify_activity_created(item)
+    else:
+        notify_group_work_published(item)
+    return True
+
+
+def notify_publication_canceled(item):
+    """Avisa do cancelamento quem já tinha sido avisado da publicação.
+
+    Sem isso a família continua fazendo uma tarefa que deixou de existir. Quem
+    nunca recebeu o aviso original (rascunho, publicação agendada) não recebe
+    o de cancelamento.
+    """
+    from apps.pedagogy.models import Activity
+
+    if item.notified_at is None:
         return
-    links = (
-        GuardianLink.objects.filter(
-            student_id__in=student_ids, status="aprovado", guardian__is_active=True
-        )
-        .select_related("guardian", "student")
-        .distinct()
-    )
-    url = reverse("pedagogy:group_work_detail", args=[work.pk])
-    prazo = f" Entrega até {work.deadline:%d/%m/%Y}." if work.deadline else ""
-    seen = set()
-    pending = []
-    for link in links:
-        key = (link.guardian_id, link.student_id)
-        if key in seen:
-            continue
-        seen.add(key)
-        pending.append(
-            Notification(
-                school=work.school,
-                user=link.guardian,
-                kind=Notification.Kind.ACTIVITY,
-                title=f"Novo trabalho em grupo: {work.title}",
-                body=(
-                    f"{link.student} — {work.subject}, turma "
-                    f"{work.class_group}.{prazo}"
-                ),
-                url=url,
-            )
-        )
-    if pending:
-        Notification.objects.bulk_create(pending)
+    if isinstance(item, Activity):
+        title = f"Atividade cancelada: {item.title}"
+        url = reverse("pedagogy:activity_detail", args=[item.pk])
+    else:
+        title = f"Trabalho em grupo cancelado: {item.title}"
+        url = reverse("pedagogy:group_work_detail", args=[item.pk])
+    motivo = f" Motivo: {item.cancel_reason}" if item.cancel_reason else ""
+    _notify_class_families(item, title, url, motivo)
+
+
+def deliver_due_publications(school=None):
+    """Avisa as publicações agendadas cuja data já chegou.
+
+    Não há agendador em segundo plano (custo zero, servidor simples): esta
+    função é chamada pelo ``ScheduledPublicationMiddleware`` no máximo a cada
+    poucos minutos. Devolve quantas publicações foram avisadas.
+    """
+    from apps.pedagogy.models import Activity, GroupWork
+
+    total = 0
+    for model in (Activity, GroupWork):
+        due = model.objects.filter(
+            status="publicada",
+            notified_at__isnull=True,
+            published_date__lte=timezone.localdate(),
+        ).select_related("school", "subject", "class_group")
+        if school is not None:
+            due = due.filter(school=school)
+        for item in due:
+            total += announce_publication(item)
+    return total
 
 
 def notify_justification_resolved(justification, decision_label):

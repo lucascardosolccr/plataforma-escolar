@@ -224,6 +224,14 @@ class ActivityForm(forms.ModelForm):
             self.fields["subject"].queryset = school.subjects.filter(
                 pk__in=self._assignments.values("subject_id")
             )
+        if self.instance.pk and self.instance.status != Activity.Status.DRAFT:
+            # Mudar a turma de uma atividade já publicada a tiraria em silêncio
+            # da família que a recebeu e a entregaria à outra turma sem aviso.
+            self.fields["class_group"].disabled = True
+            self.fields["class_group"].help_text = (
+                "A turma não muda depois da publicação. Para outra turma, "
+                "crie uma nova atividade."
+            )
 
     def clean(self):
         cleaned = super().clean()

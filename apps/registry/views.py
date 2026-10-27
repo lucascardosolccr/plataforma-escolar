@@ -30,6 +30,7 @@ from .access import (
 )
 from .forms import (
     EnrollmentForm,
+    EnrollmentTransferForm,
     GuardianLinkAdminForm,
     GuardianLinkRequestForm,
     GuardianProfileForm,
@@ -610,4 +611,70 @@ def enrollment_edit(request, enrollment_id):
         return redirect("enrollment_list")
     return render(
         request, "registry/enrollment_form.html", {"form": form, "enrollment": enrollment}
+    )
+
+
+def enrollment_transfer(request, enrollment_id):
+    """Muda o estudante de turma no mesmo ano letivo preservando o histórico.
+
+    A matrícula atual é encerrada (não editada) e uma nova é aberta, na mesma
+    transação: ou as duas mudanças acontecem, ou nenhuma.
+    """
+    if not can_manage_registry(request.user):
+        raise PermissionDenied
+    enrollment = get_object_or_404(
+        Enrollment.objects.select_related("student", "class_group", "school_year"),
+        pk=enrollment_id,
+        school=request.user.school,
+    )
+    if enrollment.status != "ativo":
+        messages.error(request, "Só uma matrícula ativa pode ser transferida.")
+        return redirect("enrollment_list")
+    form = EnrollmentTransferForm(request.POST or None, enrollment=enrollment)
+    if request.method == "POST" and form.is_valid():
+        destino = form.cleaned_data["class_group"]
+        data = form.cleaned_data["date"]
+        with transaction.atomic():
+            anterior = enrollment.class_group
+            enrollment.status = "transferido"
+            enrollment.ended_on = data
+            enrollment.save(update_fields=["status", "ended_on"])
+            nova = Enrollment.objects.create(
+                school=enrollment.school,
+                student=enrollment.student,
+                class_group=destino,
+                school_year=enrollment.school_year,
+                enrollment_number=enrollment.enrollment_number,
+                status="ativo",
+                started_on=data,
+            )
+            create_audit_log(
+                user=request.user,
+                action="update",
+                request=request,
+                target=nova,
+                detail=(
+                    f"Transferiu {enrollment.student} de {anterior} para "
+                    f"{destino} em {data:%d/%m/%Y}"
+                ),
+            )
+        messages.success(
+            request,
+            f"{enrollment.student} transferido(a) para {destino}. O histórico da "
+            f"turma {anterior} foi preservado.",
+        )
+        return redirect("enrollment_list")
+    return render(
+        request,
+        "partials/form_card.html",
+        {
+            "form": form,
+            "heading": "Transferir de turma",
+            "subheading": (
+                f"{enrollment.student.full_name} — hoje em {enrollment.class_group} "
+                f"({enrollment.school_year})"
+            ),
+            "back_url": reverse("enrollment_list"),
+            "submit_label": "Confirmar transferência",
+        },
     )

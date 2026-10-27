@@ -33,4 +33,9 @@ urlpatterns = [
         views.enrollment_edit,
         name="enrollment_edit",
     ),
+    path(
+        "matriculas/<int:enrollment_id>/transferir/",
+        views.enrollment_transfer,
+        name="enrollment_transfer",
+    ),
 ]

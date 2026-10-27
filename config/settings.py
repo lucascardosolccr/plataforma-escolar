@@ -83,6 +83,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.LoginRequiredMiddleware",
     # Depois da autenticação: precisa de request.user resolvido.
     "apps.core.middleware.ForcePasswordChangeMiddleware",
+    "apps.core.middleware.ScheduledPublicationMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 

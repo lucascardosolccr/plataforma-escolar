@@ -223,6 +223,21 @@ class Enrollment(models.Model):
     status = models.CharField(
         "status", max_length=12, choices=STATUS_CHOICES, default="ativo"
     )
+    # Período em que o estudante esteve NESTA turma. Em branco significa
+    # "desde o início" / "sem saída registrada" — assim as matrículas antigas,
+    # criadas antes destes campos, continuam alcançando o que sempre alcançaram.
+    started_on = models.DateField(
+        "entrada na turma",
+        null=True,
+        blank=True,
+        help_text="Deixe em branco se o estudante está na turma desde o início do ano.",
+    )
+    ended_on = models.DateField(
+        "saída da turma",
+        null=True,
+        blank=True,
+        help_text="Preenchida automaticamente ao transferir, concluir ou registrar desistência.",
+    )
     registered_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -230,12 +245,29 @@ class Enrollment(models.Model):
         verbose_name_plural = "matrículas"
         ordering = ["-school_year__name", "student__first_name"]
         constraints = [
+            # Uma matrícula ATIVA por ano. A regra antiga (uma não-desistente
+            # por ano) impedia a transferência de turma sem editar a matrícula
+            # no lugar — o que apagava o histórico da turma anterior.
             models.UniqueConstraint(
                 fields=["school", "student", "school_year"],
-                condition=~models.Q(status="desistente"),
-                name="uniq_enrollment_per_year",
+                condition=models.Q(status="ativo"),
+                name="uniq_active_enrollment_per_year",
             )
         ]
+
+    def covers(self, published_date, deadline=None):
+        """A publicação (atividade, trabalho) feita para a turma alcança esta matrícula?
+
+        Não alcança o que foi publicado depois que o estudante saiu, nem o que
+        já tinha prazo encerrado quando ele entrou — não lhe foi atribuído, e
+        exibir como "prazo encerrado" sugeriria uma pendência que não existe.
+        O resto, inclusive o que ainda está vigente na chegada, alcança.
+        """
+        if self.ended_on and published_date > self.ended_on:
+            return False
+        if self.started_on and deadline and deadline < self.started_on:
+            return False
+        return True
 
     def __str__(self):
         return f"{self.student} — {self.class_group} ({self.school_year})"

@@ -12,11 +12,11 @@ from django.utils import timezone
 
 from apps.academics.models import ClassGroup, SchoolYear, TeacherAssignment
 from apps.communication.services import (
-    notify_activity_created,
+    announce_publication,
     notify_attendance_limit,
     notify_evaluation_published,
-    notify_group_work_published,
     notify_justification_resolved,
+    notify_publication_canceled,
 )
 from apps.core.models import AuditLog, Role, create_audit_log
 from apps.core.pagination import paginate
@@ -70,6 +70,20 @@ def _log(request, action, target, detail, target_id=None):
         user=request.user, action=action, request=request, target=target,
         detail=detail, target_id=target_id,
     )
+
+
+def _publication_message(item, noun, published_now):
+    """Mensagem após salvar: diz quando a família passa a ver e ser avisada."""
+    if item.status == "rascunho":
+        return f"Rascunho salvo. A família ainda não vê {noun}."
+    if item.published_date > timezone.localdate():
+        return (
+            f"Publicação agendada para {item.published_date:%d/%m/%Y}: a turma "
+            "passa a ver nessa data, e a família é avisada nesse dia."
+        )
+    if published_now:
+        return "Publicado para a turma. As famílias foram avisadas."
+    return "Alterações salvas para toda a turma."
 
 
 def _active_class(student):
@@ -345,11 +359,7 @@ def _rows_for_students(school, students, activities):
     atividade pertence, inclusive quando os dois estão na mesma turma. Para a
     conta do próprio estudante a lista tem um único nome.
     """
-    enrolled = {}
-    for enr in Enrollment.objects.filter(
-        student__in=students or [None]
-    ).values_list("student_id", "class_group_id"):
-        enrolled.setdefault(enr[0], set()).add(enr[1])
+    enrolled = acc.enrollments_by_student(s.pk for s in students)
     # Entrega registrada pelo PROFESSOR. Numa consulta para todos os pares,
     # para a contagem de consultas não crescer com o volume.
     submissions = {
@@ -361,7 +371,7 @@ def _rows_for_students(school, students, activities):
     rows = []
     for act in activities:
         for student in students:
-            if act.class_group_id in enrolled.get(student.pk, ()):
+            if acc.reaches(enrolled.get(student.pk, ()), act):
                 key, label = act.family_situation()
                 rows.append(
                     {
@@ -427,18 +437,24 @@ def student_activity_rows(student, limit=20):
     histórico sobreviva a uma transferência de turma. Rascunho e atividade
     agendada ficam fora: não foram atribuídas a ninguém ainda.
     """
-    class_ids = Enrollment.objects.filter(student=student).values_list(
-        "class_group_id", flat=True
-    )
-    activities = (
+    enrollments = acc.enrollments_by_student([student.pk]).get(student.pk, [])
+    candidates = (
         Activity.objects.filter(
-            class_group_id__in=class_ids,
+            class_group_id__in={e.class_group_id for e in enrollments},
             published_date__lte=timezone.localdate(),
         )
         .exclude(status=Activity.Status.DRAFT)
         .select_related("subject", "class_group")
-        .order_by("-published_date", "-created_at")[:limit]
+        .order_by("-published_date", "-created_at")
     )
+    # O período na turma é conferido aqui, antes do corte: cortar primeiro
+    # poderia esconder atividades válidas atrás das que ficam de fora.
+    activities = []
+    for act in candidates.iterator():
+        if acc.reaches(enrollments, act):
+            activities.append(act)
+            if len(activities) >= limit:
+                break
     submissions = {
         s.activity_id: s
         for s in Submission.objects.filter(student=student, activity__in=activities)
@@ -610,11 +626,13 @@ def activity_detail(request, pk):
     acc.require(acc.can_view_activity(user, act))
     students = []
     if user.role == Role.RESPONSAVEL.value:
-        child_ids = _guardian_child_ids(user)[0]
+        por_aluno = acc.enrollments_by_student(
+            _guardian_child_ids(user)[0], act.class_group_id
+        )
         students = list(
             Student.objects.filter(
-                pk__in=child_ids, enrollments__class_group=act.class_group
-            ).distinct()
+                pk__in=[sid for sid, enrs in por_aluno.items() if acc.reaches(enrs, act)]
+            ).order_by("first_name", "last_name")
         )
     state, state_label = act.family_situation()
     return render(
@@ -667,14 +685,8 @@ def activity_create(request):
                 f"Criou a atividade {act.title} ({act.class_group}) "
                 f"como {act.get_status_display().lower()}",
             )
-            if act.status == Activity.Status.PUBLISHED:
-                notify_activity_created(act)
-        messages.success(
-            request,
-            "Atividade publicada para a turma."
-            if publish
-            else "Rascunho salvo. A família ainda não vê esta atividade.",
-        )
+            avisou = announce_publication(act)
+        messages.success(request, _publication_message(act, "esta atividade", avisou))
         return redirect("pedagogy:activity_detail", pk=act.pk)
     return render(request, "pedagogy/activity_form.html", {"form": form, "obj": None})
 
@@ -682,6 +694,11 @@ def activity_create(request):
 def activity_edit(request, pk):
     user = request.user
     act = _get_managed_activity(user, pk)
+    if act.status == Activity.Status.CANCELED:
+        # A atividade cancelada é registro histórico: editar o enunciado
+        # depois mudaria o que a família viu quando ela foi cancelada.
+        messages.warning(request, "Atividade cancelada não pode ser editada.")
+        return redirect("pedagogy:activity_detail", pk=act.pk)
     was_draft = act.status == Activity.Status.DRAFT
     form = ActivityForm(
         request.POST or None,
@@ -699,14 +716,8 @@ def activity_edit(request, pk):
                 act.status = Activity.Status.PUBLISHED
                 act.save(update_fields=["status"])
             _log(request, "update", act, f"Atualizou a atividade {act.title}")
-            if publish and was_draft:
-                notify_activity_created(act)
-        messages.success(
-            request,
-            "Atividade publicada para a turma."
-            if publish and was_draft
-            else "Atividade atualizada para toda a turma.",
-        )
+            avisou = announce_publication(act)
+        messages.success(request, _publication_message(act, "esta atividade", avisou))
         return redirect("pedagogy:activity_detail", pk=act.pk)
     return render(request, "pedagogy/activity_form.html", {"form": form, "obj": act})
 
@@ -730,6 +741,7 @@ def activity_cancel(request, pk):
                 act,
                 f"Cancelou a atividade {act.title}: {act.cancel_reason}",
             )
+            notify_publication_canceled(act)
         messages.success(
             request, "Atividade cancelada. O histórico foi preservado."
         )
@@ -1152,8 +1164,7 @@ def group_work_create(request):
                 f"Criou o trabalho em grupo {work.title} ({work.class_group}) "
                 f"como {work.get_status_display().lower()}",
             )
-            if work.status == GroupWork.Status.PUBLISHED:
-                notify_group_work_published(work)
+            announce_publication(work)
         messages.success(
             request,
             "Trabalho criado. Agora organize os grupos."
@@ -1167,6 +1178,9 @@ def group_work_create(request):
 def group_work_edit(request, pk):
     user = request.user
     work = _get_managed_work(user, pk)
+    if work.status == GroupWork.Status.CANCELED:
+        messages.warning(request, "Trabalho cancelado não pode ser editado.")
+        return redirect("pedagogy:group_work_detail", pk=work.pk)
     was_draft = work.status == GroupWork.Status.DRAFT
     form = GroupWorkForm(
         request.POST or None,
@@ -1184,14 +1198,8 @@ def group_work_edit(request, pk):
                 work.status = GroupWork.Status.PUBLISHED
                 work.save(update_fields=["status"])
             _log(request, "update", work, f"Atualizou o trabalho {work.title}")
-            if publish and was_draft:
-                notify_group_work_published(work)
-        messages.success(
-            request,
-            "Trabalho publicado para a turma."
-            if publish and was_draft
-            else "Trabalho atualizado para toda a turma.",
-        )
+            avisou = announce_publication(work)
+        messages.success(request, _publication_message(work, "este trabalho", avisou))
         return redirect("pedagogy:group_work_detail", pk=work.pk)
     return render(request, "pedagogy/groupwork_form.html", {"form": form, "obj": work})
 
@@ -1357,6 +1365,7 @@ def group_work_cancel(request, pk):
                 work,
                 f"Cancelou o trabalho {work.title}: {work.cancel_reason}",
             )
+            notify_publication_canceled(work)
         messages.success(request, "Trabalho cancelado. O histórico foi preservado.")
         return redirect("pedagogy:group_work_detail", pk=work.pk)
     return render(

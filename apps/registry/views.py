@@ -8,6 +8,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
+from django.utils.text import slugify
+from django.views.decorators.http import require_POST
+
 from apps.core.models import AuditLog, Role, User, create_audit_log
 from apps.core.pagination import paginate
 from apps.core.uploads import ALLOWED_PHOTO_EXTENSIONS
@@ -15,12 +18,14 @@ from apps.core.uploads import ALLOWED_PHOTO_EXTENSIONS
 from apps.academics.models import SchoolYear
 
 from .access import (
+    can_create_student_account,
     can_manage_guardian_links,
     can_manage_registry,
     can_view_birth_date,
     can_view_student,
     can_view_student_notes,
     guardian_of,
+    is_own_record,
     require_student_access,
 )
 from .forms import (
@@ -144,9 +149,81 @@ def student_detail(request, student_id):
             "is_guardian": guardian_of(request.user, student),
             "can_view_birth": can_view_birth_date(request.user),
             "can_view_notes": can_view_student_notes(request.user),
+            "can_create_student_account": can_create_student_account(
+                request.user, student
+            ),
+            "is_own_record": is_own_record(request.user, student),
             "can_request_link": request.user.role == Role.RESPONSAVEL.value and not guardian_of(request.user, student),
             **comm,
         },
+    )
+
+
+@require_POST
+def student_account_create(request, student_id):
+    """Cria (ou redefine) a conta de acesso do próprio estudante.
+
+    O acesso nasce aqui, a partir da ficha, e não na tela de contas
+    profissionais: assim fica impossível existir uma conta de estudante sem
+    vínculo com uma matrícula real.
+    """
+    from apps.core.passwords import generate_temp_password
+
+    student = get_object_or_404(Student.objects.select_related("user"), pk=student_id)
+    if not can_create_student_account(request.user, student):
+        raise PermissionDenied
+
+    if student.user_id:
+        # Conta já existe: isto é uma redefinição de senha dela.
+        conta = student.user
+        senha = generate_temp_password()
+        with transaction.atomic():
+            conta.set_password(senha)
+            conta.must_change_password = True
+            conta.is_active = True
+            conta.save(
+                update_fields=["password", "must_change_password", "is_active"]
+            )
+            create_audit_log(
+                user=request.user,
+                action="update",
+                request=request,
+                target=conta,
+                detail=f"Redefiniu a senha de acesso do estudante {student.full_name}",
+            )
+    else:
+        base = slugify(student.full_name).replace("-", ".")[:120] or "estudante"
+        username = base
+        n = 2
+        while User.objects.filter(username=username).exists():
+            username = f"{base}{n}"
+            n += 1
+        senha = generate_temp_password()
+        with transaction.atomic():
+            conta = User.objects.create_user(
+                username=username,
+                password=senha,
+                first_name=student.first_name,
+                last_name=student.last_name,
+                role=Role.ESTUDANTE,
+                school=student.school,
+            )
+            conta.must_change_password = True
+            conta.save(update_fields=["must_change_password"])
+            student.user = conta
+            student.save(update_fields=["user"])
+            create_audit_log(
+                user=request.user,
+                action="create",
+                request=request,
+                target=conta,
+                detail=f"Criou o acesso do estudante {student.full_name}",
+            )
+
+    return render(
+        request,
+        "core/password_reset_done.html",
+        {"target_user": conta, "temp_password": senha, "student": student},
     )
 
 

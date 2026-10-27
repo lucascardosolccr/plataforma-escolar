@@ -16,7 +16,11 @@ from django.utils.text import slugify
 
 from apps.academics.models import ClassGroup
 from apps.core.models import Role
-from apps.pedagogy.access import can_view_observations
+from apps.pedagogy.access import (
+    can_view_observations,
+    can_view_occurrences,
+    can_view_plans,
+)
 from apps.registry.access import guardian_of
 from apps.registry.models import GuardianLink, Student
 
@@ -111,6 +115,12 @@ def student_dashboard(request, student_id):
     plans = services.plan_stats(student)
 
     can_view_obs = can_view_observations(request.user, student)
+    # Ocorrências e planos de acompanhamento têm regra própria e não seguem o
+    # acesso ao prontuário. O estudante, em particular, vê o progresso
+    # acadêmico e a frequência dele, mas não o registro disciplinar nem as
+    # anotações feitas sobre ele — requisito da seção 7.5 do prompt de design.
+    can_view_occ = can_view_occurrences(request.user, student)
+    can_view_plan = can_view_plans(request.user, student)
     skills, strategies = services.consolidated_skills(student)
     difficulties = services.difficulty_contents(student)
 
@@ -163,7 +173,8 @@ def student_dashboard(request, student_id):
             suffix=" atividades",
         ),
         "justifications": justifications,
-        "occurrences": occurrences,
+        "can_view_occ": can_view_occ,
+        "occurrences": occurrences if can_view_occ else None,
         "occurrence_chart": charts.h_bars(
             [
                 {"label": "Abertas", "value": occurrences["aberta"]},
@@ -171,13 +182,16 @@ def student_dashboard(request, student_id):
                 {"label": "Encaminhadas", "value": occurrences["encaminhada"]},
                 {"label": "Concluídas", "value": occurrences["concluida"]},
             ]
-        ),
-        "plans": plans,
+        )
+        if can_view_occ
+        else "",
+        "can_view_plan": can_view_plan,
+        "plans": plans if can_view_plan else None,
         "can_view_obs": can_view_obs,
         "difficulties": difficulties if can_view_obs else [],
         "skills": skills if can_view_obs else [],
         "strategies": strategies if can_view_obs else [],
-        "timeline": services.timeline(student),
+        "timeline": services.timeline(student) if can_view_occ else [],
         "is_guardian": guardian_of(request.user, student),
         "generated_at": timezone.now(),
     }

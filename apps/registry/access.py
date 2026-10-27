@@ -52,6 +52,19 @@ def teacher_of_student(user, student):
     ).exists()
 
 
+def student_of(user):
+    """Estudante cuja conta de acesso é este usuário, ou None."""
+    if not user.is_authenticated or user.role != Role.ESTUDANTE.value:
+        return None
+    return getattr(user, "student_record", None)
+
+
+def is_own_record(user, student):
+    """O usuário é o próprio estudante da ficha?"""
+    own = student_of(user)
+    return own is not None and own.pk == student.pk
+
+
 def can_view_student(user, student):
     if not user.is_authenticated:
         return False
@@ -61,7 +74,8 @@ def can_view_student(user, student):
         return True
     if user.role == Role.PROFESSOR.value:
         return teacher_of_student(user, student)
-    return False
+    # O estudante vê a própria ficha, e só ela.
+    return is_own_record(user, student)
 
 
 def can_view_birth_date(user):
@@ -70,8 +84,25 @@ def can_view_birth_date(user):
 
 
 def can_view_student_notes(user):
-    """Observações da secretaria apenas para perfis administrativos."""
+    """Observações da secretaria apenas para perfis administrativos.
+
+    O estudante não vê as anotações feitas sobre ele pela secretaria.
+    """
     return user.is_authenticated and user.role in ADMIN_RECORD_ROLES
+
+
+def can_create_student_account(user, student):
+    """Só a secretaria e a administração criam o acesso do estudante.
+
+    A coordenação e a direção acompanham, mas a criação de conta é um ato
+    administrativo com efeito sobre dados de menor: fica com quem cuida da
+    matrícula.
+    """
+    if not user.is_authenticated:
+        return False
+    if user.role not in (Role.SECRETARIA.value, Role.ADMIN.value):
+        return False
+    return user.school_id == student.school_id
 
 
 def require_student_access(user, student):

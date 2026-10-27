@@ -25,6 +25,7 @@
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
         <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'home' %} active{% endif %}" href="{% url 'home' %}">Início</a></li>
 
+        {% if user_role != ROLE_ESTUDANTE %}
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle{% if request.resolver_match.app_name == 'analytics' %} active{% endif %}" href="#" data-bs-toggle="dropdown">Painéis</a>
           <ul class="dropdown-menu shadow">
@@ -37,6 +38,7 @@
             <li><a class="dropdown-item" href="{% url 'analytics:report_hub' %}">Relatórios</a></li>
           </ul>
         </li>
+        {% endif %}
 
         {% if user_role == ROLE_RESPONSAVEL %}
           <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'my_children' %} active{% endif %}" href="{% url 'my_children' %}">Meus filhos</a></li>
@@ -44,6 +46,12 @@
           <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'evaluation_list' %} active{% endif %}" href="{% url 'pedagogy:evaluation_list' %}">Notas</a></li>
           <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'link_list' %} active{% endif %}" href="{% url 'link_list' %}">Vínculos</a></li>
           <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'justification_create' %} active{% endif %}" href="{% url 'pedagogy:justification_create' %}">Justificar falta</a></li>
+        {% endif %}
+
+        {% if user_role == ROLE_ESTUDANTE %}
+          <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'activity_list' or request.resolver_match.url_name == 'activity_detail' %} active{% endif %}" href="{% url 'pedagogy:activity_list' %}">Minhas atividades</a></li>
+          <li class="nav-item"><a class="nav-link{% if request.resolver_match.url_name == 'evaluation_list' %} active{% endif %}" href="{% url 'pedagogy:evaluation_list' %}">Minhas notas</a></li>
+          <li class="nav-item"><a class="nav-link{% if request.resolver_match.app_name == 'pedagogy' and 'attendance' in request.resolver_match.url_name %} active{% endif %}" href="{% url 'pedagogy:attendance_list' %}">Minha frequência</a></li>
         {% endif %}
 
         {% if user_role == ROLE_PROFESSOR %}
@@ -62,6 +70,7 @@
           </li>
         {% endif %}
 
+        {% if user_role != ROLE_ESTUDANTE %}
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle{% if request.resolver_match.app_name == 'communication' %} active{% endif %}" href="#" data-bs-toggle="dropdown">Comunicação</a>
           <ul class="dropdown-menu shadow">
@@ -73,6 +82,7 @@
             <li><a class="dropdown-item" href="{% url 'communication:thread_create' %}">+ Nova mensagem</a></li>
           </ul>
         </li>
+        {% endif %}
 
         {% if user_is_staff and user_role != ROLE_PROFESSOR %}
           <li class="nav-item dropdown">

@@ -3,10 +3,15 @@
 
 {% block content %}
 <div class="mb-3">
-  <h1 class="h4 mb-1">Atividades de casa</h1>
+  <h1 class="h4 mb-1">{% if is_student %}Minhas atividades{% else %}Atividades de casa{% endif %}</h1>
   <p class="text-body-secondary small mb-0">
-    Tarefas publicadas pelos professores para a turma de cada filho. As atividades são
-    da turma, não individuais — toda a turma recebe a mesma tarefa.
+    {% if is_student %}
+      Tarefas publicadas pelos seus professores para a sua turma. A mesma tarefa
+      vale para a turma inteira.
+    {% else %}
+      Tarefas publicadas pelos professores para a turma de cada filho. As atividades são
+      da turma, não individuais — toda a turma recebe a mesma tarefa.
+    {% endif %}
   </p>
 </div>
 
@@ -49,7 +54,11 @@
       <div class="card h-100">
         <div class="card-body d-flex flex-column">
           <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
-            <span class="chip">👦 {{ r.student.full_name }}</span>
+            {% if is_student %}
+              <span class="chip">{{ r.activity.class_group.name }}</span>
+            {% else %}
+              <span class="chip">👦 {{ r.student.full_name }}</span>
+            {% endif %}
             <span class="chip chip-state state-{{ r.state }}">{{ r.state_label }}</span>
           </div>
           {% if r.submission %}
@@ -107,6 +116,8 @@
           <a href="{% url 'pedagogy:activity_list' %}">Ver todas</a>.
         {% elif children %}
           Quando um professor publicar uma tarefa para a turma, ela aparece aqui.
+        {% elif is_student %}
+          Você ainda não tem matrícula ativa em nenhuma turma. Procure a secretaria.
         {% else %}
           Você ainda não tem nenhum estudante vinculado e aprovado.
           <a href="{% url 'link_list' %}">Ver meus vínculos</a>.

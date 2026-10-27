@@ -154,6 +154,12 @@ def evaluation_list(request):
             class_group_id__in=_guardian_child_ids(user)[1],
             status=Evaluation.Status.PUBLISHED,
         )
+    elif user.role == Role.ESTUDANTE.value:
+        # Só avaliação publicada, e só das próprias turmas.
+        qs = qs.filter(
+            class_group_id__in=acc._student_class_ids(user),
+            status=Evaluation.Status.PUBLISHED,
+        )
     status = request.GET.get("status")
     if status in ("rascunho", "publicada"):
         qs = qs.filter(status=status)
@@ -310,44 +316,29 @@ def _guardian_visible_activities(user):
     ).exclude(status=Activity.Status.DRAFT)
 
 
-def _family_rows(user, student_filter=None):
-    """Uma linha por (atividade, filho) para a família saber de quem é a tarefa.
+def _rows_for_students(school, students, activities):
+    """Uma linha por (atividade, estudante).
 
-    Um responsável com mais de um filho precisa distinguir a qual estudante
-    cada atividade pertence, inclusive quando os dois estão na mesma turma.
+    A família com mais de um filho precisa distinguir a qual estudante cada
+    atividade pertence, inclusive quando os dois estão na mesma turma. Para a
+    conta do próprio estudante a lista tem um único nome.
     """
-    links = (
-        GuardianLink.objects.filter(guardian=user, status="aprovado")
-        .select_related("student")
-        .order_by("student__first_name")
-    )
-    children = [link.student for link in links]
-    if student_filter:
-        children = [s for s in children if s.pk == student_filter]
-    # Sem fatia: o conjunto já está restrito às turmas dos filhos vinculados e
-    # ao que foi publicado. Cortar aqui descartaria o histórico mais antigo e a
-    # contagem exibida pela paginação ficaria mentindo sobre o total.
-    activities = list(
-        _guardian_visible_activities(user)
-        .select_related("subject", "class_group", "created_by")
-        .prefetch_related("attachments")
-    )
     enrolled = {}
     for enr in Enrollment.objects.filter(
-        student__in=children or [None]
+        student__in=students or [None]
     ).values_list("student_id", "class_group_id"):
         enrolled.setdefault(enr[0], set()).add(enr[1])
     # Entrega registrada pelo PROFESSOR. Numa consulta para todos os pares,
-    # para a contagem de consultas nao crescer com o volume.
+    # para a contagem de consultas não crescer com o volume.
     submissions = {
         (s.activity_id, s.student_id): s
         for s in Submission.objects.filter(
-            activity__in=activities, student__in=children or [None]
+            activity__in=activities, student__in=students or [None]
         )
     }
     rows = []
     for act in activities:
-        for student in children:
+        for student in students:
             if act.class_group_id in enrolled.get(student.pk, ()):
                 key, label = act.family_situation()
                 rows.append(
@@ -361,7 +352,50 @@ def _family_rows(user, student_filter=None):
                 )
     order = {"a_vencer": 0, "pendente": 1, "publicada": 2, "encerrada": 3, "cancelada": 4}
     rows.sort(key=lambda r: (order.get(r["state"], 9), r["activity"].deadline or date.max))
-    return rows, children
+    return rows
+
+
+def _visible_activities(qs):
+    return list(
+        qs.select_related("subject", "class_group", "created_by").prefetch_related(
+            "attachments"
+        )
+    )
+
+
+def _student_own_rows(user):
+    """Atividades da própria conta de estudante."""
+    student = acc.own_student(user)
+    if student is None:
+        return [], []
+    class_ids = Enrollment.objects.filter(student=student).values_list(
+        "class_group_id", flat=True
+    )
+    activities = _visible_activities(
+        Activity.objects.filter(
+            school=user.school,
+            class_group_id__in=class_ids,
+            published_date__lte=timezone.localdate(),
+        ).exclude(status=Activity.Status.DRAFT)
+    )
+    return _rows_for_students(user.school, [student], activities), [student]
+
+
+def _family_rows(user, student_filter=None):
+    """Linhas das atividades dos filhos vinculados e aprovados."""
+    links = (
+        GuardianLink.objects.filter(guardian=user, status="aprovado")
+        .select_related("student")
+        .order_by("student__first_name")
+    )
+    children = [link.student for link in links]
+    if student_filter:
+        children = [s for s in children if s.pk == student_filter]
+    # Sem fatia: o conjunto já está restrito às turmas dos filhos vinculados e
+    # ao que foi publicado. Cortar aqui descartaria o histórico mais antigo e a
+    # contagem exibida pela paginação ficaria mentindo sobre o total.
+    activities = _visible_activities(_guardian_visible_activities(user))
+    return _rows_for_students(user.school, children, activities), children
 
 
 def student_activity_rows(student, limit=20):
@@ -404,6 +438,24 @@ def student_activity_rows(student, limit=20):
 def activity_list(request):
     user = request.user
     acc.require(acc.can_view_evaluations(user))
+
+    if user.role == Role.ESTUDANTE.value:
+        rows, students = _student_own_rows(user)
+        state = request.GET.get("situacao")
+        if state in ("a_vencer", "pendente", "encerrada", "cancelada"):
+            rows = [r for r in rows if r["state"] == state]
+        page = paginate(request, rows)
+        return render(
+            request,
+            "pedagogy/activity_family.html",
+            {
+                "rows": page,
+                "page": page,
+                "children": students,
+                "is_student": True,
+                "state": state,
+            },
+        )
 
     if user.role == Role.RESPONSAVEL.value:
         student_filter = request.GET.get("estudante")
@@ -738,6 +790,8 @@ def attendance_list(request):
         )
     elif user.role == Role.RESPONSAVEL.value:
         classes = classes.filter(pk__in=_guardian_child_ids(user)[1])
+    elif user.role == Role.ESTUDANTE.value:
+        classes = classes.filter(pk__in=acc._student_class_ids(user))
     page = paginate(request, classes.order_by("name"))
     return render(
         request,
@@ -761,13 +815,20 @@ def attendance_class(request, class_group_id):
         if class_group.pk not in child_class_ids:
             raise PermissionDenied
         students = students.filter(pk__in=child_ids)
+    elif user.role == Role.ESTUDANTE.value:
+        # O estudante vê só a própria linha: a frequência dos colegas não é
+        # dado dele.
+        own = acc.own_student(user)
+        if own is None or class_group.pk not in acc._student_class_ids(user):
+            raise PermissionDenied
+        students = students.filter(pk=own.pk)
     elif user.role == Role.PROFESSOR.value:
         acc.require(acc._teacher_of(user, class_group))
     records = (
         AttendanceRecord.objects.filter(class_group=class_group)
         .order_by("date", "student__first_name")
     )
-    if user.role == Role.RESPONSAVEL.value:
+    if user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
         records = records.filter(student__in=students)
     dates = sorted({r.date for r in records}, reverse=True)[:90]
     grid = {}

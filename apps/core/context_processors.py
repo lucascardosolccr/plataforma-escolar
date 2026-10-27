@@ -10,6 +10,7 @@ def platform_context(request):
         "ROLE_SECRETARIA": Role.SECRETARIA.value,
         "ROLE_PROFESSOR": Role.PROFESSOR.value,
         "ROLE_RESPONSAVEL": Role.RESPONSAVEL.value,
+        "ROLE_ESTUDANTE": Role.ESTUDANTE.value,
         "theme": "dark" if request.COOKIES.get("theme") == "dark" else "light",
     }
     if user.is_authenticated:

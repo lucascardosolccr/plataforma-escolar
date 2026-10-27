@@ -24,6 +24,11 @@ class Role(models.TextChoices):
     SECRETARIA = "secretaria", "Secretaria"
     PROFESSOR = "professor", "Professor"
     RESPONSAVEL = "responsavel", "Responsável"
+    # Conta do próprio estudante. Nunca é criada pelo cadastro público nem
+    # pela tela de contas profissionais: só a partir da ficha do estudante,
+    # pela secretaria, para que o acesso fique obrigatoriamente vinculado a
+    # uma matrícula real.
+    ESTUDANTE = "estudante", "Estudante"
 
 
 STAFF_ROLES = [

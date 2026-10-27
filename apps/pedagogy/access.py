@@ -22,7 +22,12 @@ def can_manage_evaluations(user, class_group, subject):
 
 
 def can_view_evaluations(user):
-    """Perfis que acompanham avaliações e notas, sem editar."""
+    """Perfis que acompanham avaliações e notas, sem editar.
+
+    Inclui o estudante, que vê as próprias notas publicadas. Não inclui
+    ocorrências nem observações pedagógicas — essas têm regra própria e
+    permanecem fora do alcance dele.
+    """
     if not user.is_authenticated:
         return False
     return user.role in (
@@ -32,6 +37,30 @@ def can_view_evaluations(user):
         Role.SECRETARIA.value,
         Role.ADMIN.value,
         Role.RESPONSAVEL.value,
+        Role.ESTUDANTE.value,
+    )
+
+
+def own_student(user):
+    """Estudante por trás de uma conta de estudante, ou None."""
+    from apps.registry.access import student_of
+
+    return student_of(user)
+
+
+def _student_class_ids(user):
+    """Turmas em que o estudante tem (ou teve) matrícula.
+
+    Inclui matrícula encerrada para o histórico não desaparecer quando ele
+    muda de turma — a mesma regra usada para a família.
+    """
+    student = own_student(user)
+    if student is None:
+        return []
+    return list(
+        Enrollment.objects.filter(student=student).values_list(
+            "class_group_id", flat=True
+        )
     )
 
 
@@ -70,6 +99,10 @@ def can_view_activity(user, activity):
         if not activity.is_visible_to_family:
             return False
         return _guardian_class_ids(user, activity.class_group_id)
+    if user.role == Role.ESTUDANTE.value:
+        if not activity.is_visible_to_family:
+            return False
+        return activity.class_group_id in _student_class_ids(user)
     return False
 
 

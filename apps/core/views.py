@@ -177,4 +177,12 @@ def home(request):
             context["assignment_count"] = TeacherAssignment.objects.filter(
                 teacher=user
             ).count()
+        elif user.role == Role.ESTUDANTE.value:
+            from apps.pedagogy.views import _student_own_rows
+
+            rows, _ = _student_own_rows(user)
+            context["own_student"] = getattr(user, "student_record", None)
+            context["pending_activities"] = sum(
+                1 for r in rows if r["state"] in ("a_vencer", "pendente")
+            )
     return render(request, "home.html", context)

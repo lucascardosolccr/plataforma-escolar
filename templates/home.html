@@ -68,6 +68,15 @@
     </div></div>
   </div>
   {% endif %}
+  {% if pending_activities is not None %}
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100"><div class="card-body">
+      <div class="text-body-secondary small text-uppercase">Atividades em aberto</div>
+      <div class="fs-3 fw-bold {% if pending_activities %}text-warning{% endif %}">{{ pending_activities }}</div>
+      <div class="small text-body-secondary">a vencer ou pendentes</div>
+    </div></div>
+  </div>
+  {% endif %}
 </div>
 
 <h2 class="h5 mb-3">Ações rápidas</h2>
@@ -127,6 +136,24 @@
     {% include "partials/home_card.html" with url_name='communication:announcement_list' title="Comunicados" desc="Avisos da escola e das turmas dos filhos." %}
     {% include "partials/home_card.html" with url_name='communication:request_create' title="Solicitação" desc="Pedidos de atendimento com acompanhamento do status." %}
     {% include "partials/home_card.html" with url_name='analytics:report_hub' title="Relatórios" desc="Boletim, evolução e frequência dos seus filhos." %}
+  {% elif user_role == ROLE_ESTUDANTE %}
+    {% include "partials/home_card.html" with url_name='pedagogy:activity_list' title="Minhas atividades" desc="Tarefas publicadas para a sua turma, com os prazos." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:evaluation_list' title="Minhas notas" desc="Somente avaliações já publicadas pelo professor." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:attendance_list' title="Minha frequência" desc="Presenças, atrasos e faltas registradas." %}
+    {% if own_student %}
+      <div class="col-md-6 col-lg-4">
+        <div class="card card-hover h-100"><div class="card-body">
+          <h3 class="h6 mb-1">
+            <a href="{% url 'analytics:student_dashboard' own_student.pk %}" class="stretched-link text-decoration-none">
+              Meu progresso
+            </a>
+          </h3>
+          <p class="text-body-secondary small mb-0">
+            Médias por disciplina, evolução das notas e frequência.
+          </p>
+        </div></div>
+      </div>
+    {% endif %}
   {% endif %}
   {% include "partials/home_card.html" with url_name='password_change' title="Alterar senha" desc="Mantenha sua conta segura." %}
 </div>

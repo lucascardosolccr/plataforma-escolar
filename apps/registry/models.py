@@ -36,6 +36,18 @@ class Student(models.Model):
         blank=True,
         help_text="Visível apenas a perfis administrativos.",
     )
+    user = models.OneToOneField(
+        "core.User",
+        verbose_name="conta de acesso do estudante",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="student_record",
+        help_text=(
+            "Opcional. Criada pela secretaria a partir da ficha, quando a "
+            "escola decide dar acesso ao próprio estudante."
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -194,6 +194,42 @@
         </div>
       {% endif %}
 
+      {% if can_create_student_account %}
+      <div class="col-12">
+        <div class="card"><div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <div>
+            <h2 class="h6 text-body-secondary text-uppercase mb-1">Acesso do estudante</h2>
+            {% if student.user_id %}
+              <p class="text-body-secondary small mb-0">
+                Já existe conta: <strong>{{ student.user.username }}</strong>.
+                {% if student.user.must_change_password %}
+                  Está com senha temporária, a ser trocada no próximo acesso.
+                {% elif student.user.last_login %}
+                  Último acesso em {{ student.user.last_login|date:"d/m/Y H:i" }}.
+                {% else %}
+                  Nunca acessou.
+                {% endif %}
+              </p>
+            {% else %}
+              <p class="text-body-secondary small mb-0">
+                Opcional. Cria um login para o próprio estudante ver as atividades,
+                as notas publicadas e a frequência dele. Ocorrências, observações
+                pedagógicas e anotações da secretaria <strong>não</strong> ficam
+                visíveis a ele.
+              </p>
+            {% endif %}
+          </div>
+          <form method="post" action="{% url 'student_account_create' student.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm {% if student.user_id %}btn-outline-danger{% else %}btn-outline-primary{% endif %}"
+                    onclick="return confirm('{% if student.user_id %}Gerar nova senha temporária para este estudante?{% else %}Criar o acesso deste estudante?{% endif %}');">
+              {% if student.user_id %}Redefinir senha{% else %}Criar acesso{% endif %}
+            </button>
+          </form>
+        </div></div>
+      </div>
+      {% endif %}
+
       <div class="col-md-6">
         <div class="card h-100"><div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-2">

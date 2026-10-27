@@ -42,6 +42,7 @@
       <div class="small text-body-secondary">{{ activities.delivered }}/{{ activities.total }}</div>
     </div></div>
   </div>
+  {% if can_view_occ %}
   <div class="col-6 col-lg-3">
     <div class="card h-100"><div class="card-body">
       <div class="text-body-secondary small text-uppercase">Ocorrências abertas</div>
@@ -49,6 +50,7 @@
       <div class="small text-body-secondary">{{ occurrences.aberta }} aberta(s)</div>
     </div></div>
   </div>
+  {% endif %}
 </div>
 
 <div class="row g-3 mb-3">
@@ -122,12 +124,14 @@
       <div class="card-body">{{ distribution_chart }}</div>
     </div>
   </div>
+  {% if can_view_occ %}
   <div class="col-lg-6">
     <div class="card h-100">
       <div class="card-header bg-transparent fw-semibold">Ocorrências</div>
       <div class="card-body">{{ occurrence_chart }}</div>
     </div>
   </div>
+  {% endif %}
 </div>
 
 <div class="row g-3 mb-3">
@@ -147,6 +151,7 @@
       </div>
     </div>
   </div>
+  {% if can_view_plan %}
   <div class="col-lg-6">
     <div class="card h-100">
       <div class="card-header bg-transparent fw-semibold">Planos de acompanhamento</div>
@@ -166,6 +171,7 @@
       </div>
     </div>
   </div>
+  {% endif %}
 </div>
 
 {% if can_view_obs %}
@@ -199,6 +205,7 @@
 </div>
 {% endif %}
 
+{% if can_view_occ %}
 <div class="card">
   <div class="card-header bg-transparent fw-semibold">Linha do tempo</div>
   <div class="card-body">
@@ -213,4 +220,5 @@
     </ul>
   </div>
 </div>
+{% endif %}
 {% endblock %}

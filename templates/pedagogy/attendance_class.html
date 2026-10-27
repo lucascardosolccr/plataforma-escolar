@@ -11,6 +11,8 @@
   <div class="d-flex gap-2">
     {% if user_role == ROLE_RESPONSAVEL %}
       <span class="chip">Mostrando apenas seus filhos</span>
+    {% elif user_role == ROLE_ESTUDANTE %}
+      <span class="chip">Mostrando apenas a sua frequência</span>
     {% endif %}
     {% if can_register %}
       <a href="{% url 'pedagogy:attendance_register' class_group.pk %}" class="btn btn-primary btn-sm">+ Registrar novo dia</a>

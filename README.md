@@ -353,6 +353,37 @@ família vê a atividade marcada como cancelada com o motivo.
 não apenas a ativa, para que a mudança de turma não apague o histórico de
 atividades já atribuídas.
 
+## 10. Acesso do próprio estudante
+
+Opcional, e desligado por padrão: um estudante só tem login se a escola criar.
+
+**Como criar:** a **secretaria** (ou a administração) abre a ficha do estudante
+e usa **Acesso do estudante → Criar acesso**. O login e a senha temporária
+aparecem **uma única vez**; a troca é exigida no primeiro acesso. O mesmo botão
+depois serve para redefinir a senha.
+
+A conta nasce obrigatoriamente a partir da ficha — não pelo cadastro público nem
+pela tela de contas profissionais. Assim não existe conta de estudante sem
+vínculo com uma matrícula real.
+
+**O que o estudante vê:** as atividades de casa publicadas para a turma dele
+(com prazo e situação), as **avaliações já publicadas**, a **própria**
+frequência e um painel com médias por disciplina e evolução das notas.
+
+**O que o estudante não vê**, mesmo na própria ficha e no próprio painel:
+
+- ocorrências e o registro disciplinar;
+- observações pedagógicas feitas sobre ele (dificuldades, habilidades, reforço);
+- planos de acompanhamento;
+- a linha do tempo de eventos;
+- anotações da secretaria;
+- relatórios e painéis institucionais;
+- **qualquer dado de colega** — na frequência da turma ele vê apenas a própria
+  linha, e a lista de atividades não mostra nome de outro estudante.
+
+Isso segue a seção 7.5 do prompt de design e o melhor interesse do menor: o
+estudante acompanha o próprio aprendizado, não o próprio dossiê.
+
 ### Limitações conhecidas
 
 - Acesso externo pela internet depende de infraestrutura própria da escola (limitação documentada na Fase 1).

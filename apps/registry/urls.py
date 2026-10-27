@@ -8,6 +8,11 @@ urlpatterns = [
     path("estudantes/<int:student_id>/", views.student_detail, name="student_detail"),
     path("estudantes/<int:student_id>/editar/", views.student_edit, name="student_edit"),
     path("estudantes/<int:student_id>/foto/", views.student_photo, name="student_photo"),
+    path(
+        "estudantes/<int:student_id>/acesso/",
+        views.student_account_create,
+        name="student_account_create",
+    ),
     path("responsaveis/", views.guardian_list, name="guardian_list"),
     path(
         "responsaveis/<int:user_id>/",

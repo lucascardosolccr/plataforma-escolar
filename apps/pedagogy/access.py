@@ -1,4 +1,5 @@
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 
 from apps.academics.models import TeacherAssignment
 from apps.core.models import Role
@@ -87,6 +88,35 @@ def reaches(enrollments, item):
         and enr.covers(item.published_date, item.deadline)
         for enr in enrollments
     )
+
+
+def enrollment_window_q(enrollments, date_field):
+    """Filtro equivalente a ``reaches`` para itens com uma data só (avaliações).
+
+    Cada matrícula contribui com "esta turma, entre a entrada e a saída". Sem
+    matrícula, o filtro não deixa passar nada.
+    """
+    q = Q(pk__in=[])
+    for enr in enrollments:
+        parte = Q(class_group_id=enr.class_group_id)
+        if enr.started_on:
+            parte &= Q(**{f"{date_field}__gte": enr.started_on})
+        if enr.ended_on:
+            parte &= Q(**{f"{date_field}__lte": enr.ended_on})
+        q |= parte
+    return q
+
+
+def family_enrollments(user):
+    """Matrículas (todas, inclusive encerradas) dos estudantes deste usuário."""
+    if user.role == Role.RESPONSAVEL.value:
+        student_ids = _approved_child_ids(user)
+    elif user.role == Role.ESTUDANTE.value:
+        own = own_student(user)
+        student_ids = [own.pk] if own is not None else []
+    else:
+        return []
+    return [e for enrs in enrollments_by_student(student_ids).values() for e in enrs]
 
 
 def _approved_child_ids(user):

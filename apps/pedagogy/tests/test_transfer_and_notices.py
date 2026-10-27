@@ -129,6 +129,28 @@ class TransferFlowTests(PedagogyBase):
         linhas = [r for r in lista.context["rows"] if r["activity"].title == "Depois da saida"]
         self.assertEqual([r["student"] for r in linhas], [carla])
 
+    def test_family_keeps_grades_from_previous_class(self):
+        from ..models import Evaluation
+
+        def avaliacao(titulo, turma, disciplina, dia):
+            return Evaluation.objects.create(
+                school=self.school, class_group=turma, subject=disciplina,
+                title=titulo, date=dia, status=Evaluation.Status.PUBLISHED,
+                created_by=self.prof,
+            )
+
+        avaliacao("Prova da turma antiga", self.turma, self.mat, date(2026, 4, 20))
+        avaliacao("Prova depois da saida", self.turma, self.mat, date(2026, 6, 20))
+        avaliacao("Prova da turma nova", self.turma_b, self.port, date(2026, 6, 20))
+        avaliacao("Prova antes da chegada", self.turma_b, self.port, date(2026, 4, 20))
+        self.transfer_ana()
+        self.login("resp")
+        lista = self.client.get(reverse("pedagogy:evaluation_list"))
+        self.assertContains(lista, "Prova da turma antiga")
+        self.assertContains(lista, "Prova da turma nova")
+        self.assertNotContains(lista, "Prova depois da saida")
+        self.assertNotContains(lista, "Prova antes da chegada")
+
     def test_cannot_transfer_to_same_class_or_inactive_enrollment(self):
         enr = Enrollment.objects.get(student=self.ana, class_group=self.turma)
         self.login("sec")

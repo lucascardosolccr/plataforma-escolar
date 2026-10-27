@@ -174,15 +174,13 @@ def evaluation_list(request):
             qs = qs.none()
     if user.role == Role.PROFESSOR.value:
         qs = qs.filter(class_group_id__in=_teacher_assignments(user).values("class_group_id"))
-    elif user.role == Role.RESPONSAVEL.value:
+    elif user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
+        # Só avaliação publicada, das turmas por onde o estudante passou e do
+        # período em que esteve em cada uma. Antes a família perdia as notas
+        # da turma anterior na transferência, e o estudante via avaliações
+        # da turma antiga aplicadas depois que ele saiu.
         qs = qs.filter(
-            class_group_id__in=_guardian_child_ids(user)[1],
-            status=Evaluation.Status.PUBLISHED,
-        )
-    elif user.role == Role.ESTUDANTE.value:
-        # Só avaliação publicada, e só das próprias turmas.
-        qs = qs.filter(
-            class_group_id__in=acc._student_class_ids(user),
+            acc.enrollment_window_q(acc.family_enrollments(user), "date"),
             status=Evaluation.Status.PUBLISHED,
         )
     status = request.GET.get("status")

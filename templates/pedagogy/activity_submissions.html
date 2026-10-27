@@ -23,8 +23,16 @@
   visível ao responsável do estudante.
 </p>
 
+{% if read_only %}
+  <div class="alert alert-secondary" role="status">
+    Esta atividade foi cancelada. As entregas abaixo ficam como registro e não
+    podem mais ser alteradas.
+  </div>
+{% endif %}
+
 <form method="post" novalidate>
   {% csrf_token %}
+  <fieldset{% if read_only %} disabled{% endif %}>
   <div class="card">
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
@@ -42,6 +50,9 @@
           <tr>
             <td class="fw-semibold">
               {{ st.full_name }}
+              {% if st.left_class %}
+                <span class="chip ms-1">saiu da turma{% if st.left_on %} em {{ st.left_on|date:"d/m/Y" }}{% endif %}</span>
+              {% endif %}
               {% if s %}
                 <span class="d-block text-body-secondary small fw-normal">
                   registrado em {{ s.updated_at|date:"d/m/Y H:i" }}
@@ -79,10 +90,12 @@
       </table>
     </div>
   </div>
-  {% if students %}
+  </fieldset>
+  {% if students and not read_only %}
   <button type="submit" class="btn btn-primary mt-3">Salvar entregas</button>
   <p class="text-body-secondary small mt-2 mb-0">
-    Quem ficar em <em>sem registro</em> não recebe nenhum lançamento.
+    Quem ficar em <em>sem registro</em> não recebe nenhum lançamento. Quem saiu
+    da turma continua na lista para o que foi registrado não se perder.
   </p>
   {% endif %}
 </form>

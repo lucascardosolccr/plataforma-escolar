@@ -107,6 +107,19 @@ def enrollment_window_q(enrollments, date_field):
     return q
 
 
+def reach_q(enrollments):
+    """Filtro equivalente a ``reaches`` para atividades e trabalhos."""
+    q = Q(pk__in=[])
+    for enr in enrollments:
+        parte = Q(class_group_id=enr.class_group_id)
+        if enr.ended_on:
+            parte &= Q(published_date__lte=enr.ended_on)
+        if enr.started_on:
+            parte &= Q(deadline__isnull=True) | Q(deadline__gte=enr.started_on)
+        q |= parte
+    return q
+
+
 def family_enrollments(user):
     """Matrículas (todas, inclusive encerradas) dos estudantes deste usuário."""
     if user.role == Role.RESPONSAVEL.value:

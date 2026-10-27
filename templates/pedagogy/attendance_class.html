@@ -37,7 +37,10 @@
       <tbody>
         {% for st in students %}
         <tr>
-          <td class="fw-semibold">{{ st.full_name }}</td>
+          <td class="fw-semibold">
+            {{ st.full_name }}
+            {% if st.left_class %}<span class="chip ms-1">saiu da turma{% if st.left_on %} em {{ st.left_on|date:"d/m/Y" }}{% endif %}</span>{% endif %}
+          </td>
           {% with s=summary|getitem:st.pk %}
           {% if s %}
           <td class="text-center text-success">{{ s.presente }}</td>

@@ -14,7 +14,10 @@
       <tbody>
         {% for c in classes %}
         <tr>
-          <td class="fw-semibold">{{ c.name }}</td>
+          <td class="fw-semibold">
+            {{ c.name }}
+            {% if current_ids is not None and c.pk not in current_ids %}<span class="chip ms-1">turma anterior</span>{% endif %}
+          </td>
           <td>{{ c.school_year.name }}</td>
           <td class="text-end">
             <a href="{% url 'pedagogy:attendance_class' c.pk %}" class="btn btn-sm btn-outline-primary">Ver mapa</a>

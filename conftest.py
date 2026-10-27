@@ -12,7 +12,10 @@ def _avisos_agendados_sob_controle():
     passariam a depender da ordem dos testes. Os testes do próprio middleware
     zeram ``_last_run`` explicitamente.
     """
+    from django.utils import timezone
+
     from apps.core.middleware import ScheduledPublicationMiddleware
 
     ScheduledPublicationMiddleware._last_run = time.monotonic()
+    ScheduledPublicationMiddleware._last_day = timezone.localdate()
     yield

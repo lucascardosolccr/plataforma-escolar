@@ -109,7 +109,10 @@
           </div>
           <ol class="small mb-0 ps-3">
             {% for m in row.members %}
-              <li>{{ m.student.full_name }}</li>
+              <li>
+                {{ m.student.full_name }}
+                {% if m.left_class %}<span class="chip ms-1">saiu da turma{% if m.left_on %} em {{ m.left_on|date:"d/m/Y" }}{% endif %}</span>{% endif %}
+              </li>
             {% empty %}
               <li class="text-body-secondary">Sem integrantes.</li>
             {% endfor %}
@@ -149,6 +152,21 @@
                 {% for g in groups %}
                   <option value="{{ g.pk }}"{% if current|getitem:st.pk == g.pk %} selected{% endif %}>{{ g.name }}</option>
                 {% endfor %}
+              </select>
+            </td>
+          </tr>
+          {% endfor %}
+          {% for m in left_members %}
+          <tr>
+            <td class="fw-semibold">
+              {{ m.student.full_name }}
+              <span class="chip ms-1">saiu da turma{% if m.left_on %} em {{ m.left_on|date:"d/m/Y" }}{% endif %}</span>
+            </td>
+            <td>
+              <select name="grupo_{{ m.student_id }}" class="form-select form-select-sm"
+                      aria-label="Grupo de {{ m.student.full_name }}, que saiu da turma">
+                <option value="{{ m.group_id }}" selected>{{ m.group.name }} (manter)</option>
+                <option value="">— retirar do grupo —</option>
               </select>
             </td>
           </tr>

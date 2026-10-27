@@ -372,7 +372,14 @@ entrada. Assim:
   como antes — nada some de quem já via.
 
 A mesma janela vale para as avaliações publicadas: a família não perde as notas
-da turma anterior na transferência.
+da turma anterior na transferência. A frequência da turma anterior também
+continua visível à família e ao estudante (marcada como *turma anterior*), e o
+filtro por estudante nas listas da equipe segue a mesma regra.
+
+Para a equipe, quem saiu da turma continua no mapa de frequência, no controle
+de entregas e nos grupos, com a marca *saiu da turma* — o registro não some. Em
+*Organizar grupos* o professor decide se mantém ou retira o integrante
+transferido. A marca não aparece para as famílias dos colegas.
 
 **Transferir de turma** (secretaria, Cadastro → Matrículas → **Transferir**):
 informe a nova turma e a data. A matrícula atual é encerrada como
@@ -383,13 +390,14 @@ anterior e apagava o histórico.
 **Avisos na data certa**: publicar com data futura **agenda** a atividade. A
 família é avisada no dia da publicação, uma única vez (não há agendador
 externo: a própria plataforma confere as publicações vencidas a cada poucos
-minutos de uso). Cancelar uma atividade já avisada avisa também o
+minutos de uso, e sempre na primeira requisição de um novo dia). Cancelar uma atividade já avisada avisa também o
 cancelamento, com o motivo. Estudantes com conta própria recebem os avisos da
 própria turma.
 
 **Atividade publicada não muda de turma**: a família que a recebeu a perderia
 sem aviso, e a outra turma a receberia sem aviso. Para outra turma, crie outra
-atividade. Atividade cancelada não é editada.
+atividade. Atividade cancelada não é editada, e atividade ou trabalho cancelado
+não aceita mais lançamento de entrega.
 
 ## 10. Trabalhos em grupo
 

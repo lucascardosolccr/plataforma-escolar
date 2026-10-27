@@ -30,9 +30,17 @@
   </p>
 </div>
 
+{% if read_only %}
+  <div class="alert alert-secondary" role="status">
+    Este trabalho foi cancelado. As entregas abaixo ficam como registro e não
+    podem mais ser alteradas.
+  </div>
+{% endif %}
+
 {% if rows %}
 <form method="post" novalidate>
   {% csrf_token %}
+  <fieldset{% if read_only %} disabled{% endif %}>
   <div class="card">
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
@@ -52,10 +60,13 @@
               {% if por_grupo %}
                 {{ r.group.name }}
                 <span class="d-block text-body-secondary small fw-normal">
-                  {% for m in r.members %}{{ m.student.full_name }}{% if not forloop.last %}, {% endif %}{% empty %}sem integrantes{% endfor %}
+                  {% for m in r.members %}{{ m.student.full_name }}{% if m.left_class %} (saiu da turma){% endif %}{% if not forloop.last %}, {% endif %}{% empty %}sem integrantes{% endfor %}
                 </span>
               {% else %}
                 {{ r.student.full_name }}
+                {% if r.member.left_class %}
+                  <span class="chip ms-1">saiu da turma{% if r.member.left_on %} em {{ r.member.left_on|date:"d/m/Y" }}{% endif %}</span>
+                {% endif %}
                 <span class="d-block text-body-secondary small fw-normal">{{ r.group.name }}</span>
               {% endif %}
             </td>
@@ -91,11 +102,14 @@
       </table>
     </div>
   </div>
+  </fieldset>
+  {% if not read_only %}
   <button type="submit" class="btn btn-primary mt-3">Salvar entregas</button>
   <p class="text-body-secondary small mt-2 mb-0">
     Quem ficar em <em>sem registro</em> não recebe nenhum lançamento. A nota do
     trabalho é opcional e não entra na média da disciplina.
   </p>
+  {% endif %}
 </form>
 {% else %}
 <div class="card">

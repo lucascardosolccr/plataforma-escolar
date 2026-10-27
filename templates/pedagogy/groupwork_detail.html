@@ -118,6 +118,7 @@
                           {{ m.student.full_name }}
                         {% endif %}
                         {% if m.student_id in highlight_ids %}<span class="chip ms-1">este registro</span>{% endif %}
+                        {% if sees_all_groups and m.left_class %}<span class="chip ms-1">saiu da turma</span>{% endif %}
                       </li>
                     {% empty %}
                       <li class="text-body-secondary">Nenhum integrante neste grupo.</li>

@@ -9,6 +9,7 @@ import time
 
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -48,12 +49,15 @@ class ScheduledPublicationMiddleware:
     A plataforma roda sem agendador (sem cron, sem fila, sem serviço externo).
     Em vez disso, a primeira requisição autenticada depois do intervalo confere
     se há publicação agendada vencida e avisa as famílias. O custo é uma
-    consulta curta a cada ``INTERVAL`` segundos por processo, não por página.
+    consulta curta a cada ``INTERVAL`` segundos por processo, não por página —
+    e sempre na primeira requisição de um novo dia, para a publicação agendada
+    não esperar o intervalo depois da meia-noite.
     Uma falha aqui nunca derruba a página: o aviso fica para a próxima vez.
     """
 
     INTERVAL = 300
     _last_run = None
+    _last_day = None
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -61,13 +65,19 @@ class ScheduledPublicationMiddleware:
     def __call__(self, request):
         user = getattr(request, "user", None)
         agora = time.monotonic()
+        hoje = timezone.localdate()
         ultima = ScheduledPublicationMiddleware._last_run
         if (
             user is not None
             and user.is_authenticated
-            and (ultima is None or agora - ultima >= self.INTERVAL)
+            and (
+                ultima is None
+                or agora - ultima >= self.INTERVAL
+                or hoje != ScheduledPublicationMiddleware._last_day
+            )
         ):
             ScheduledPublicationMiddleware._last_run = agora
+            ScheduledPublicationMiddleware._last_day = hoje
             from apps.communication.services import deliver_due_publications
 
             try:

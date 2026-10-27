@@ -87,14 +87,6 @@ def _publication_message(item, noun, published_now):
     return "Alterações salvas para toda a turma."
 
 
-def _active_class(student):
-    return (
-        Enrollment.objects.filter(student=student, status="ativo")
-        .select_related("class_group", "school_year")
-        .first()
-    )
-
-
 def _enrolled_students(class_group):
     return (
         Student.objects.filter(
@@ -105,6 +97,42 @@ def _enrolled_students(class_group):
         .distinct()
         .order_by("first_name", "last_name")
     )
+
+
+def _left_class(class_group, student_ids):
+    """{estudante: data de saída} de quem não está mais ativo na turma.
+
+    A data falta (None) em matrícula encerrada antes de o período na turma
+    passar a ser registrado.
+    """
+    ids = set(student_ids)
+    if not ids:
+        return {}
+    ativos = set(
+        Enrollment.objects.filter(
+            class_group=class_group, status="ativo", student_id__in=ids
+        ).values_list("student_id", flat=True)
+    )
+    saida = {}
+    for enr in Enrollment.objects.filter(
+        class_group=class_group, student_id__in=ids - ativos
+    ).order_by("ended_on"):
+        saida[enr.student_id] = enr.ended_on
+    return {sid: saida.get(sid) for sid in ids - ativos}
+
+
+def _mark_left(items, left, attr="student_id"):
+    """Anota em cada item (integrante, ou estudante com ``attr="pk"``) se ele
+    saiu da turma.
+
+    Só a equipe vê essa marca: a família não fica sabendo da transferência de
+    um colega.
+    """
+    for it in items:
+        sid = getattr(it, attr)
+        it.left_class = sid in left
+        it.left_on = left.get(sid)
+    return items
 
 
 def _teacher_assignments(user):
@@ -167,11 +195,12 @@ def evaluation_list(request):
     student_id = id_param(request, "estudante")
     if student_id:
         student = get_object_or_404(Student, pk=student_id, school=user.school)
-        class_group = _active_class(student)
-        if class_group:
-            qs = qs.filter(class_group=class_group.class_group)
-        else:
-            qs = qs.none()
+        # Turmas pelas quais ele passou, no período em que esteve em cada uma.
+        qs = qs.filter(
+            acc.enrollment_window_q(
+                acc.enrollments_by_student([student.pk]).get(student.pk, []), "date"
+            )
+        )
     if user.role == Role.PROFESSOR.value:
         qs = qs.filter(class_group_id__in=_teacher_assignments(user).values("class_group_id"))
     elif user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
@@ -526,8 +555,9 @@ def activity_list(request):
     student_id = id_param(request, "estudante")
     if student_id:
         student = get_object_or_404(Student, pk=student_id, school=user.school)
-        class_group = _active_class(student)
-        qs = qs.filter(class_group=class_group.class_group) if class_group else qs.none()
+        qs = qs.filter(
+            acc.reach_q(acc.enrollments_by_student([student.pk]).get(student.pk, []))
+        )
     if user.role == Role.PROFESSOR.value:
         qs = qs.filter(class_group_id__in=_teacher_assignments(user).values("class_group_id"))
 
@@ -771,13 +801,43 @@ def activity_attachment(request, pk, attachment_id):
     )
 
 
+def _activity_students(act, existing):
+    """Quem aparece no controle de entregas da atividade.
+
+    Os ativos da turma, mais quem saiu dela mas recebeu a atividade enquanto
+    estava lá (ou já tem entrega registrada): transferir não apaga a entrega
+    nem a tira da vista do professor.
+    """
+    ativos = list(_enrolled_students(act.class_group))
+    ids = {s.pk for s in ativos}
+    por_aluno = acc.enrollments_by_student(
+        Enrollment.objects.filter(class_group=act.class_group)
+        .exclude(student_id__in=ids)
+        .values_list("student_id", flat=True),
+        act.class_group_id,
+    )
+    antigos = {sid for sid, enrs in por_aluno.items() if acc.reaches(enrs, act)}
+    antigos |= set(existing) - ids
+    saidos = list(
+        Student.objects.filter(pk__in=antigos).order_by("first_name", "last_name")
+    )
+    _mark_left(saidos, _left_class(act.class_group, antigos), attr="pk")
+    return ativos + saidos
+
+
 def activity_submissions(request, pk):
     user = request.user
     act = _get_managed_activity(user, pk)
-    students = _enrolled_students(act.class_group)
     existing = {
         s.student_id: s for s in act.submissions.select_related("student")
     }
+    students = _activity_students(act, existing)
+    canceled = act.status == Activity.Status.CANCELED
+    if request.method == "POST" and canceled:
+        messages.error(
+            request, "Atividade cancelada: as entregas ficam como estavam."
+        )
+        return redirect("pedagogy:activity_submissions", pk=act.pk)
     if request.method == "POST":
         with transaction.atomic():
             count = 0
@@ -810,7 +870,12 @@ def activity_submissions(request, pk):
     return render(
         request,
         "pedagogy/activity_submissions.html",
-        {"activity": act, "students": students, "existing": existing},
+        {
+            "activity": act,
+            "students": students,
+            "existing": existing,
+            "read_only": canceled,
+        },
     )
 
 
@@ -827,9 +892,15 @@ def _group_rows(work, groups):
     ou com integrantes num trabalho já fora do rascunho, tem histórico.
     """
     com_entrega = set(work.deliveries.values_list("group_id", flat=True))
+    groups = list(groups.prefetch_related("members__student"))
+    left = _left_class(
+        work.class_group, {m.student_id for g in groups for m in g.members.all()}
+    )
     rows = []
-    for g in groups.prefetch_related("members__student"):
-        membros = [m for m in g.members.all() if m.removed_at is None]
+    for g in groups:
+        membros = _mark_left(
+            [m for m in g.members.all() if m.removed_at is None], left
+        )
         saidos = [m for m in g.members.all() if m.removed_at is not None]
         removable = g.pk not in com_entrega and (
             work.status == GroupWork.Status.DRAFT or not (membros or saidos)
@@ -1224,6 +1295,21 @@ def group_work_groups(request, pk):
     user = request.user
     work = _get_managed_work(user, pk)
     estudantes = list(_enrolled_in(work.class_group))
+    # Quem saiu da turma (transferência) mas continua num grupo: aparece à
+    # parte, marcado, e o professor só pode mantê-lo ou retirá-lo.
+    ativos = {s.pk for s in estudantes}
+    em_grupo_saidos = {
+        m.student_id: m
+        for m in WorkGroupMember.objects.filter(
+            group__group_work=work, removed_at__isnull=True
+        )
+        .exclude(student_id__in=ativos)
+        .select_related("student", "group")
+    }
+    _mark_left(
+        em_grupo_saidos.values(),
+        _left_class(work.class_group, em_grupo_saidos),
+    )
     form = WorkGroupForm(group_work=work)
     cancelado = work.status == GroupWork.Status.CANCELED
     tem_entregas = work.deliveries.exists()
@@ -1356,6 +1442,11 @@ def group_work_groups(request, pk):
                         atual.removed_at = timezone.now()
                         atual.save(update_fields=["removed_at"])
                         mudancas += 1
+                for sid, membro in em_grupo_saidos.items():
+                    if request.POST.get(f"grupo_{sid}", "") != str(membro.group_id):
+                        membro.removed_at = timezone.now()
+                        membro.save(update_fields=["removed_at"])
+                        mudancas += 1
                 if mudancas:
                     _log(
                         request,
@@ -1391,6 +1482,10 @@ def group_work_groups(request, pk):
             "students": estudantes,
             "current": atual,
             "ungrouped": [s for s in estudantes if s.pk not in atual],
+            "left_members": sorted(
+                em_grupo_saidos.values(),
+                key=lambda m: (m.student.first_name, m.student.last_name),
+            ),
             "read_only": cancelado,
             "can_draw": not tem_entregas
             and not (work.status != GroupWork.Status.DRAFT and atual),
@@ -1455,6 +1550,11 @@ def group_work_deliveries(request, pk):
     work = _get_managed_work(user, pk)
     por_grupo = work.delivery_mode == GroupWork.DeliveryMode.GROUP
     grupos = list(work.groups.prefetch_related("members__student"))
+    cancelado = work.status == GroupWork.Status.CANCELED
+
+    if request.method == "POST" and cancelado:
+        messages.error(request, "Trabalho cancelado: as entregas ficam como estavam.")
+        return redirect("pedagogy:group_work_deliveries", pk=work.pk)
 
     if request.method == "POST":
         with transaction.atomic():
@@ -1494,9 +1594,14 @@ def group_work_deliveries(request, pk):
         (d.group_id, d.student_id): d
         for d in GroupWorkDelivery.objects.filter(group_work=work)
     }
+    saiu = _left_class(
+        work.class_group, {m.student_id for g in grupos for m in g.members.all()}
+    )
     linhas = []
     for g in grupos:
-        membros = [m for m in g.members.all() if m.removed_at is None]
+        membros = _mark_left(
+            [m for m in g.members.all() if m.removed_at is None], saiu
+        )
         if por_grupo:
             linhas.append(
                 {
@@ -1514,6 +1619,7 @@ def group_work_deliveries(request, pk):
                         "group": g,
                         "members": membros,
                         "student": m.student,
+                        "member": m,
                         "chave": f"{g.pk}_{m.student_id}",
                         "delivery": existentes.get((g.pk, m.student_id)),
                     }
@@ -1526,6 +1632,7 @@ def group_work_deliveries(request, pk):
             "rows": linhas,
             "por_grupo": por_grupo,
             "status_choices": GroupWorkDelivery.Status.choices,
+            "read_only": cancelado,
         },
     )
 
@@ -1542,17 +1649,26 @@ def attendance_list(request):
         if user.role == Role.RESPONSAVEL.value:
             if student.pk not in _guardian_child_ids(user)[0]:
                 raise PermissionDenied
-        active = _active_class(student)
-        classes = classes.filter(pk=active.class_group_id) if active else classes.none()
+        # Todas as turmas pelas quais passou, não só a atual: a frequência da
+        # turma anterior continua sendo histórico dele.
+        classes = classes.filter(
+            pk__in=Enrollment.objects.filter(student=student).values("class_group_id")
+        )
+    current_ids = None
     if user.role == Role.PROFESSOR.value:
         classes = classes.filter(
             pk__in=_teacher_assignments(user).values("class_group_id")
         )
-    elif user.role == Role.RESPONSAVEL.value:
-        classes = classes.filter(pk__in=_guardian_child_ids(user)[1])
-    elif user.role == Role.ESTUDANTE.value:
-        classes = classes.filter(pk__in=acc._student_class_ids(user))
-    page = paginate(request, classes.order_by("name"))
+    elif user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
+        enrs = acc.family_enrollments(user)
+        classes = classes.filter(pk__in={e.class_group_id for e in enrs})
+        current_ids = {
+            e.class_group_id
+            for e in Enrollment.objects.filter(
+                pk__in=[e.pk for e in enrs], status="ativo"
+            )
+        }
+    page = paginate(request, classes.order_by("-school_year__name", "name"))
     return render(
         request,
         "pedagogy/attendance_list.html",
@@ -1560,6 +1676,7 @@ def attendance_list(request):
             "classes": page,
             "page": page,
             "can_register": user.role == Role.PROFESSOR.value,
+            "current_ids": current_ids,
         },
     )
 
@@ -1569,27 +1686,43 @@ def attendance_class(request, class_group_id):
     class_group = get_object_or_404(
         ClassGroup.objects.select_related("school_year"), pk=class_group_id, school=user.school
     )
-    students = _enrolled_students(class_group)
-    if user.role == Role.RESPONSAVEL.value:
-        child_ids, child_class_ids = _guardian_child_ids(user)
-        if class_group.pk not in child_class_ids:
+    family = user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value)
+    if family:
+        # Família e estudante veem só os próprios estudantes, em qualquer
+        # turma pela qual eles passaram — inclusive a anterior a uma
+        # transferência. A frequência dos colegas não é dado deles.
+        enrs = [
+            e for e in acc.family_enrollments(user)
+            if e.class_group_id == class_group.pk
+        ]
+        if not enrs:
             raise PermissionDenied
-        students = students.filter(pk__in=child_ids)
-    elif user.role == Role.ESTUDANTE.value:
-        # O estudante vê só a própria linha: a frequência dos colegas não é
-        # dado dele.
-        own = acc.own_student(user)
-        if own is None or class_group.pk not in acc._student_class_ids(user):
-            raise PermissionDenied
-        students = students.filter(pk=own.pk)
-    elif user.role == Role.PROFESSOR.value:
-        acc.require(acc._teacher_of(user, class_group))
+        students = Student.objects.filter(
+            pk__in={e.student_id for e in enrs}
+        ).order_by("first_name", "last_name")
+    else:
+        if user.role == Role.PROFESSOR.value:
+            acc.require(acc._teacher_of(user, class_group))
+        students = _enrolled_students(class_group)
     records = (
         AttendanceRecord.objects.filter(class_group=class_group)
         .order_by("date", "student__first_name")
     )
-    if user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
+    if family:
         records = records.filter(student__in=students)
+    else:
+        # Quem saiu da turma continua no mapa, marcado, com o que foi
+        # registrado enquanto estava nela.
+        students = list(students)
+        ativos = {s.pk for s in students}
+        saidos_ids = set(records.values_list("student_id", flat=True)) - ativos
+        saidos = list(
+            Student.objects.filter(pk__in=saidos_ids).order_by(
+                "first_name", "last_name"
+            )
+        )
+        _mark_left(saidos, _left_class(class_group, saidos_ids), attr="pk")
+        students += saidos
     dates = sorted({r.date for r in records}, reverse=True)[:90]
     grid = {}
     for r in records:

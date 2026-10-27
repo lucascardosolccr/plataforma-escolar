@@ -1,5 +1,6 @@
 import tempfile
 from datetime import date, timedelta
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -567,6 +568,91 @@ class ActivityTests(PedagogyBase):
         self.assertEqual(act.status, Activity.Status.PUBLISHED)
 
 
+class SubmissionTests(PedagogyBase):
+    """Registro de entrega, nota e observação por estudante."""
+
+    def setUp(self):
+        super().setUp()
+        self.act = Activity.objects.create(
+            school=self.school, class_group=self.turma, subject=self.mat,
+            title="Dever com nota", description="x", created_by=self.prof,
+            status=Activity.Status.PUBLISHED, published_date=date(2026, 3, 1),
+        )
+        self.url = reverse("pedagogy:activity_submissions", args=[self.act.pk])
+
+    def test_teacher_records_status_grade_and_comment(self):
+        self.login("prof")
+        self.client.post(
+            self.url,
+            {
+                f"status_{self.ana.pk}": "entregue",
+                f"nota_{self.ana.pk}": "8,75",
+                f"obs_{self.ana.pk}": "Mostrou todo o cálculo.",
+            },
+        )
+        sub = Submission.objects.get(activity=self.act, student=self.ana)
+        self.assertEqual(sub.status, "entregue")
+        self.assertEqual(str(sub.grade), "8.75")
+        self.assertEqual(sub.comment, "Mostrou todo o cálculo.")
+
+    def test_blank_status_creates_no_record(self):
+        """Antes o select era sempre enviado e salvar marcava todos."""
+        self.login("prof")
+        self.client.post(self.url, {f"status_{self.ana.pk}": ""})
+        self.assertEqual(Submission.objects.filter(activity=self.act).count(), 0)
+
+    def test_current_status_is_preselected(self):
+        Submission.objects.create(
+            school=self.school, activity=self.act, student=self.ana,
+            status="nao_entregue", updated_by=self.prof,
+        )
+        self.login("prof")
+        corpo = self.client.get(self.url).content.decode()
+        self.assertIn('value="nao_entregue" selected', corpo)
+        self.assertNotIn('value="entregue" selected', corpo)
+
+    def test_invalid_grade_is_ignored_not_fatal(self):
+        self.login("prof")
+        for valor in ("abc", "-5", "99999", ""):
+            resp = self.client.post(
+                self.url,
+                {f"status_{self.ana.pk}": "entregue", f"nota_{self.ana.pk}": valor},
+            )
+            self.assertIn(resp.status_code, (200, 302), f"nota={valor!r}")
+            sub = Submission.objects.get(activity=self.act, student=self.ana)
+            self.assertIsNone(sub.grade, f"nota={valor!r} deveria virar None")
+
+    def test_family_sees_grade(self):
+        Submission.objects.create(
+            school=self.school, activity=self.act, student=self.ana,
+            status="entregue", grade=Decimal("9.50"), updated_by=self.prof,
+        )
+        self.login("resp")
+        resp = self.client.get(reverse("pedagogy:activity_list"))
+        self.assertContains(resp, "Nota 9,5")
+
+    def test_activity_grade_does_not_change_subject_average(self):
+        """A nota da atividade não entra na média da disciplina."""
+        from apps.analytics import services
+
+        Submission.objects.create(
+            school=self.school, activity=self.act, student=self.ana,
+            status="entregue", grade=Decimal("1.00"), updated_by=self.prof,
+        )
+        ev = Evaluation.objects.create(
+            school=self.school, subject=self.mat, class_group=self.turma,
+            title="Prova", status=Evaluation.Status.PUBLISHED, created_by=self.prof,
+        )
+        Grade.objects.create(
+            school=self.school, evaluation=ev, student=self.ana,
+            value=Decimal("10.00"), updated_by=self.prof,
+        )
+        medias = services.subject_averages(self.ana)
+        valores = [m["average"] for m in medias if m.get("average") is not None]
+        self.assertTrue(valores, "esperava ao menos uma média")
+        self.assertEqual(float(valores[0]), 10.0)
+
+
 class PaginationTests(PedagogyBase):
     """Antes as listas eram cortadas com uma fatia e o resto desaparecia."""
 
@@ -746,6 +832,79 @@ class ActivityAttachmentTests(PedagogyBase):
         )
         self.assertFalse(Activity.objects.filter(title="Com executavel").exists())
         self.assertEqual(ActivityAttachment.objects.count(), 0)
+
+    def _post_attachment(self, upload, title):
+        return self.client.post(
+            reverse("pedagogy:activity_create"),
+            {
+                "class_group": self.turma.pk,
+                "subject": self.mat.pk,
+                "title": title,
+                "description": "Tentativa.",
+                "published_date": "2026-03-01",
+                "attachments": upload,
+                "_publish": "1",
+            },
+        )
+
+    def test_renamed_executable_is_rejected(self):
+        """Trocar a extensão não basta: o conteúdo é conferido."""
+        self.login("prof")
+        resp = self._post_attachment(
+            SimpleUploadedFile("relatorio.pdf", b"MZ\x90\x00\x03", content_type="application/pdf"),
+            "QA executavel disfarcado",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "programa executável")
+        self.assertFalse(
+            Activity.objects.filter(title="QA executavel disfarcado").exists()
+        )
+
+    def test_content_must_match_declared_extension(self):
+        self.login("prof")
+        resp = self._post_attachment(
+            SimpleUploadedFile("planilha.xlsx", b"nao sou um zip", content_type="application/vnd.ms-excel"),
+            "QA extensao errada",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "não corresponde")
+        self.assertFalse(Activity.objects.filter(title="QA extensao errada").exists())
+
+    def test_binary_disguised_as_text_is_rejected(self):
+        self.login("prof")
+        resp = self._post_attachment(
+            SimpleUploadedFile("notas.txt", b"abc\x00\x01binario", content_type="text/plain"),
+            "QA binario como texto",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "conteúdo é binário")
+
+    def test_shebang_script_is_rejected(self):
+        self.login("prof")
+        resp = self._post_attachment(
+            SimpleUploadedFile("leia.txt", b"#!/bin/sh\nrm -rf /", content_type="text/plain"),
+            "QA script",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "programa executável")
+
+    def test_valid_files_still_pass(self):
+        """A conferência não pode barrar material legítimo."""
+        self.login("prof")
+        casos = [
+            ("apoio.pdf", b"%PDF-1.7\nconteudo"),
+            ("mapa.png", b"\x89PNG\r\n\x1a\n" + b"\x00" * 20),
+            ("foto.jpg", b"\xff\xd8\xff\xe0" + b"\x00" * 20),
+            ("roteiro.docx", b"PK\x03\x04" + b"\x00" * 20),
+            ("lista.csv", "nome;nota\nAna;9,5\n".encode("utf-8")),
+        ]
+        for i, (nome, conteudo) in enumerate(casos):
+            titulo = f"QA valido {i}"
+            self._post_attachment(SimpleUploadedFile(nome, conteudo), titulo)
+            self.assertTrue(
+                Activity.objects.filter(title=titulo).exists(),
+                f"{nome} deveria ter sido aceito",
+            )
 
     def test_guardian_without_link_cannot_download_attachment(self):
         act = self.make_published()

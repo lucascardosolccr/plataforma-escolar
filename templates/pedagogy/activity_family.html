@@ -59,6 +59,9 @@
               {% else %}
                 <span class="text-danger fw-semibold">✗ Registrada como não entregue</span>
               {% endif %}
+              {% if r.submission.grade is not None %}
+                <span class="chip ms-1">Nota {{ r.submission.grade|floatformat:"-2" }}</span>
+              {% endif %}
               {% if r.submission.comment %}
                 <span class="d-block text-body-secondary">{{ r.submission.comment }}</span>
               {% endif %}

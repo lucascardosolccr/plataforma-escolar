@@ -3,7 +3,11 @@ from django.utils import timezone
 
 from apps.academics.models import ClassGroup, Subject, TeacherAssignment
 from apps.core.models import Role, User
-from apps.core.uploads import MAX_ATTACHMENT_SIZE_MB, validate_attachment
+from apps.core.uploads import (
+    MAX_ATTACHMENT_SIZE_MB,
+    validate_attachment,
+    validate_attachment_content,
+)
 
 from .models import (
     AbsenceJustification,
@@ -151,7 +155,7 @@ class ActivityForm(forms.ModelForm):
     attachments = MultipleFileField(
         label="Anexos de apoio",
         required=False,
-        validators=[validate_attachment],
+        validators=[validate_attachment, validate_attachment_content],
         help_text=(
             f"Opcional. Até {MAX_ATTACHMENT_SIZE_MB} MB por arquivo. "
             "PDF, imagem, documento, planilha ou apresentação."

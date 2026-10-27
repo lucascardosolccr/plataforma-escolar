@@ -8,36 +8,72 @@
     <h1 class="h4 mb-0">Controle de entregas</h1>
     <p class="text-body-secondary small mb-0">
       {{ activity.title }} · {{ activity.class_group.name }} · {{ activity.subject.name }}
-      {% if activity.deadline %}· Prazo {{ activity.deadline|date:"d/m/Y" }}{% endif %}
+      {% if activity.deadline %}· Entrega até {{ activity.deadline|date:"d/m/Y" }}{% endif %}
     </p>
   </div>
-  <a href="{% url 'pedagogy:activity_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+  <div class="d-flex gap-2">
+    <a href="{% url 'pedagogy:activity_detail' activity.pk %}" class="btn btn-outline-secondary btn-sm">Ver atividade</a>
+    <a href="{% url 'pedagogy:activity_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+  </div>
 </div>
+
+<p class="text-body-secondary small">
+  A nota desta atividade é opcional e <strong>não entra no cálculo da média da
+  disciplina</strong>, que usa apenas as avaliações. O que você registrar aqui fica
+  visível ao responsável do estudante.
+</p>
 
 <form method="post" novalidate>
   {% csrf_token %}
   <div class="card">
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
-        <thead><tr><th>Estudante</th><th>Situação atual</th><th>Nova situação</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Estudante</th>
+            <th style="min-width:9rem">Situação</th>
+            <th style="min-width:6rem">Nota</th>
+            <th style="min-width:14rem">Observação</th>
+          </tr>
+        </thead>
         <tbody>
           {% for st in students %}
+          {% with s=existing|getitem:st.pk %}
           <tr>
-            <td class="fw-semibold">{{ st.full_name }}</td>
-            <td>
-              {% with s=existing|getitem:st.pk %}
-                {% if s %}<span class="chip">{{ s.get_status_display }}</span>{% else %}<span class="text-body-secondary">—</span>{% endif %}
-              {% endwith %}
+            <td class="fw-semibold">
+              {{ st.full_name }}
+              {% if s %}
+                <span class="d-block text-body-secondary small fw-normal">
+                  registrado em {{ s.updated_at|date:"d/m/Y H:i" }}
+                </span>
+              {% endif %}
             </td>
             <td>
-              <select name="status_{{ st.pk }}" class="form-select form-select-sm" style="max-width:200px">
-                <option value="entregue"{% if existing|getitem:st.pk and existing|getitem:st.pk.status == 'entregue' %} selected{% endif %}>Entregue</option>
-                <option value="nao_entregue"{% if existing|getitem:st.pk and existing|getitem:st.pk.status == 'nao_entregue' %} selected{% endif %}>Não entregue</option>
+              <select name="status_{{ st.pk }}" class="form-select form-select-sm"
+                      aria-label="Situação da entrega de {{ st.full_name }}">
+                <option value=""{% if not s %} selected{% endif %}>— sem registro —</option>
+                <option value="entregue"{% if s.status == 'entregue' %} selected{% endif %}>Entregue</option>
+                <option value="nao_entregue"{% if s.status == 'nao_entregue' %} selected{% endif %}>Não entregue</option>
               </select>
             </td>
+            <td>
+              <input type="text" inputmode="decimal" name="nota_{{ st.pk }}"
+                     class="form-control form-control-sm"
+                     value="{{ s.grade|default_if_none:'' }}"
+                     placeholder="—"
+                     aria-label="Nota da atividade de {{ st.full_name }}">
+            </td>
+            <td>
+              <input type="text" name="obs_{{ st.pk }}" maxlength="500"
+                     class="form-control form-control-sm"
+                     value="{{ s.comment|default:'' }}"
+                     placeholder="Opcional"
+                     aria-label="Observação sobre {{ st.full_name }}">
+            </td>
           </tr>
+          {% endwith %}
           {% empty %}
-          <tr><td colspan="3" class="text-center text-body-secondary py-4">Nenhum estudante matriculado nesta turma.</td></tr>
+          <tr><td colspan="4" class="text-center text-body-secondary py-4">Nenhum estudante matriculado nesta turma.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -45,6 +81,9 @@
   </div>
   {% if students %}
   <button type="submit" class="btn btn-primary mt-3">Salvar entregas</button>
+  <p class="text-body-secondary small mt-2 mb-0">
+    Quem ficar em <em>sem registro</em> não recebe nenhum lançamento.
+  </p>
   {% endif %}
 </form>
 {% endblock %}

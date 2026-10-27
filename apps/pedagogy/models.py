@@ -249,9 +249,21 @@ class Submission(models.Model):
     status = models.CharField(
         "situação", max_length=12, choices=Status.choices, default=Status.DELIVERED
     )
+    grade = models.DecimalField(
+        "nota da atividade",
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=(
+            "Opcional. Não entra no cálculo da média da disciplina, que usa "
+            "apenas as avaliações."
+        ),
+    )
     comment = models.TextField("observação", blank=True)
     submitted_at = models.DateTimeField(null=True, blank=True)
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    updated_at = models.DateTimeField("atualizada em", auto_now=True)
 
     class Meta:
         constraints = [

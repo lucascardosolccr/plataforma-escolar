@@ -97,6 +97,88 @@ def validate_attachment(file):
         )
 
 
+# Assinatura (magic bytes) esperada por extensão. Sem esta conferência,
+# renomear virus.exe para virus.pdf passa pela lista de extensões: o nome do
+# arquivo é escolhido por quem envia e não prova nada sobre o conteúdo.
+_ZIP = (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08")  # docx, xlsx, pptx, od*
+_OLE = (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1",)  # doc, xls, ppt antigos
+
+ATTACHMENT_SIGNATURES = {
+    ".pdf": (b"%PDF",),
+    ".png": (b"\x89PNG\r\n\x1a\n",),
+    ".jpg": (b"\xff\xd8\xff",),
+    ".jpeg": (b"\xff\xd8\xff",),
+    ".webp": (b"RIFF",),
+    ".docx": _ZIP,
+    ".xlsx": _ZIP,
+    ".pptx": _ZIP,
+    ".odt": _ZIP,
+    ".ods": _ZIP,
+    ".odp": _ZIP,
+    ".doc": _OLE + _ZIP,
+    ".xls": _OLE + _ZIP,
+    ".ppt": _OLE + _ZIP,
+}
+
+# Conteúdo recusado em qualquer extensão: executável do Windows, binário ELF,
+# classe Java e script com shebang.
+EXECUTABLE_SIGNATURES = (
+    b"MZ",
+    b"\x7fELF",
+    b"\xca\xfe\xba\xbe",
+    b"#!",
+)
+
+#: Extensões cujo conteúdo é texto puro e não tem assinatura própria.
+TEXT_EXTENSIONS = (".txt", ".csv")
+
+
+def validate_attachment_content(file):
+    """Confere se o conteúdo corresponde à extensão declarada.
+
+    Não substitui antivírus — um PDF malicioso continua sendo um PDF válido.
+    O que isto impede é o caso simples e comum de trocar a extensão para
+    passar pela lista de permissão.
+    """
+    if file is None:
+        return
+    pos = file.tell() if hasattr(file, "tell") else 0
+    try:
+        file.seek(0)
+        head = file.read(2048)
+    finally:
+        try:
+            file.seek(pos)
+        except (OSError, ValueError):
+            pass
+
+    if not head:
+        raise ValidationError("O arquivo está vazio.")
+
+    for sig in EXECUTABLE_SIGNATURES:
+        if head.startswith(sig):
+            raise ValidationError(
+                "Este arquivo é um programa executável e não pode ser enviado."
+            )
+
+    ext = attachment_extension(file.name)
+
+    if ext in TEXT_EXTENSIONS:
+        # Texto não tem assinatura; o byte nulo denuncia conteúdo binário.
+        if b"\x00" in head:
+            raise ValidationError(
+                "O arquivo tem extensão de texto, mas o conteúdo é binário."
+            )
+        return
+
+    expected = ATTACHMENT_SIGNATURES.get(ext)
+    if expected and not any(head.startswith(sig) for sig in expected):
+        raise ValidationError(
+            f"O conteúdo do arquivo não corresponde a um {ext.lstrip('.').upper()}. "
+            "Verifique se a extensão está correta."
+        )
+
+
 def safe_attachment_path(instance, filename):
     """Nome aleatório no disco: o nome original fica no banco, então um nome
     enviado pelo usuário nunca chega ao sistema de arquivos."""

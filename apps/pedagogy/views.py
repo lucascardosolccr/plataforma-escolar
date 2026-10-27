@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
@@ -85,6 +86,24 @@ def _teacher_assignments(user):
     return TeacherAssignment.objects.filter(teacher=user, school=user.school).select_related(
         "class_group", "subject", "school_year"
     )
+
+
+def _parse_grade(value):
+    """Nota digitada na tela de entregas. Aceita vírgula decimal.
+
+    Valor em branco ou inválido vira ``None`` — a atividade fica registrada
+    sem nota em vez de a tela falhar ou gravar zero.
+    """
+    value = (value or "").strip().replace(",", ".")
+    if not value:
+        return None
+    try:
+        nota = Decimal(value)
+    except (InvalidOperation, ValueError):
+        return None
+    if nota < 0 or nota > Decimal("1000"):
+        return None
+    return nota.quantize(Decimal("0.01"))
 
 
 def _parse_date(value):
@@ -667,13 +686,21 @@ def activity_submissions(request, pk):
         with transaction.atomic():
             count = 0
             for st in students:
-                key = f"status_{st.pk}"
-                if key not in request.POST:
+                status = request.POST.get(f"status_{st.pk}", "")
+                # Vazio significa "sem registro": não inventa uma entrega para
+                # quem o professor não avaliou. Antes o select era sempre
+                # enviado e salvar marcava a turma inteira como entregue.
+                if status not in dict(Submission.Status.choices):
                     continue
-                status = request.POST.get(key)
+                grade = _parse_grade(request.POST.get(f"nota_{st.pk}", ""))
                 sub, created = Submission.objects.update_or_create(
                     school=user.school, activity=act, student=st,
-                    defaults={"status": status, "updated_by": user},
+                    defaults={
+                        "status": status,
+                        "grade": grade,
+                        "comment": request.POST.get(f"obs_{st.pk}", "").strip()[:500],
+                        "updated_by": user,
+                    },
                 )
                 _log(
                     request,
@@ -819,8 +846,6 @@ def _max_absences(school):
 def _flag_attendance_limits(class_group, tdate):
     """Avisa a secretaria quando um estudante alcança o limite de faltas
     configurado na escola (SchoolConfig.max_absences_percent)."""
-    from decimal import Decimal
-
     limit = _max_absences(class_group.school)
     for student in _enrolled_students(class_group):
         records = AttendanceRecord.objects.filter(

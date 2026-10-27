@@ -218,6 +218,9 @@
                     <span class="chip chip-state state-{{ r.state }}">{{ r.state_label }}</span>
                     {% if r.submission %}
                       <span class="chip">{{ r.submission.get_status_display }}</span>
+                      {% if r.submission.grade is not None %}
+                        <span class="chip">Nota {{ r.submission.grade|floatformat:"-2" }}</span>
+                      {% endif %}
                     {% endif %}
                   </div>
                 </li>

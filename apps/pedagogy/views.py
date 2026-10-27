@@ -165,14 +165,26 @@ def evaluation_list(request):
         qs = qs.filter(status=status)
 
     page = paginate(request, qs.order_by("-date", "-created_at"))
-    rows = []
-    for ev in page:
-        avg = Grade.objects.filter(evaluation=ev).aggregate(Avg("value"))["value__avg"]
-        try:
-            rule = AcademicRule.objects.get(school=user.school, subject=ev.subject)
-        except AcademicRule.DoesNotExist:
-            rule = None
-        rows.append({"eval": ev, "avg": avg, "rule": rule})
+    # Média e regra acadêmica em duas consultas para a página inteira. Antes
+    # eram duas POR LINHA: com 25 linhas, 50 consultas só para montar a lista.
+    medias = dict(
+        Grade.objects.filter(evaluation__in=page)
+        .values_list("evaluation")
+        .annotate(media=Avg("value"))
+        .values_list("evaluation", "media")
+    )
+    regras = {
+        r.subject_id: r
+        for r in AcademicRule.objects.filter(school=user.school)
+    }
+    rows = [
+        {
+            "eval": ev,
+            "avg": medias.get(ev.pk),
+            "rule": regras.get(ev.subject_id),
+        }
+        for ev in page
+    ]
     return render(
         request,
         "pedagogy/evaluation_list.html",
@@ -517,15 +529,26 @@ def activity_list(request):
         ),
     )
     today = timezone.localdate()
-    rows = [
-        {
-            "activity": act,
-            "state_label": act.family_situation(today)[1],
-            "state": act.family_situation(today)[0],
-            "can_manage": acc.can_manage_activities(user, act.class_group, act.subject),
-        }
-        for act in page
-    ]
+    # Os pares turma+disciplina do professor vêm numa consulta só. Chamar
+    # can_manage_activities por linha custava uma consulta por atividade.
+    pares = (
+        set(
+            _teacher_assignments(user).values_list("class_group_id", "subject_id")
+        )
+        if user.role == Role.PROFESSOR.value
+        else set()
+    )
+    rows = []
+    for act in page:
+        state, label = act.family_situation(today)
+        rows.append(
+            {
+                "activity": act,
+                "state": state,
+                "state_label": label,
+                "can_manage": (act.class_group_id, act.subject_id) in pares,
+            }
+        )
     if user.role == Role.PROFESSOR.value:
         classes = ClassGroup.objects.filter(
             pk__in=_teacher_assignments(user).values("class_group_id")

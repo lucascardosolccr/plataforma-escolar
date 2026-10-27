@@ -353,7 +353,29 @@ família vê a atividade marcada como cancelada com o motivo.
 não apenas a ativa, para que a mudança de turma não apague o histórico de
 atividades já atribuídas.
 
-## 10. Acesso do próprio estudante
+## 10. Escola de demonstração
+
+Para conhecer a plataforma, treinar a equipe ou avaliar o comportamento com
+volume antes de cadastrar dados reais:
+
+```bash
+python manage.py seeddemo          # cria
+python manage.py seeddemo --limpar # remove tudo
+```
+
+Cria uma **escola separada** (código `demo`) com 72 estudantes sintéticos, 4
+turmas, 7 disciplinas, 36 atividades em situações variadas (rascunho,
+publicada, cancelada, prazo vencido), entregas, notas, 30 dias de frequência e
+70 contas — direção, coordenação, secretaria, 4 professores e responsáveis
+(um deles com dois filhos, para exercitar a troca entre eles). Todas as contas
+usam a mesma senha, impressa no fim do comando.
+
+> **Separação dos dados:** a demonstração é uma escola distinta, e a plataforma
+> isola tudo por escola. Nenhuma conta da demonstração alcança dados da escola
+> real, e os estudantes fictícios não aparecem nas listagens dela. Os nomes são
+> inventados — nunca use dados de estudantes reais para demonstrar ou testar.
+
+## 11. Acesso do próprio estudante
 
 Opcional, e desligado por padrão: um estudante só tem login se a escola criar.
 

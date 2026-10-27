@@ -744,12 +744,51 @@ class ActivityQueryBudgetTests(PedagogyBase):
                 status=Activity.Status.PUBLISHED, published_date=date(2026, 3, 1),
             )
 
-    def _count(self, url):
-        self.login("resp")
+    def _count(self, url, username="resp"):
+        self.login(username)
         with CaptureQueriesContext(connection) as ctx:
             resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
         return len(ctx)
+
+    def test_teacher_activity_list_query_count_is_flat(self):
+        """A lista do professor avaliava a permissão linha por linha."""
+        url = reverse("pedagogy:activity_list")
+        self._seed(2, 2)
+        small = self._count(url, "prof")
+        self._seed(0, 30)
+        large = self._count(url, "prof")
+        self.assertLessEqual(
+            large,
+            small + 2,
+            f"consultas subiram de {small} para {large}: N+1 na lista do professor",
+        )
+
+    def test_evaluation_list_query_count_is_flat(self):
+        """A lista de avaliações fazia média e regra por linha."""
+        url = reverse("pedagogy:evaluation_list")
+
+        def seed_evals(n):
+            for i in range(n):
+                ev = Evaluation.objects.create(
+                    school=self.school, subject=self.mat, class_group=self.turma,
+                    title=f"Prova {i:03d}", status=Evaluation.Status.PUBLISHED,
+                    created_by=self.prof,
+                )
+                Grade.objects.create(
+                    school=self.school, evaluation=ev, student=self.ana,
+                    value=Decimal("7.00"), updated_by=self.prof,
+                )
+
+        seed_evals(2)
+        small = self._count(url, "prof")
+        seed_evals(30)
+        large = self._count(url, "prof")
+        self.assertLessEqual(
+            large,
+            small + 2,
+            f"consultas subiram de {small} para {large}: N+1 em avaliações",
+        )
 
     def test_family_list_query_count_is_flat(self):
         url = reverse("pedagogy:activity_list")

@@ -246,17 +246,7 @@ def institutional_dashboard(request):
     if not can_view_institutional_dashboard(request.user):
         raise PermissionDenied("Painel restrito à coordenação e direção.")
     data = services.institutional_indicators(request.user.school)
-    classes = []
-    for class_group in ClassGroup.objects.filter(
-        school=request.user.school
-    ).order_by("name"):
-        classes.append(
-            {
-                "class_group": class_group,
-                "students": services.class_students(class_group).count(),
-                "attendance": services.class_attendance_percent(class_group),
-            }
-        )
+    classes = services.class_overview(request.user.school)
     return render(
         request,
         "analytics/institutional_dashboard.html",

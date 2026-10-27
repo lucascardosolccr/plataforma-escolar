@@ -9,6 +9,7 @@ oficial); rascunhos nunca entram em indicadores agregados.
 from collections import defaultdict
 from decimal import Decimal
 
+from django.db.models import Count
 from django.utils import timezone
 
 from apps.pedagogy.models import (
@@ -96,9 +97,18 @@ def published_grades(student, subject=None, start=None, end=None):
 
 def subject_averages(student, start=None, end=None):
     """Média por disciplina segundo a fórmula configurada (ou aritmética)."""
-    rules = rules_by_subject(student.school)
+    return _averages_from_grades(
+        published_grades(student, start=start, end=end),
+        rules_by_subject(student.school),
+    )
+
+
+def _averages_from_grades(grades, rules):
+    """Médias por disciplina a partir de notas já carregadas (com
+    ``evaluation__subject``), para o cálculo individual e o da turma inteira
+    usarem a mesma regra."""
     grouped = defaultdict(list)
-    for grade in published_grades(student, start=start, end=end):
+    for grade in grades:
         if grade.value is None:
             continue
         grouped[grade.evaluation.subject].append(
@@ -432,29 +442,105 @@ def class_attendance_percent(class_group):
     return round(presence / total * 100, 1)
 
 
+def class_overview(school):
+    """Estudantes ativos e frequência de cada turma, em três consultas no
+    total (antes eram três por turma). Mesmas regras de ``class_students``
+    e ``class_attendance_percent``."""
+    from apps.academics.models import ClassGroup
+
+    classes = list(
+        ClassGroup.objects.filter(school=school)
+        .select_related("school_year")
+        .order_by("name")
+    )
+    students = dict(
+        Enrollment.objects.filter(
+            class_group__school=school, status="ativo", student__school=school
+        )
+        .values("class_group_id")
+        .annotate(n=Count("student_id", distinct=True))
+        .values_list("class_group_id", "n")
+    )
+    attendance = defaultdict(lambda: defaultdict(int))
+    for row in (
+        AttendanceRecord.objects.filter(class_group__school=school)
+        .values("class_group_id", "status")
+        .annotate(n=Count("id"))
+    ):
+        attendance[row["class_group_id"]][row["status"]] = row["n"]
+    out = []
+    for cg in classes:
+        counts = attendance[cg.pk]
+        total = sum(counts.values())
+        presence = (
+            counts[AttendanceRecord.Status.PRESENT] + counts[AttendanceRecord.Status.LATE]
+        )
+        out.append(
+            {
+                "class_group": cg,
+                "students": students.get(cg.pk, 0),
+                "attendance": round(presence / total * 100, 1) if total else None,
+            }
+        )
+    return out
+
+
 def students_needing_attention(class_group):
     """Estudantes com sinal objetivo de atenção (média baixa, falta alta ou
     ocorrência aberta). É um alerta para avaliação profissional, não um
-    diagnóstico."""
+    diagnóstico.
+
+    Mesmas regras de ``subject_averages`` e ``attendance_stats`` (todas as
+    notas publicadas e toda a frequência do estudante), mas carregadas para a
+    turma inteira de uma vez: antes eram ~8 consultas por estudante, e o
+    painel de uma turma de 18 fazia 175.
+    """
+    students = list(class_students(class_group))
+    ids = [s.pk for s in students]
     rules = rules_by_subject(class_group.school)
-    default_passing = Decimal("6.0")
-    today = timezone.localdate()
-    limit = school_max_absences(class_group.school)
+    limit = float(school_max_absences(class_group.school))
+
+    grades_by_student = defaultdict(list)
+    for grade in (
+        Grade.objects.filter(student_id__in=ids, evaluation__status=PUBLISHED)
+        .select_related("evaluation", "evaluation__subject")
+        .order_by("evaluation__date", "evaluation_id")
+    ):
+        grades_by_student[grade.student_id].append(grade)
+
+    attendance = defaultdict(lambda: defaultdict(int))
+    for row in (
+        AttendanceRecord.objects.filter(student_id__in=ids)
+        .values("student_id", "status")
+        .annotate(n=Count("id"))
+    ):
+        attendance[row["student_id"]][row["status"]] = row["n"]
+
+    with_open_occurrence = set(
+        Occurrence.objects.filter(
+            student_id__in=ids,
+            status__in=[Occurrence.Status.OPEN, Occurrence.Status.FOLLOW_UP],
+        ).values_list("student_id", flat=True)
+    )
+
     flagged = []
-    for student in class_students(class_group):
+    for student in students:
         reasons = []
-        averages = subject_averages(student)
+        averages = _averages_from_grades(grades_by_student[student.pk], rules)
         lows = [
             a for a in averages if a["average"] is not None and a["average"] < a["passing"]
         ]
         if lows:
             reasons.append(f"{len(lows)} disciplina(s) abaixo da média")
-        att = attendance_stats(student)
-        if att["near_limit"]:
-            reasons.append(f"faltas em {att['absence_percent']}% (limite {att['limit']}%)")
-        if student.occurrences.filter(
-            status__in=[Occurrence.Status.OPEN, Occurrence.Status.FOLLOW_UP]
-        ).exists():
+        counts = attendance[student.pk]
+        total = sum(counts.values())
+        if total:
+            absence_percent = round(
+                counts[AttendanceRecord.Status.ABSENT] / total * 100, 1
+            )
+            if absence_percent >= limit:
+                reasons.append(f"faltas em {absence_percent}% (limite {limit}%)")
+        if student.pk in with_open_occurrence:
             reasons.append("ocorrência em aberto")
         if reasons:
             flagged.append({"student": student, "reasons": reasons})

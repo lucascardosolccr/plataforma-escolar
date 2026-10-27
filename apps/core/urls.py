@@ -14,7 +14,7 @@ urlpatterns = [
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path(
         "senha/trocar/",
-        auth_views.PasswordChangeView.as_view(),
+        views.ForcedPasswordChangeView.as_view(),
         name="password_change",
     ),
     path(
@@ -29,6 +29,11 @@ urlpatterns = [
                 path("", views.user_list, name="user_list"),
                 path("novo/", views.user_create, name="user_create"),
                 path("<int:user_id>/", views.user_detail, name="user_detail"),
+                path(
+                    "<int:user_id>/redefinir-senha/",
+                    views.password_reset_user,
+                    name="password_reset_user",
+                ),
             ]
         ),
     ),

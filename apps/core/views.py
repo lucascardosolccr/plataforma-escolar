@@ -1,11 +1,16 @@
 from django.contrib import messages
+from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_not_required
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from .access import role_required
 from .forms import ProfessionalUserForm, PublicSignupForm
 from .models import AuditLog, Role, School, User, create_audit_log
+from .pagination import paginate
+from .passwords import can_reset_password, reset_password
 
 
 @role_required(Role.ADMIN)
@@ -18,7 +23,12 @@ def user_list(request):
         qs = qs.filter(
             first_name__icontains=search
         ) | qs.filter(last_name__icontains=search) | qs.filter(username__icontains=search)
-    return render(request, "core/user_list.html", {"users": qs.order_by("username"), "search": search})
+    page = paginate(request, qs.order_by("username"))
+    return render(
+        request,
+        "core/user_list.html",
+        {"users": page, "page": page, "search": search},
+    )
 
 
 @role_required(Role.ADMIN)
@@ -52,7 +62,67 @@ def user_detail(request, user_id):
         messages.error(request, "Usuário não pertence à sua escola.")
         return redirect("user_list")
     logs = AuditLog.objects.filter(user=user)[:50]
-    return render(request, "core/user_detail.html", {"target_user": user, "logs": logs})
+    return render(
+        request,
+        "core/user_detail.html",
+        {
+            "target_user": user,
+            "logs": logs,
+            "can_reset_password": can_reset_password(request.user, user),
+        },
+    )
+
+
+@require_POST
+def password_reset_user(request, user_id):
+    """Gera senha temporária para outra conta e a mostra uma única vez.
+
+    Exige POST para que um link ou um prefetch do navegador não possa
+    invalidar a senha de alguém por navegação acidental.
+    """
+    target = get_object_or_404(User, pk=user_id)
+    if not can_reset_password(request.user, target):
+        raise PermissionDenied
+    with transaction.atomic():
+        senha = reset_password(request.user, target)
+        create_audit_log(
+            user=request.user,
+            action="update",
+            request=request,
+            target=target,
+            detail=(
+                f"Redefiniu a senha de {target.username} "
+                f"({target.role_label}); troca obrigatória no próximo acesso"
+            ),
+        )
+    return render(
+        request,
+        "core/password_reset_done.html",
+        {"target_user": target, "temp_password": senha},
+    )
+
+
+class ForcedPasswordChangeView(auth_views.PasswordChangeView):
+    """Troca de senha que também limpa a marca de senha temporária.
+
+    Sem limpar aqui, o middleware continuaria exigindo a troca depois de ela
+    já ter acontecido, e o usuário ficaria preso.
+    """
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        user = form.user
+        if user.must_change_password:
+            user.must_change_password = False
+            user.save(update_fields=["must_change_password"])
+            create_audit_log(
+                user=user,
+                action="update",
+                request=self.request,
+                target=user,
+                detail="Trocou a senha temporária no primeiro acesso",
+            )
+        return response
 
 
 @login_not_required

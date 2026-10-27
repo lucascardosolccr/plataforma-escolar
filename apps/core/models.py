@@ -50,6 +50,15 @@ class User(AbstractUser):
         null=True,
         blank=True,
     )
+    must_change_password = models.BooleanField(
+        "precisa trocar a senha",
+        default=False,
+        help_text=(
+            "Marcado quando a conta nasce com senha temporária ou quando a "
+            "senha é redefinida pela escola. Enquanto estiver marcado, o "
+            "usuário só consegue acessar a tela de troca de senha."
+        ),
+    )
 
     class Meta:
         verbose_name = "usuário"

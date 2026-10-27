@@ -52,6 +52,30 @@
     {% else %}
     <div class="alert alert-info">Mantenha seus dados de contato atualizados. A secretaria os utiliza para comunicação.</div>
     {% endif %}
+
+    {% if can_reset_password %}
+    <div class="card mt-3">
+      <div class="card-body">
+        <h2 class="h6 mb-1">Esqueceu a senha?</h2>
+        <p class="text-body-secondary small">
+          {% if target.must_change_password %}
+            Esta conta já está com senha temporária e será obrigada a trocá-la no próximo acesso.
+          {% else %}
+            Gera uma senha temporária para entregar a este responsável. Ela aparece
+            uma única vez, a senha atual deixa de funcionar na hora e a troca é
+            exigida no próximo acesso.
+          {% endif %}
+        </p>
+        <form method="post" action="{% url 'password_reset_user' target.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-danger btn-sm"
+                  onclick="return confirm('Gerar nova senha temporária para {{ target.get_full_name|default:target.username|escapejs }}?');">
+            Redefinir senha
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

@@ -57,6 +57,10 @@ class ProfessionalUserForm(forms.ModelForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.set_password(self.cleaned_data["password1"])
+        # A senha é digitada por quem cria a conta, portanto é conhecida por
+        # outra pessoa. A troca passa a ser exigida no primeiro acesso, em vez
+        # de ficar só como recomendação no texto de ajuda.
+        user.must_change_password = True
         if commit:
             user.save()
         return user

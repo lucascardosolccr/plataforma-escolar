@@ -165,6 +165,13 @@ Recomendação: manter o backup em **mídia externa (HD/pendrive)** ou em outra 
 - Rode em rede local (professores/secretaria acessam pelo IP do computador: `python manage.py runserver 0.0.0.0:8000` e `DJANGO_ALLOWED_HOSTS` com o IP).
 - Sem HTTPS em rede local é aceitável; para acesso pela internet, configure TLS e um túnel seguro (avaliar segurança antes de adotar).
 - Troque a senha do administrador após o primeiro acesso.
+- **Senha esquecida:** não há recuperação por e-mail (seria custo de
+  infraestrutura). A administração redefine qualquer conta da escola em
+  **Usuários → abrir a conta → Redefinir senha**; a **secretaria** redefine
+  apenas contas de **responsável**, em **Responsáveis → abrir o perfil →
+  Redefinir senha**. A senha temporária aparece **uma única vez** na tela, deve
+  ser entregue pessoalmente, e a plataforma **obriga a troca** no próximo acesso
+  antes de liberar qualquer outra tela. A operação fica registrada na auditoria.
 - Senhas são guardadas com hash (Argon2/PBKDF2), nunca em texto puro.
 - Todas as operações relevantes são registradas em **auditoria** (`/admin/` → Registros de auditoria).
 

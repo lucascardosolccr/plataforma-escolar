@@ -31,6 +31,31 @@
   </div>
 </div>
 
+{% if can_reset_password %}
+<div class="card mb-3">
+  <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div>
+      <h2 class="h6 mb-1">Senha</h2>
+      <p class="text-body-secondary small mb-0">
+        {% if target_user.must_change_password %}
+          Esta conta está com senha temporária e será obrigada a trocá-la no próximo acesso.
+        {% else %}
+          Gera uma senha temporária para entregar ao usuário. A senha aparece
+          uma única vez e a troca é exigida no próximo acesso.
+        {% endif %}
+      </p>
+    </div>
+    <form method="post" action="{% url 'password_reset_user' target_user.pk %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-outline-danger"
+              onclick="return confirm('Gerar nova senha temporária? A senha atual deixa de funcionar imediatamente.');">
+        Redefinir senha
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
 <div class="card">
   <div class="card-header bg-transparent"><h2 class="h6 mb-0">Registros de auditoria (últimos 50)</h2></div>
   <div class="table-responsive">

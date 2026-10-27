@@ -301,10 +301,19 @@ def guardian_profile(request, user_id):
         if is_admin
         else None
     )
+    from apps.core.passwords import can_reset_password
+
     return render(
         request,
         "registry/guardian_profile.html",
-        {"form": form, "target": target, "is_self": is_self, "is_admin": is_admin, "linked": linked},
+        {
+            "form": form,
+            "target": target,
+            "is_self": is_self,
+            "is_admin": is_admin,
+            "linked": linked,
+            "can_reset_password": can_reset_password(request.user, target),
+        },
     )
 
 

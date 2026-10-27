@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from apps.core.params import id_param
 from apps.core.models import AuditLog, Role, create_audit_log
 from apps.core.pagination import paginate
 from apps.registry.models import Student
@@ -98,7 +99,7 @@ def thread_list(request):
     qs = user.threads.select_related("student").prefetch_related(
         "participants", "messages", "messages__sender"
     )
-    student_id = request.GET.get("estudante")
+    student_id = id_param(request, "estudante")
     if student_id:
         student = get_object_or_404(Student, pk=student_id, school=user.school)
         qs = qs.filter(student=student)
@@ -122,7 +123,7 @@ def thread_create(request):
     user = request.user
     acc.require(acc.can_start_thread(user))
     initial = {}
-    student_id = request.GET.get("estudante")
+    student_id = id_param(request, "estudante")
     if student_id:
         student = get_object_or_404(Student, pk=student_id, school=user.school)
         initial["student"] = student
@@ -195,7 +196,7 @@ def announcement_list(request):
         "class_group", "student", "created_by"
     )
     qs = _visible_announcements(user, qs)
-    student_id = request.GET.get("estudante")
+    student_id = id_param(request, "estudante")
     if student_id:
         student = get_object_or_404(Student, pk=student_id, school=user.school)
         qs = qs.filter(student=student)

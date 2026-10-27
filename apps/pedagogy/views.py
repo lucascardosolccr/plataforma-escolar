@@ -18,6 +18,7 @@ from apps.communication.services import (
     notify_justification_resolved,
     notify_publication_canceled,
 )
+from apps.core.params import id_param
 from apps.core.models import AuditLog, Role, create_audit_log
 from apps.core.pagination import paginate
 from apps.core.uploads import attachment_content_type
@@ -163,7 +164,7 @@ def evaluation_list(request):
     user = request.user
     acc.require(acc.can_view_evaluations(user))
     qs = Evaluation.objects.filter(school=user.school).select_related("subject", "class_group", "created_by")
-    student_id = request.GET.get("estudante")
+    student_id = id_param(request, "estudante")
     if student_id:
         student = get_object_or_404(Student, pk=student_id, school=user.school)
         class_group = _active_class(student)
@@ -496,7 +497,7 @@ def activity_list(request):
         )
 
     if user.role == Role.RESPONSAVEL.value:
-        student_filter = request.GET.get("estudante")
+        student_filter = id_param(request, "estudante")
         student_pk = None
         if student_filter:
             student = get_object_or_404(Student, pk=student_filter, school=user.school)
@@ -524,7 +525,7 @@ def activity_list(request):
     qs = Activity.objects.filter(school=user.school).select_related(
         "subject", "class_group", "created_by"
     )
-    student_id = request.GET.get("estudante")
+    student_id = id_param(request, "estudante")
     if student_id:
         student = get_object_or_404(Student, pk=student_id, school=user.school)
         class_group = _active_class(student)
@@ -535,10 +536,10 @@ def activity_list(request):
     status = request.GET.get("status")
     if status in dict(Activity.Status.choices):
         qs = qs.filter(status=status)
-    class_filter = request.GET.get("turma")
+    class_filter = id_param(request, "turma")
     if class_filter:
         qs = qs.filter(class_group_id=class_filter)
-    subject_filter = request.GET.get("disciplina")
+    subject_filter = id_param(request, "disciplina")
     if subject_filter:
         qs = qs.filter(subject_id=subject_filter)
     date_from = _parse_date(request.GET.get("de"))
@@ -970,7 +971,7 @@ def group_work_list(request):
 
     if user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
         student_pk = None
-        student_filter = request.GET.get("estudante")
+        student_filter = id_param(request, "estudante")
         if student_filter:
             student = get_object_or_404(Student, pk=student_filter, school=user.school)
             permitidos = (
@@ -1009,10 +1010,10 @@ def group_work_list(request):
     status = request.GET.get("status")
     if status in dict(GroupWork.Status.choices):
         qs = qs.filter(status=status)
-    class_filter = request.GET.get("turma")
+    class_filter = id_param(request, "turma")
     if class_filter:
         qs = qs.filter(class_group_id=class_filter)
-    subject_filter = request.GET.get("disciplina")
+    subject_filter = id_param(request, "disciplina")
     if subject_filter:
         qs = qs.filter(subject_id=subject_filter)
 
@@ -1249,7 +1250,9 @@ def group_work_groups(request, pk):
                 return redirect("pedagogy:group_work_groups", pk=work.pk)
 
         elif acao == "remover_grupo":
-            g = get_object_or_404(WorkGroup, pk=request.POST.get("grupo"), group_work=work)
+            g = get_object_or_404(
+                WorkGroup, pk=id_param(request, "grupo", request.POST), group_work=work
+            )
             nome = g.name
             # Apagar o grupo apagaria em cascata integrantes e entregas (com
             # nota). Só se apaga grupo sem histórico: sem entrega registrada e
@@ -1535,7 +1538,7 @@ def attendance_list(request):
     user = request.user
     acc.require(acc.can_view_attendance(user))
     classes = ClassGroup.objects.filter(school=user.school).select_related("school_year")
-    student_id = request.GET.get("estudante")
+    student_id = id_param(request, "estudante")
     if student_id:
         student = get_object_or_404(Student, pk=student_id, school=user.school)
         if user.role == Role.RESPONSAVEL.value:
@@ -1687,7 +1690,7 @@ def occurrence_list(request):
     if user.role != Role.RESPONSAVEL.value:
         acc.require(acc.can_view_occurrences(user))
     qs = Occurrence.objects.filter(school=user.school).select_related("student", "recorded_by")
-    student_id = request.GET.get("estudante")
+    student_id = id_param(request, "estudante")
     if student_id:
         student = get_object_or_404(Student, pk=student_id, school=user.school)
         if user.role == Role.RESPONSAVEL.value:
@@ -1778,7 +1781,7 @@ def observation_list(request):
     qs = PedagogicalObservation.objects.filter(school=user.school).select_related(
         "student", "teacher", "subject"
     )
-    student_id = request.GET.get("estudante")
+    student_id = id_param(request, "estudante")
     if student_id:
         student = get_object_or_404(Student, pk=student_id, school=user.school)
         qs = qs.filter(student=student)
@@ -1855,7 +1858,7 @@ def observation_edit(request, pk):
 def plan_list(request):
     user = request.user
     qs = InterventionPlan.objects.filter(school=user.school).select_related("student", "created_by")
-    student_id = request.GET.get("estudante")
+    student_id = id_param(request, "estudante")
     if student_id:
         student = get_object_or_404(Student, pk=student_id, school=user.school)
         acc.require(acc.can_view_plans(user, student))
@@ -1955,7 +1958,7 @@ def justification_list(request):
     qs = AbsenceJustification.objects.filter(school=user.school).select_related(
         "student", "class_group", "submitted_by"
     )
-    student_id = request.GET.get("estudante")
+    student_id = id_param(request, "estudante")
     if student_id:
         student = get_object_or_404(Student, pk=student_id, school=user.school)
         qs = qs.filter(student=student)
@@ -2001,7 +2004,7 @@ def justification_create(request):
     if user.role != Role.RESPONSAVEL.value:
         raise PermissionDenied
     student = None
-    sid = request.POST.get("student_id") or request.GET.get("estudante")
+    sid = id_param(request, "student_id", request.POST) or id_param(request, "estudante")
     if sid:
         student = get_object_or_404(Student.objects.filter(school=user.school), pk=sid)
         acc.require(acc.can_view_justifications(user, student))

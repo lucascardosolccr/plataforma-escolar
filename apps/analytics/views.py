@@ -15,6 +15,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from apps.academics.models import ClassGroup
+from apps.core.params import id_param
 from apps.core.models import Role
 from apps.pedagogy.access import (
     can_view_observations,
@@ -45,21 +46,21 @@ def _parse_date(value):
 
 def _report_params(request, for_csv=False):
     student = None
-    if request.GET.get("student"):
+    if id_param(request, "student"):
         student = get_object_or_404(
-            Student, pk=request.GET["student"], school=request.user.school
+            Student, pk=id_param(request, "student"), school=request.user.school
         )
     class_group = None
-    if request.GET.get("class"):
+    if id_param(request, "class"):
         class_group = get_object_or_404(
-            ClassGroup, pk=request.GET["class"], school=request.user.school
+            ClassGroup, pk=id_param(request, "class"), school=request.user.school
         )
     subject = None
-    if request.GET.get("subject"):
+    if id_param(request, "subject"):
         from apps.academics.models import Subject
 
         subject = Subject.objects.filter(
-            school=request.user.school, pk=request.GET["subject"]
+            school=request.user.school, pk=id_param(request, "subject")
         ).first()
     return {
         "student": student,

@@ -11,6 +11,7 @@ from django.views.decorators.http import require_POST
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
+from apps.core.params import id_param
 from apps.core.models import AuditLog, Role, User, create_audit_log
 from apps.core.pagination import paginate
 from apps.core.uploads import ALLOWED_PHOTO_EXTENSIONS
@@ -549,7 +550,7 @@ def enrollment_list(request):
         qs = qs.filter(student__first_name__icontains=q) | qs.filter(
             student__last_name__icontains=q
         )
-    year_id = request.GET.get("year", "")
+    year_id = id_param(request, "year") or ""
     status = request.GET.get("status", "")
     if year_id:
         qs = qs.filter(school_year_id=year_id)

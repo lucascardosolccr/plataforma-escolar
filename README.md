@@ -260,7 +260,7 @@ diretamente.
 - ✔ Fotos (estudante e responsável) validando tipo/tamanho (JPG, PNG, WEBP ≤ 2 MB), nomes aleatórios e **servidas apenas por rotas autenticadas** (nunca pela URL pública de mídia).
 - ✔ Responsáveis: perfil com contatos/endereço e preferência de comunicação.
 - ✔ Vínculos responsável↔estudante: responsável solicita pelo nome (sem expor dados da matrícula), secretaria/admin aprova ou rejeita; vínculos criados pela secretaria já nascem validados.
-- ✔ Matrículas por ano letivo com unicidade (ativa/concluída) por estudante/ano.
+- ✔ Matrículas por ano letivo: uma **ativa** por estudante/ano, com período na turma (entrada/saída) e transferência que preserva o histórico.
 - ✔ Turmas, disciplinas e anos letivos com validação de duplicidade por escola.
 - ✔ Atribuições professor→turma/disciplina/ano com unicidade e isolamento por escola.
 - ✔ Cadastro público de responsável (`/cadastro/`) — perfil sempre fixado em *responsável* no servidor, sem elevação possível por meio de dados enviados.
@@ -359,9 +359,37 @@ família vê a atividade marcada como cancelada com o motivo.
 **Conclusão não é visualização**: a família só vê "entrega registrada" quando o
 **professor** registrou a entrega. Abrir a atividade não conclui nada.
 
-**Aluno transferido**: a visibilidade considera qualquer matrícula do estudante,
-não apenas a ativa, para que a mudança de turma não apague o histórico de
-atividades já atribuídas.
+**Aluno transferido e aluno novo**: cada matrícula guarda o período em que o
+estudante esteve na turma (entrada e saída). Uma atividade alcança o estudante
+quando foi publicada antes da saída dele e não tinha prazo encerrado na
+entrada. Assim:
+
+- o transferido **mantém** na ficha e na área da família tudo o que a turma
+  anterior lhe atribuiu, mas **não recebe** o que ela publicar depois;
+- quem chega no meio do ano vê o que ainda está **vigente**, e não uma lista
+  de "prazos encerrados" de tarefas que nunca foram dele;
+- matrículas criadas antes desta regra (sem datas) continuam alcançando tudo,
+  como antes — nada some de quem já via.
+
+A mesma janela vale para as avaliações publicadas: a família não perde as notas
+da turma anterior na transferência.
+
+**Transferir de turma** (secretaria, Cadastro → Matrículas → **Transferir**):
+informe a nova turma e a data. A matrícula atual é encerrada como
+*transferido* e uma nova é aberta, na mesma operação. Editar a turma de uma
+matrícula existente é recusado — fazia a matrícula "nunca ter estado" na turma
+anterior e apagava o histórico.
+
+**Avisos na data certa**: publicar com data futura **agenda** a atividade. A
+família é avisada no dia da publicação, uma única vez (não há agendador
+externo: a própria plataforma confere as publicações vencidas a cada poucos
+minutos de uso). Cancelar uma atividade já avisada avisa também o
+cancelamento, com o motivo. Estudantes com conta própria recebem os avisos da
+própria turma.
+
+**Atividade publicada não muda de turma**: a família que a recebeu a perderia
+sem aviso, e a outra turma a receberia sem aviso. Para outra turma, crie outra
+atividade. Atividade cancelada não é editada.
 
 ## 10. Trabalhos em grupo
 
@@ -378,7 +406,9 @@ uma vez, e a composição tem um só lugar de verdade.
 2. Organiza os grupos **numa única tela**: cria grupos pelo nome, ou usa
    **Sortear** para distribuir ao acaso e depois revisar, e atribui cada
    estudante por um seletor. Para trabalho coletivo, basta um grupo com todos.
-3. Publica. A família é avisada, com o nome do estudante no aviso.
+3. Publica. As famílias **dos integrantes** são avisadas, com o nome do
+   estudante no aviso — mas só depois que a composição for salva, para ninguém
+   abrir um trabalho sem o grupo do filho.
 4. Registra entregas, com nota e observação opcionais.
 
 **Forma de entrega** é explícita e escolhida no trabalho: *uma por grupo* ou
@@ -399,8 +429,14 @@ daquele grupo** — informação necessária para organizar o trabalho.
   identificador na URL. Anexos passam por view que confere o vínculo.
 
 **Histórico:** tirar alguém de um grupo marca a saída em vez de apagar a linha,
-e cancelar o trabalho preserva grupos, integrantes e entregas. Transferência de
-turma não apaga a participação anterior.
+e cancelar o trabalho preserva grupos, integrantes e entregas — e congela a
+composição. Transferência de turma não apaga a participação anterior.
+
+Um grupo **com histórico** (entregas, ou integrantes num trabalho já fora do
+rascunho) não é apagado: a remoção apagaria em cascata a participação e as
+notas. O **sorteio** recomeça os grupos do zero e por isso só está disponível
+enquanto a composição não foi divulgada e não há entregas; depois disso, os
+ajustes são feitos integrante a integrante.
 
 ## 11. Escola de demonstração
 

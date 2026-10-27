@@ -291,7 +291,12 @@ class Command(BaseCommand):
             estudantes = []
             for i in range(n_estudantes):
                 nome = NOMES[i % len(NOMES)]
-                sobrenome = SOBRENOMES[(i // len(NOMES) + i) % len(SOBRENOMES)]
+                # A cada volta pelos nomes, o sobrenome é deslocado 5 posições.
+                # Antes o deslocamento era 1 e, como 35 + 1 = 36 é múltiplo de
+                # 18, a segunda volta repetia nome E sobrenome da primeira
+                # (três "Alice Almeida" na escola). Assim, os nomes completos
+                # só se repetem a partir de 315 estudantes.
+                sobrenome = SOBRENOMES[(i + 5 * (i // len(NOMES))) % len(SOBRENOMES)]
                 st = Student.objects.create(
                     school=school,
                     first_name=nome,

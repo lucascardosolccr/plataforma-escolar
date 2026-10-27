@@ -16,6 +16,7 @@ from apps.communication.services import (
     notify_justification_resolved,
 )
 from apps.core.models import AuditLog, Role, create_audit_log
+from apps.core.pagination import paginate
 from apps.core.uploads import attachment_content_type
 from apps.registry.models import Enrollment, GuardianLink, Student
 
@@ -138,9 +139,9 @@ def evaluation_list(request):
     if status in ("rascunho", "publicada"):
         qs = qs.filter(status=status)
 
-    evals = qs.order_by("-date", "-created_at")[:200]
+    page = paginate(request, qs.order_by("-date", "-created_at"))
     rows = []
-    for ev in evals:
+    for ev in page:
         avg = Grade.objects.filter(evaluation=ev).aggregate(Avg("value"))["value__avg"]
         try:
             rule = AcademicRule.objects.get(school=user.school, subject=ev.subject)
@@ -152,6 +153,7 @@ def evaluation_list(request):
         "pedagogy/evaluation_list.html",
         {
             "rows": rows,
+            "page": page,
             "status": status,
             "student_id": student_id,
             "can_edit_any": user.role == Role.PROFESSOR.value,
@@ -303,10 +305,13 @@ def _family_rows(user, student_filter=None):
     children = [link.student for link in links]
     if student_filter:
         children = [s for s in children if s.pk == student_filter]
+    # Sem fatia: o conjunto já está restrito às turmas dos filhos vinculados e
+    # ao que foi publicado. Cortar aqui descartaria o histórico mais antigo e a
+    # contagem exibida pela paginação ficaria mentindo sobre o total.
     activities = list(
         _guardian_visible_activities(user)
         .select_related("subject", "class_group", "created_by")
-        .prefetch_related("attachments")[:300]
+        .prefetch_related("attachments")
     )
     enrolled = {}
     for enr in Enrollment.objects.filter(
@@ -394,11 +399,13 @@ def activity_list(request):
         state = request.GET.get("situacao")
         if state in ("a_vencer", "pendente", "encerrada", "cancelada"):
             rows = [r for r in rows if r["state"] == state]
+        page = paginate(request, rows)
         return render(
             request,
             "pedagogy/activity_family.html",
             {
-                "rows": rows,
+                "rows": page,
+                "page": page,
                 "children": children,
                 "student_id": student_pk,
                 "state": state,
@@ -432,10 +439,11 @@ def activity_list(request):
     if date_to:
         qs = qs.filter(published_date__lte=date_to)
 
-    activities = list(
+    page = paginate(
+        request,
         qs.annotate(attachment_count=Count("attachments")).order_by(
             "-published_date", "-created_at"
-        )[:200]
+        ),
     )
     today = timezone.localdate()
     rows = [
@@ -445,7 +453,7 @@ def activity_list(request):
             "state": act.family_situation(today)[0],
             "can_manage": acc.can_manage_activities(user, act.class_group, act.subject),
         }
-        for act in activities
+        for act in page
     ]
     if user.role == Role.PROFESSOR.value:
         classes = ClassGroup.objects.filter(
@@ -462,6 +470,7 @@ def activity_list(request):
         "pedagogy/activity_list.html",
         {
             "rows": rows,
+            "page": page,
             "student_id": student_id,
             "can_manage": user.role == Role.PROFESSOR.value,
             "status": status,
@@ -702,11 +711,13 @@ def attendance_list(request):
         )
     elif user.role == Role.RESPONSAVEL.value:
         classes = classes.filter(pk__in=_guardian_child_ids(user)[1])
+    page = paginate(request, classes.order_by("name"))
     return render(
         request,
         "pedagogy/attendance_list.html",
         {
-            "classes": classes.order_by("name")[:200],
+            "classes": page,
+            "page": page,
             "can_register": user.role == Role.PROFESSOR.value,
         },
     )
@@ -850,11 +861,13 @@ def occurrence_list(request):
     status = request.GET.get("status")
     if status in dict(Occurrence.Status.choices):
         qs = qs.filter(status=status)
+    page = paginate(request, qs.order_by("-date", "-created_at"))
     return render(
         request,
         "pedagogy/occurrence_list.html",
         {
-            "occurrences": qs.order_by("-date", "-created_at")[:200],
+            "occurrences": page,
+            "page": page,
             "status": status,
             "student_id": student_id,
             "can_manage": acc.can_manage_occurrences(user),
@@ -938,10 +951,11 @@ def observation_list(request):
         qs = qs.filter(student_id__in=student_ids)
     else:
         acc.require(acc.can_view_observations(user))
+    page = paginate(request, qs.order_by("-observed_at", "-created_at"))
     return render(
         request,
         "pedagogy/observation_list.html",
-        {"observations": qs.order_by("-observed_at", "-created_at")[:200]},
+        {"observations": page, "page": page},
     )
 
 
@@ -1020,11 +1034,13 @@ def plan_list(request):
         qs = qs.filter(student_id__in=student_ids)
     else:
         acc.require(user.role in (Role.COORDENACAO.value, Role.DIRECAO.value, Role.ADMIN.value))
+    page = paginate(request, qs.order_by("-created_at"))
     return render(
         request,
         "pedagogy/plan_list.html",
         {
-            "plans": qs.order_by("-created_at")[:200],
+            "plans": page,
+            "page": page,
             "can_manage": acc.can_manage_plans(user),
         },
     )
@@ -1121,11 +1137,13 @@ def justification_list(request):
     status = request.GET.get("status")
     if status in dict(AbsenceJustification.Status.choices):
         qs = qs.filter(status=status)
+    page = paginate(request, qs.order_by("-created_at"))
     return render(
         request,
         "pedagogy/justification_list.html",
         {
-            "justifications": qs.order_by("-created_at")[:200],
+            "justifications": page,
+            "page": page,
             "status": status,
             "can_manage": acc.can_manage_justifications(user),
             "status_choices": AbsenceJustification.Status.choices,

@@ -4,6 +4,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.core.models import Role, create_audit_log
+from apps.core.pagination import paginate
 from apps.registry.models import Student
 
 from .access import can_manage_academics, can_view_academics
@@ -32,11 +33,13 @@ def class_group_list(request):
     q = request.GET.get("q", "").strip()
     if q:
         qs = qs.filter(name__icontains=q)
+    page = paginate(request, qs.order_by("name"))
     return render(
         request,
         "academics/classgroup_list.html",
         {
-            "class_groups": qs.order_by("name")[:200],
+            "class_groups": page,
+            "page": page,
             "q": q,
             "can_manage": can_manage_academics(request.user),
         },
@@ -88,11 +91,13 @@ def subject_list(request):
     q = request.GET.get("q", "").strip()
     if q:
         qs = qs.filter(name__icontains=q)
+    page = paginate(request, qs.order_by("name"))
     return render(
         request,
         "academics/subject_list.html",
         {
-            "subjects": qs.order_by("name")[:200],
+            "subjects": page,
+            "page": page,
             "q": q,
             "can_manage": can_manage_academics(request.user),
         },
@@ -195,10 +200,11 @@ def assignment_list(request):
     qs = TeacherAssignment.objects.filter(school=request.user.school).select_related(
         "teacher", "class_group", "subject", "school_year"
     )
+    page = paginate(request, qs.order_by("class_group__name", "subject__name"))
     return render(
         request,
         "academics/assignment_list.html",
-        {"assignments": qs.order_by("class_group__name", "subject__name")[:300]},
+        {"assignments": page, "page": page},
     )
 
 

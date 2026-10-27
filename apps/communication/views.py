@@ -6,6 +6,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.core.models import AuditLog, Role, create_audit_log
+from apps.core.pagination import paginate
 from apps.registry.models import Student
 
 from . import access as acc
@@ -57,11 +58,13 @@ def notification_list(request):
         Notification.objects.filter(pk__in=unread_update.values("pk")).update(
             is_read=True, read_at=timezone.now()
         )
+    page = paginate(request, qs)
     return render(
         request,
         "communication/notification_list.html",
         {
-            "notifications": qs[:200],
+            "notifications": page,
+            "page": page,
             "kind": kind,
             "kind_choices": Notification.Kind.choices,
         },
@@ -99,8 +102,9 @@ def thread_list(request):
     if student_id:
         student = get_object_or_404(Student, pk=student_id, school=user.school)
         qs = qs.filter(student=student)
+    page = paginate(request, qs.order_by("-updated_at"))
     threads = []
-    for t in qs.order_by("-updated_at")[:100]:
+    for t in page:
         unread = sum(
             1
             for m in t.messages.all()
@@ -110,7 +114,7 @@ def thread_list(request):
     return render(
         request,
         "communication/thread_list.html",
-        {"threads": threads, "student_id": student_id},
+        {"threads": threads, "page": page, "student_id": student_id},
     )
 
 
@@ -203,11 +207,13 @@ def announcement_list(request):
             announcement_id__in=qs.values("pk"), user=user
         ).values_list("announcement_id", flat=True)
     )
+    page = paginate(request, qs)
     return render(
         request,
         "communication/announcement_list.html",
         {
-            "announcements": qs[:200],
+            "announcements": page,
+            "page": page,
             "read_ids": read_ids,
             "scope": scope,
             "student_id": student_id,
@@ -313,11 +319,13 @@ def request_list(request):
     status = request.GET.get("status")
     if status in dict(ServiceRequest.Status.choices):
         qs = qs.filter(status=status)
+    page = paginate(request, qs)
     return render(
         request,
         "communication/request_list.html",
         {
-            "requests": qs[:200],
+            "requests": page,
+            "page": page,
             "status": status,
             "status_choices": ServiceRequest.Status.choices,
             "can_manage": acc.can_manage_requests(user),

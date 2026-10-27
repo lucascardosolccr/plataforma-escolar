@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from apps.academics.models import ClassGroup, SchoolYear, Subject, TeacherAssignment
 from apps.core.models import AuditLog, Role, School
+from apps.core.pagination import PAGE_SIZE
 from apps.registry.models import Enrollment, GuardianLink, Student
 
 from ..models import (
@@ -564,6 +565,69 @@ class ActivityTests(PedagogyBase):
         self.assertEqual(resp.status_code, 200)
         act.refresh_from_db()
         self.assertEqual(act.status, Activity.Status.PUBLISHED)
+
+
+class PaginationTests(PedagogyBase):
+    """Antes as listas eram cortadas com uma fatia e o resto desaparecia."""
+
+    def make_many(self, n):
+        for i in range(n):
+            Activity.objects.create(
+                school=self.school, class_group=self.turma, subject=self.mat,
+                title=f"Atividade {i:03d}", description="x", created_by=self.prof,
+                status=Activity.Status.PUBLISHED, published_date=date(2026, 3, 1),
+            )
+
+    def test_second_page_shows_different_records(self):
+        self.make_many(PAGE_SIZE + 10)
+        self.login("prof")
+        url = reverse("pedagogy:activity_list")
+        p1 = self.client.get(url)
+        p2 = self.client.get(url, {"pagina": 2})
+        self.assertEqual(len(p1.context["rows"]), PAGE_SIZE)
+        self.assertEqual(len(p2.context["rows"]), 10)
+        titulos1 = {r["activity"].title for r in p1.context["rows"]}
+        titulos2 = {r["activity"].title for r in p2.context["rows"]}
+        self.assertFalse(titulos1 & titulos2)
+        # O total informado cobre tudo, nao so a pagina.
+        self.assertEqual(p1.context["page"].paginator.count, PAGE_SIZE + 10)
+
+    def test_nothing_is_lost_across_pages(self):
+        self.make_many(PAGE_SIZE + 7)
+        self.login("prof")
+        url = reverse("pedagogy:activity_list")
+        vistos = set()
+        for n in (1, 2):
+            resp = self.client.get(url, {"pagina": n})
+            vistos |= {r["activity"].pk for r in resp.context["rows"]}
+        self.assertEqual(vistos, set(Activity.objects.values_list("pk", flat=True)))
+
+    def test_pager_keeps_active_filters(self):
+        self.make_many(PAGE_SIZE + 5)
+        self.login("prof")
+        resp = self.client.get(
+            reverse("pedagogy:activity_list"),
+            {"turma": self.turma.pk, "status": "publicada"},
+        )
+        corpo = resp.content.decode()
+        self.assertIn("pagina=2", corpo)
+        # Trocar de pagina nao pode descartar o filtro que o usuario aplicou.
+        self.assertIn(f"turma={self.turma.pk}&amp;status=publicada&amp;pagina=2", corpo)
+
+    def test_invalid_page_falls_back_instead_of_breaking(self):
+        self.make_many(3)
+        self.login("prof")
+        url = reverse("pedagogy:activity_list")
+        for valor in ("0", "-1", "abc", "99999", ""):
+            resp = self.client.get(url, {"pagina": valor})
+            self.assertEqual(resp.status_code, 200, f"pagina={valor!r}")
+
+    def test_family_list_is_paginated(self):
+        self.make_many(PAGE_SIZE + 4)
+        self.login("resp")
+        resp = self.client.get(reverse("pedagogy:activity_list"))
+        self.assertEqual(len(resp.context["rows"]), PAGE_SIZE)
+        self.assertEqual(resp.context["page"].paginator.count, PAGE_SIZE + 4)
 
 
 class ActivityQueryBudgetTests(PedagogyBase):

@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from apps.core.models import AuditLog, Role, User, create_audit_log
+from apps.core.pagination import paginate
 from apps.core.uploads import ALLOWED_PHOTO_EXTENSIONS
 
 from apps.academics.models import SchoolYear
@@ -60,11 +61,13 @@ def student_list(request):
         raise PermissionDenied
 
     qs, q = _resolver_student_list(request, qs)
+    page = paginate(request, qs.select_related("school"))
     return render(
         request,
         "registry/student_list.html",
         {
-            "students": qs.select_related("school")[:200],
+            "students": page,
+            "page": page,
             "q": q,
             "can_manage": can_manage_registry(user),
         },
@@ -259,10 +262,11 @@ def guardian_list(request):
     q = request.GET.get("q", "").strip()
     if q:
         qs = qs.filter(first_name__icontains=q) | qs.filter(username__icontains=q)
+    page = paginate(request, qs.order_by("first_name"))
     return render(
         request,
         "registry/guardian_list.html",
-        {"guardians": qs.order_by("first_name")[:200], "q": q},
+        {"guardians": page, "page": page, "q": q},
     )
 
 
@@ -326,10 +330,16 @@ def link_list(request):
     status = request.GET.get("status", "")
     if status in ("pendente", "aprovado", "rejeitado"):
         links = links.filter(status=status)
+    page = paginate(request, links.order_by("-created_at"))
     return render(
         request,
         "registry/link_list.html",
-        {"links": links.order_by("-created_at")[:200], "status": status, "can_manage": can_manage_guardian_links(user)},
+        {
+            "links": page,
+            "page": page,
+            "status": status,
+            "can_manage": can_manage_guardian_links(user),
+        },
     )
 
 
@@ -453,11 +463,13 @@ def enrollment_list(request):
         qs = qs.filter(school_year_id=year_id)
     if status in ("ativo", "transferido", "concluido", "desistente"):
         qs = qs.filter(status=status)
+    page = paginate(request, qs.order_by("-school_year__name"))
     return render(
         request,
         "registry/enrollment_list.html",
         {
-            "enrollments": qs.order_by("-school_year__name")[:200],
+            "enrollments": page,
+            "page": page,
             "q": q,
             "years": SchoolYear.objects.filter(school=request.user.school),
             "statuses": Enrollment.STATUS_CHOICES,

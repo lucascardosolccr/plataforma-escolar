@@ -303,6 +303,7 @@ class Command(BaseCommand):
                 Enrollment.objects.create(
                     school=school, student=st, class_group=turma, school_year=ano,
                     enrollment_number=f"{hoje.year}{i + 1:04d}", status="ativo",
+                    started_on=ano.start_date,
                 )
                 estudantes.append(st)
 

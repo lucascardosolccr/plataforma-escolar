@@ -1,5 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Painel do estudante — {{ student }}{% endblock %}
+{% block extra_css %}
+<style>
+  .chart-container { position: relative; height: 320px; width: 100%; }
+</style>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+{% endblock %}
 
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -58,7 +66,12 @@
     <div class="card h-100">
       <div class="card-header bg-transparent fw-semibold">Média por disciplina</div>
       <div class="card-body">
-        <div class="p-3">{{ subject_chart }}</div>
+        <div class="p-3">
+          <div class="chart-container">
+            <canvas id="chartDisciplinas"></canvas>
+          </div>
+          {{ subject_chart }}
+        </div>
         <a class="small" data-bs-toggle="collapse" href="#tab-subjects" role="button">Ver dados que fundamentam</a>
         <div class="collapse mt-2" id="tab-subjects">
           <table class="table table-sm mb-0">
@@ -82,7 +95,12 @@
   <div class="col-lg-6">
     <div class="card h-100">
       <div class="card-header bg-transparent fw-semibold">Evolução das notas (últimas avaliações)</div>
-      <div class="card-body p-4">{{ evolution_chart }}</div>
+      <div class="card-body p-4">
+        <div class="chart-container">
+          <canvas id="chartEvolucao"></canvas>
+        </div>
+        {{ evolution_chart }}
+      </div>
     </div>
   </div>
 </div>
@@ -221,4 +239,42 @@
   </div>
 </div>
 {% endif %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const ctx1 = document.getElementById('chartEvolucao');
+  if (ctx1 && typeof Chart !== 'undefined') {
+    new Chart(ctx1, {
+      type: 'line',
+      data: {
+        labels: [{% for p in evolution %}'{{ p.label|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+        datasets: [{
+          label: 'Evolução das notas',
+          data: [{% for p in evolution %}{{ p.value|default:"null" }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+          borderColor: '#667eea',
+          backgroundColor: 'rgba(102, 126, 234, 0.1)',
+          tension: 0.4,
+          fill: true
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: false } } }
+    });
+  }
+  const ctx2 = document.getElementById('chartDisciplinas');
+  if (ctx2 && typeof Chart !== 'undefined') {
+    new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: [{% for a in averages %}'{{ a.subject.name|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+        datasets: [{
+          label: 'Média por disciplina',
+          data: [{% for a in averages %}{{ a.avg|default:"0" }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+          backgroundColor: 'rgba(102, 126, 234, 0.85)',
+          borderRadius: 8
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+  }
+});
+</script>
 {% endblock %}

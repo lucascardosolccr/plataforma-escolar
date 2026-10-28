@@ -274,33 +274,53 @@ def _r_atividades_pendentes(user, params):
 
     class_group = params["class_group"]
     classes = allowed_classes(user)
-    qs = Activity.objects.filter(school=user.school, class_group__in=classes)
+    qs = Activity.objects.filter(
+        school=user.school,
+        class_group__in=classes,
+        status=Activity.Status.PUBLISHED,
+    )
     if class_group:
         qs = qs.filter(class_group=class_group)
     if params["subject"]:
         qs = qs.filter(subject=params["subject"])
+    if params["start"]:
+        qs = qs.filter(published_date__gte=params["start"])
+    if params["end"]:
+        qs = qs.filter(published_date__lte=params["end"])
+
     today = timezone.localdate()
+    activities = list(qs.select_related("class_group", "subject").order_by("deadline"))
     rows = []
-    for activity in qs.select_related("class_group", "subject").order_by("deadline"):
-        for student in services.class_students(activity.class_group):
-            sub = Submission.objects.filter(activity=activity, student=student).first()
-            delivered = sub is not None and sub.status == Submission.Status.DELIVERED
-            if delivered:
-                continue
-            if activity.deadline and activity.deadline < today:
-                situacao = "Atrasada"
-            else:
-                situacao = "Pendente"
-            rows.append(
-                [
-                    str(student),
-                    activity.title,
-                    activity.subject.name,
-                    activity.deadline.strftime("%d/%m/%Y") if activity.deadline else "—",
-                    situacao,
-                ]
-            )
-    criteria = "Atividades sem entrega registrada nas turmas do escopo."
+    if activities:
+        act_ids = [a.id for a in activities]
+        delivered_pairs = set(
+            Submission.objects.filter(
+                activity_id__in=act_ids,
+                status=Submission.Status.DELIVERED,
+            ).values_list("activity_id", "student_id")
+        )
+        students_by_class = {}
+        for activity in activities:
+            cg = activity.class_group
+            if cg.id not in students_by_class:
+                students_by_class[cg.id] = list(services.class_students(cg))
+            for student in students_by_class[cg.id]:
+                if (activity.id, student.id) in delivered_pairs:
+                    continue
+                if activity.deadline and activity.deadline < today:
+                    situacao = "Atrasada"
+                else:
+                    situacao = "Pendente"
+                rows.append(
+                    [
+                        str(student),
+                        activity.title,
+                        activity.subject.name,
+                        activity.deadline.strftime("%d/%m/%Y") if activity.deadline else "—",
+                        situacao,
+                    ]
+                )
+    criteria = "Atividades publicadas sem entrega registrada nas turmas do escopo."
     return ReportResult(
         title="Atividades pendentes",
         columns=["Estudante", "Atividade", "Disciplina", "Prazo", "Situação"],

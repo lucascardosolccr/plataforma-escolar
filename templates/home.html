@@ -19,7 +19,7 @@
     </div>
   </div>
 </div>
-</div>
+
 
 <div class="row g-3 mb-4">
   <div class="col-6 col-lg-3">
@@ -124,12 +124,23 @@
     {% include "partials/home_card.html" with url_name='pedagogy:evaluation_list' title="Avaliações e notas" desc="Acompanhamento." %}
     {% include "partials/home_card.html" with url_name='analytics:institutional_dashboard' title="Painel institucional" desc="Indicadores consolidados de toda a escola." %}
     {% include "partials/home_card.html" with url_name='analytics:report_hub' title="Relatórios" desc="Exportar em CSV e imprimir/PDF." %}
+    {% include "partials/home_card.html" with url_name='class_group_list' title="Turmas" desc="Organização e enturmação." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:activity_list' title="Atividades de casa" desc="Supervisão das tarefas escolares." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:group_work_list' title="Trabalhos em grupo" desc="Acompanhamento dos projetos coletivos." %}
+  
   {% elif user_role == ROLE_DIRECAO %}
     {% include "partials/home_card.html" with url_name='student_list' title="Estudantes" desc="Visão institucional." %}
     {% include "partials/home_card.html" with url_name='school_year_list' title="Anos letivos" desc="Períodos letivos." %}
     {% include "partials/home_card.html" with url_name='pedagogy:evaluation_list' title="Avaliações e notas" desc="Acompanhamento geral." %}
     {% include "partials/home_card.html" with url_name='pedagogy:occurrence_list' title="Ocorrências" desc="Visão institucional." %}
     {% include "partials/home_card.html" with url_name='pedagogy:observation_list' title="Observações" desc="Visão pedagógica." %}
+    {% include "partials/home_card.html" with url_name='analytics:institutional_dashboard' title="Painel institucional" desc="Indicadores consolidados de toda a escola." %}
+    {% include "partials/home_card.html" with url_name='analytics:report_hub' title="Relatórios & Análises" desc="Dashboards, gráficos e exportação em CSV/PDF." %}
+    {% include "partials/home_card.html" with url_name='class_group_list' title="Turmas" desc="Organização por ano letivo." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:activity_list' title="Atividades de casa" desc="Acompanhamento das tarefas publicadas." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:group_work_list' title="Trabalhos em grupo" desc="Supervisão dos trabalhos da escola." %}
+    {% include "partials/home_card.html" with url_name='communication:announcement_list' title="Comunicados" desc="Avisos e comunicados da escola." %}
+  
   {% elif user_role == ROLE_PROFESSOR %}
     {% include "partials/home_card.html" with url_name='my_classrooms' title="Minhas turmas" desc="Estudantes das suas atribuições." %}
     {% include "partials/home_card.html" with url_name='pedagogy:evaluation_create' title="Nova avaliação" desc="Criar e publicar para a família." %}
@@ -139,6 +150,8 @@
     {% include "partials/home_card.html" with url_name='pedagogy:observation_create' title="Observação pedagógica" desc="Registrar acompanhamento." %}
     {% include "partials/home_card.html" with url_name='communication:thread_create' title="Mensagem à família" desc="Responder dúvidas e solicitações." %}
     {% include "partials/home_card.html" with url_name='analytics:report_hub' title="Relatórios" desc="Dificuldades, atividades e indicadores das suas turmas." %}
+    {% include "partials/home_card.html" with url_name='pedagogy:group_work_list' title="Trabalhos em grupo" desc="Criar e gerenciar trabalhos em grupo e integrantes." %}
+  
   {% elif user_role == ROLE_RESPONSAVEL %}
     {% include "partials/home_card.html" with url_name='my_children' title="Meus filhos" desc="Acompanhe cada estudante." %}
     {% include "partials/home_card.html" with url_name='link_request' title="Solicitar vínculo" desc="Vincular um novo estudante." %}

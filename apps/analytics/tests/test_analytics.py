@@ -372,6 +372,50 @@ class ReportTests(AnalyticsBase):
         self.assertContains(response, "no-print")
         self.assertContains(response, "Boletim")
 
+    def test_report_atividades_pendentes_filters_drafts_and_delivered(self):
+        from datetime import timedelta
+        from django.utils import timezone
+
+        today = timezone.localdate()
+        act_pub = Activity.objects.create(
+            school=self.school,
+            class_group=self.turma,
+            subject=self.mat,
+            title="Tarefa Publicada",
+            status=Activity.Status.PUBLISHED,
+            published_date=today,
+            deadline=today + timedelta(days=2),
+            created_by=self.prof,
+        )
+        act_draft = Activity.objects.create(
+            school=self.school,
+            class_group=self.turma,
+            subject=self.mat,
+            title="Tarefa Rascunho",
+            status=Activity.Status.DRAFT,
+            published_date=today,
+            deadline=today + timedelta(days=2),
+            created_by=self.prof,
+        )
+        # Ana delivers Tarefa Publicada
+        Submission.objects.create(
+            school=self.school,
+            activity=act_pub,
+            student=self.ana,
+            status=Submission.Status.DELIVERED,
+        )
+        self.login("prof")
+        response = self.client.get(
+            reverse("analytics:report_detail", args=["atividades_pendentes"]),
+            {"class": self.turma.pk},
+        )
+        self.assertEqual(response.status_code, 200)
+        # Draft should NOT appear
+        self.assertNotContains(response, "Tarefa Rascunho")
+        # Ana has delivered, so her name should NOT appear as pending for Tarefa Publicada
+        self.assertNotContains(response, "Tarefa Publicada")
+
+
 
 class ChartTests(TestCase):
     def test_line_chart_empty(self):

@@ -7,60 +7,13 @@
   <title>{% block title %}Plataforma Escolar{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Jost:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: ['class', '[data-bs-theme="dark"]'],
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-            display: ['Plus Jakarta Sans', 'Jost', 'Inter', 'sans-serif'],
-          },
-          animation: {
-            'gradient-x': 'gradient-x 15s ease infinite',
-            'gradient-y': 'gradient-y 15s ease infinite',
-            'float': 'float 6s ease-in-out infinite',
-            'spin-slow': 'spin 20s linear infinite',
-            'pulse-glow': 'pulse-glow 3s ease-in-out infinite',
-            'shimmer': 'shimmer 2s linear infinite',
-          },
-          keyframes: {
-            'gradient-x': {
-              '0%, 100%': { 'background-size': '200% 200%', 'background-position': 'left center' },
-              '50%': { 'background-size': '200% 200%', 'background-position': 'right center' },
-            },
-            'gradient-y': {
-              '0%, 100%': { 'background-size': '400% 400%', 'background-position': 'center top' },
-              '50%': { 'background-size': '200% 200%', 'background-position': 'center center' },
-            },
-            float: {
-              '0%, 100%': { transform: 'translateY(0px) scale(1)' },
-              '50%': { transform: 'translateY(-25px) scale(1.02)' },
-            },
-            'pulse-glow': {
-              '0%, 100%': { boxShadow: '0 0 20px rgba(99, 102, 241, 0.4)' },
-              '50%': { boxShadow: '0 0 40px rgba(139, 92, 246, 0.6), 0 0 60px rgba(168, 85, 247, 0.4)' },
-            },
-            shimmer: {
-              '0%': { transform: 'translateX(-100%)' },
-              '100%': { transform: 'translateX(100%)' },
-            }
-          }
-        }
-      }
-    }
-  </script>
   <link rel="stylesheet" href="{% static 'vendor/bootstrap.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <link rel="stylesheet" href="{% static 'css/premium.css' %}">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r160/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-  <script src="https://unpkg.com/@motionone/dom@10.18.0/dist/motion.min.js"></script>
   {% block extra_css %}{% endblock %}
 </head>
 <body class="d-flex flex-column min-vh-100">

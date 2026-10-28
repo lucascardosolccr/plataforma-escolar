@@ -58,7 +58,7 @@
     <div class="card h-100">
       <div class="card-header bg-transparent fw-semibold">Média por disciplina</div>
       <div class="card-body">
-        {{ subject_chart }}
+        <div class="p-3">{{ subject_chart }}</div>
         <a class="small" data-bs-toggle="collapse" href="#tab-subjects" role="button">Ver dados que fundamentam</a>
         <div class="collapse mt-2" id="tab-subjects">
           <table class="table table-sm mb-0">
@@ -82,7 +82,7 @@
   <div class="col-lg-6">
     <div class="card h-100">
       <div class="card-header bg-transparent fw-semibold">Evolução das notas (últimas avaliações)</div>
-      <div class="card-body">{{ evolution_chart }}</div>
+      <div class="card-body p-4">{{ evolution_chart }}</div>
     </div>
   </div>
 </div>

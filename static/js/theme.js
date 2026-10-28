@@ -10,10 +10,12 @@
 
   function apply(theme) {
     document.documentElement.setAttribute("data-bs-theme", theme);
-    var icon = document.querySelector(".theme-icon");
-    if (icon) {
-      icon.textContent = theme === "dark" ? "☀️" : "🌙";
+    var btn = document.querySelector(".theme-toggle");
+    if (btn) {
+      btn.innerHTML = theme === "dark" ? '<i class="bi bi-sun-fill"></i>' : '<i class="bi bi-moon-fill"></i>';
     }
+    document.cookie = "theme=" + theme + "; path=/; max-age=" + 60 * 60 * 24 * 365;
+  }
     document.cookie = "theme=" + theme + "; path=/; max-age=" + 60 * 60 * 24 * 365;
   }
 

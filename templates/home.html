@@ -2,13 +2,23 @@
 {% block title %}Início — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="row g-3 align-items-center mb-4">
+<div class="row g-3 align-items-center mb-5 position-relative">
   <div class="col">
-    <h1 class="h3 mb-0">Olá, {{ user.first_name|default:user.username }}</h1>
-    <p class="text-body-secondary mb-0">
-      {% if user.school %}{{ user.school.name }} · {% endif %}{{ user_role_label }}
+    <h1 class="display-3 fw-bold mb-3" style="font-family: 'Plus Jakarta Sans', Inter, sans-serif; letter-spacing: -0.03em; line-height: 1.1;">
+      Olá, <span class="hero-gradient">{{ user.first_name|default:user.username }}</span>
+    </h1>
+    <p class="text-body-secondary mb-0 fs-4" style="font-weight: 500;">
+      {% if user.school %}<i class="bi bi-building me-2"></i>{{ user.school.name }} • {% endif %}{{ user_role_label }}
     </p>
   </div>
+  <div class="col-auto">
+    <div class="d-flex gap-2 align-items-center">
+      <div class="px-4 py-2 rounded-pill" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(118, 75, 162, 0.2)); color: var(--brand-1); border: 1px solid rgba(139, 92, 246, 0.5); backdrop-filter: blur(15px); box-shadow: 0 10px 40px rgba(99, 102, 241, 0.3);">
+        <i class="bi bi-shield-check me-2"></i><strong>Plataforma Ultra-Premium</strong>
+      </div>
+    </div>
+  </div>
+</div>
 </div>
 
 <div class="row g-3 mb-4">
@@ -79,8 +89,11 @@
   {% endif %}
 </div>
 
-<h2 class="h5 mb-3">Ações rápidas</h2>
-<div class="row g-3">
+<div class="d-flex align-items-center justify-content-between mb-4 mt-5">
+  <h2 class="h2 mb-0 fw-bold" style="font-family: 'Plus Jakarta Sans', Inter, sans-serif; letter-spacing: -0.02em;">Ações Rápidas</h2>
+  <div class="text-body-secondary fs-6">Acesso inteligente às funcionalidades</div>
+</div>
+<div class="row g-4">
   {% if user_role == ROLE_ADMIN %}
     {% include "partials/home_card.html" with url_name='user_list' title="Gestão de usuários" desc="Criar contas profissionais e auditar operações." %}
     {% include "partials/home_card.html" with url_name='student_list' title="Estudantes" desc="Prontuários e cadastro." %}
@@ -88,9 +101,9 @@
     {% include "partials/home_card.html" with url_name='pedagogy:attendance_list' title="Frequência" desc="Registros por turma." %}
     {% include "partials/home_card.html" with url_name='pedagogy:occurrence_list' title="Ocorrências" desc="Histórico disciplinar." %}
     {% include "partials/home_card.html" with url_name='pedagogy:justification_list' title="Justificativas" desc="Analisadas pela secretaria." %}
-    {% include "partials/home_card.html" with url_name='analytics:institutional_dashboard' title="Painel institucional" desc="Indicadores consolidados de toda a escola." %}
+    {% include "partials/home_card.html" with url_name='analytics:institutional_dashboard' title="Painel institucional" desc="Indicadores consolidados com análise inteligente." %}
     {% include "partials/home_card.html" with url_name='analytics:secretaria_panel' title="Painel da secretaria" desc="Vínculos, matrículas e pendências." %}
-    {% include "partials/home_card.html" with url_name='analytics:report_hub' title="Relatórios" desc="Exportar em CSV e imprimir/PDF." %}
+    {% include "partials/home_card.html" with url_name='analytics:report_hub' title="Relatórios & Análises" desc="Dashboards, gráficos e exportação em CSV/PDF." %}
   {% elif user_role == ROLE_SECRETARIA %}
     {% include "partials/home_card.html" with url_name='student_list' title="Estudantes" desc="Cadastro e prontuários." %}
     {% include "partials/home_card.html" with url_name='link_list' title="Vínculos pendentes" desc="Validar solicitações de responsáveis." %}

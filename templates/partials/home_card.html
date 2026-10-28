@@ -1,6 +1,17 @@
 <div class="col-md-6 col-lg-4">
-  <div class="card card-hover h-100"><div class="card-body">
-    <h3 class="h6 mb-1"><a href="{% url url_name %}" class="stretched-link text-decoration-none">{{ title }}</a></h3>
-    <p class="text-body-secondary small mb-0">{{ desc }}</p>
+  <div class="premium-card h-100"><div class="card-body d-flex flex-column p-4 position-relative" style="z-index: 1;">
+    <div class="mb-3">
+      <div class="d-inline-flex align-items-center justify-content-center rounded-4 mb-3" style="width: 3.5rem; height: 3.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 15px 50px rgba(102, 126, 234, 0.5);">
+        <i class="bi bi-grid-fill text-white" style="font-size: 1.5rem;"></i>
+      </div>
+    </div>
+    <h3 class="h5 mb-2 fw-bold" style="font-family: 'Plus Jakarta Sans', Inter, sans-serif; letter-spacing: -0.01em;">
+      <a href="{% url url_name %}" class="stretched-link text-decoration-none text-body">{{ title }}</a>
+    </h3>
+    <p class="text-body-secondary mb-0 flex-grow-1">{{ desc }}</p>
+    <div class="mt-4 d-flex align-items-center fw-semibold" style="color: #667eea;">
+      <span>Acessar</span>
+      <i class="bi bi-arrow-right ms-2"></i>
+    </div>
   </div></div>
 </div>

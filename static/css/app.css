@@ -1,26 +1,36 @@
 :root {
-  --brand-hue: 220;
-  --brand-1: hsl(var(--brand-hue) 72% 48%);
-  --brand-2: hsl(calc(var(--brand-hue) + 18) 68% 42%);
+  --brand-hue: 230;
+  --brand-1: hsl(var(--brand-hue) 85% 55%);
+  --brand-2: hsl(calc(var(--brand-hue) + 15) 75% 48%);
+  --brand-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
   
   /* Tipografia scale */
   --font-size-xs: .75rem;
   --font-size-sm: .875rem;
   --font-size-base: 1rem;
-  --font-size-lg: 1.25rem;
-  --font-size-xl: 1.5rem;
-  --font-size-2xl: 2rem;
-  --font-size-3xl: 3rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.875rem;
+  --font-size-3xl: 2.5rem;
+  --font-size-4xl: 3.5rem;
   
-  --font-family-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-family-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-family-mono: ui-monospace, SFMono-Regular, "SF Mono", "Roboto Mono", "Droid Sans Mono", monospace;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
 body {
   font-family: var(--font-family-sans);
   font-size: var(--font-size-base);
   line-height: 1.6;
-  background: var(--bs-body-bg);
+  background: radial-gradient(ellipse at top, rgba(99, 102, 241, 0.05) 0%, var(--bs-body-bg) 50%);
+  background-attachment: fixed;
 }
 
 /* Headings */
@@ -111,6 +121,17 @@ a[href]:not(.btn):not(.nav-link):not(.dropdown-item):not(.navbar-brand):not(.str
 /* Estados de botão */
 .btn:focus-visible { outline: 2px solid var(--brand-1); outline-offset: 2px; }
 
+.btn-primary {
+  background: var(--brand-gradient);
+  border: none;
+  box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.39);
+}
+
+.btn-primary:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+}
+
 /* Botões de contorno no tema escuro.
    O Bootstrap não reajusta .btn-outline-* para fundo escuro: o cinza #6c757d e
    o azul #0d6efd ficam em torno de 3,3:1 sobre a superfície escura, abaixo do
@@ -138,35 +159,68 @@ a[href]:not(.btn):not(.nav-link):not(.dropdown-item):not(.navbar-brand):not(.str
 /* Table improvements */
 .table thead th {
   vertical-align: middle;
-  padding: .75rem 1rem;
+  padding: .875rem 1.25rem;
+  background-color: var(--bs-tertiary-bg);
+  border-bottom: 2px solid var(--bs-border-color);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .table tbody td {
   vertical-align: middle;
-  padding: .6rem 1rem;
+  padding: .75rem 1.25rem;
+}
+
+.table {
+  border-radius: .75rem;
+  overflow: hidden;
 }
 
 /* Indicador da tela inicial. Uma faixa fina na borda esquerda separa o número
    do restante do conteúdo sem precisar de cor de fundo. */
 .stat-card {
   border-left: 3px solid var(--brand-1);
+  background: linear-gradient(to right, rgba(99, 102, 241, 0.05), transparent);
 }
 
 /* Card inteiro clicável (usa stretched-link). Precisa de retorno visual, senão
    nada indica que a área é acionável. */
 .card-hover {
-  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  transition: all .2s ease-in-out;
+  border: 1px solid var(--bs-border-color);
 }
 .card-hover:hover {
-  transform: translateY(-2px);
-  border-color: var(--brand-1);
-  box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .1);
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 0 20px 60px rgba(99, 102, 241, 0.15);
 }
 /* O foco vem do stretched-link interno; o contorno precisa aparecer no card. */
 .card-hover:focus-within {
   border-color: var(--brand-1);
   outline: 2px solid var(--brand-1);
   outline-offset: 2px;
+}
+
+.card {
+  border: 1px solid var(--bs-border-color);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow .2s ease-in-out;
+}
+
+.card:hover {
+  box-shadow: var(--shadow);
+}
+
+.card-header {
+  background: transparent;
+  border-bottom: 1px solid var(--bs-border-color);
+  padding: 1rem 1.25rem;
+  font-weight: 600;
+}
+
+.card-body {
+  padding: 1.25rem;
 }
 
 /* Telas de acesso (login e cadastro), que não usam base.html. */
@@ -189,8 +243,9 @@ a[href]:not(.btn):not(.nav-link):not(.dropdown-item):not(.navbar-brand):not(.str
 /* Superfícies da moldura (navbar/rodapé). Usam as variáveis do Bootstrap,
    portanto acompanham data-bs-theme sem regras duplicadas por tema. */
 .navbar-theme {
-  background-color: var(--bs-body-bg);
-  border-color: var(--bs-border-color) !important;
+  background: linear-gradient(90deg, rgba(99,102,241,.12) 0%, rgba(139,92,246,.12) 100%);
+  box-shadow: 0 4px 30px rgba(99, 102, 241, 0.1), 0 0 0 1px rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.2) !important;
 }
 .footer-theme {
   background-color: var(--bs-tertiary-bg);
@@ -200,12 +255,18 @@ a[href]:not(.btn):not(.nav-link):not(.dropdown-item):not(.navbar-brand):not(.str
 .brand-mark {
   display: inline-grid;
   place-items: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: .5rem;
-  background: linear-gradient(135deg, var(--brand-1), var(--brand-2));
-  font-size: 1.1rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: .75rem;
+  background: var(--brand-gradient);
+  font-size: 1.375rem;
   line-height: 1;
+  box-shadow: 0 8px 24px 0 rgba(99, 102, 241, 0.45);
+}
+
+.brand-text {
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 /* Ponto do perfil: decorativo, por isso aria-hidden no HTML. */

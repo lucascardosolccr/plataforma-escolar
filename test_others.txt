@@ -1,0 +1,51 @@
+Found 175 test(s).
+System check identified no issues (0 silenced).
+Escola de demonstração criada: Escola Demonstração (dados fictícios)
+
+  código da escola .... demo
+  estudantes .......... 72
+  turmas .............. 4
+  disciplinas ......... 7
+  atividades .......... 36
+  entregas ............ 323
+  trabalhos em grupo .. 24
+  grupos .............. 131
+  participações ....... 432
+  notas ............... 576
+  frequência .......... 2160
+  contas .............. 70
+
+Contas (todas com a mesma senha):
+  senha ............... demo-senha-forte-2026
+  direção ............. demo.direcao
+  coordenação ......... demo.coordenacao
+  secretaria .......... demo.secretaria
+  professores ......... demo.prof1 … demo.prof4
+  responsáveis ........ demo.resp1 … (demo.resp1 tem dois filhos)
+
+São dados fictícios, numa escola separada da real. Remova com: python manage.py seeddemo --limpar
+Escola de demonstração removida por completo.
+Escola de demonstração criada: Escola Demonstração (dados fictícios)
+
+  código da escola .... demo
+  estudantes .......... 72
+  turmas .............. 4
+  disciplinas ......... 7
+  atividades .......... 36
+  entregas ............ 323
+  trabalhos em grupo .. 24
+  grupos .............. 131
+  participações ....... 432
+  notas ............... 576
+  frequência .......... 2160
+  contas .............. 70
+
+Contas (todas com a mesma senha):
+  senha ............... demo-senha-forte-2026
+  direção ............. demo.direcao
+  coordenação ......... demo.coordenacao
+  secretaria .......... demo.secretaria
+  professores ......... demo.prof1 … demo.prof4
+  responsáveis ........ demo.resp1 … (demo.resp1 tem dois filhos)
+
+São dados fictícios, numa escola separada da real. Remova com: python manage.py seeddemo --limpar

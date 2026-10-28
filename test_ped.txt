@@ -1,0 +1,15 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0
+django: version: 5.2.18, settings: config.settings (from ini)
+rootdir: C:\Users\lucas\Downloads\Escola\plataforma-escolar
+configfile: pytest.ini
+plugins: django-4.14.0
+collected 171 items
+
+apps\pedagogy\tests\test_pedagogy.py ................................... [ 20%]
+......................................................                   [ 52%]
+apps\pedagogy\tests\test_group_work.py ................................. [ 71%]
+.................................                                        [ 90%]
+apps\pedagogy\tests\test_after_transfer.py ................              [100%]
+
+======================= 171 passed in 78.95s (0:01:18) ========================

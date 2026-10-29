@@ -1,0 +1,55 @@
+{% comment %}
+Filtro e resumo da família (atividades e trabalhos em grupo).
+Recebe: children, student_id, state, summary, new_days, list_url, is_student.
+O resumo aparece sempre que há algo a mostrar — antes o filtro só existia
+para quem tinha mais de um filho.
+{% endcomment %}
+{% if summary or state or student_id %}
+<div class="card mb-3">
+  <div class="card-body pb-2">
+    {% if summary %}
+    <nav aria-label="Resumo por situação" class="d-flex flex-wrap gap-2 mb-3">
+      <a href="{{ list_url }}{% if student_id %}?estudante={{ student_id }}{% endif %}"
+         class="summary-pill{% if not state %} active{% endif %}"{% if not state %} aria-current="true"{% endif %}>
+        Todas
+      </a>
+      {% for s in summary %}
+        <a href="{{ list_url }}?situacao={{ s.key }}{% if student_id %}&amp;estudante={{ student_id }}{% endif %}"
+           class="summary-pill state-{{ s.key }}{% if state == s.key %} active{% endif %}"{% if state == s.key %} aria-current="true"{% endif %}>
+          {{ s.label }} <span class="summary-count">{{ s.count }}</span>
+        </a>
+      {% endfor %}
+    </nav>
+    {% endif %}
+    <form method="get" class="row g-2 align-items-end mb-2">
+      {% if children|length > 1 %}
+      <div class="col-sm-5 col-md-4">
+        <label class="form-label small mb-1" for="f-estudante">Filho</label>
+        <select class="form-select form-select-sm" id="f-estudante" name="estudante">
+          <option value="">Todos</option>
+          {% for c in children %}
+            <option value="{{ c.pk }}"{% if student_id == c.pk %} selected{% endif %}>{{ c.full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="col-sm-5 col-md-4">
+        <label class="form-label small mb-1" for="f-situacao">Situação</label>
+        <select class="form-select form-select-sm" id="f-situacao" name="situacao">
+          <option value="">Todas</option>
+          <option value="nova"{% if state == 'nova' %} selected{% endif %}>Novas (últimos {{ new_days }} dias)</option>
+          <option value="a_vencer"{% if state == 'a_vencer' %} selected{% endif %}>A vencer (até 2 dias)</option>
+          <option value="pendente"{% if state == 'pendente' %} selected{% endif %}>{% if is_work %}Em andamento{% else %}Pendente{% endif %}</option>
+          <option value="publicada"{% if state == 'publicada' %} selected{% endif %}>Sem prazo definido</option>
+          <option value="encerrada"{% if state == 'encerrada' %} selected{% endif %}>Prazo encerrado</option>
+          <option value="cancelada"{% if state == 'cancelada' %} selected{% endif %}>{% if is_work %}Cancelado{% else %}Cancelada{% endif %}</option>
+        </select>
+      </div>
+      <div class="col-auto d-flex gap-2">
+        <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
+        <a href="{{ list_url }}" class="btn btn-sm btn-outline-secondary">Limpar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}

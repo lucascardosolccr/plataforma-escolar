@@ -15,37 +15,8 @@
   </p>
 </div>
 
-{% if children|length > 1 or state %}
-<div class="card mb-3">
-  <form method="get" class="row g-2 align-items-end p-3 mb-0">
-    {% if children|length > 1 %}
-    <div class="col-sm-5 col-md-4">
-      <label class="form-label small mb-1" for="f-estudante">Filho</label>
-      <select class="form-select form-select-sm" id="f-estudante" name="estudante">
-        <option value="">Todos</option>
-        {% for c in children %}
-          <option value="{{ c.pk }}"{% if student_id == c.pk %} selected{% endif %}>{{ c.full_name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    {% endif %}
-    <div class="col-sm-5 col-md-4">
-      <label class="form-label small mb-1" for="f-situacao">Situação</label>
-      <select class="form-select form-select-sm" id="f-situacao" name="situacao">
-        <option value="">Todas</option>
-        <option value="a_vencer"{% if state == 'a_vencer' %} selected{% endif %}>A vencer</option>
-        <option value="pendente"{% if state == 'pendente' %} selected{% endif %}>Pendente</option>
-        <option value="encerrada"{% if state == 'encerrada' %} selected{% endif %}>Prazo encerrado</option>
-        <option value="cancelada"{% if state == 'cancelada' %} selected{% endif %}>Cancelada</option>
-      </select>
-    </div>
-    <div class="col-sm-2 d-flex gap-2">
-      <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
-      <a href="{% url 'pedagogy:activity_list' %}" class="btn btn-sm btn-outline-secondary">Limpar</a>
-    </div>
-  </form>
-</div>
-{% endif %}
+{% url 'pedagogy:activity_list' as list_url %}
+{% include "pedagogy/_family_filter.html" with list_url=list_url %}
 
 {% if rows %}
   <div class="row g-3">
@@ -57,9 +28,12 @@
             {% if is_student %}
               <span class="chip">{{ r.activity.class_group.name }}</span>
             {% else %}
-              <span class="chip">👦 {{ r.student.full_name }}</span>
+              <span class="chip"><span class="visually-hidden">Estudante: </span>{{ r.student.full_name }}</span>
             {% endif %}
-            <span class="chip chip-state state-{{ r.state }}">{{ r.state_label }}</span>
+            <span class="d-flex gap-1">
+              {% if r.is_new %}<span class="badge-new" title="Publicada nos últimos {{ new_days }} dias">Nova</span>{% endif %}
+              <span class="chip chip-state state-{{ r.state }}">{{ r.state_label }}</span>
+            </span>
           </div>
           {% if r.submission %}
             <p class="small mb-2">
@@ -80,7 +54,8 @@
             <a href="{% url 'pedagogy:activity_detail' r.activity.pk %}">{{ r.activity.title }}</a>
           </h2>
           <p class="text-body-secondary small mb-2">
-            {{ r.activity.subject.name }} · Turma {{ r.activity.class_group.name }}
+            {{ r.activity.subject.name }} · Publicada para a turma {{ r.activity.class_group.name }}
+            {% if r.activity.created_by %}· Prof. {{ r.activity.created_by.get_full_name|default:r.activity.created_by.username }}{% endif %}
           </p>
           <dl class="row small mb-2 g-0">
             <dt class="col-5 fw-normal text-body-secondary">Publicada em</dt>

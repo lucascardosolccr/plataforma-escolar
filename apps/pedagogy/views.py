@@ -1,5 +1,5 @@
 import random
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
@@ -362,6 +362,46 @@ def evaluation_publish(request, pk):
     return redirect("pedagogy:evaluation_list")
 
 
+# Por quantos dias uma publicação aparece como "nova" para a família. É uma
+# regra de data, não de leitura: a plataforma não registra quem abriu o quê.
+NEW_DAYS = 3
+FAMILY_STATE_ORDER = ("a_vencer", "pendente", "publicada", "encerrada", "cancelada")
+
+
+def _family_filter(request, rows, item_key):
+    """Marca as novas, resume por situação e aplica o filtro escolhido.
+
+    Serve à lista de atividades e à de trabalhos da família e do estudante.
+    O resumo é contado antes do filtro de situação (e depois do filtro por
+    filho), para os números dizerem quanto há de cada coisa para aquele filho.
+    Devolve (linhas filtradas, situação válida ou None, resumo).
+    """
+    novo_desde = timezone.localdate() - timedelta(days=NEW_DAYS - 1)
+    contagem, rotulos = {}, {}
+    novas = 0
+    for r in rows:
+        item = r[item_key]
+        r["is_new"] = r["state"] != "cancelada" and item.published_date >= novo_desde
+        novas += r["is_new"]
+        contagem[r["state"]] = contagem.get(r["state"], 0) + 1
+        rotulos.setdefault(r["state"], r["state_label"])
+    resumo = []
+    if novas:
+        resumo.append({"key": "nova", "label": "Novas", "count": novas})
+    for key in FAMILY_STATE_ORDER:
+        if contagem.get(key):
+            resumo.append({"key": key, "label": rotulos[key], "count": contagem[key]})
+
+    state = request.GET.get("situacao")
+    if state == "nova":
+        rows = [r for r in rows if r["is_new"]]
+    elif state in FAMILY_STATE_ORDER:
+        rows = [r for r in rows if r["state"] == state]
+    else:
+        state = None
+    return rows, state, resumo
+
+
 # ---------- Atividades de casa e entregas ----------
 
 def _guardian_visible_activities(user):
@@ -511,9 +551,7 @@ def activity_list(request):
 
     if user.role == Role.ESTUDANTE.value:
         rows, students = _student_own_rows(user)
-        state = request.GET.get("situacao")
-        if state in ("a_vencer", "pendente", "encerrada", "cancelada"):
-            rows = [r for r in rows if r["state"] == state]
+        rows, state, resumo = _family_filter(request, rows, "activity")
         page = paginate(request, rows)
         return render(
             request,
@@ -524,6 +562,8 @@ def activity_list(request):
                 "children": students,
                 "is_student": True,
                 "state": state,
+                "summary": resumo,
+                "new_days": NEW_DAYS,
             },
         )
 
@@ -537,9 +577,7 @@ def activity_list(request):
                 raise PermissionDenied
             student_pk = student.pk
         rows, children = _family_rows(user, student_filter=student_pk)
-        state = request.GET.get("situacao")
-        if state in ("a_vencer", "pendente", "encerrada", "cancelada"):
-            rows = [r for r in rows if r["state"] == state]
+        rows, state, resumo = _family_filter(request, rows, "activity")
         page = paginate(request, rows)
         return render(
             request,
@@ -550,6 +588,8 @@ def activity_list(request):
                 "children": children,
                 "student_id": student_pk,
                 "state": state,
+                "summary": resumo,
+                "new_days": NEW_DAYS,
             },
         )
 
@@ -1060,9 +1100,7 @@ def group_work_list(request):
                 raise PermissionDenied
             student_pk = student.pk
         rows, alvos = _family_work_rows(user, student_filter=student_pk)
-        state = request.GET.get("situacao")
-        if state in ("a_vencer", "pendente", "encerrada", "cancelada"):
-            rows = [r for r in rows if r["state"] == state]
+        rows, state, resumo = _family_filter(request, rows, "work")
         page = paginate(request, rows)
         return render(
             request,
@@ -1074,6 +1112,8 @@ def group_work_list(request):
                 "is_student": user.role == Role.ESTUDANTE.value,
                 "student_id": student_pk,
                 "state": state,
+                "summary": resumo,
+                "new_days": NEW_DAYS,
             },
         )
 

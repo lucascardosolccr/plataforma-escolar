@@ -124,6 +124,20 @@ class GuardianLinkAdminForm(forms.ModelForm):
             self.fields["student"].queryset = Student.objects.filter(school=school)
         self.fields["student"].label = "Estudante"
 
+    def clean(self):
+        cleaned = super().clean()
+        guardian = cleaned.get("guardian")
+        student = cleaned.get("student")
+        if guardian and student:
+            duplicado = GuardianLink.objects.filter(
+                guardian=guardian, student=student
+            ).exclude(pk=self.instance.pk)
+            if duplicado.exists():
+                raise ValidationError(
+                    "Já existe um vínculo entre este responsável e este estudante."
+                )
+        return cleaned
+
 
 class EnrollmentForm(forms.ModelForm):
     class Meta:
@@ -145,6 +159,7 @@ class EnrollmentForm(forms.ModelForm):
             self.fields["class_group"].queryset = ClassGroup.objects.filter(school=school)
             self.fields["school_year"].queryset = SchoolYear.objects.filter(school=school)
         if self.instance.pk:
+            self.fields["student"].disabled = True
             self.fields["class_group"].help_text = (
                 "Para mudar o estudante de turma, use “Transferir” na lista de "
                 "matrículas: assim o histórico da turma anterior é preservado."

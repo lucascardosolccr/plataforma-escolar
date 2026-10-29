@@ -28,7 +28,7 @@
           <td class="text-truncate" style="max-width:320px">{{ o.content }}</td>
           <td>{{ o.subject.name|default:"—" }}</td>
           <td class="text-end">
-            {% if user_role == ROLE_COORDENACAO or user_role == ROLE_PROFESSOR %}
+            {% if user_role == ROLE_COORDENACAO or user_role == ROLE_PROFESSOR and o.teacher_id == user.id %}
               <a href="{% url 'pedagogy:observation_edit' o.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
             {% endif %}
           </td>

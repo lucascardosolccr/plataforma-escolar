@@ -54,11 +54,6 @@ def notification_list(request):
     kind = request.GET.get("tipo")
     if kind in dict(Notification.Kind.choices):
         qs = qs.filter(kind=kind)
-    unread_update = qs.filter(is_read=False)
-    if unread_update.exists():
-        Notification.objects.filter(pk__in=unread_update.values("pk")).update(
-            is_read=True, read_at=timezone.now()
-        )
     page = paginate(request, qs)
     return render(
         request,
@@ -72,6 +67,7 @@ def notification_list(request):
     )
 
 
+@require_POST
 def notification_read(request, pk):
     user = request.user
     notif = get_object_or_404(Notification, pk=pk, user=user)

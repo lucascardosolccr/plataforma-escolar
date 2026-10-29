@@ -23,7 +23,7 @@ from apps.pedagogy.access import (
     can_view_plans,
 )
 from apps.registry.access import guardian_of
-from apps.registry.models import GuardianLink, Student
+from apps.registry.models import Enrollment, GuardianLink, Student
 
 from . import charts, reports, services
 from .access import (
@@ -42,6 +42,13 @@ def _parse_date(value):
         return datetime.strptime(value, "%Y-%m-%d").date()
     except (ValueError, TypeError):
         return None
+
+
+def _csv_safe(value):
+    """Evita que um texto importado execute fórmula ao abrir o CSV no Excel."""
+    if isinstance(value, str) and value.startswith(("=", "+", "-", "@", "\t", "\r")):
+        return "'" + value
+    return value
 
 
 def _report_params(request, for_csv=False):
@@ -192,7 +199,9 @@ def student_dashboard(request, student_id):
         "difficulties": difficulties if can_view_obs else [],
         "skills": skills if can_view_obs else [],
         "strategies": strategies if can_view_obs else [],
-        "timeline": services.timeline(student) if can_view_occ else [],
+        "timeline": services.timeline(student, include_plans=can_view_plan)
+        if can_view_occ
+        else [],
         "is_guardian": guardian_of(request.user, student),
         "generated_at": timezone.now(),
     }
@@ -253,6 +262,12 @@ def institutional_dashboard(request):
         {
             "data": data,
             "classes": classes,
+            "total_students": data["students"],
+            "active_enrollments": Enrollment.objects.filter(
+                school=request.user.school, status="ativo"
+            ).count(),
+            "class_groups_count": data["class_groups"],
+            "attendance_rate": data["attendance_percent"] or 0.0,
             "class_chart": charts.bar_chart(
                 [
                     {
@@ -405,14 +420,14 @@ def report_csv(request, slug):
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     response.write("\ufeff")
     writer = csv.writer(response, delimiter=";")
-    writer.writerow([report.title])
-    writer.writerow([f"Gerado em: {timezone.localtime():%d/%m/%Y %H:%M}"])
-    writer.writerow([f"Período analisado: {result.period}"])
-    writer.writerow([f"Critérios: {result.criteria}"])
+    writer.writerow([_csv_safe(report.title)])
+    writer.writerow([_csv_safe(f"Gerado em: {timezone.localtime():%d/%m/%Y %H:%M}")])
+    writer.writerow([_csv_safe(f"Período analisado: {result.period}")])
+    writer.writerow([_csv_safe(f"Critérios: {result.criteria}")])
     writer.writerow([])
-    writer.writerow(result.columns)
+    writer.writerow([_csv_safe(c) for c in result.columns])
     for row in result.rows:
-        writer.writerow(row)
+        writer.writerow([_csv_safe(c) for c in row])
     if not result.rows:
         writer.writerow(["(sem registros para os critérios informados)"])
     return response

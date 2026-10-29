@@ -137,7 +137,7 @@ def _averages_from_grades(grades, rules):
     return sorted(result, key=lambda r: r["subject"].name)
 
 
-def grade_evolution(student, subject=None):
+def grade_evolution(student, subject=None, start=None, end=None):
     """Série cronológica das notas publicadas (para gráfico de linhas)."""
     return [
         {
@@ -146,7 +146,7 @@ def grade_evolution(student, subject=None):
             "subject": g.evaluation.subject.name,
             "value": float(g.value) if g.value is not None else None,
         }
-        for g in published_grades(student, subject=subject)
+        for g in published_grades(student, subject=subject, start=start, end=end)
         if g.value is not None
     ]
 
@@ -179,7 +179,11 @@ def activity_stats(student):
     sem entrega registrada; pendente = prazo ainda por vencer sem entrega.
     """
     class_ids = list(_active_enrollments(student).values_list("class_group_id", flat=True))
-    activities = Activity.objects.filter(class_group_id__in=class_ids)
+    activities = Activity.objects.filter(
+        class_group_id__in=class_ids,
+        status=Activity.Status.PUBLISHED,
+        published_date__lte=timezone.localdate(),
+    )
     total = activities.count()
     submissions = {
         s.activity_id: s
@@ -339,7 +343,7 @@ def plan_stats(student):
     }
 
 
-def timeline(student, limit=25):
+def timeline(student, limit=25, include_plans=True):
     """Linha do tempo de acontecimentos relevantes do estudante."""
     events = []
     for g in published_grades(student):
@@ -375,10 +379,11 @@ def timeline(student, limit=25):
                 "text": f"{j.get_status_display()}: {j.reason[:80]}",
             }
         )
-    for p in student.plans.all()[:30]:
-        events.append(
-            {"date": p.created_at.date(), "kind": "Plano", "text": p.title}
-        )
+    if include_plans:
+        for p in student.plans.all()[:30]:
+            events.append(
+                {"date": p.created_at.date(), "kind": "Plano", "text": p.title}
+            )
     events.sort(key=lambda ev: ev["date"], reverse=True)
     return events[:limit]
 
@@ -400,7 +405,7 @@ def class_students(class_group):
     )
 
 
-def class_subject_averages(class_group):
+def class_subject_averages(class_group, start=None, end=None):
     """Média da turma por disciplina (notas publicadas)."""
     rules = rules_by_subject(class_group.school)
     grouped = defaultdict(list)
@@ -409,6 +414,10 @@ def class_subject_averages(class_group):
         evaluation__status=PUBLISHED,
         value__isnull=False,
     ).select_related("evaluation__subject")
+    if start is not None:
+        grades = grades.filter(evaluation__date__gte=start)
+    if end is not None:
+        grades = grades.filter(evaluation__date__lte=end)
     for grade in grades:
         grouped[grade.evaluation.subject].append(
             (grade.value, grade.evaluation.weight or Decimal("1"))
@@ -431,8 +440,12 @@ def class_subject_averages(class_group):
     return sorted(result, key=lambda r: r["subject"].name)
 
 
-def class_attendance_percent(class_group):
+def class_attendance_percent(class_group, start=None, end=None):
     qs = AttendanceRecord.objects.filter(class_group=class_group)
+    if start is not None:
+        qs = qs.filter(date__gte=start)
+    if end is not None:
+        qs = qs.filter(date__lte=end)
     total = qs.count()
     if not total:
         return None

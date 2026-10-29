@@ -47,11 +47,14 @@
             {% if n.body %}<div class="text-body-secondary small">{{ n.body|truncatechars:140 }}</div>{% endif %}
           </td>
           <td class="text-end text-nowrap">
-            {% if n.url %}
-            <a class="btn btn-sm btn-outline-primary" href="{% url 'communication:notification_read' n.pk %}">Abrir</a>
-            {% else %}
-            <a class="btn btn-sm btn-outline-secondary" href="{% url 'communication:notification_list' %}">Lida</a>
-            {% endif %}
+            <form method="post" action="{% url 'communication:notification_read' n.pk %}">
+              {% csrf_token %}
+              {% if n.url %}
+              <button type="submit" class="btn btn-sm btn-outline-primary">Abrir</button>
+              {% else %}
+              <button type="submit" class="btn btn-sm btn-outline-secondary">Marcar como lida</button>
+              {% endif %}
+            </form>
           </td>
         </tr>
         {% empty %}

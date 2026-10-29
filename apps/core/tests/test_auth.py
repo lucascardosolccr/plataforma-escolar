@@ -1,7 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
+from django.urls import reverse
 
 from apps.core.models import AuditLog, Role, School
+from apps.core.pagination import PAGE_SIZE
 
 User = get_user_model()
 
@@ -73,3 +75,21 @@ class PasswordChangeTests(BaseAuthTest):
         self.assertEqual(resp.status_code, 200)
         self.admin.refresh_from_db()
         self.assertTrue(self.admin.check_password("nova-senha-2"))
+
+
+class UserListPaginationTests(BaseAuthTest):
+    def test_user_list_renders_paginator(self):
+        self.client.login(username="admin", password="senha-forte-1")
+        for i in range(PAGE_SIZE + 5):
+            User.objects.create_user(
+                username=f"usuario-{i:02d}",
+                password="senha-forte-1",
+                role=Role.SECRETARIA,
+                school=self.school,
+            )
+        resp = self.client.get(reverse("user_list"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.context["page"].has_other_pages())
+        self.assertContains(resp, "pagina=")
+        self.assertContains(resp, "Anterior")
+        self.assertContains(resp, "Próxima")

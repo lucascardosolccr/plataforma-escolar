@@ -1,0 +1,102 @@
+{# Calendário escolar — lista de eventos por data #}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Calendário escolar{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/calendar.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="calendar-wrap">
+  <div class="calendar-header">
+    <h2 class="calendar-title">Calendário escolar</h2>
+    <p class="calendar-subtitle">
+      Atividades de casa, avaliações, trabalhos em grupo, ocorrências e
+      justificativas dentro do seu escopo de acesso.
+    </p>
+  </div>
+
+  <form class="calendar-filters" method="get">
+    <div class="filter-row">
+      <label class="filter-label">Tipo</label>
+      <select name="type" class="form-select" onchange="this.form.submit()">
+        <option value="">Todos</option>
+        {% for value, label in kind_choices %}
+          <option value="{{ value }}" {% if kind_filter == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-row">
+      <label class="filter-label">Turma</label>
+      <select name="class" class="form-select" onchange="this.form.submit()">
+        <option value="">Todas</option>
+        {% for c in classes %}
+          <option value="{{ c.pk }}" {% if class_filter and class_filter.pk == c.pk %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-row">
+      <label class="filter-label">Disciplina</label>
+      <select name="subject" class="form-select" onchange="this.form.submit()">
+        <option value="">Todas</option>
+        {% for s in subjects %}
+          <option value="{{ s.pk }}" {% if subject_filter and subject_filter.pk == s.pk %}selected{% endif %}>{{ s.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-row">
+      <label class="filter-label">Estudante</label>
+      <select name="student" class="form-select" onchange="this.form.submit()">
+        <option value="">Todos</option>
+        {% if students %}
+          {% for s in students %}
+            <option value="{{ s.pk }}" {% if student_filter and student_filter.pk == s.pk %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        {% endif %}
+      </select>
+    </div>
+    <div class="filter-row">
+      <label class="filter-label">De</label>
+      <input type="date" name="start" class="form-control" value="{{ start|date:'Y-m-d' }}" onchange="this.form.submit()">
+    </div>
+    <div class="filter-row">
+      <label class="filter-label">Até</label>
+      <input type="date" name="end" class="form-control" value="{{ end|date:'Y-m-d' }}" onchange="this.form.submit()">
+    </div>
+    <button type="button" class="btn btn-outline-secondary btn-sm ms-2" onclick="location.href='{% url "school_calendar:calendar_index" %}'">Limpar</button>
+  </form>
+
+  {% if days %}
+    <div class="calendar-days">
+      {% for day in days %}
+        <div class="calendar-day">
+          <div class="calendar-day-header">
+            <span class="calendar-day-date">{{ day.date|date:"d/m" }}</span>
+            <span class="calendar-day-wday">{{ day.date|date:"l" }}</span>
+            {% if day.date == today %}<span class="badge bg-primary text-white ms-2">hoje</span>{% endif %}
+          </div>
+          <ul class="calendar-day-events">
+            {% for event in day.events %}
+              <li class="calendar-event {{ event.kind }}">
+                <a href="{{ event.url }}" class="stretched-link text-decoration-none">
+                  <span class="event-chip {{ event.kind }}">{{ event.kind_label }}</span>
+                  <strong>{{ event.title }}</strong>
+                  <span class="event-date">{{ event.date_label }} · {{ event.date|date:"d/m/Y" }}</span>
+                  <span class="event-subtitle">{{ event.subtitle }}</span>
+                  {% if event.state %}<span class="event-state chip-{{ event.state }}">{{ event.state_label }}</span>{% endif %}
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state text-center py-5">
+      <p class="text-muted">Não há eventos no período selecionado.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

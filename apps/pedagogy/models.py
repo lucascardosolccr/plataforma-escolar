@@ -175,9 +175,14 @@ class Activity(models.Model):
 
     @property
     def is_visible_to_family(self):
-        """Família vê apenas o que foi publicado e cuja data já chegou."""
+        """Família vê o que foi publicado e o histórico cancelado.
+
+        O cancelamento não apaga o registro: a família que já via a
+        atividade precisa conseguir abrir o motivo. Rascunho e publicação
+        futura continuam fora.
+        """
         return (
-            self.status == self.Status.PUBLISHED
+            self.status in (self.Status.PUBLISHED, self.Status.CANCELED)
             and self.published_date <= timezone.localdate()
         )
 
@@ -359,9 +364,9 @@ class GroupWork(models.Model):
 
     @property
     def is_visible_to_family(self):
-        """Família e estudante só veem o que foi publicado e cuja data chegou."""
+        """Família e estudante veem o publicado e o histórico cancelado."""
         return (
-            self.status == self.Status.PUBLISHED
+            self.status in (self.Status.PUBLISHED, self.Status.CANCELED)
             and self.published_date <= timezone.localdate()
         )
 

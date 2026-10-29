@@ -62,6 +62,29 @@ class ThreadForm(forms.Form):
             raise ValidationError("Escolha um profissional/responsável permitido da mesma escola.")
         return recipient
 
+    def clean(self):
+        cleaned = super().clean()
+        student = cleaned.get("student")
+        recipient = cleaned.get("recipient")
+        if not student or not recipient:
+            return cleaned
+        if self.user.role == "responsavel":
+            if recipient.role == "professor":
+                from apps.registry.access import teacher_of_student
+
+                if not teacher_of_student(recipient, student):
+                    self.add_error(
+                        "recipient",
+                        "O professor escolhido não leciona para este estudante.",
+                    )
+        elif not GuardianLink.objects.filter(
+            guardian=recipient, student=student, status="aprovado"
+        ).exists():
+            self.add_error(
+                "recipient", "O responsável escolhido não está vinculado a este estudante."
+            )
+        return cleaned
+
 
 class ReplyForm(forms.Form):
     body = forms.CharField(

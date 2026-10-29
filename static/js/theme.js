@@ -16,8 +16,6 @@
     }
     document.cookie = "theme=" + theme + "; path=/; max-age=" + 60 * 60 * 24 * 365;
   }
-    document.cookie = "theme=" + theme + "; path=/; max-age=" + 60 * 60 * 24 * 365;
-  }
 
   document.addEventListener("DOMContentLoaded", function () {
     apply(currentTheme());

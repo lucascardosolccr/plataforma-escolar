@@ -1,0 +1,32 @@
+.calendar-wrap{max-width:980px}
+.calendar-header{margin-bottom:1rem}
+.calendar-title{font-size:1.35rem;font-weight:700;letter-spacing:-0.01em;color:var(--bs-heading-color)}
+.calendar-subtitle{color:var(--bs-secondary-color);font-size:0.95rem;margin-top:.25rem}
+.calendar-filters{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-bottom:1.25rem;background:var(--bs-tertiary-bg);padding:.75rem 1rem;border-radius:.6rem;border:1px solid var(--bs-border-color)}
+.filter-label{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--bs-secondary-color);width:70px;display:inline-block}
+.filter-row{display:flex;align-items:center;gap:.5rem}
+.filter-row .form-select,.filter-row .form-control{min-width:150px}
+.calendar-days{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.75rem}
+.calendar-day{border:1px solid var(--bs-border-color);border-radius:.6rem;background:var(--bs-body-bg)}
+.calendar-day-header{padding:.5rem .75rem;border-bottom:1px solid var(--bs-border-color);display:flex;justify-content:space-between;align-items:center;background:var(--bs-secondary-bg);border-radius:.6rem .6rem 0 0}
+.calendar-day-date{font-weight:700;color:var(--bs-heading-color)}
+.calendar-day-wday{font-size:.75rem;color:var(--bs-secondary-color);text-transform:uppercase}
+.calendar-day-events{list-style:none;margin:0;padding:.5rem .75rem}
+.calendar-event{padding:.45rem .6rem;border-radius:.4rem;margin-bottom:.35rem;background:var(--bs-body-bg);border:1px solid var(--bs-border-color);transition:transform .1s,box-shadow .1s}
+.calendar-event:hover{transform:translateY(-1px);box-shadow:0 .4rem .8rem rgba(0,0,0,.06);border-color:var(--bs-secondary-color)}
+.calendar-event a{color:inherit;display:block}
+.event-chip{font-size:.625rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:.1rem .4rem;border-radius:.3rem;color:#fff;display:inline-block;margin-bottom:.2rem}
+.event-chip.activity{background:#0d6efd}
+.event-chip.group_work{background:#6f42c1}
+.event-chip.evaluation{background:#198754}
+.event-chip.occurrence{background:#dc3545}
+.event-chip.justification{background:#ffc107;color:#000}
+.event-title{font-weight:600;font-size:.9rem}
+.event-date{font-size:.75rem;color:var(--bs-secondary-color);display:block;margin-top:.1rem}
+.event-subtitle{font-size:.7rem;color:var(--bs-secondary-color);display:block;margin-top:.05rem}
+.event-state{font-size:.68rem;font-weight:600;padding:.1rem .35rem;border-radius:.3rem;margin-top:.2rem;display:inline-block}
+.chip-a_vencer{background:var(--bs-body-bg)3cd;color:#856404;border:1px solid #ffeeba}
+.chip-pendente{background:#e2e3e5;color:#41464b;border:1px solid #d6d8db}
+.chip-encerrada{background:#f8d7da;color:#842029;border:1px solid #f5c2c7}
+.chip-cancelada{background:#e2e3e5;color:#41464b;border:1px solid #d6d8db}
+.empty-state{opacity:.7}

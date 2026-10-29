@@ -33,7 +33,7 @@ def _unlocalize(field):
 class EvaluationForm(forms.ModelForm):
     class Meta:
         model = Evaluation
-        fields = ["class_group", "subject", "title", "description", "weight", "date", "status"]
+        fields = ["class_group", "subject", "title", "description", "weight", "date"]
         widgets = {"date": forms.DateInput(format=r"%Y-%m-%d", attrs={"type": "date"})}
         labels = {
             "class_group": "Turma",
@@ -42,7 +42,6 @@ class EvaluationForm(forms.ModelForm):
             "description": "Descrição",
             "weight": "Peso",
             "date": "Data",
-            "status": "Situação",
         }
 
     def __init__(self, *args, user=None, school=None, class_group=None, subject=None, **kwargs):
@@ -64,8 +63,6 @@ class EvaluationForm(forms.ModelForm):
             self.fields["class_group"].initial = class_group
         if subject:
             self.fields["subject"].initial = subject
-        self.fields["status"].required = False
-        self.fields["status"].initial = Evaluation.Status.DRAFT
         self.fields["date"].required = False
         self.fields["date"].initial = timezone.localdate()
         _unlocalize(self.fields["weight"])
@@ -458,18 +455,20 @@ class AttendanceBatchForm(forms.Form):
     STATUS_MAP = [("presente", "Presente"), ("atraso", "Atraso"), ("falta", "Falta")]
     date = forms.DateField(widget=forms.DateInput(format=r"%Y-%m-%d", attrs={"type": "date"}))
 
-    def __init__(self, *args, class_group=None, students=None, **kwargs):
+    def __init__(self, *args, class_group=None, students=None, date=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.class_group = class_group
         self.students = students or []
         from .models import AttendanceRecord
 
-        existing = {
-            (r.student_id): r
-            for r in AttendanceRecord.objects.filter(
-                class_group=class_group
-            ).select_related("student")
-        }
+        existing = {}
+        if class_group is not None and date is not None:
+            existing = {
+                r.student_id: r
+                for r in AttendanceRecord.objects.filter(
+                    class_group=class_group, date=date
+                ).select_related("student")
+            }
         self.rows = []
         for s in self.students:
             rec = existing.get(s.id)
@@ -482,6 +481,12 @@ class AttendanceBatchForm(forms.Form):
                 widget=forms.Select(attrs={"class": "form-select form-select-sm"}),
             )
             self.rows.append((s, field_name))
+
+    def clean_date(self):
+        value = self.cleaned_data["date"]
+        if value > timezone.localdate():
+            raise forms.ValidationError("Não é possível registrar frequência em data futura.")
+        return value
 
 
 class AbsenceJustificationForm(forms.ModelForm):
@@ -516,6 +521,13 @@ class AbsenceJustificationForm(forms.ModelForm):
         start, end = cleaned.get("start_date"), cleaned.get("end_date")
         if start and end and end < start:
             self.add_error("end_date", "A data final não pode ser anterior à inicial.")
+        class_group = cleaned.get("class_group")
+        if class_group and self.student and not self.student.enrollments.filter(
+            class_group=class_group
+        ).exists():
+            self.add_error(
+                "class_group", "O estudante não possui matrícula nesta turma."
+            )
         return cleaned
 
 

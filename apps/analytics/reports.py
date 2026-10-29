@@ -167,7 +167,9 @@ def _r_boletim(user, params):
 
 def _r_evolucao(user, params):
     student = params["student"]
-    evolution = services.grade_evolution(student, params["subject"])
+    evolution = services.grade_evolution(
+        student, params["subject"], params["start"], params["end"]
+    )
     rows = [
         [e["date"].strftime("%d/%m/%Y"), e["subject"], e["title"], e["value"]]
         for e in evolution
@@ -274,10 +276,12 @@ def _r_atividades_pendentes(user, params):
 
     class_group = params["class_group"]
     classes = allowed_classes(user)
+    today = timezone.localdate()
     qs = Activity.objects.filter(
         school=user.school,
         class_group__in=classes,
         status=Activity.Status.PUBLISHED,
+        published_date__lte=today,
     )
     if class_group:
         qs = qs.filter(class_group=class_group)
@@ -288,7 +292,6 @@ def _r_atividades_pendentes(user, params):
     if params["end"]:
         qs = qs.filter(published_date__lte=params["end"])
 
-    today = timezone.localdate()
     activities = list(qs.select_related("class_group", "subject").order_by("deadline"))
     rows = []
     if activities:
@@ -337,9 +340,16 @@ def _r_acompanhamento(user, params):
     ).select_related("student")
     if params["class_group"]:
         plans = plans.filter(student__enrollments__class_group=params["class_group"])
+    start, end = params["start"], params["end"]
     rows = []
     for plan in plans.order_by("-created_at"):
-        notes = list(plan.notes.order_by("-created_at"))
+        notes = plan.notes.all()
+        if start:
+            notes = notes.filter(created_at__date__gte=start)
+        if end:
+            notes = notes.filter(created_at__date__lte=end)
+        notes = list(notes.order_by("-created_at"))
+        created = plan.created_at.date()
         if notes:
             for note in notes:
                 rows.append(
@@ -351,7 +361,7 @@ def _r_acompanhamento(user, params):
                         plan.get_status_display(),
                     ]
                 )
-        else:
+        elif (not start or created >= start) and (not end or created <= end):
             rows.append(
                 [
                     str(plan.student),
@@ -497,7 +507,9 @@ def _r_turma_indicadores(user, params):
     class_group = params["class_group"]
     if not class_group:
         raise PermissionDenied("Informe a turma.")
-    averages = services.class_subject_averages(class_group)
+    averages = services.class_subject_averages(
+        class_group, params["start"], params["end"]
+    )
     rows = [
         [
             a["subject"].name,
@@ -507,7 +519,9 @@ def _r_turma_indicadores(user, params):
         ]
         for a in averages
     ]
-    att = services.class_attendance_percent(class_group)
+    att = services.class_attendance_percent(
+        class_group, params["start"], params["end"]
+    )
     rows.append(["Frequência da turma", f"{att}%" if att is not None else "—", "—", "—"])
     criteria = (
         f"Turma: {class_group}. Médias por disciplina (notas publicadas) e "
@@ -580,7 +594,7 @@ REPORTS = {
         "dificuldades",
         "Estudantes com dificuldades",
         "Dificuldades registradas em observações pedagógicas.",
-        (ADMIN, DIRECAO, COORD, PROF),
+        (DIRECAO, COORD, PROF),
         _r_dificuldades,
         category="Pedagógico",
     ),

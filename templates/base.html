@@ -17,6 +17,7 @@
   {% block extra_css %}{% endblock %}
 </head>
 <body class="d-flex flex-column min-vh-100">
+<a class="visually-hidden-focusable position-absolute top-0 start-0 p-2 bg-body text-body rounded-end" href="#main-content">Pular para o conteúdo</a>
 {% if user.is_authenticated %}
 <nav class="navbar navbar-expand-xl navbar-theme glass-nav sticky-top">
   <div class="container-fluid">
@@ -30,6 +31,7 @@
     </button>
       <div class="collapse navbar-collapse" id="navMain">
         <ul class="navbar-nav me-auto mb-2 mb-xl-0 align-items-xl-center">          <li class="nav-item"><a class="nav-link px-3{% if request.resolver_match.url_name == 'home' %} active{% endif %}" href="{% url 'home' %}"><i class="bi bi-house-door me-1"></i>Início</a></li>
+          <li class="nav-item"><a class="nav-link px-3{% if request.resolver_match.app_name == 'school_calendar' %} active{% endif %}" href="{% url 'school_calendar:calendar_index' %}"><i class="bi bi-calendar3 me-1"></i>Calendário</a></li>
           {% if user.role == ROLE_ESTUDANTE and own_student %}
           <li class="nav-item"><a class="nav-link px-3{% if request.resolver_match.url_name == 'student_dashboard' %} active{% endif %}" href="{% url 'analytics:student_dashboard' own_student.pk %}"><i class="bi bi-bar-chart-line me-1"></i>Meu Painel</a></li>
           {% endif %}
@@ -93,7 +95,7 @@
           <a class="nav-link dropdown-toggle{% if request.resolver_match.app_name == 'communication' %} active{% endif %}" href="#" data-bs-toggle="dropdown">Comunicação</a>
           <ul class="dropdown-menu shadow">
             <li><a class="dropdown-item" href="{% url 'communication:notification_list' %}">Central de notificações</a></li>
-            <li><a class="dropdown-item" href="{% url 'communication:thread_list' %}">Mensagens com famílias</a></li>
+            <li><a class="dropdown-item" href="{% url 'communication:thread_list' %}">{% if user_role == ROLE_RESPONSAVEL %}Mensagens com a escola{% else %}Mensagens com famílias{% endif %}</a></li>
             <li><a class="dropdown-item" href="{% url 'communication:announcement_list' %}">Comunicados</a></li>
             <li><a class="dropdown-item" href="{% url 'communication:request_list' %}">Solicitações de atendimento</a></li>
             <li><hr class="dropdown-divider"></li>
@@ -195,7 +197,7 @@
 </nav>
 {% endif %}
 
-<main class="flex-grow-1 py-4">
+<main id="main-content" class="flex-grow-1 py-4" tabindex="-1">
   <div class="container-fluid px-3 px-md-4">
     {% if messages %}
       {% for message in messages %}
@@ -218,7 +220,6 @@
 
   <script src="{% static 'vendor/bootstrap.bundle.min.js' %}"></script>
   <script src="{% static 'js/theme.js' %}"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script>
     if (typeof gsap !== 'undefined') {
       gsap.from('.premium-card', {

@@ -28,6 +28,7 @@ from .access import (
     guardian_of,
     is_own_record,
     require_student_access,
+    teacher_of_student,
 )
 from .forms import (
     EnrollmentForm,
@@ -125,6 +126,11 @@ def student_detail(request, student_id):
         else student.enrollments.none()
     )
     links = student.guardian_links.select_related("guardian")
+    if not can_manage_registry(request.user):
+        if request.user.role == Role.RESPONSAVEL.value:
+            links = links.filter(guardian=request.user)
+        else:
+            links = links.none()
     assignments = (
         _assignments_for_student(request.user, student)
         if request.user.role in (Role.ADMIN.value, Role.DIRECAO.value, Role.COORDENACAO.value, Role.SECRETARIA.value, Role.PROFESSOR.value)
@@ -251,7 +257,7 @@ def _student_comms(user, student):
             ),
         )[:10],
         "comm_can_message": user.role == Role.RESPONSAVEL.value
-        or (user.role == Role.PROFESSOR.value and guardian_of(user, student))
+        or (user.role == Role.PROFESSOR.value and teacher_of_student(user, student))
         or user.role in (
             Role.ADMIN.value,
             Role.DIRECAO.value,
@@ -526,8 +532,11 @@ def link_reject(request, link_id):
     with transaction.atomic():
         link.status = "rejeitado"
         link.validated_by = request.user
+        from django.utils import timezone
+
+        link.validated_at = timezone.now()
         link.rejection_reason = reason[:255]
-        link.save()
+        link.save(update_fields=["status", "validated_by", "validated_at", "rejection_reason"])
         create_audit_log(
             user=request.user,
             action="reject",

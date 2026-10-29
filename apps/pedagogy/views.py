@@ -267,6 +267,7 @@ def evaluation_create(request):
             ev = form.save(commit=False)
             ev.school = user.school
             ev.created_by = user
+            ev.status = Evaluation.Status.DRAFT
             ev.save()
             _log(request, "create", ev, f"Criou a avaliação {ev.title} ({ev.class_group})")
         messages.success(request, "Avaliação criada.")
@@ -349,9 +350,12 @@ def evaluation_publish(request, pk):
         raise PermissionDenied
     user = request.user
     ev = _get_managed_evaluation(user, pk)
+    if ev.status == Evaluation.Status.PUBLISHED:
+        messages.warning(request, "Esta avaliação já está publicada.")
+        return redirect("pedagogy:evaluation_list")
     with transaction.atomic():
-        ev.status = "publicada"
-        ev.save()
+        ev.status = Evaluation.Status.PUBLISHED
+        ev.save(update_fields=["status"])
         _log(request, "approve", ev, "Publicou a avaliação para a família")
         notify_evaluation_published(ev)
     messages.success(request, "Avaliação publicada. A família já visualiza as notas.")
@@ -1380,6 +1384,11 @@ def group_work_groups(request, pk):
                 messages.error(request, "Informe quantos grupos deseja formar.")
             elif not estudantes:
                 messages.error(request, "Esta turma não tem estudantes matriculados.")
+            elif quantos > len(estudantes):
+                messages.error(
+                    request,
+                    "A quantidade de grupos não pode ser maior que o número de estudantes.",
+                )
             else:
                 with transaction.atomic():
                     work.groups.all().delete()
@@ -1752,13 +1761,15 @@ def attendance_register(request, class_group_id):
     class_group = get_object_or_404(ClassGroup, pk=class_group_id, school=user.school)
     acc.require(acc.can_register_attendance(user, class_group))
     students = _enrolled_students(class_group)
-    existing = {
-        r.student_id: r
-        for r in AttendanceRecord.objects.filter(class_group=class_group)
-    }
-    tdate = request.GET.get("data") or request.POST.get("data") or date.today().isoformat()
+    raw_date = request.GET.get("data") or request.POST.get("data")
+    try:
+        tdate = date.fromisoformat(raw_date) if raw_date else date.today()
+    except ValueError:
+        tdate = date.today()
     if request.method == "POST":
-        form = AttendanceBatchForm(request.POST, class_group=class_group, students=students)
+        form = AttendanceBatchForm(
+            request.POST, class_group=class_group, students=students, date=tdate
+        )
         if form.is_valid():
             tdate = form.cleaned_data["date"]
             with transaction.atomic():
@@ -1781,7 +1792,10 @@ def attendance_register(request, class_group_id):
             return redirect("pedagogy:attendance_class", class_group_id=class_group.pk)
     else:
         form = AttendanceBatchForm(
-            initial={"date": tdate}, class_group=class_group, students=students
+            initial={"date": tdate},
+            class_group=class_group,
+            students=students,
+            date=tdate,
         )
     return render(
         request,
@@ -1824,8 +1838,9 @@ def occurrence_list(request):
     student_id = id_param(request, "estudante")
     if student_id:
         student = get_object_or_404(Student, pk=student_id, school=user.school)
-        if user.role == Role.RESPONSAVEL.value:
-            acc.require(acc.can_view_occurrences(user, student))
+        # A regra vale para TODOS os perfis: um professor só alcança
+        # ocorrências de estudante de turma em que realmente leciona.
+        acc.require(acc.can_view_occurrences(user, student))
         qs = qs.filter(student=student)
     elif user.role == Role.PROFESSOR.value:
         class_ids = list(_teacher_assignments(user).values_list("class_group_id", flat=True))
@@ -2168,6 +2183,12 @@ def justification_resolve(request, pk, decision):
         raise PermissionDenied
     if request.method != "POST":
         raise PermissionDenied
+    if just.status in (
+        AbsenceJustification.Status.APPROVED,
+        AbsenceJustification.Status.REFUSED,
+    ):
+        messages.warning(request, "Esta justificativa já foi analisada.")
+        return redirect("pedagogy:justification_list")
     form = JustificationResolutionForm(request.POST)
     note = form.data.get("note", "")
     with transaction.atomic():

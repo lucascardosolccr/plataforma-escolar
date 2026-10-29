@@ -15,7 +15,10 @@
 </div>
 
 {% if evaluation.status == 'rascunho' %}
-<div class="alert alert-warning">Esta avaliação ainda está em <strong>rascunho</strong> — os responsáveis não visualizam as notas. Quando estiver completa, <a href="{% url 'pedagogy:evaluation_publish' evaluation.pk %}">publique-a</a>.</div>
+<div class="alert alert-warning">Esta avaliação ainda está em <strong>rascunho</strong> — os responsáveis não visualizam as notas. Quando estiver completa, <form method="post" action="{% url 'pedagogy:evaluation_publish' evaluation.pk %}" class="d-inline">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-link btn-sm p-0 align-baseline">publique-a</button>
+  </form>.</div>
 {% endif %}
 
 <form method="post" novalidate>

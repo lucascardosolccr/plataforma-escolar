@@ -1,6 +1,15 @@
 from django import forms
+from django.contrib.auth import password_validation
+from django.core.exceptions import ValidationError
 
 from .models import Role, STAFF_ROLES, School, User
+
+
+def _check_password(form, password, user):
+    try:
+        password_validation.validate_password(password, user=user)
+    except ValidationError as exc:
+        form.add_error("password1", exc)
 
 
 class ProfessionalUserForm(forms.ModelForm):
@@ -52,6 +61,14 @@ class ProfessionalUserForm(forms.ModelForm):
         p2 = cleaned.get("password2")
         if p1 and p2 and p1 != p2:
             self.add_error("password2", "As senhas não coincidem.")
+        elif p1 and p2:
+            user = User(
+                username=cleaned.get("username", ""),
+                first_name=cleaned.get("first_name", ""),
+                last_name=cleaned.get("last_name", ""),
+                email=cleaned.get("email", ""),
+            )
+            _check_password(self, p1, user)
         return cleaned
 
     def save(self, commit=True):
@@ -101,6 +118,14 @@ class PublicSignupForm(forms.Form):
         p2 = cleaned.get("password2")
         if p1 and p2 and p1 != p2:
             self.add_error("password2", "As senhas não coincidem.")
+        elif p1 and p2:
+            user = User(
+                username=cleaned.get("username", ""),
+                first_name=cleaned.get("first_name", ""),
+                last_name=cleaned.get("last_name", ""),
+                email=cleaned.get("email", ""),
+            )
+            _check_password(self, p1, user)
         return cleaned
 
     def save(self):

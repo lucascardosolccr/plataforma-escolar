@@ -8,6 +8,7 @@ o escopo RBAC de cada origem.
 import datetime as dt
 
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
@@ -98,6 +99,41 @@ def _event_in_range(event, start, end):
     return True
 
 
+# Sem período escolhido, o calendário mostra uma janela em torno de hoje.
+# Antes ele carregava todo o histórico da escola a cada acesso.
+DEFAULT_DAYS_BEFORE = 7
+DEFAULT_DAYS_AFTER = 45
+
+
+def _due_in_range(start, end):
+    """Atividade/trabalho cuja data exibida (entrega, ou publicação se não
+    houver prazo) cai no período — o mesmo critério de ``_event_in_range``."""
+    com_prazo = Q(deadline__isnull=False)
+    sem_prazo = Q(deadline__isnull=True)
+    if start:
+        com_prazo &= Q(deadline__gte=start)
+        sem_prazo &= Q(published_date__gte=start)
+    if end:
+        com_prazo &= Q(deadline__lte=end)
+        sem_prazo &= Q(published_date__lte=end)
+    return com_prazo | sem_prazo
+
+
+def _scoped(qs, user, model=None):
+    """Restringe no banco às turmas do usuário antes da checagem fina.
+
+    A checagem por item (``CalendarScope``) continua decidindo; isto só evita
+    trazer da escola inteira o que nunca passaria por ela.
+    """
+    if user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
+        qs = qs.filter(class_group_id__in=_user_class_ids(user))
+        if model is not None:
+            qs = qs.filter(model.family_visible_q())
+    elif user.role == Role.PROFESSOR.value:
+        qs = qs.filter(class_group_id__in=_user_class_ids(user))
+    return qs
+
+
 def _collect_events(user, start, end, class_filter=None, subject_filter=None,
                     kind_filter=None, student_filter=None):
     """Coleta eventos das fontes existentes dentro do escopo do usuário."""
@@ -107,11 +143,13 @@ def _collect_events(user, start, end, class_filter=None, subject_filter=None,
 
     # ---------- Atividades ----------
     if kind_filter is None or kind_filter == "activity":
-        qs = Activity.objects.filter(
-            school=user.school, published_date__lte=today
-        ).exclude(status=Activity.Status.DRAFT).select_related(
-            "class_group", "subject", "created_by"
-        )
+        qs = _scoped(
+            Activity.objects.filter(
+                _due_in_range(start, end), school=user.school, published_date__lte=today
+            ).exclude(status=Activity.Status.DRAFT),
+            user,
+            Activity,
+        ).select_related("class_group", "subject", "created_by")
         if class_filter:
             qs = qs.filter(class_group=class_filter)
         if subject_filter:
@@ -138,11 +176,13 @@ def _collect_events(user, start, end, class_filter=None, subject_filter=None,
 
     # ---------- Trabalhos em grupo ----------
     if kind_filter is None or kind_filter == "group_work":
-        qs = GroupWork.objects.filter(
-            school=user.school, published_date__lte=today
-        ).exclude(status=GroupWork.Status.DRAFT).select_related(
-            "class_group", "subject", "created_by"
-        )
+        qs = _scoped(
+            GroupWork.objects.filter(
+                _due_in_range(start, end), school=user.school, published_date__lte=today
+            ).exclude(status=GroupWork.Status.DRAFT),
+            user,
+            GroupWork,
+        ).select_related("class_group", "subject", "created_by")
         if class_filter:
             qs = qs.filter(class_group=class_filter)
         if subject_filter:
@@ -169,9 +209,16 @@ def _collect_events(user, start, end, class_filter=None, subject_filter=None,
 
     # ---------- Avaliações ----------
     if kind_filter is None or kind_filter == "evaluation":
-        qs = Evaluation.objects.filter(
-            school=user.school, status=Evaluation.Status.PUBLISHED
+        qs = _scoped(
+            Evaluation.objects.filter(
+                school=user.school, status=Evaluation.Status.PUBLISHED
+            ),
+            user,
         ).select_related("class_group", "subject")
+        if start:
+            qs = qs.filter(date__gte=start)
+        if end:
+            qs = qs.filter(date__lte=end)
         if class_filter:
             qs = qs.filter(class_group=class_filter)
         if subject_filter:
@@ -197,6 +244,12 @@ def _collect_events(user, start, end, class_filter=None, subject_filter=None,
     # ---------- Ocorrências ----------
     if kind_filter is None or kind_filter == "occurrence":
         qs = Occurrence.objects.filter(school=user.school).select_related("student")
+        if user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
+            qs = qs.filter(student_id__in=_user_student_ids(user))
+        if start:
+            qs = qs.filter(date__gte=start)
+        if end:
+            qs = qs.filter(date__lte=end)
         if class_filter:
             qs = qs.filter(
                 student__enrollments__class_group=class_filter
@@ -222,6 +275,13 @@ def _collect_events(user, start, end, class_filter=None, subject_filter=None,
         qs = AbsenceJustification.objects.filter(school=user.school).select_related(
             "student"
         )
+        if user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
+            qs = qs.filter(student_id__in=_user_student_ids(user))
+        # Intervalo: entra se encostar no período, como em _event_in_range.
+        if start:
+            qs = qs.filter(end_date__gte=start)
+        if end:
+            qs = qs.filter(start_date__lte=end)
         if class_filter:
             qs = qs.filter(class_group=class_filter)
         if student_filter:
@@ -267,6 +327,11 @@ def calendar_index(request):
 
     start = _parse_date(request.GET.get("start"))
     end = _parse_date(request.GET.get("end"))
+    default_window = start is None and end is None
+    if default_window:
+        hoje = timezone.localdate()
+        start = hoje - dt.timedelta(days=DEFAULT_DAYS_BEFORE)
+        end = hoje + dt.timedelta(days=DEFAULT_DAYS_AFTER)
 
     class_filter = None
     subject_filter = None
@@ -341,6 +406,7 @@ def calendar_index(request):
             "days": days,
             "start": start,
             "end": end,
+            "default_window": default_window,
             "classes": classes,
             "subjects": subjects,
             "students": students,

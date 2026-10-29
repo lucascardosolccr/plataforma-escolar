@@ -18,3 +18,7 @@ staticfiles/
 .pytest_cache/
 .DS_Store
 Thumbs.db
+# Saídas soltas de execuções manuais (testes, servidor, sondas)
+/test_*.txt
+/runserver*.log
+/probe_settings*.py

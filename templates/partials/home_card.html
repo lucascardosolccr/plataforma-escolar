@@ -1,17 +1,9 @@
 <div class="col-md-6 col-lg-4">
-  <div class="premium-card h-100"><div class="card-body d-flex flex-column p-4 position-relative" style="z-index: 1;">
-    <div class="mb-3">
-      <div class="d-inline-flex align-items-center justify-content-center rounded-4 mb-3" style="width: 3.75rem; height: 3.75rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); box-shadow: 0 20px 60px rgba(102, 126, 234, 0.6);">
-        <i class="bi bi-grid-fill text-white" style="font-size: 1.75rem;"></i>
-      </div>
-    </div>
-    <h3 class="h5 mb-2 fw-bold" style="font-family: 'Plus Jakarta Sans', Inter, sans-serif; letter-spacing: -0.02em; font-size: 1.125rem;">
+  <div class="premium-card h-100"><div class="card-body d-flex flex-column p-4">
+    <h3 class="h6 fw-bold mb-1">
       <a href="{% url url_name %}" class="stretched-link text-decoration-none text-body">{{ title }}</a>
     </h3>
-    <p class="text-body-secondary mb-0 flex-grow-1">{{ desc }}</p>
-    <div class="mt-4 d-flex align-items-center fw-semibold" style="color: #667eea;">
-      <span>Acessar</span>
-      <i class="bi bi-arrow-right ms-2"></i>
-    </div>
+    <p class="text-body-secondary small mb-0 flex-grow-1">{{ desc }}</p>
+    <span class="home-card-go mt-3 small fw-semibold">Acessar <span aria-hidden="true">→</span></span>
   </div></div>
 </div>

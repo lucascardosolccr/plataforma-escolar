@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --premium-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 40%, #f093fb 80%, #667eea 100%);
   --premium-gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   --premium-gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
@@ -14,35 +14,31 @@
   background: radial-gradient(ellipse at top, rgba(102, 126, 234, 0.08) 0%, transparent 50%), 
               linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(248, 250, 252, 0.9) 100%);
   border: 1px solid rgba(99, 102, 241, 0.25);
-  border-radius: 1.5rem;
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.8) inset;
-  backdrop-filter: blur(30px) saturate(200%);
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   position: relative;
   overflow: hidden;
 }
 [data-bs-theme="dark"] .premium-card {
   background: radial-gradient(ellipse at top, rgba(102, 126, 234, 0.15) 0%, transparent 50%),
               linear-gradient(145deg, rgba(30, 30, 45, 0.95) 0%, rgba(15, 15, 30, 0.9) 100%);
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
 }
-.premium-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
-  transition: left 0.8s;
+/* Hover e foco discretos: o cartão inteiro é clicável (stretched-link) e o
+   destaque precisa aparecer também para quem navega pelo teclado. */
+.premium-card:hover,
+.premium-card:focus-within {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.6);
 }
-.premium-card:hover::before {
-  left: 100%;
+.home-title {
+  font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem);
+  letter-spacing: -0.02em;
 }
-.premium-card:hover {
-  transform: translateY(-16px) scale(1.03);
-  box-shadow: 0 50px 120px rgba(99, 102, 241, 0.35), var(--neon-glow);
-  border-color: rgba(139, 92, 246, 0.7);
+.home-card-go {
+  color: var(--bs-link-color);
 }
 .hero-gradient {
   background: var(--premium-gradient);
@@ -56,10 +52,15 @@
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-bottom: 1px solid var(--glass-border) !important;
 }
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-20px); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .premium-card:hover,
+  .premium-card:focus-within {
+    transform: none;
+  }
 }

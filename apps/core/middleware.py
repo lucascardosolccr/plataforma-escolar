@@ -85,3 +85,39 @@ class ScheduledPublicationMiddleware:
             except Exception:  # o aviso não pode quebrar a navegação
                 logger.exception("Falha ao entregar avisos de publicações agendadas")
         return self.get_response(request)
+
+
+class ContentSecurityPolicyMiddleware:
+    """Só o próprio servidor da escola entrega conteúdo às páginas.
+
+    Fontes, ícones ou scripts de CDN entregam o IP e o horário de acesso de
+    famílias e estudantes a terceiros, sem base legal (LGPD), e deixam a
+    plataforma quebrada numa rede local sem internet. A política bloqueia
+    qualquer origem externa: um CDN reintroduzido por engano falha à vista em
+    vez de voltar em silêncio. ``'unsafe-inline'`` fica por causa dos estilos
+    e dos pequenos manipuladores inline já existentes; ``data:`` cobre os
+    ícones SVG embutidos no CSS do Bootstrap.
+    """
+
+    POLICY = "; ".join(
+        [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline'",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data:",
+            "font-src 'self'",
+            "connect-src 'self'",
+            "object-src 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+            "frame-ancestors 'none'",
+        ]
+    )
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        response.headers.setdefault("Content-Security-Policy", self.POLICY)
+        return response

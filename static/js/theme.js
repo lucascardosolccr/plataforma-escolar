@@ -12,7 +12,15 @@
     document.documentElement.setAttribute("data-bs-theme", theme);
     var btn = document.querySelector(".theme-toggle");
     if (btn) {
-      btn.innerHTML = theme === "dark" ? '<i class="bi bi-sun-fill"></i>' : '<i class="bi bi-moon-fill"></i>';
+      // O botão anuncia a ação que vai fazer, não o estado atual.
+      var icon = btn.querySelector(".theme-icon");
+      if (icon) {
+        icon.textContent = theme === "dark" ? "☀️" : "🌙";
+      }
+      btn.setAttribute(
+        "aria-label",
+        theme === "dark" ? "Usar tema claro" : "Usar tema escuro"
+      );
     }
     document.cookie = "theme=" + theme + "; path=/; max-age=" + 60 * 60 * 24 * 365;
   }

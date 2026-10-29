@@ -86,6 +86,7 @@ MIDDLEWARE = [
     "apps.core.middleware.ForcePasswordChangeMiddleware",
     "apps.core.middleware.ScheduledPublicationMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.core.middleware.ContentSecurityPolicyMiddleware",
 ]
 
 LOGIN_URL = "login"
@@ -168,10 +169,12 @@ if not DEBUG and _SSL:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 
+# Nível do Django -> cor do alerta do Bootstrap. O mapa anterior estava
+# deslocado um nível: sucesso aparecia amarelo e aviso aparecia como erro.
 MESSAGE_TAGS = {
-    10: "success",
-    20: "warning",
-    25: "warning",
-    30: "danger",
-    40: "danger",
+    10: "secondary",  # DEBUG
+    20: "info",  # INFO
+    25: "success",  # SUCCESS
+    30: "warning",  # WARNING
+    40: "danger",  # ERROR
 }

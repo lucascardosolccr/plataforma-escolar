@@ -550,7 +550,9 @@ class ActivityTests(PedagogyBase):
 
     def test_canceled_activity_still_visible_to_family_as_canceled(self):
         act = self.make_activity(
-            status=Activity.Status.CANCELED, cancel_reason="Conteúdo adiado"
+            status=Activity.Status.CANCELED,
+            cancel_reason="Conteúdo adiado",
+            visible_before_cancel=True,
         )
         self.login("resp")
         resp = self.client.get(reverse("pedagogy:activity_list"))

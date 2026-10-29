@@ -369,7 +369,8 @@ def _guardian_visible_activities(user):
 
     Abrange QUALQUER matrícula dos filhos vinculados, não só a ativa, para que
     transferência de turma não apague o histórico já atribuído ao estudante.
-    Rascunho e atividade com data de publicação futura ficam de fora.
+    Rascunho, atividade agendada e rascunho cancelado ficam de fora (ver
+    ``FamilyVisibility``).
     """
     child_ids = GuardianLink.objects.filter(
         guardian=user, status="aprovado"
@@ -378,10 +379,10 @@ def _guardian_visible_activities(user):
         "class_group_id", flat=True
     )
     return Activity.objects.filter(
+        Activity.family_visible_q(),
         school=user.school,
         class_group_id__in=class_ids,
-        published_date__lte=timezone.localdate(),
-    ).exclude(status=Activity.Status.DRAFT)
+    )
 
 
 def _rows_for_students(school, students, activities):
@@ -437,10 +438,10 @@ def _student_own_rows(user):
     )
     activities = _visible_activities(
         Activity.objects.filter(
+            Activity.family_visible_q(),
             school=user.school,
             class_group_id__in=class_ids,
-            published_date__lte=timezone.localdate(),
-        ).exclude(status=Activity.Status.DRAFT)
+        )
     )
     return _rows_for_students(user.school, [student], activities), [student]
 
@@ -472,10 +473,9 @@ def student_activity_rows(student, limit=20):
     enrollments = acc.enrollments_by_student([student.pk]).get(student.pk, [])
     candidates = (
         Activity.objects.filter(
+            Activity.family_visible_q(),
             class_group_id__in={e.class_group_id for e in enrollments},
-            published_date__lte=timezone.localdate(),
         )
-        .exclude(status=Activity.Status.DRAFT)
         .select_related("subject", "class_group")
         .order_by("-published_date", "-created_at")
     )
@@ -765,9 +765,12 @@ def activity_cancel(request, pk):
     form = ActivityCancelForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
-            act.status = Activity.Status.CANCELED
-            act.cancel_reason = form.cleaned_data["cancel_reason"]
-            act.save(update_fields=["status", "cancel_reason", "updated_at"])
+            act.cancel(form.cleaned_data["cancel_reason"])
+            act.save(
+                update_fields=[
+                    "status", "cancel_reason", "visible_before_cancel", "updated_at"
+                ]
+            )
             _log(
                 request,
                 "update",
@@ -930,11 +933,10 @@ def _visible_group_works(user):
         class_ids = []
     return (
         GroupWork.objects.filter(
+            GroupWork.family_visible_q(),
             school=user.school,
             class_group_id__in=class_ids,
-            published_date__lte=timezone.localdate(),
         )
-        .exclude(status=GroupWork.Status.DRAFT)
         .select_related("subject", "class_group", "created_by")
     )
 
@@ -1008,9 +1010,11 @@ def student_group_work_rows(student, limit=20):
     não apagar o histórico de participação.
     """
     membros = (
-        WorkGroupMember.objects.filter(student=student, removed_at__isnull=True)
-        .exclude(group__group_work__status=GroupWork.Status.DRAFT)
-        .filter(group__group_work__published_date__lte=timezone.localdate())
+        WorkGroupMember.objects.filter(
+            GroupWork.family_visible_q(prefix="group__group_work__"),
+            student=student,
+            removed_at__isnull=True,
+        )
         .select_related(
             "group", "group__group_work", "group__group_work__subject",
             "group__group_work__class_group",
@@ -1512,9 +1516,12 @@ def group_work_cancel(request, pk):
     form = GroupWorkCancelForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
-            work.status = GroupWork.Status.CANCELED
-            work.cancel_reason = form.cleaned_data["cancel_reason"]
-            work.save(update_fields=["status", "cancel_reason", "updated_at"])
+            work.cancel(form.cleaned_data["cancel_reason"])
+            work.save(
+                update_fields=[
+                    "status", "cancel_reason", "visible_before_cancel", "updated_at"
+                ]
+            )
             _log(
                 request,
                 "update",

@@ -179,6 +179,7 @@ class FamilyCanceledRecordTests(PedagogyBase):
             published_date=timezone.localdate(),
             status=Activity.Status.CANCELED,
             cancel_reason="Mudança de calendário",
+            visible_before_cancel=True,
         )
         self.login("resp")
         self.assertEqual(
@@ -198,6 +199,7 @@ class FamilyCanceledRecordTests(PedagogyBase):
             published_date=timezone.localdate(),
             status=GroupWork.Status.CANCELED,
             cancel_reason="Mudança de calendário",
+            visible_before_cancel=True,
         )
         self.login("resp")
         self.assertEqual(

@@ -1,10 +1,51 @@
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.academics.models import ClassGroup, SchoolYear, Subject
 from apps.core.models import School, User
 from apps.core.uploads import safe_attachment_path, validate_attachment
 from apps.registry.models import Student
+
+
+class FamilyVisibility:
+    """Regra única do que chega à família (responsável e conta do estudante).
+
+    Vale para atividades e trabalhos em grupo. Chega o que foi publicado e
+    cuja data já veio; e, depois de cancelado, só o que a família já via no
+    momento do cancelamento. Rascunho cancelado nunca chega — antes, cada tela
+    filtrava ``exclude(status=DRAFT)`` por conta própria e o rascunho
+    cancelado aparecia para a família.
+    """
+
+    @classmethod
+    def family_visible_q(cls, prefix="", today=None):
+        """Filtro de banco equivalente a ``is_visible_to_family``.
+
+        ``prefix`` permite filtrar a partir de outro modelo, como
+        ``group__group_work__`` nos integrantes de um grupo.
+        """
+        today = today or timezone.localdate()
+        published = cls.Status.PUBLISHED
+        canceled = cls.Status.CANCELED
+        return Q(**{f"{prefix}published_date__lte": today}) & (
+            Q(**{f"{prefix}status": published})
+            | Q(**{f"{prefix}status": canceled, f"{prefix}visible_before_cancel": True})
+        )
+
+    @property
+    def is_visible_to_family(self):
+        if self.published_date > timezone.localdate():
+            return False
+        if self.status == self.Status.PUBLISHED:
+            return True
+        return self.status == self.Status.CANCELED and self.visible_before_cancel
+
+    def cancel(self, reason):
+        """Cancela guardando se a família já via o item (não salva)."""
+        self.visible_before_cancel = self.is_visible_to_family
+        self.status = self.Status.CANCELED
+        self.cancel_reason = reason
 
 
 class AcademicRule(models.Model):
@@ -111,7 +152,7 @@ class Grade(models.Model):
         return f"{self.student} — {self.evaluation}: {self.value}"
 
 
-class Activity(models.Model):
+class Activity(FamilyVisibility, models.Model):
     """Atividade de casa / tarefa lançada para uma turma e disciplina.
 
     A atividade pertence à TURMA, não a cada estudante: existe um único
@@ -151,6 +192,9 @@ class Activity(models.Model):
     cancel_reason = models.CharField(
         "motivo do cancelamento", max_length=255, blank=True
     )
+    visible_before_cancel = models.BooleanField(
+        "família já via quando foi cancelada", default=False
+    )
     # Quando a família foi avisada. Fica vazio enquanto a data de publicação
     # não chega: avisar antes mandaria um link que ainda responde "acesso
     # negado". Também impede aviso duplicado (ver communication.services).
@@ -172,19 +216,6 @@ class Activity(models.Model):
 
     def __str__(self):
         return f"{self.title} — {self.class_group}"
-
-    @property
-    def is_visible_to_family(self):
-        """Família vê o que foi publicado e o histórico cancelado.
-
-        O cancelamento não apaga o registro: a família que já via a
-        atividade precisa conseguir abrir o motivo. Rascunho e publicação
-        futura continuam fora.
-        """
-        return (
-            self.status in (self.Status.PUBLISHED, self.Status.CANCELED)
-            and self.published_date <= timezone.localdate()
-        )
 
     def family_situation(self, today=None):
         """Rótulo de acompanhamento mostrado à família.
@@ -287,7 +318,7 @@ class Submission(models.Model):
         return f"{self.student} — {self.activity}: {self.get_status_display()}"
 
 
-class GroupWork(models.Model):
+class GroupWork(FamilyVisibility, models.Model):
     """Trabalho em grupo: UMA entidade compartilhada pela turma.
 
     Quatro alunos num grupo não geram quatro trabalhos. O trabalho pertence à
@@ -343,6 +374,9 @@ class GroupWork(models.Model):
     cancel_reason = models.CharField(
         "motivo do cancelamento", max_length=255, blank=True
     )
+    visible_before_cancel = models.BooleanField(
+        "família já via quando foi cancelado", default=False
+    )
     notified_at = models.DateTimeField("família avisada em", null=True, blank=True)
     created_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name="group_works_created"
@@ -361,14 +395,6 @@ class GroupWork(models.Model):
 
     def __str__(self):
         return f"{self.title} — {self.class_group}"
-
-    @property
-    def is_visible_to_family(self):
-        """Família e estudante veem o publicado e o histórico cancelado."""
-        return (
-            self.status in (self.Status.PUBLISHED, self.Status.CANCELED)
-            and self.published_date <= timezone.localdate()
-        )
 
     def situation(self, today=None):
         """Rótulo de acompanhamento. Deriva do prazo, nunca de visualização."""

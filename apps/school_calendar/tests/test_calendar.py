@@ -222,7 +222,9 @@ class CalendarAccessTests(CalendarBase):
 
     def test_family_canceled_activity_stays_in_history(self):
         self.make_activity(
-            title="Atividade cancelada", status=Activity.Status.CANCELED
+            title="Atividade cancelada",
+            status=Activity.Status.CANCELED,
+            visible_before_cancel=True,
         )
         self.login("resp")
         response = self.calendar()

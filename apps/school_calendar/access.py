@@ -206,14 +206,9 @@ class CalendarScope:
         if self.role == Role.PROFESSOR.value:
             return self._teaches(act)
         if self.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
-            # Cancelada continua no histórico, como na lista de atividades; só
-            # o rascunho e o que ainda não foi publicado ficam fora.
-            if (
-                act.status != act.Status.CANCELED
-                and not act.is_visible_to_family
-            ):
-                return False
-            if act.published_date > self.today:
+            # Mesma regra da lista de atividades (FamilyVisibility): cancelada
+            # só continua se a família já a via; rascunho cancelado, nunca.
+            if not act.is_visible_to_family:
                 return False
             return self._reaches(act)
         return False
@@ -224,12 +219,7 @@ class CalendarScope:
         if self.role == Role.PROFESSOR.value:
             return self._teaches(gw)
         if self.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
-            if (
-                gw.status != gw.Status.CANCELED
-                and not gw.is_visible_to_family
-            ):
-                return False
-            if gw.published_date > self.today:
+            if not gw.is_visible_to_family:
                 return False
             return self._reaches(gw)
         return False

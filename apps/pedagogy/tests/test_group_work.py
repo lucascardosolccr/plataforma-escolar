@@ -787,9 +787,11 @@ class CancelamentoTests(GroupWorkBase):
         self.assertEqual(self.work.status, GroupWork.Status.PUBLISHED)
 
     def test_family_sees_it_as_canceled_with_the_reason(self):
+        # Estado que o cancelamento real produz para um trabalho já visto.
         self.work.status = GroupWork.Status.CANCELED
         self.work.cancel_reason = "Conteúdo adiado"
-        self.work.save(update_fields=["status", "cancel_reason"])
+        self.work.visible_before_cancel = True
+        self.work.save(update_fields=["status", "cancel_reason", "visible_before_cancel"])
         self.login("resp_ana")
         resp = self.client.get(reverse("pedagogy:group_work_list"))
         self.assertContains(resp, "Cancelado")

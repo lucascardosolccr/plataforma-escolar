@@ -59,6 +59,8 @@ ITEMS = {
     "justify": Item("Justificar falta", "pedagogy:justification_create", "file-check",
                     ("pedagogy:justification_create",), "Enviar à secretaria"),
     "links": Item("Vínculos", "link_list", "link", ("link_",), "Estudantes vinculados à conta"),
+    "fam_applications": Item("Pré-cadastro", "family_applications", "id-card",
+                             ("family_applications", "application_"), "Cadastrar um filho na escola"),
     "link_request": Item("Solicitar vínculo", "link_request", "user-check", (),
                          "Pedir acesso a um estudante"),
     # Estudante
@@ -98,6 +100,12 @@ ITEMS = {
                      ("student_", "analytics:student_dashboard"), "Fichas e prontuários"),
     "guardians": Item("Responsáveis", "guardian_list", "users", ("guardian_",),
                       "Famílias cadastradas"),
+    "applications": Item("Pré-cadastros", "application_review_list", "inbox",
+                         ("application_review",), "Cadastros enviados pelas famílias"),
+    "student_import": Item("Importar estudantes", "student_import", "file-text",
+                           ("student_import", "student_photo_batch"), "Planilha Excel e fotos em lote"),
+    "registration_cfg": Item("Cadastro pelas famílias", "registration_settings", "sliders-horizontal",
+                             ("registration_settings",), "O que a família pode cadastrar"),
     "staff_links": Item("Vínculos", "link_list", "link", ("link_",),
                         "Validar pedidos das famílias"),
     "enrollments": Item("Matrículas", "enrollment_list", "clipboard-list", ("enrollment_",),
@@ -171,7 +179,7 @@ LAYOUT = {
         (None, ["home", "calendar"]),
         ("Acompanhamento", ["children", "fam_activities", "fam_works", "fam_grades", "fam_attendance"]),
         ("Escola", ["threads_family", "announcements", "requests", "notifications"]),
-        ("Secretaria", ["justify", "links"]),
+        ("Secretaria", ["fam_applications", "justify", "links"]),
         ("Análises", ["reports", "methodology"]),
     ],
     ESTUDANTE: [
@@ -190,12 +198,13 @@ LAYOUT = {
     ],
     SECRETARIA: [
         (None, ["home", "calendar"]),
-        ("Secretaria", ["students", "guardians", "staff_links", "enrollments", "justifications"]),
+        ("Secretaria", ["students", "applications", "student_import", "guardians", "staff_links",
+                        "enrollments", "justifications"]),
         ("Acadêmico", ["classes", "subjects", "years", "assignments"]),
         ("Pedagógico", ["evaluations", "activities", "works", "attendance", "occurrences"]),
         COMMUNICATION_STAFF,
         ("Análises", ["secretaria_panel", "subject_bi", "quality", "reports", "methodology"]),
-        ("Configuração", ["config"]),
+        ("Configuração", ["config", "registration_cfg"]),
     ],
     COORDENACAO: [
         (None, ["home", "calendar"]),
@@ -212,11 +221,12 @@ LAYOUT = {
                         "occurrences", "observations", "plans", "justifications"]),
         ("Acadêmico", ["classes", "subjects", "years"]),
         COMMUNICATION_STAFF,
+        ("Configuração", ["registration_cfg"]),
     ],
     ADMIN: [
         (None, ["home", "calendar"]),
-        ("Administração", ["users", "config"]),
-        ("Cadastro", ["students", "guardians", "staff_links", "enrollments"]),
+        ("Administração", ["users", "config", "registration_cfg"]),
+        ("Cadastro", ["students", "applications", "student_import", "guardians", "staff_links", "enrollments"]),
         ("Acadêmico", ["classes", "subjects", "years", "assignments"]),
         ("Pedagógico", ["evaluations", "activities", "works", "attendance", "occurrences",
                         "justifications"]),
@@ -250,21 +260,40 @@ def _resolve(item, user):
 
 
 def _is_active(item, view_name):
+    return _match_len(item, view_name) > 0
+
+
+def _match_len(item, view_name):
+    """Quão específico é o casamento do item com a tela atual (0 = não casa).
+    O mais específico vence: "student_import" ganha de "student_"."""
     if not view_name:
-        return False
+        return 0
     if view_name == item.url_name:
-        return True
-    return any(view_name.startswith(prefix) for prefix in item.match)
+        return 10_000
+    return max((len(p) for p in item.match if view_name.startswith(p)), default=0)
+
+
+def _family_registration_on(user):
+    from apps.registry.models import RegistrationSettings
+
+    cfg = RegistrationSettings.objects.filter(school_id=user.school_id).first()
+    return bool(cfg and cfg.family_mode == RegistrationSettings.MODE_FULL)
+
+
+# Itens que só aparecem quando a escola liga a função (a view também confere).
+CONDITIONS = {"fam_applications": _family_registration_on}
 
 
 def build(user, view_name=None):
     """Seções, ações e trilha de navegação do usuário para esta requisição."""
     sections, flat = [], []
-    active = None
+    active, best = None, 0
     for title, keys in LAYOUT.get(user.role, [(None, ["home", "calendar"])]):
         items = []
         for key in keys:
             item = ITEMS[key]
+            if key in CONDITIONS and not CONDITIONS[key](user):
+                continue
             url = _resolve(item, user)
             if url is None:
                 continue
@@ -273,9 +302,12 @@ def build(user, view_name=None):
                 "desc": item.desc, "section": title or "", "active": False,
             }
             # O item mais específico vence: "Início" só é ativo na própria home.
-            if active is None and _is_active(item, view_name):
+            score = _match_len(item, view_name)
+            if score and (active is None or score > best):
+                if active is not None:
+                    active["active"] = False
                 entry["active"] = True
-                active = entry
+                active, best = entry, score
             items.append(entry)
             flat.append(entry)
         if items:

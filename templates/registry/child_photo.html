@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Foto de {{ student.first_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  {% url 'my_children' as back %}
+  {% include "partials/_form_head.html" with back_url=back back_label="Meus filhos" heading="Foto de "|add:student.full_name subheading="Só a foto muda. Os demais dados da ficha continuam com a secretaria." %}
+  <form method="post" enctype="multipart/form-data" class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">
+      {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+      <div class="d-flex align-items-center gap-3 mb-3">
+        {% if student.photo %}<img src="{% url 'student_photo' student.pk %}" alt="Foto atual" class="avatar-photo xl">{% else %}<span class="photo-pending">{% icon "triangle-alert" %}Ainda sem foto</span>{% endif %}
+      </div>
+      <label for="id_photo" class="form-label">Nova foto</label>
+      <input type="file" name="photo" id="id_photo" class="form-control" accept=".jpg,.jpeg,.png,.webp" data-photo-crop required>
+      <p class="form-text">Rosto de frente, fundo claro. A foto é recortada em quadrado, reduzida e gravada sem a localização do celular. Ela serve só para identificação: a escola não usa reconhecimento facial.</p>
+    </div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Salvar foto" %}
+  </form>
+</div>
+{% endblock %}

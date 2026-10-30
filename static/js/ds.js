@@ -569,6 +569,80 @@
   }
   renderFavorites();
 
+  /* ---------- Recorte de foto (data-photo-crop) ----------
+   * Ao escolher a foto, mostra uma prévia redonda: arraste para enquadrar e
+   * use o zoom. No envio, o arquivo é trocado pelo recorte quadrado (JPEG
+   * 512×512). Sem JavaScript, o servidor recorta o centro sozinho. */
+  $$("input[type=file][data-photo-crop]").forEach(function (input) {
+    var box = document.createElement("div");
+    box.className = "photo-crop";
+    box.innerHTML =
+      '<canvas width="320" height="320" role="img" aria-label="Prévia da foto recortada"></canvas>' +
+      '<div class="photo-crop-controls">' +
+      '<label class="form-label mb-0" for="' + input.id + '-zoom">Zoom</label>' +
+      '<input type="range" class="form-range" min="1" max="3" step="0.01" value="1" id="' + input.id + '-zoom">' +
+      '<span class="form-text">Arraste a foto para enquadrar o rosto no círculo.</span>' +
+      "</div>";
+    input.insertAdjacentElement("afterend", box);
+    var canvas = $("canvas", box), ctx = canvas.getContext("2d"), zoom = $("input[type=range]", box);
+    var img = null, ox = 0, oy = 0, dw = 0, dh = 0, drag = null, ready = false;
+
+    function draw() {
+      if (!img) return;
+      var base = Math.max(320 / img.width, 320 / img.height) * parseFloat(zoom.value);
+      var w = img.width * base, h = img.height * base;
+      ox = Math.min(0, Math.max(320 - w, ox));
+      oy = Math.min(0, Math.max(320 - h, oy));
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, 320, 320);
+      dw = w; dh = h;
+      ctx.drawImage(img, ox, oy, w, h);
+    }
+    input.addEventListener("change", function () {
+      ready = false;
+      var file = input.files && input.files[0];
+      if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) { box.classList.remove("is-active"); return; }
+      var reader = new FileReader();
+      reader.onload = function () {
+        img = new Image();
+        img.onload = function () {
+          zoom.value = 1;
+          var base = Math.max(320 / img.width, 320 / img.height);
+          ox = (320 - img.width * base) / 2;
+          oy = (320 - img.height * base) / 2;
+          box.classList.add("is-active");
+          ready = true;
+          draw();
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+    zoom.addEventListener("input", draw);
+    canvas.addEventListener("pointerdown", function (e) { drag = { x: e.clientX - ox, y: e.clientY - oy }; canvas.setPointerCapture(e.pointerId); });
+    canvas.addEventListener("pointermove", function (e) { if (!drag) return; ox = e.clientX - drag.x; oy = e.clientY - drag.y; draw(); });
+    canvas.addEventListener("pointerup", function () { drag = null; });
+
+    input.form && input.form.addEventListener("submit", function (e) {
+      if (!ready || input.form._cropDone || !window.DataTransfer) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      var btn = e.submitter, out = document.createElement("canvas");
+      var k = 512 / 320, octx = out.getContext("2d");
+      out.width = out.height = 512;
+      octx.fillStyle = "#fff";
+      octx.fillRect(0, 0, 512, 512);
+      octx.drawImage(img, ox * k, oy * k, dw * k, dh * k);
+      out.toBlob(function (blob) {
+        var dt = new DataTransfer();
+        dt.items.add(new File([blob], "foto.jpg", { type: "image/jpeg" }));
+        input.files = dt.files;
+        input.form._cropDone = true;
+        if (input.form.requestSubmit) input.form.requestSubmit(btn || undefined); else input.form.submit();
+      }, "image/jpeg", 0.9);
+    }, true);
+  });
+
   /* ---------- Alterações não salvas ----------
    * Quem lançou 30 notas ou uma chamada e clica num link do menu por engano
    * perdia tudo sem aviso. Formulário POST alterado e ainda não enviado faz o

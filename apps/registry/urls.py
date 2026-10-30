@@ -1,10 +1,35 @@
 from django.urls import path
 
-from . import views
+from . import views, views_application, views_import
 
 urlpatterns = [
     path("estudantes/", views.student_list, name="student_list"),
     path("estudantes/novo/", views.student_create, name="student_create"),
+    path("estudantes/importar/", views_import.import_home, name="student_import"),
+    path("estudantes/importar/modelo.xlsx", views_import.import_template, name="student_import_template"),
+    path("estudantes/importar/<int:batch_id>/", views_import.import_detail, name="student_import_detail"),
+    path("estudantes/importar/<int:batch_id>/confirmar/", views_import.import_confirm,
+         name="student_import_confirm"),
+    path("estudantes/importar/<int:batch_id>/rejeitados.xlsx", views_import.import_rejected,
+         name="student_import_rejected"),
+    path("estudantes/fotos-em-lote/", views_import.photo_batch, name="student_photo_batch"),
+    # Pré-cadastro pela família
+    path("pre-cadastro/", views_application.family_applications, name="family_applications"),
+    path("pre-cadastro/novo/", views_application.application_start, name="application_start"),
+    path("pre-cadastro/<int:pk>/", views_application.application_view, name="application_view"),
+    path("pre-cadastro/<int:pk>/etapa/<int:step>/", views_application.application_step, name="application_step"),
+    path("pre-cadastro/<int:pk>/enviar/", views_application.application_submit, name="application_submit"),
+    path("pre-cadastro/<int:pk>/cancelar/", views_application.application_cancel, name="application_cancel"),
+    path("pre-cadastro/<int:pk>/foto/", views_application.application_photo, name="application_photo"),
+    path("pre-cadastro/<int:pk>/documento/<int:doc_id>/", views_application.application_document,
+         name="application_document"),
+    path("pre-cadastro/<int:pk>/documento/<int:doc_id>/remover/", views_application.application_document_delete,
+         name="application_document_delete"),
+    # Análise pela secretaria
+    path("pre-cadastros/", views_application.review_list, name="application_review_list"),
+    path("pre-cadastros/<int:pk>/", views_application.application_review, name="application_review"),
+    path("meus-filhos/<int:student_id>/foto/", views_application.child_photo, name="child_photo"),
+    path("configuracoes/cadastro/", views_application.registration_settings, name="registration_settings"),
     path("estudantes/<int:student_id>/", views.student_detail, name="student_detail"),
     path("estudantes/<int:student_id>/editar/", views.student_edit, name="student_edit"),
     path("estudantes/<int:student_id>/foto/", views.student_photo, name="student_photo"),

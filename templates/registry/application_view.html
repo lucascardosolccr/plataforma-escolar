@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Pré-cadastro de {{ app.full_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  {% url 'family_applications' as back %}
+  {% include "partials/_form_head.html" with back_url=back back_label="Pré-cadastro" heading=app.full_name|default:"Pré-cadastro" %}
+  <div class="card form-card">
+    <div class="card-body">
+      <p class="mb-3"><span class="chip chip-state state-{{ app.status }}">{{ app.get_status_display }}</span>
+        {% if app.submitted_at %}<span class="small text-body-secondary ms-2">Enviado em {{ app.submitted_at|date:"d/m/Y H:i" }}</span>{% endif %}</p>
+      {% if app.status == "enviado" %}<div class="callout mb-3">{% icon "clock" %}<div>A secretaria vai analisar. Você recebe uma notificação quando houver resposta.</div></div>{% endif %}
+      {% if app.status == "aprovado" %}<div class="callout mb-3">{% icon "circle-check" %}<div>Aprovado. A ficha já aparece em <a href="{% url 'my_children' %}">Meus filhos</a>.</div></div>{% endif %}
+      {% if app.review_note %}<div class="alert {% if app.status == 'recusado' %}alert-danger{% else %}alert-warning{% endif %}"><strong>Mensagem da secretaria:</strong> {{ app.review_note }}</div>{% endif %}
+      <dl class="review-list">
+        <dt>Nascimento</dt><dd>{{ app.birth_date|date:"d/m/Y"|default:"—" }}</dd>
+        <dt>Ano/série</dt><dd>{{ app.desired_grade|default:"—" }}</dd>
+        <dt>Documentos</dt><dd>{% for d in documents %}<a href="{% url 'application_document' app.pk d.pk %}">{{ d.original_name }}</a>{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd>
+      </dl>
+    </div>
+    {% if app.status == "enviado" or app.editable %}
+    <div class="form-actions">
+      <form method="post" action="{% url 'application_cancel' app.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-danger" data-confirm="A secretaria deixa de ver este pré-cadastro." data-confirm-title="Cancelar o pré-cadastro?" data-confirm-ok="Cancelar pré-cadastro" data-confirm-tone="danger">Cancelar pré-cadastro</button></form>
+      {% if app.editable %}<a class="btn btn-primary" href="{% url 'application_step' app.pk 1 %}">Corrigir</a>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

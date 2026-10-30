@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Pré-cadastro de filhos — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Pré-cadastro de filhos</h1>
+    <p>Cadastre seu filho em etapas. A secretaria confere e aprova; só depois disso a ficha e a matrícula existem.</p>
+  </div>
+  {% if can_apply %}
+  <form method="post" action="{% url 'application_start' %}">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-primary">{% icon "plus" %}Novo pré-cadastro</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if not can_apply %}
+<div class="callout mb-3">{% icon "info" %}<div>
+  {% if cfg.family_mode == "completo" %}O período de cadastro pela família está fechado{% if cfg.opens_on %} (abre em {{ cfg.opens_on|date:"d/m/Y" }}{% if cfg.closes_on %}, fecha em {{ cfg.closes_on|date:"d/m/Y" }}{% endif %}){% endif %}.
+  {% else %}Nesta escola, o cadastro de estudantes é feito pela secretaria. Procure a escola para matricular seu filho.{% endif %}
+</div></div>
+{% endif %}
+
+<div class="card">
+  <ul class="feed">
+    {% for a in applications %}
+    <li class="feed-item">
+      <div class="feed-body flex-grow-1">
+        <p class="feed-title">{{ a.full_name|default:"(nome ainda não preenchido)" }}</p>
+        <p class="feed-meta">{{ a.desired_grade|default:"ano/série não informado" }} · atualizado em {{ a.updated_at|date:"d/m/Y H:i" }}</p>
+        {% if a.status == "correcao" and a.review_note %}<p class="small mb-0 mt-1"><strong>Secretaria:</strong> {{ a.review_note }}</p>{% endif %}
+      </div>
+      <div class="feed-actions d-flex flex-wrap gap-2 align-items-center">
+        <span class="chip chip-state state-{{ a.status }}">{{ a.get_status_display }}</span>
+        {% if a.editable %}<a class="btn btn-sm btn-primary" href="{% url 'application_step' a.pk a.step|default:1 %}">{% if a.status == "correcao" %}Corrigir{% else %}Continuar{% endif %}</a>
+        {% else %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'application_view' a.pk %}">Ver</a>{% endif %}
+      </div>
+    </li>
+    {% empty %}
+    <li><div class="empty-state py-4">{% icon "id-card" %}<strong>Nenhum pré-cadastro</strong>{% if can_apply %}<span>Use “Novo pré-cadastro” para começar. Dá para salvar e continuar depois.</span>{% endif %}</div></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

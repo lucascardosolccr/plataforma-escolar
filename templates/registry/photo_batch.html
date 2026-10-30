@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Fotos em lote — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'student_import' %}" class="back-link">{% icon "arrow-left" %}Importar estudantes</a>
+    <h1>Fotos em lote</h1>
+    <p>Envie várias fotos de uma vez. Cada arquivo é associado pelo <strong>código do aluno</strong> no nome: <code>2026001.jpg</code>.</p>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <form method="post" enctype="multipart/form-data" class="card" data-no-guard>
+      {% csrf_token %}
+      <div class="card-body">
+        <label for="id_photos" class="form-label">Fotos (JPG, PNG ou WEBP)</label>
+        <input type="file" name="photos" id="id_photos" class="form-control" accept=".jpg,.jpeg,.png,.webp" multiple required>
+        <p class="form-text">Até {{ max }} fotos por envio, 2 MB cada. Elas são recortadas em quadrado, reduzidas e gravadas sem os dados de localização do celular.</p>
+      </div>
+      <div class="form-actions"><button type="submit" class="btn btn-primary">{% icon "check" %}Enviar fotos</button></div>
+    </form>
+  </div>
+  <div class="col-lg-6">
+    <div class="callout">{% icon "shield" %}<div>A associação é só pelo código exato do aluno. Uma foto cujo nome não corresponde a nenhum código fica de fora, <strong>nunca</strong> é ligada a alguém pelo nome ou por semelhança. Alunos sem código: cadastre o código (importação ou ficha) ou envie a foto pela ficha do aluno.</div></div>
+  </div>
+</div>
+
+{% if report %}
+<div class="card mt-3">
+  <div class="card-header bg-transparent"><h2 class="h6 mb-0">Resultado: {{ report.ok|length }} associada{{ report.ok|length|pluralize }}, {{ report.no_match|length }} sem aluno, {{ report.invalid|length }} recusada{{ report.invalid|length|pluralize }}</h2></div>
+  <div class="card-body small">
+    {% if report.ok %}<p class="fw-semibold mb-1">Associadas</p><ul>{% for name, s in report.ok %}<li>{{ name }} → <a href="{% url 'student_detail' s.pk %}">{{ s.full_name }}</a></li>{% endfor %}</ul>{% endif %}
+    {% if report.no_match %}<p class="fw-semibold mb-1 text-warning-emphasis">Sem aluno com este código</p><ul>{% for name in report.no_match %}<li>{{ name }}</li>{% endfor %}</ul>{% endif %}
+    {% if report.invalid %}<p class="fw-semibold mb-1 text-danger">Recusadas</p><ul>{% for name, why in report.invalid %}<li>{{ name }}: {{ why }}</li>{% endfor %}</ul>{% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

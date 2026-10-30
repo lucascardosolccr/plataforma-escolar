@@ -11,18 +11,29 @@ from django.utils import timezone
 from .models import Announcement, Notification
 
 
-def notify(school, user, kind, title, body="", url=""):
+def notify(school, user, kind, title, body="", url="", student=None, dedupe_key=""):
+    """Cria o aviso. Com ``dedupe_key``, não repete o mesmo evento à mesma
+    pessoa (ex.: pedido de impressão reenviado)."""
+    if dedupe_key and Notification.objects.filter(user=user, dedupe_key=dedupe_key).exists():
+        return None
     return Notification.objects.create(
-        school=school, user=user, kind=kind, title=title, body=body, url=url
+        school=school, user=user, kind=kind, title=title, body=body, url=url,
+        student=student, dedupe_key=dedupe_key,
     )
 
 
-def notify_many(school, users, kind, title, body="", url=""):
+def notify_many(school, users, kind, title, body="", url="", student=None, dedupe_key=""):
+    users = list(users or [])
     if not users:
         return
+    if dedupe_key:
+        done = set(Notification.objects.filter(user__in=users, dedupe_key=dedupe_key)
+                   .values_list("user_id", flat=True))
+        users = [u for u in users if u.pk not in done]
     Notification.objects.bulk_create(
         Notification(
-            school=school, user=u, kind=kind, title=title, body=body, url=url
+            school=school, user=u, kind=kind, title=title, body=body, url=url,
+            student=student, dedupe_key=dedupe_key,
         )
         for u in users
     )

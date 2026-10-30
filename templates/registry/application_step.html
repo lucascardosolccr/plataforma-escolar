@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Pré-cadastro: etapa {{ step }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  {% url 'family_applications' as back %}
+  {% include "partials/_form_head.html" with back_url=back back_label="Pré-cadastro" heading="Pré-cadastro do estudante" %}
+  {% if app.status == "correcao" and app.review_note %}
+  <div class="alert alert-warning" role="status"><strong>A secretaria pediu correção:</strong> {{ app.review_note }}</div>
+  {% endif %}
+
+  <ol class="import-steps" aria-label="Etapas do pré-cadastro">
+    {% for n, label in steps %}
+    <li class="{% if n == step %}is-current{% elif n < app.step %}is-done{% endif %}"{% if n == step %} aria-current="step"{% endif %}>
+      {% if n <= app.step and n != step %}<a href="{% url 'application_step' app.pk n %}"><span>{{ n }}</span>{{ label }}</a>{% else %}<span>{{ n }}</span>{{ label }}{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+
+  {% if step == 3 and doc_form %}
+  <div class="card form-card mb-3">
+    <div class="card-body">
+      <h2 class="h6">Documentos</h2>
+      <p class="small text-body-secondary">Envie só o que a escola pede. Os arquivos ficam visíveis apenas para você e para a secretaria.</p>
+      {% if app.documents.all %}
+      <ul class="list-unstyled small">
+        {% for d in app.documents.all %}
+        <li class="d-flex align-items-center gap-2 py-1">
+          {% icon "paperclip" %}<a href="{% url 'application_document' app.pk d.pk %}">{{ d.original_name }}</a> <span class="text-body-secondary">· {{ d.get_kind_display }}</span>
+          <form method="post" action="{% url 'application_document_delete' app.pk d.pk %}" class="ms-auto">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit" data-confirm="O arquivo será apagado." data-confirm-title="Remover documento?" data-confirm-ok="Remover" data-confirm-tone="danger">Remover</button></form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      <form method="post" enctype="multipart/form-data" class="row g-2 align-items-end" data-no-guard>
+        {% csrf_token %}
+        <div class="col-sm-5">{% include "partials/_field.html" with field=doc_form.kind %}</div>
+        <div class="col-sm-7">{% include "partials/_field.html" with field=doc_form.file %}</div>
+        <div class="col-12"><button type="submit" name="add_document" value="1" class="btn btn-outline-primary btn-sm">{% icon "paperclip" %}Anexar documento</button></div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="card form-card" novalidate>
+    {% csrf_token %}
+    <div class="card-body">
+      {% if step == 1 %}
+        <p class="form-lead">Comece pelos dados de identificação do estudante.</p>
+        {% include "partials/_form_fields.html" with f=form %}
+      {% elif step == 2 %}
+        <p class="form-lead">Como a escola fala com você. Usamos só para assuntos do estudante.</p>
+        {% if form.fields %}{% include "partials/_form_fields.html" with f=form %}{% else %}<p class="text-body-secondary">A escola não pede dados de contato nesta etapa. Siga em frente.</p>{% endif %}
+      {% elif step == 3 %}
+        {% if form %}
+          {% if app.photo %}<div class="d-flex align-items-center gap-3 mb-3"><img src="{% url 'application_photo' app.pk %}" alt="Foto enviada" class="avatar-photo xl"><span class="small text-body-secondary">Foto atual. Envie outra para trocar.</span></div>{% endif %}
+          {% include "partials/_form_fields.html" with f=form %}
+        {% elif not doc_form %}
+          <p class="text-body-secondary">A escola não pede foto nem documentos nesta etapa. Siga em frente.</p>
+        {% else %}
+          <p class="text-body-secondary">Anexe os documentos no quadro acima e siga em frente.</p>
+        {% endif %}
+      {% else %}
+        <p class="form-lead">Confira antes de enviar. Depois de enviado, só a secretaria pode pedir alterações.</p>
+        <dl class="review-list">
+          <dt>Estudante</dt><dd>{{ app.full_name|default:"—" }}</dd>
+          <dt>Nascimento</dt><dd>{{ app.birth_date|date:"d/m/Y"|default:"—" }}</dd>
+          <dt>Ano/série</dt><dd>{{ app.desired_grade|default:"—" }}</dd>
+          {% if "desired_turn" in enabled %}<dt>Turno</dt><dd>{{ app.get_desired_turn_display|default:"—" }}</dd>{% endif %}
+          {% if "relation" in enabled %}<dt>Parentesco</dt><dd>{{ app.get_relation_display|default:"—" }}</dd>{% endif %}
+          {% if "phone" in enabled %}<dt>Telefone</dt><dd>{{ app.phone|default:"—" }}</dd>{% endif %}
+          {% if "address" in enabled %}<dt>Endereço</dt><dd>{{ app.address|default:"—" }}</dd>{% endif %}
+          {% if "school_notes" in enabled %}<dt>Informações</dt><dd>{{ app.school_notes|default:"—"|linebreaksbr }}</dd>{% endif %}
+          {% if "photo" in enabled %}<dt>Foto</dt><dd>{% if app.photo %}Enviada{% else %}<span class="photo-pending">{% icon "triangle-alert" %}Não enviada</span> (pode ser enviada depois){% endif %}</dd>{% endif %}
+          {% if "documents" in enabled %}<dt>Documentos</dt><dd>{{ app.documents.count }} anexado(s)</dd>{% endif %}
+        </dl>
+        {% if missing %}<div class="alert alert-warning mt-3 mb-0">Falta preencher: {{ missing|join:", " }}.</div>{% endif %}
+      {% endif %}
+    </div>
+    <div class="form-actions">
+      {% if step > 1 %}<button type="submit" name="nav" value="back" class="btn btn-outline-secondary">{% icon "arrow-left" %}Voltar</button>{% endif %}
+      <button type="submit" name="nav" value="save" class="btn btn-outline-secondary">Salvar e sair</button>
+      {% if step < 4 %}<button type="submit" name="nav" value="next" class="btn btn-primary">Salvar e continuar{% icon "arrow-right" %}</button>{% endif %}
+    </div>
+  </form>
+
+  {% if step == 4 %}
+  <form method="post" action="{% url 'application_submit' app.pk %}" class="mt-3 text-end">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-primary btn-lg"{% if missing %} disabled{% endif %}>{% icon "send" %}Enviar à secretaria</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

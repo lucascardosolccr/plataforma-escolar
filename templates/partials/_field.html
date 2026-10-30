@@ -4,7 +4,17 @@ opcionalmente, ``col`` (classe de coluna) para forçar a largura.
 {% endcomment %}
 {% if field.is_hidden %}{{ field }}{% else %}
 <div class="{% if col %}{{ col }}{% elif field|is_wide or field|is_checkbox %}col-12{% else %}col-md-6{% endif %}">
-  {% if field|is_checkbox %}
+  {% if field|is_choice_group %}
+    <fieldset{% if field.help_text or field.errors %} aria-describedby="{% if field.errors %}{{ field.auto_id }}_erro {% endif %}{% if field.help_text %}{{ field.auto_id }}_ajuda{% endif %}"{% endif %}>
+      <legend class="form-label fs-6">{{ field.label }}{% if field.field.required %}<span class="required-mark" aria-hidden="true"> *</span><span class="visually-hidden"> (obrigatório)</span>{% endif %}</legend>
+      {% for opt in field|choice_options %}
+      <div class="form-check">
+        {{ opt.tag }}
+        <label for="{{ opt.id_for_label }}" class="form-check-label">{{ opt.choice_label }}</label>
+      </div>
+      {% endfor %}
+    </fieldset>
+  {% elif field|is_checkbox %}
     <div class="form-check">
       {{ field|bs }}
       <label for="{{ field.id_for_label }}" class="form-check-label">{{ field.label }}</label>

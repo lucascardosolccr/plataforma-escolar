@@ -9,6 +9,7 @@
     <p>Os estudantes ligados à sua conta. Cada cartão leva direto ao que você mais acompanha.</p>
   </div>
   <div class="page-actions">
+    {% if cfg.family_can_apply %}<a href="{% url 'family_applications' %}" class="btn btn-outline-secondary">{% icon "id-card" %}Pré-cadastrar um filho</a>{% endif %}
     <a href="{% url 'link_request' %}" class="btn btn-outline-secondary">{% icon "link" %}Solicitar vínculo</a>
   </div>
 </div>
@@ -36,7 +37,10 @@
         <a href="{% url 'pedagogy:occurrence_list' %}?estudante={{ l.student.pk }}">{% icon "flag" %}Ocorrências</a>
         <a href="{% url 'pedagogy:justification_create' %}?estudante={{ l.student.pk }}">{% icon "file-check" %}Justificar falta</a>
         <a href="{% url 'communication:thread_create' %}?estudante={{ l.student.pk }}">{% icon "message-circle" %}Falar com a escola</a>
+        {% if cfg.family_can_send_photo %}<a href="{% url 'child_photo' l.student.pk %}">{% icon "user-round" %}{% if l.student.photo %}Trocar a foto{% else %}Enviar foto{% endif %}</a>{% endif %}
+        {% if cfg.allow_correction_requests %}<a href="{% url 'communication:request_create' %}?categoria=cadastro&amp;estudante={{ l.student.pk }}">{% icon "pencil" %}Pedir correção de dados</a>{% endif %}
       </nav>
+      {% if not l.student.photo and cfg.family_can_send_photo %}<p class="photo-pending mt-2 mb-0">{% icon "triangle-alert" %}Falta a foto de {{ l.student.first_name }}</p>{% endif %}
     </div>
   </article>
   {% empty %}

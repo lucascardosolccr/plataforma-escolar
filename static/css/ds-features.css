@@ -1,0 +1,67 @@
+/* Componentes das funcionalidades do Prompt 14: importação, pré-cadastro,
+   fotografias, rotina do dia, impressão. Só tokens de ds-tokens.css. */
+
+/* ---------- Etapas numeradas (importação, pré-cadastro) ---------- */
+.import-steps { list-style: none; display: flex; flex-wrap: wrap; gap: .4rem 1.25rem; margin: 0 0 1.25rem; padding: 0; }
+.import-steps li { display: flex; align-items: center; gap: .45rem; font-size: var(--ds-fs-sm); color: var(--ds-text-muted); }
+.import-steps span { width: 1.6rem; height: 1.6rem; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: var(--ds-fs-xs); border: 2px solid var(--ds-line-strong); }
+.import-steps .is-current { color: var(--ds-text); font-weight: 600; }
+.import-steps .is-current span { border-color: var(--ds-primary); background: var(--ds-primary); color: #fff; }
+.import-steps .is-done span { border-color: var(--ds-success); background: var(--ds-success-bg); color: var(--ds-success); }
+.import-steps a { color: inherit; }
+
+/* ---------- Estados (linhas da importação, pedidos, impressão) ---------- */
+.chip-state.state-novo, .chip-state.state-concluida, .chip-state.state-cadastrado, .chip-state.state-aprovado,
+.chip-state.state-impressa, .chip-state.state-entregue, .chip-state.state-retirada { background: var(--ds-success-bg); border-color: var(--ds-success-line); color: var(--ds-success); }
+.chip-state.state-alterar, .chip-state.state-previa, .chip-state.state-correcao, .chip-state.state-analise { background: var(--ds-warning-bg); border-color: var(--ds-warning-line); color: var(--ds-warning); }
+.chip-state.state-erro, .chip-state.state-recusado, .chip-state.state-rejeitada { background: var(--ds-danger-bg); border-color: var(--ds-danger-line); color: var(--ds-danger); }
+.chip-state.state-igual, .chip-state.state-cancelado { background: var(--ds-surface-2); border-color: var(--ds-line); color: var(--ds-text-muted); }
+.chip-state.state-enviado, .chip-state.state-aguardando, .chip-state.state-imprimindo { background: var(--ds-info-bg); border-color: var(--ds-info-line); color: var(--ds-info); }
+.summary-pill:not(.active).state-erro .summary-count { color: var(--ds-danger); }
+.summary-pill:not(.active).state-alterar .summary-count { color: var(--ds-warning); }
+
+/* ---------- Fotografia: avatar, recorte e pendência ---------- */
+.avatar-photo { width: 2.25rem; height: 2.25rem; border-radius: 50%; object-fit: cover; flex: none; background: var(--ds-surface-2); }
+.avatar-photo.lg { width: 4rem; height: 4rem; }
+.avatar-photo.xl { width: 6rem; height: 6rem; }
+.photo-crop { display: none; gap: 1rem; align-items: center; flex-wrap: wrap; margin-top: .75rem; }
+.photo-crop.is-active { display: flex; }
+.photo-crop canvas { width: 10rem; height: 10rem; border-radius: 50%; border: 2px solid var(--ds-line-strong); cursor: grab; touch-action: none; background: var(--ds-surface-2); }
+.photo-crop canvas:active { cursor: grabbing; }
+.photo-crop-controls { display: flex; flex-direction: column; gap: .35rem; min-width: 12rem; flex: 1; }
+.photo-pending { display: inline-flex; align-items: center; gap: .35rem; font-size: var(--ds-fs-xs); font-weight: 700; color: var(--ds-warning); }
+
+/* ---------- Rotina do dia (início) ---------- */
+.today-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: var(--ds-space-4); }
+.countdown { display: flex; flex-direction: column; gap: .15rem; }
+.countdown-value { font-family: var(--ds-font-display); font-size: 2.4rem; font-weight: 600; line-height: 1; letter-spacing: -.02em; }
+.countdown-label { font-size: var(--ds-fs-sm); color: var(--ds-text-muted); }
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline li { display: grid; grid-template-columns: 4.5rem 1fr; gap: .75rem; padding: .55rem 0; border-top: 1px solid var(--ds-line); }
+.timeline li:first-child { border-top: 0; }
+.timeline .time { font-variant-numeric: tabular-nums; font-weight: 700; font-size: var(--ds-fs-sm); color: var(--ds-text-muted); }
+.timeline .is-now { background: linear-gradient(90deg, var(--ds-primary-soft), transparent); border-radius: var(--ds-radius-sm); }
+.menu-meal { padding: .6rem 0; border-top: 1px solid var(--ds-line); }
+.menu-meal:first-child { border-top: 0; }
+.menu-meal h3 { font-size: var(--ds-fs-sm); text-transform: uppercase; letter-spacing: .06em; color: var(--ds-text-muted); margin: 0 0 .2rem; }
+.menu-change { color: var(--ds-warning); font-weight: 700; font-size: var(--ds-fs-xs); }
+.week-menu { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: var(--ds-space-3); }
+.week-menu .is-today { border-color: var(--ds-primary); box-shadow: var(--ds-shadow-2); }
+.schedule-grid { width: 100%; border-collapse: separate; border-spacing: 4px; }
+.schedule-grid th { font-size: var(--ds-fs-xs); text-transform: uppercase; letter-spacing: .05em; color: var(--ds-text-muted); padding: .3rem; }
+.schedule-grid td { background: var(--ds-surface-2); border-radius: var(--ds-radius-sm); padding: .4rem .5rem; font-size: var(--ds-fs-sm); vertical-align: top; }
+.schedule-grid td.is-empty { background: transparent; }
+
+/* ---------- Fila de impressão: linha do tempo do pedido ---------- */
+.history { list-style: none; margin: 0; padding: 0 0 0 1rem; border-left: 2px solid var(--ds-line); }
+.history li { position: relative; padding: 0 0 .9rem .75rem; font-size: var(--ds-fs-sm); }
+.history li::before { content: ""; position: absolute; left: -1.42rem; top: .3rem; width: .7rem; height: .7rem; border-radius: 50%; background: var(--ds-surface); border: 2px solid var(--ds-primary); }
+.history time { color: var(--ds-text-muted); font-size: var(--ds-fs-xs); display: block; }
+.priority-alta { color: var(--ds-danger); font-weight: 700; }
+
+/* ---------- Formulário em etapas (pré-cadastro) ---------- */
+.wizard-nav { display: flex; gap: .5rem; flex-wrap: wrap; }
+.review-list { display: grid; grid-template-columns: minmax(8rem, 14rem) 1fr; gap: .35rem 1rem; margin: 0; }
+.review-list dt { font-weight: 600; color: var(--ds-text-muted); font-size: var(--ds-fs-sm); }
+.review-list dd { margin: 0; }
+@media (max-width: 575.98px) { .review-list { grid-template-columns: 1fr; } .review-list dd { margin-bottom: .5rem; } }

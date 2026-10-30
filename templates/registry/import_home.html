@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Importar estudantes — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'student_list' %}" class="back-link">{% icon "arrow-left" %}Estudantes</a>
+    <h1>Importar estudantes por planilha</h1>
+    <p>Cadastre ou atualize muitos alunos de uma vez. Nada é gravado antes de você conferir a prévia e confirmar.</p>
+  </div>
+  <a href="{% url 'student_photo_batch' %}" class="btn btn-outline-secondary">{% icon "user-round" %}Fotos em lote</a>
+</div>
+
+<ol class="import-steps" aria-label="Etapas da importação">
+  <li class="is-current"><span>1</span>Baixar o modelo</li>
+  <li class="is-current"><span>2</span>Enviar a planilha</li>
+  <li><span>3</span>Conferir a prévia</li>
+  <li><span>4</span>Confirmar</li>
+  <li><span>5</span>Relatório</li>
+</ol>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-body">
+        <h2 class="h6">{% icon "download" %} 1. Baixe o modelo</h2>
+        <p class="small text-body-secondary">Planilha Excel com a aba <strong>Alunos</strong> para preencher, uma aba de <strong>Instruções</strong> explicando cada coluna e uma de <strong>Exemplo</strong>.</p>
+        <a class="btn btn-outline-primary" href="{% url 'student_import_template' %}">{% icon "download" %}Baixar modelo (.xlsx)</a>
+        <details class="mt-3">
+          <summary class="small fw-semibold">Ver as colunas</summary>
+          <ul class="rule-list mt-2">
+            {% for key, label, required, desc, example in columns %}
+            <li><strong>{{ label }}</strong>{% if required %} <span class="required-mark">*</span>{% endif %}<br><span class="small text-body-secondary">{{ desc }}</span></li>
+            {% endfor %}
+          </ul>
+        </details>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <form method="post" enctype="multipart/form-data" class="card h-100" data-no-guard>
+      {% csrf_token %}
+      <div class="card-body">
+        <h2 class="h6">{% icon "file-text" %} 2. Envie a planilha preenchida</h2>
+        {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+        <label for="id_file" class="form-label">Arquivo .xlsx ou .csv</label>
+        <input type="file" name="file" id="id_file" class="form-control" accept=".xlsx,.csv" required>
+        <p class="form-text">Até 5 MB e {{ max_rows }} linhas por envio. O próximo passo mostra o que será feito com cada linha.</p>
+        <div class="callout mt-3">{% icon "info" %}<div>Aluno já cadastrado é reconhecido pelo <strong>código do aluno</strong> ou por nome, sobrenome e nascimento exatos. Célula vazia nunca apaga um dado, e nenhuma alteração em aluno existente acontece sem você confirmar.</div></div>
+      </div>
+      <div class="form-actions"><button type="submit" class="btn btn-primary">{% icon "arrow-right" %}Enviar e conferir</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-transparent"><h2 class="h6 mb-0">Histórico de importações</h2></div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 table-stack">
+      <thead><tr><th>Data</th><th>Arquivo</th><th>Responsável</th><th>Linhas</th><th>Resultado</th><th>Situação</th><th class="text-end"><span class="visually-hidden">Ações</span></th></tr></thead>
+      <tbody>
+        {% for b in batches %}
+        <tr>
+          <td>{{ b.created_at|date:"d/m/Y H:i" }}</td>
+          <td data-label="Arquivo" class="text-break">{{ b.filename }}</td>
+          <td data-label="Responsável">{{ b.created_by.get_full_name|default:b.created_by.username|default:"—" }}</td>
+          <td data-label="Linhas">{{ b.total }}</td>
+          <td data-label="Resultado">{% if b.status == "concluida" %}{{ b.created_count }} novos · {{ b.updated_count }} atualizados · {{ b.skipped_count }} ignorados · {{ b.error_count }} com erro{% elif b.status == "previa" %}{{ b.error_count }} com erro na prévia{% else %}—{% endif %}</td>
+          <td data-label="Situação"><span class="chip chip-state state-{{ b.status }}">{{ b.get_status_display }}</span></td>
+          <td class="text-end cell-actions"><a class="btn btn-sm btn-outline-secondary" href="{% url 'student_import_detail' b.pk %}">Abrir</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7"><div class="empty-state py-4">{% icon "file-text" %}<strong>Nenhuma importação ainda</strong></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/_pager.html" %}
+{% endblock %}

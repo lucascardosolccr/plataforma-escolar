@@ -72,3 +72,23 @@ def is_checkbox(field):
     return hasattr(field, "field") and isinstance(
         field.field.widget, forms.CheckboxInput
     )
+
+
+@register.filter
+def is_choice_group(field):
+    """Grupo de opções (rádios ou caixas múltiplas): vira fieldset com uma
+    opção por linha. Renderizado pelo widget padrão, ficava espremido."""
+    return hasattr(field, "field") and isinstance(
+        field.field.widget, (forms.RadioSelect, forms.CheckboxSelectMultiple)
+    )
+
+
+@register.filter
+def choice_options(field):
+    """Opções do grupo com a classe do Bootstrap em cada caixa."""
+    css = "form-check-input" + (" is-invalid" if field.errors else "")
+    options = []
+    for sub in field.subwidgets:
+        sub.data["attrs"] = {**sub.data["attrs"], "class": css}
+        options.append(sub)
+    return options

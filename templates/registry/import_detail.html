@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Importação: {{ batch.filename }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'student_import' %}" class="back-link">{% icon "arrow-left" %}Importações</a>
+    <h1>{% if batch.status == "previa" %}Conferir a importação{% else %}Relatório da importação{% endif %}</h1>
+    <p>{{ batch.filename }} · enviado em {{ batch.created_at|date:"d/m/Y H:i" }} por {{ batch.created_by.get_full_name|default:batch.created_by.username|default:"—" }} · <span class="chip chip-state state-{{ batch.status }}">{{ batch.get_status_display }}</span></p>
+  </div>
+  {% if summary.erro %}
+  <a href="{% url 'student_import_rejected' batch.pk %}" class="btn btn-outline-secondary">{% icon "download" %}Baixar linhas com erro (.xlsx)</a>
+  {% endif %}
+</div>
+
+<ol class="import-steps" aria-label="Etapas da importação">
+  <li class="is-done"><span>1</span>Baixar o modelo</li>
+  <li class="is-done"><span>2</span>Enviar a planilha</li>
+  <li class="{% if batch.status == 'previa' %}is-current{% else %}is-done{% endif %}"><span>3</span>Conferir a prévia</li>
+  <li class="{% if batch.status == 'previa' %}is-current{% else %}is-done{% endif %}"><span>4</span>Confirmar</li>
+  <li class="{% if batch.status == 'concluida' %}is-current{% endif %}"><span>5</span>Relatório</li>
+</ol>
+
+<div class="kpi-grid mb-3">
+  <div class="kpi"><span class="kpi-label">{% icon "file-text" %}Linhas na planilha</span><span class="kpi-value">{{ summary.total }}</span></div>
+  {% if batch.status == "concluida" %}
+  <div class="kpi"><span class="kpi-label">{% icon "plus" %}Cadastrados</span><span class="kpi-value">{{ batch.created_count }}</span></div>
+  <div class="kpi"><span class="kpi-label">{% icon "pencil" %}Atualizados</span><span class="kpi-value">{{ batch.updated_count }}</span></div>
+  <div class="kpi"><span class="kpi-label">{% icon "ban" %}Ignorados</span><span class="kpi-value">{{ batch.skipped_count }}</span></div>
+  {% else %}
+  <div class="kpi"><span class="kpi-label">{% icon "plus" %}Novos</span><span class="kpi-value">{{ summary.novo }}</span></div>
+  <div class="kpi{% if summary.alterar %} is-attention{% endif %}"><span class="kpi-label">{% icon "pencil" %}Já cadastrados com alteração</span><span class="kpi-value">{{ summary.alterar }}</span></div>
+  <div class="kpi"><span class="kpi-label">{% icon "check" %}Já cadastrados, sem mudança</span><span class="kpi-value">{{ summary.igual }}</span></div>
+  {% endif %}
+  <div class="kpi{% if summary.erro %} is-attention{% endif %}"><span class="kpi-label">{% icon "triangle-alert" %}Com erro</span><span class="kpi-value">{{ summary.erro }}</span><span class="kpi-hint">Não serão importadas</span></div>
+</div>
+
+{% if batch.status == "previa" %}
+<form method="post" action="{% url 'student_import_confirm' batch.pk %}" class="card mb-3" data-no-guard>
+  {% csrf_token %}
+  <div class="card-body">
+    <h2 class="h6">Como tratar os registros</h2>
+    <fieldset class="mb-3">
+      <legend class="visually-hidden">Tratamento dos alunos já cadastrados</legend>
+      {% for value, label in modes %}
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="mode" id="mode-{{ value }}" value="{{ value }}"{% if forloop.first %} checked{% endif %}>
+        <label class="form-check-label" for="mode-{{ value }}">{{ label }}</label>
+      </div>
+      {% endfor %}
+    </fieldset>
+    {% if summary.alterar %}
+    <div class="form-check mb-2">
+      <input class="form-check-input" type="checkbox" name="confirm_updates" value="1" id="confirm-updates">
+      <label class="form-check-label" for="confirm-updates">Revisei as alterações em {{ summary.alterar }} aluno{{ summary.alterar|pluralize }} já cadastrado{{ summary.alterar|pluralize }} (lista abaixo) e quero aplicá-las no modo “atualizar”.</label>
+    </div>
+    {% endif %}
+    <p class="small text-body-secondary mb-0">Linhas com erro nunca são importadas. Baixe-as, corrija e envie de novo: quem já foi cadastrado será reconhecido e não duplica.</p>
+  </div>
+  <div class="form-actions">
+    <button type="submit" name="action" value="cancel" class="btn btn-outline-secondary">Cancelar importação</button>
+    <button type="submit" name="action" value="import" class="btn btn-primary"{% if summary.total == summary.erro %} disabled{% endif %}
+            data-confirm="A gravação acontece numa única operação e fica registrada na auditoria." data-confirm-title="Importar agora?" data-confirm-ok="Importar">{% icon "check" %}Importar</button>
+  </div>
+</form>
+{% endif %}
+
+<nav aria-label="Filtrar linhas" class="d-flex flex-wrap gap-2 mb-2">
+  {% for key, label, count in filters %}
+  <a href="?ver={{ key }}" class="summary-pill{% if key %} state-{{ key }}{% endif %}{% if show == key %} active{% endif %}"{% if show == key %} aria-current="true"{% endif %}>{{ label }} <span class="summary-count">{{ count }}</span></a>
+  {% endfor %}
+</nav>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0 table-stack">
+      <thead><tr><th>Linha</th><th>Aluno</th><th>Nascimento</th><th>Turma</th><th>Situação</th><th>Detalhes</th></tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td>{{ r.line }}</td>
+          <td data-label="Aluno" class="fw-semibold">{% if r.student_id and batch.status == "concluida" %}<a href="{% url 'student_detail' r.student_id %}">{{ r.label }}</a>{% else %}{{ r.label }}{% endif %}{% if r.raw.codigo %}<span class="d-block small text-body-secondary fw-normal">Código {{ r.raw.codigo }}</span>{% endif %}</td>
+          <td data-label="Nascimento">{{ r.raw.nascimento|default:"—" }}</td>
+          <td data-label="Turma">{{ r.raw.turma|default:"—" }}</td>
+          <td data-label="Situação"><span class="chip chip-state state-{{ r.status }}">{% if r.outcome %}{{ r.outcome|capfirst }}{% elif r.status == "novo" %}Novo{% elif r.status == "alterar" %}Já cadastrado, com alteração{% elif r.status == "igual" %}Já cadastrado, sem mudança{% else %}Erro{% endif %}</span></td>
+          <td data-label="Detalhes" class="small">
+            {% for e in r.errors %}<div class="text-danger">{% icon "circle-alert" %} {{ e }}</div>{% endfor %}
+            {% for c in r.changes %}<div>{{ c.field }}: <s class="text-body-secondary">{{ c.old }}</s> → <strong>{{ c.new }}</strong></div>{% endfor %}
+            {% if r.enroll and r.status != "erro" %}<div>Matrícula na turma {{ r.raw.turma }}</div>{% endif %}
+            {% if not r.errors and not r.changes and not r.enroll %}—{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6"><div class="empty-state py-4">{% icon "check" %}<strong>Nenhuma linha neste filtro</strong></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if truncated %}<p class="small text-body-secondary p-3 mb-0">Mostrando as primeiras 500 linhas deste filtro.</p>{% endif %}
+</div>
+{% endblock %}

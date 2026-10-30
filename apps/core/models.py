@@ -2,6 +2,8 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 
+from .uploads import safe_photo_path, validate_photo
+
 
 class School(models.Model):
     name = models.CharField("nome", max_length=200)
@@ -54,6 +56,10 @@ class User(AbstractUser):
         related_name="users",
         null=True,
         blank=True,
+    )
+    photo = models.ImageField(
+        "fotografia", upload_to=safe_photo_path, validators=[validate_photo], null=True, blank=True,
+        help_text="Identificação visual. Nunca usada para reconhecimento facial.",
     )
     must_change_password = models.BooleanField(
         "precisa trocar a senha",

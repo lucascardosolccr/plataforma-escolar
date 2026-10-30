@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Pré-cadastros — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Pré-cadastros das famílias</h1>
+    <p>Confira os dados, aprove (criando a ficha e o vínculo da família), peça correção ou recuse.</p>
+  </div>
+  <a href="{% url 'registration_settings' %}" class="btn btn-outline-secondary">{% icon "sliders-horizontal" %}Configurações de cadastro</a>
+</div>
+
+<nav aria-label="Filtrar por situação" class="d-flex flex-wrap gap-2 mb-3">
+  {% for key, label, count in tabs %}
+  <a href="?situacao={{ key }}" class="summary-pill{% if status == key %} active{% endif %}"{% if status == key %} aria-current="true"{% endif %}>{{ label }} <span class="summary-count">{{ count }}</span></a>
+  {% endfor %}
+</nav>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 table-stack">
+      <thead><tr><th>Estudante</th><th>Ano/série</th><th>Responsável</th><th>Enviado em</th><th>Situação</th><th class="text-end"><span class="visually-hidden">Ações</span></th></tr></thead>
+      <tbody>
+        {% for a in applications %}
+        <tr>
+          <td class="fw-semibold">{{ a.full_name }}<span class="d-block small text-body-secondary fw-normal">nasc. {{ a.birth_date|date:"d/m/Y"|default:"—" }}</span></td>
+          <td data-label="Ano/série">{{ a.desired_grade|default:"—" }}</td>
+          <td data-label="Responsável">{{ a.guardian.get_full_name|default:a.guardian.username }}</td>
+          <td data-label="Enviado em">{{ a.submitted_at|date:"d/m/Y H:i"|default:"—" }}</td>
+          <td data-label="Situação"><span class="chip chip-state state-{{ a.status }}">{{ a.get_status_display }}</span></td>
+          <td class="text-end cell-actions"><a class="btn btn-sm {% if a.status == 'enviado' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{% url 'application_review' a.pk %}">{% if a.status == "enviado" %}Analisar{% else %}Abrir{% endif %}</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6"><div class="empty-state py-4">{% icon "inbox" %}<strong>Nada nesta situação</strong></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/_pager.html" %}
+{% endblock %}

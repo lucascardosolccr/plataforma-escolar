@@ -42,6 +42,7 @@ from .forms import (
     StudentForm,
 )
 from .models import Enrollment, GuardianLink, GuardianProfile, Student
+from .views_import import can_import_students
 
 
 def _resolver_student_list(request, qs):
@@ -79,6 +80,7 @@ def student_list(request):
             "page": page,
             "q": q,
             "can_manage": can_manage_registry(user),
+            "can_import": can_import_students(user),
         },
     )
 
@@ -444,7 +446,10 @@ def my_children(request):
     links = GuardianLink.objects.filter(
         guardian=request.user, status="aprovado"
     ).select_related("student")
-    return render(request, "registry/my_children.html", {"links": links})
+    from .models import RegistrationSettings
+
+    cfg = RegistrationSettings.for_school(request.user.school)
+    return render(request, "registry/my_children.html", {"links": links, "cfg": cfg})
 
 
 def link_list(request):

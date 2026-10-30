@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Analisar pré-cadastro — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'application_review_list' %}" class="back-link">{% icon "arrow-left" %}Pré-cadastros</a>
+    <h1>{{ app.full_name }}</h1>
+    <p>Enviado por {{ app.guardian.get_full_name|default:app.guardian.username }}{% if app.submitted_at %} em {{ app.submitted_at|date:"d/m/Y H:i" }}{% endif %} · <span class="chip chip-state state-{{ app.status }}">{{ app.get_status_display }}</span></p>
+  </div>
+  {% if app.student_id %}<a class="btn btn-outline-secondary" href="{% url 'student_detail' app.student_id %}">Abrir ficha criada</a>{% endif %}
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          {% if app.photo %}<img src="{% url 'application_photo' app.pk %}" alt="Foto enviada pela família" class="avatar-photo xl">{% else %}<span class="photo-pending">{% icon "triangle-alert" %}Sem foto</span>{% endif %}
+        </div>
+        <dl class="review-list">
+          <dt>Nome</dt><dd>{{ app.first_name }}</dd>
+          <dt>Sobrenome</dt><dd>{{ app.last_name|default:"—" }}</dd>
+          <dt>Nascimento</dt><dd>{{ app.birth_date|date:"d/m/Y"|default:"—" }}</dd>
+          <dt>Ano/série</dt><dd>{{ app.desired_grade|default:"—" }}</dd>
+          <dt>Turno desejado</dt><dd>{{ app.get_desired_turn_display|default:"—" }}</dd>
+          <dt>Parentesco</dt><dd>{{ app.get_relation_display|default:"—" }}</dd>
+          <dt>Telefone</dt><dd>{{ app.phone|default:"—" }}</dd>
+          <dt>Endereço</dt><dd>{{ app.address|default:"—" }}</dd>
+          <dt>Informações</dt><dd>{{ app.school_notes|default:"—"|linebreaksbr }}</dd>
+          <dt>Documentos</dt><dd>{% for d in documents %}<a href="{% url 'application_document' app.pk d.pk %}">{{ d.get_kind_display }}: {{ d.original_name }}</a><br>{% empty %}—{% endfor %}</dd>
+        </dl>
+        {% if app.review_note %}<p class="small mt-3 mb-0"><strong>Última mensagem à família:</strong> {{ app.review_note }}</p>{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    {% if can_decide %}
+    <form method="post" class="card" novalidate>
+      {% csrf_token %}
+      <div class="card-body">
+        <h2 class="h6">Decisão</h2>
+        {% if matches %}<div class="alert alert-warning small">Já existe ficha com o mesmo nome e nascimento. Confira se é a mesma criança e, se for, use a ficha existente para não duplicar.</div>{% endif %}
+        {% include "partials/_form_fields.html" with f=form %}
+        <p class="small text-body-secondary mb-0">Aprovar cria a ficha (ou usa a existente) e o vínculo já aprovado com esta família. Matrícula só se você escolher a turma{% if year %} do ano letivo {{ year }}{% endif %}.</p>
+      </div>
+      <div class="form-actions"><button type="submit" class="btn btn-primary">Registrar decisão</button></div>
+    </form>
+    {% else %}
+    <div class="callout">{% icon "info" %}<div>{% if app.status == "correcao" %}Aguardando a família corrigir e reenviar.{% elif app.status == "aprovado" %}Aprovado em {{ app.reviewed_at|date:"d/m/Y H:i" }} por {{ app.reviewed_by.get_full_name|default:app.reviewed_by.username }}.{% else %}{{ app.get_status_display }}.{% endif %}</div></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Configurações de cadastro — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with heading="Configurações de cadastro" subheading="O que as famílias podem fazer no cadastro dos filhos. Vale para toda a escola." %}
+  {% if pending %}<div class="callout mb-3">{% icon "inbox" %}<div>{{ pending }} pré-cadastro{{ pending|pluralize }} aguardando análise. <a href="{% url 'application_review_list' %}">Analisar</a></div></div>{% endif %}
+  <form method="post" class="card form-card" novalidate>
+    {% csrf_token %}
+    <div class="card-body">
+      {% include "partials/_form_fields.html" with f=form %}
+      <h2 class="h6 mt-2">O que cada opção faz</h2>
+      <ul class="rule-list small">
+        <li><strong>Desligado:</strong> o menu da família não mostra pré-cadastro nem envio de foto. Só a secretaria cadastra.</li>
+        <li><strong>Só fotografia:</strong> em “Meus filhos”, a família envia ou troca a foto do filho. Nenhum outro dado muda.</li>
+        <li><strong>Completo:</strong> a família faz o pré-cadastro em etapas, com os campos marcados acima, e também pode enviar foto. Tudo passa pela aprovação da secretaria; nenhuma matrícula é criada sem ela.</li>
+        <li><strong>Pedir correção:</strong> a família abre uma solicitação de “Atualização cadastral”. Os dados só mudam quando a secretaria aceita.</li>
+        <li><strong>Período:</strong> fora das datas, o pré-cadastro fica fechado (o envio de foto continua).</li>
+      </ul>
+      <p class="small mb-0"><strong>Sempre exclusivos da secretaria:</strong> código do aluno, turma, matrícula, situação, observações internas{% if secretaria_only %}, e também: {{ secretaria_only|join:", "|lower }}{% endif %}.</p>
+    </div>
+    {% include "partials/_form_actions.html" with submit_label="Salvar configurações" %}
+  </form>
+</div>
+{% endblock %}

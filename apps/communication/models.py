@@ -18,6 +18,13 @@ class Notification(models.Model):
         ATTENDANCE = "frequencia", "Frequência/pendência"
         OCCURRENCE = "ocorrencia", "Ocorrência registrada"
         LINK = "vinculo", "Vínculo analisado"
+        REGISTRATION = "cadastro", "Cadastro de estudante"
+        PRINT = "impressao", "Impressão de atividade"
+        MENU = "cardapio", "Cardápio"
+        CALENDAR = "calendario", "Calendário escolar"
+        OBSERVATION = "observacao", "Observação pedagógica"
+        GRADE = "nota", "Nota lançada ou alterada"
+        PHOTO = "foto", "Fotografia pendente"
 
     school = models.ForeignKey(
         School, on_delete=models.CASCADE, related_name="notifications", verbose_name="escola"
@@ -31,6 +38,13 @@ class Notification(models.Model):
     title = models.CharField("título", max_length=200)
     body = models.TextField("texto", blank=True)
     url = models.CharField("destino", max_length=300, blank=True)
+    # Estudante a que o aviso se refere (filtro "por filho" da central).
+    student = models.ForeignKey(
+        "registry.Student", on_delete=models.CASCADE, null=True, blank=True,
+        related_name="notifications", verbose_name="estudante",
+    )
+    # Chave de evento: o mesmo evento não gera dois avisos à mesma pessoa.
+    dedupe_key = models.CharField("chave do evento", max_length=120, blank=True, db_index=True)
     is_read = models.BooleanField("lida", default=False)
     read_at = models.DateTimeField("lida em", null=True, blank=True)
     created_at = models.DateTimeField("criada em", auto_now_add=True, db_index=True)

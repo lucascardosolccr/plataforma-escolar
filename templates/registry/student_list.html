@@ -8,9 +8,14 @@
     <h1>Estudantes</h1>
     <p>Prontuário escolar e painel individual de cada estudante.</p>
   </div>
-  {% if can_manage %}
-  <a href="{% url 'student_create' %}" class="btn btn-primary">{% icon "plus" %}Cadastrar estudante</a>
-  {% endif %}
+  <div class="d-flex flex-wrap gap-2">
+    {% if can_import %}
+    <a href="{% url 'student_import' %}" class="btn btn-outline-secondary">{% icon "file-text" %}Importar planilha</a>
+    {% endif %}
+    {% if can_manage %}
+    <a href="{% url 'student_create' %}" class="btn btn-primary">{% icon "plus" %}Cadastrar estudante</a>
+    {% endif %}
+  </div>
 </div>
 
 <form method="get" class="filter-bar" aria-label="Buscar estudantes">

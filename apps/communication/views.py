@@ -386,7 +386,14 @@ def request_list(request):
 def request_create(request):
     user = request.user
     acc.require(acc.can_create_request(user))
-    form = ServiceRequestForm(request.POST or None, user=user)
+    # Atalho "Pedir correção de dados" em Meus filhos: categoria e filho já
+    # escolhidos (o formulário só aceita filhos da própria família).
+    initial = {}
+    if request.GET.get("categoria") in dict(ServiceRequest.Category.choices):
+        initial["category"] = request.GET["categoria"]
+    if request.GET.get("estudante", "").isdigit():
+        initial["student"] = int(request.GET["estudante"])
+    form = ServiceRequestForm(request.POST or None, user=user, initial=initial)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             req = form.save(commit=False)

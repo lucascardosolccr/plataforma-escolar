@@ -6,7 +6,7 @@
 <div class="page-head">
   <div>
     <h1>Painel da coordenação</h1>
-    <p>{% if designations %}{% for d in designations %}{{ d.area|default:"Designação" }}{% if d.all_school %} · escola toda{% endif %}{% if not forloop.last %}; {% endif %}{% endfor %}{% else %}Turmas, professores e estudantes que você acompanha.{% endif %}</p>
+    <p>{% if designations %}{% for d in designations %}{{ d.area|default:"Designação" }}{% if d.all_school and d.area != "Escola toda" %} · escola toda{% endif %}{% if not forloop.last %}; {% endif %}{% endfor %}{% else %}Turmas, professores e estudantes que você acompanha.{% endif %}</p>
   </div>
   <a class="btn btn-outline-secondary" href="{% url 'coordination:records' %}">{% icon "notebook-pen" %}Registros</a>
 </div>

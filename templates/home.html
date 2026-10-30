@@ -64,8 +64,8 @@
               <p class="small fw-bold text-body-secondary mb-2">Próximas entregas</p>
               <ul class="list-unstyled mb-3 d-grid gap-2">
                 {% for r in c.next %}
-                <li class="d-flex align-items-center justify-content-between gap-2">
-                  <a href="{% url 'pedagogy:activity_detail' r.activity.pk %}" class="text-truncate">{{ r.activity.title }}</a>
+                <li class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                  <a href="{% url 'pedagogy:activity_detail' r.activity.pk %}" class="text-truncate mw-100">{{ r.activity.title }}</a>
                   <span class="small text-body-secondary text-nowrap">{{ r.activity.subject.name }} · {% if r.activity.deadline %}{{ r.activity.deadline|date:"d/m" }}{% else %}sem prazo{% endif %}</span>
                 </li>
                 {% endfor %}

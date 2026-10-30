@@ -56,7 +56,7 @@ sempre mostra o que já está salvo para o dia que será gravado.
     <li class="attendance-row">
       <fieldset>
         <legend class="visually-hidden">Situação de {{ row.student.full_name }}</legend>
-        <span class="attendance-name" aria-hidden="true"><span class="text-body-secondary">{{ forloop.counter }}.</span> {{ row.student.full_name }}</span>
+        <span class="attendance-name d-inline-flex align-items-center gap-2" aria-hidden="true"><span class="text-body-secondary">{{ forloop.counter }}.</span> {% avatar row.student %} {{ row.student.full_name }}</span>
         <div class="seg">
           {% for value, label in status_choices %}
           <input type="radio" class="seg-input" name="{{ row.field.html_name }}" id="{{ row.field.html_name }}-{{ value }}" value="{{ value }}"{% if row.field.value == value %} checked{% endif %}>

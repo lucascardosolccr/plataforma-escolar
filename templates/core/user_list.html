@@ -37,7 +37,7 @@
         {% for u in users %}
         <tr>
           <td>{{ u.username }}</td>
-          <td>{{ u.first_name }} {{ u.last_name }}</td>
+          <td><span class="d-inline-flex align-items-center gap-2">{% avatar u %}{{ u.first_name }} {{ u.last_name }}</span></td>
           <td>{{ u.email|default:"—" }}</td>
           <td><span class="chip"><span class="role-dot" aria-hidden="true"></span>{{ u.role_label }}</span></td>
           {% if show_school %}<td>{{ u.school.name|default:"—" }}</td>{% endif %}

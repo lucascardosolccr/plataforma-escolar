@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Minha foto — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with heading="Minha foto" subheading="Sua foto aparece no topo da página e ajuda as pessoas da escola a identificarem você." %}
+  {% if holder %}
+  <form method="post" enctype="multipart/form-data" class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">
+      {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+      <div class="d-flex align-items-center gap-3 mb-3">
+        {% avatar user "xl" %}
+        <div>
+          <div class="fw-semibold">{{ user.get_full_name|default:user.username }}</div>
+          {% if not has_photo %}<span class="photo-pending">{% icon "triangle-alert" %}Ainda sem foto</span>{% else %}<span class="small text-body-secondary">Envie outra para trocar.</span>{% endif %}
+        </div>
+      </div>
+      <label for="id_photo" class="form-label">Escolher foto</label>
+      <input type="file" name="photo" id="id_photo" class="form-control" accept=".jpg,.jpeg,.png,.webp" data-photo-crop required>
+      <p class="form-text">JPG, PNG ou WEBP, até 2 MB. A foto é recortada em quadrado, reduzida e gravada sem a localização do celular. É só identificação visual: a plataforma não faz reconhecimento facial.</p>
+    </div>
+    {% include "partials/_form_actions.html" with submit_label="Salvar foto" %}
+  </form>
+  {% else %}
+  <div class="callout">{% icon "info" %}<div>A foto do estudante é cuidada pela secretaria da escola. Se precisar trocá-la, fale com a secretaria ou com a sua família.</div></div>
+  {% endif %}
+</div>
+{% endblock %}

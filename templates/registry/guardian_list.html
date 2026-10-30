@@ -22,7 +22,7 @@
       <tbody>
         {% for g in guardians %}
         <tr>
-          <td class="fw-semibold">{{ g.get_full_name }}</td>
+          <td class="fw-semibold"><span class="d-inline-flex align-items-center gap-2">{% avatar g %}{{ g.get_full_name }}</span></td>
           <td>{{ g.username }}</td>
           <td>{{ g.email|default:"—" }}</td>
           <td class="text-end cell-actions">

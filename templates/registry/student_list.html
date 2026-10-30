@@ -38,7 +38,7 @@
         {% for s in students %}
         <tr>
           <td class="fw-semibold">
-            <a href="{% url 'student_detail' s.pk %}" class="text-decoration-none">{{ s.full_name }}</a>
+            <span class="d-inline-flex align-items-center gap-2">{% avatar s %}<a href="{% url 'student_detail' s.pk %}" class="text-decoration-none">{{ s.full_name }}</a></span>
           </td>
           <td data-label="Turma atual">{{ s.current_class|default:"—" }}</td>
           <td data-label="Situação"><span class="chip">{{ s.get_status_display }}</span></td>

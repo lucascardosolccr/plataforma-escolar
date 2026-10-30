@@ -121,6 +121,8 @@ ITEMS = {
     "config": Item("Regras e limites", "pedagogy:config_edit", "sliders-horizontal",
                    ("pedagogy:config_", "pedagogy:academic_rule_"), "Médias e limite de faltas"),
     "users": Item("Usuários", "user_list", "shield", ("user_",), "Contas e auditoria"),
+    "photos": Item("Fotografias", "photo_pending", "user-round", ("photo_",),
+                   "Quem ainda não tem foto de identificação"),
     # Comunicação
     "notifications": Item("Notificações", "communication:notification_list", "bell",
                           ("communication:notification_",), "Avisos da plataforma"),
@@ -198,7 +200,7 @@ LAYOUT = {
     ],
     SECRETARIA: [
         (None, ["home", "calendar"]),
-        ("Secretaria", ["students", "applications", "student_import", "guardians", "staff_links",
+        ("Secretaria", ["students", "applications", "student_import", "photos", "guardians", "staff_links",
                         "enrollments", "justifications"]),
         ("Acadêmico", ["classes", "subjects", "years", "assignments"]),
         ("Pedagógico", ["evaluations", "activities", "works", "attendance", "occurrences"]),
@@ -221,12 +223,13 @@ LAYOUT = {
                         "occurrences", "observations", "plans", "justifications"]),
         ("Acadêmico", ["classes", "subjects", "years"]),
         COMMUNICATION_STAFF,
-        ("Configuração", ["registration_cfg"]),
+        ("Configuração", ["registration_cfg", "photos"]),
     ],
     ADMIN: [
         (None, ["home", "calendar"]),
         ("Administração", ["users", "config", "registration_cfg"]),
-        ("Cadastro", ["students", "applications", "student_import", "guardians", "staff_links", "enrollments"]),
+        ("Cadastro", ["students", "applications", "student_import", "photos", "guardians", "staff_links",
+                      "enrollments"]),
         ("Acadêmico", ["classes", "subjects", "years", "assignments"]),
         ("Pedagógico", ["evaluations", "activities", "works", "attendance", "occurrences",
                         "justifications"]),

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Fotografias pendentes — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Fotografias pendentes</h1>
+    <p>Quem ainda não tem foto de identificação. A falta de foto nunca bloqueia o acesso: é uma pendência cadastral.</p>
+  </div>
+  {% if tab == "estudantes" %}<a href="{% url 'student_photo_batch' %}" class="btn btn-outline-secondary">{% icon "user-round" %}Enviar fotos em lote</a>{% endif %}
+</div>
+
+<nav aria-label="Grupo" class="d-flex flex-wrap gap-2 mb-3">
+  <a href="?aba=estudantes" class="summary-pill{% if tab == 'estudantes' %} active{% endif %}"{% if tab == 'estudantes' %} aria-current="true"{% endif %}>Estudantes <span class="summary-count">{{ counts.estudantes }}</span></a>
+  <a href="?aba=familias" class="summary-pill{% if tab == 'familias' %} active{% endif %}"{% if tab == 'familias' %} aria-current="true"{% endif %}>Famílias <span class="summary-count">{{ counts.familias }}</span></a>
+  <a href="?aba=equipe" class="summary-pill{% if tab == 'equipe' %} active{% endif %}"{% if tab == 'equipe' %} aria-current="true"{% endif %}>Equipe <span class="summary-count">{{ counts.equipe }}</span></a>
+</nav>
+
+<form method="get" class="filter-bar" aria-label="Filtrar">
+  <input type="hidden" name="aba" value="{{ tab }}">
+  {% if tab == "estudantes" %}
+  <div class="filter-field">
+    <label for="f-turma" class="form-label">Turma</label>
+    <select id="f-turma" name="turma" class="form-select" data-autosubmit>
+      <option value="">Todas</option>
+      {% for c in classes %}<option value="{{ c.pk }}"{% if class_id == c.pk|stringformat:"s" %} selected{% endif %}>{{ c }}</option>{% endfor %}
+    </select>
+  </div>
+  {% endif %}
+  {% include "partials/_filter_search.html" with label="Buscar" placeholder="Nome" %}
+  {% include "partials/_filter_end.html" with filtered=q count=page.paginator.count noun="pendência(s)" %}
+</form>
+
+<form method="post" action="{% url 'photo_remind' %}" class="card" data-bulk>
+  {% csrf_token %}
+  <input type="hidden" name="aba" value="{{ tab }}">
+  <div class="bulk-bar" data-bulk-bar>
+    <label class="d-flex align-items-center gap-2 mb-0">
+      <input type="checkbox" class="form-check-input mt-0" data-bulk-all aria-label="Selecionar todos desta página">
+      <span data-bulk-count>0 selecionados</span>
+    </label>
+    <button type="submit" class="btn btn-sm btn-primary" disabled>{% icon "bell" %}{% if tab == "estudantes" %}Cobrar as famílias{% else %}Lembrar por notificação{% endif %}</button>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 table-stack">
+      <thead><tr><th><span class="visually-hidden">Selecionar</span></th><th>Nome</th><th>{% if tab == "estudantes" %}Turma{% else %}Perfil{% endif %}</th>{% if can_exempt %}<th>Dispensa</th>{% endif %}</tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td><input type="checkbox" class="form-check-input" name="ids" value="{{ r.pk }}" aria-label="Selecionar {{ r.first_name }}"></td>
+          <td class="fw-semibold"><span class="d-inline-flex align-items-center gap-2">{% avatar r %}{% if tab == "estudantes" %}<a href="{% url 'student_detail' r.pk %}">{{ r.full_name }}</a>{% else %}{{ r.get_full_name|default:r.username }}{% endif %}</span></td>
+          <td data-label="{% if tab == 'estudantes' %}Turma{% else %}Perfil{% endif %}">{% if tab == "estudantes" %}{{ r.current_class|default:"—" }}{% else %}{{ r.role_label }}{% endif %}</td>
+          {% if can_exempt %}<td data-label="Dispensa"><a href="#dispensa" class="small" data-fill-all="#exc-id" data-fill-value="{{ r.pk }}">Dispensar…</a></td>{% endif %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="4"><div class="empty-state py-4">{% icon "circle-check" %}<strong>Nenhuma pendência aqui</strong></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</form>
+{% include "partials/_pager.html" %}
+
+{% if can_exempt %}
+<div class="row g-3 mt-2">
+  <div class="col-lg-5">
+    <form method="post" action="{% url 'photo_exception_create' %}" class="card" id="dispensa">
+      {% csrf_token %}
+      <div class="card-body">
+        <h2 class="h6">Dispensar fotografia (com justificativa)</h2>
+        <p class="small text-body-secondary">Por exemplo, decisão judicial ou pedido fundamentado da família. Fica registrado na auditoria e pode ser revogado.</p>
+        <input type="hidden" name="kind" value="{% if tab == 'estudantes' %}estudante{% else %}conta{% endif %}">
+        <label for="exc-id" class="form-label">Código interno ({% if tab == "estudantes" %}estudante{% else %}conta{% endif %})</label>
+        <input type="text" inputmode="numeric" name="id" id="exc-id" class="form-control mb-2" required>
+        <label for="exc-reason" class="form-label">Justificativa</label>
+        <textarea name="reason" id="exc-reason" class="form-control" rows="2" maxlength="300" required></textarea>
+      </div>
+      <div class="form-actions"><button type="submit" class="btn btn-outline-primary">Registrar dispensa</button></div>
+    </form>
+  </div>
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header bg-transparent"><h2 class="h6 mb-0">Dispensas registradas</h2></div>
+      <ul class="feed">
+        {% for e in exceptions %}
+        <li class="feed-item">
+          <div class="feed-body flex-grow-1">
+            <p class="feed-title">{% if e.student %}{{ e.student.full_name }}{% else %}{{ e.user.get_full_name|default:e.user.username }}{% endif %}</p>
+            <p class="feed-meta">{{ e.reason }} · por {{ e.granted_by.get_full_name|default:e.granted_by.username }} em {{ e.created_at|date:"d/m/Y" }}</p>
+          </div>
+          <form method="post" action="{% url 'photo_exception_revoke' e.pk %}">{% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-secondary" data-confirm="A pessoa volta à lista de pendências." data-confirm-title="Revogar dispensa?" data-confirm-ok="Revogar">Revogar</button></form>
+        </li>
+        {% empty %}
+        <li><div class="empty-state py-3"><span>Nenhuma dispensa.</span></div></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

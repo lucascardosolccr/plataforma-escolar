@@ -16,7 +16,7 @@ from .passwords import can_reset_password, reset_password
 
 @role_required(Role.ADMIN)
 def user_list(request):
-    qs = User.objects.select_related("school")
+    qs = User.objects.select_related("school", "guardian_profile")
     if request.user.school_id:
         qs = qs.filter(school=request.user.school)
     search = request.GET.get("q", "").strip()

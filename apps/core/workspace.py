@@ -225,4 +225,22 @@ def build(user):
             ).count()
         data["students_total"] = Student.objects.filter(school=user.school).count()
         data["announcements"] = _recent_announcements(user)
+        if role in (Role.SECRETARIA.value, Role.ADMIN.value, Role.DIRECAO.value):
+            from django.db.models import Exists, OuterRef, Q
+
+            from apps.registry.models import PhotoException, StudentApplication
+
+            data["students_without_photo"] = (
+                Student.objects.filter(school=user.school, status="ativo")
+                .filter(Q(photo="") | Q(photo__isnull=True))
+                .exclude(Exists(PhotoException.objects.filter(student=OuterRef("pk"))))
+                .count()
+            )
+            data["applications_pending"] = StudentApplication.objects.filter(
+                school=user.school, status=StudentApplication.Status.SUBMITTED
+            ).count()
+    if role != Role.ESTUDANTE.value:
+        from .views_photo import has_photo, photo_exempt
+
+        data["my_photo_missing"] = not has_photo(user) and not photo_exempt(user)
     return data

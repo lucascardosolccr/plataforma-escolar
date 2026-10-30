@@ -91,9 +91,12 @@ def student_create(request):
     form = StudentForm(request.POST or None, request.FILES or None, school=request.user.school)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
+            upload = request.FILES.get("photo")
             student = form.save(commit=False)
             student.school = request.user.school
+            student.photo = None
             student.save()
+            _store_photo(student, upload, form)
             create_audit_log(
                 user=request.user,
                 action="create",
@@ -116,6 +119,17 @@ def student_create(request):
             "multipart": True,
         },
     )
+
+
+def _store_photo(obj, upload, form=None):
+    """Grava a foto enviada por formulário já validado, recortada e sem
+    metadados (``core.photos``). Sem envio, nada muda."""
+    if not upload:
+        return
+    from apps.core.photos import save_photo
+
+    save_photo(obj, "photo", upload, name_hint=f"foto-{obj.pk}")
+    obj.save(update_fields=["photo"])
 
 
 def student_detail(request, student_id):
@@ -313,9 +327,15 @@ def student_edit(request, student_id):
     form = StudentForm(
         request.POST or None, request.FILES or None, instance=student, school=request.user.school
     )
+    previous_photo = student.photo.name if student.photo else None
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
-            form.save()
+            upload = request.FILES.get("photo")
+            obj = form.save(commit=False)
+            if upload:
+                obj.photo = previous_photo  # o arquivo cru não vai para o disco
+            obj.save()
+            _store_photo(obj, upload, form)
             create_audit_log(
                 user=request.user,
                 action="update",
@@ -380,7 +400,9 @@ def _photo_type(name):
 def guardian_list(request):
     if not can_manage_registry(request.user):
         raise PermissionDenied
-    qs = User.objects.filter(school=request.user.school, role=Role.RESPONSAVEL.value, is_active=True)
+    qs = User.objects.filter(school=request.user.school, role=Role.RESPONSAVEL.value, is_active=True).select_related(
+        "guardian_profile"
+    )
     q = request.GET.get("q", "").strip()
     if q:
         qs = qs.filter(first_name__icontains=q) | qs.filter(username__icontains=q)
@@ -403,10 +425,16 @@ def guardian_profile(request, user_id):
         raise PermissionDenied
 
     profile, _created = GuardianProfile.objects.get_or_create(user=target)
+    previous_photo = profile.photo.name if profile.photo else None
     form = GuardianProfileForm(request.POST or None, request.FILES or None, instance=profile)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
-            form.save()
+            upload = request.FILES.get("photo")
+            obj = form.save(commit=False)
+            if upload:
+                obj.photo = previous_photo
+            obj.save()
+            _store_photo(obj, upload, form)
             create_audit_log(
                 user=request.user,
                 action="update",

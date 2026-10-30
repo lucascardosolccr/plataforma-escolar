@@ -26,6 +26,10 @@
   {% endif %}
 </div>
 
+{% if ws.my_photo_missing %}
+<div class="callout mb-3">{% icon "user-round" %}<div>Sua conta ainda não tem foto de identificação. <a href="{% url 'my_photo' %}">Adicionar foto</a> leva um minuto e ajuda a escola a reconhecer quem é quem.</div></div>
+{% endif %}
+
 {# ================= Responsável ================= #}
 {% if user_role == ROLE_RESPONSAVEL %}
   {% if ws.pending_links %}
@@ -294,6 +298,18 @@
       <span class="kpi-label">{% icon "inbox" %}Solicitações em aberto</span>
       <span class="kpi-value">{{ ws.requests_open }}</span>
       <a class="stretched-link kpi-hint" href="{% url 'communication:request_list' %}">Pedidos das famílias a responder</a>
+    </div>
+    <div class="kpi{% if ws.applications_pending %} is-attention{% endif %}">
+      <span class="kpi-label">{% icon "id-card" %}Pré-cadastros a analisar</span>
+      <span class="kpi-value">{{ ws.applications_pending|default:0 }}</span>
+      <a class="stretched-link kpi-hint" href="{% url 'application_review_list' %}">Enviados pelas famílias</a>
+    </div>
+    {% endif %}
+    {% if user_role == ROLE_SECRETARIA or user_role == ROLE_ADMIN or user_role == ROLE_DIRECAO %}
+    <div class="kpi{% if ws.students_without_photo %} is-attention{% endif %}">
+      <span class="kpi-label">{% icon "user-round" %}Estudantes sem foto</span>
+      <span class="kpi-value">{{ ws.students_without_photo|default:0 }}</span>
+      <a class="stretched-link kpi-hint" href="{% url 'photo_pending' %}">Pendência cadastral (não bloqueia nada)</a>
     </div>
     {% endif %}
   </div>

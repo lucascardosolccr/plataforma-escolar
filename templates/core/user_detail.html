@@ -6,7 +6,7 @@
 <div class="page-head">
   <div>
     <a href="{% url 'user_list' %}" class="back-link">{% icon "arrow-left" %}Voltar</a>
-    <h1>{{ target_user.first_name }} {{ target_user.last_name }}</h1>
+    <h1 class="d-flex align-items-center gap-3">{% avatar target_user "lg" %}{{ target_user.first_name }} {{ target_user.last_name }}</h1>
     <p>@{{ target_user.username }} · {{ target_user.role_label }} · {{ target_user.school.name|default:"Sem escola" }}</p>
   </div>
 </div>
@@ -31,6 +31,20 @@
     </div></div>
   </div>
 </div>
+
+{% if target_user.is_staff_role %}
+<form method="post" action="{% url 'staff_photo_upload' target_user.pk %}" enctype="multipart/form-data" class="card mb-3">
+  {% csrf_token %}
+  <div class="card-body">
+    <h2 class="h6 mb-1">Fotografia de identificação</h2>
+    {% if not target_user.photo %}<p class="photo-pending mb-2">{% icon "triangle-alert" %}Sem foto</p>{% endif %}
+    <div class="d-flex flex-wrap gap-2 align-items-end">
+      <div class="flex-grow-1"><label for="id_photo" class="form-label">Nova foto</label><input type="file" name="photo" id="id_photo" class="form-control" accept=".jpg,.jpeg,.png,.webp" data-photo-crop required></div>
+      <button type="submit" class="btn btn-outline-primary">Enviar foto</button>
+    </div>
+  </div>
+</form>
+{% endif %}
 
 {% if can_reset_password %}
 <div class="card mb-3">

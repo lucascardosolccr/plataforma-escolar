@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import password_validation
 from django.core.exceptions import ValidationError
 
@@ -148,3 +149,49 @@ class PublicSignupForm(forms.Form):
                 user=user, phone=self.cleaned_data["phone"]
             )
         return user
+
+class ThrottledAuthenticationForm(AuthenticationForm):
+    """Login com limite de tentativas, contadas no registro de auditoria.
+
+    Sem limite, um robô podia testar senhas sem parar contra contas de
+    famílias e da equipe, que dão acesso a dados de crianças. As falhas já
+    eram gravadas na auditoria (``signals.on_login_failed``); aqui elas são
+    contadas numa janela de tempo, sem cache nem dependência nova, e valem
+    mesmo depois de reiniciar o servidor.
+
+    O bloqueio vale para o nome digitado, exista a conta ou não: a mensagem
+    não revela se o usuário existe.
+    """
+
+    WINDOW_MINUTES = 15
+    MAX_PER_USERNAME = 5
+    MAX_PER_IP = 20
+
+    error_messages = {
+        **AuthenticationForm.error_messages,
+        "invalid_login": "Usuário ou senha incorretos. Verifique os dados e tente novamente.",
+        "locked": (
+            "Muitas tentativas sem sucesso. Por segurança, o acesso foi pausado por "
+            "15 minutos. Se esqueceu a senha, procure a secretaria."
+        ),
+    }
+
+    def clean(self):
+        username = (self.data.get("username") or "").strip()
+        if username and self._is_locked(username):
+            raise ValidationError(self.error_messages["locked"], code="locked")
+        return super().clean()
+
+    def _is_locked(self, username):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from .models import AuditLog
+
+        since = timezone.now() - timedelta(minutes=self.WINDOW_MINUTES)
+        recent = AuditLog.objects.filter(action="login_failed", created_at__gte=since)
+        if recent.filter(target_type="login", target_id=username[:50]).count() >= self.MAX_PER_USERNAME:
+            return True
+        ip = self.request.META.get("REMOTE_ADDR") if self.request else None
+        return bool(ip) and recent.filter(ip_address=ip).count() >= self.MAX_PER_IP

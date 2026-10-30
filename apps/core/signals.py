@@ -17,10 +17,14 @@ def on_logout(sender, request, user, **kwargs):
 
 @receiver(user_login_failed)
 def on_login_failed(sender, credentials, request, **kwargs):
-    username = credentials.get("username", "")
+    username = (credentials.get("username") or "").strip()
     create_audit_log(
         user=None,
         action="login_failed",
         request=request,
         detail=f"Falha de login para: {username}",
+        # target_* identificam o nome tentado para o limite de tentativas
+        # (forms.ThrottledAuthenticationForm).
+        target_type="login",
+        target_id=username[:50],
     )

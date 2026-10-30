@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_not_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .access import role_required
@@ -133,6 +134,23 @@ class ForcedPasswordChangeView(auth_views.PasswordChangeView):
         return response
 
 
+SIGNUP_LIMIT_PER_HOUR = 5
+
+
+def _signup_limit_reached(request):
+    """Cadastro público limitado por endereço: sem isso, um robô podia criar
+    contas em massa. Conta os cadastros já gravados na auditoria."""
+    from datetime import timedelta
+
+    ip = request.META.get("REMOTE_ADDR")
+    if not ip:
+        return False
+    since = timezone.now() - timedelta(hours=1)
+    return AuditLog.objects.filter(
+        action="create", detail="Cadastro público de responsável", ip_address=ip, created_at__gte=since,
+    ).count() >= SIGNUP_LIMIT_PER_HOUR
+
+
 @login_not_required
 def signup(request):
     """Cadastro público de responsável. Nunca é possível se autodeclarar
@@ -140,7 +158,11 @@ def signup(request):
     if request.user.is_authenticated:
         return redirect("home")
     form = PublicSignupForm(request.POST or None)
-    if request.method == "POST" and form.is_valid():
+    if request.method == "POST" and _signup_limit_reached(request):
+        form.is_valid()
+        form.add_error(None, "Muitos cadastros feitos a partir desta rede na última hora. "
+                             "Tente mais tarde ou procure a secretaria da escola.")
+    elif request.method == "POST" and form.is_valid():
         with transaction.atomic():
             user = form.save()
             create_audit_log(

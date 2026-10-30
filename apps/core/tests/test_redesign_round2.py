@@ -285,3 +285,87 @@ class MoreServerSortTests(Round2Base):
         resp = self.client.get(reverse("user_list") + "?perfil=professor&ordem=-usuario")
         self.assertEqual([u.username for u in resp.context["users"]], ["professor", "colega"])
         self.assertNotContains(resp, '<th scope="col">Escola</th>')
+
+
+class LoginThrottleTests(Round2Base):
+    """Limite de tentativas de login (contadas na auditoria)."""
+
+    def post_login(self, username, password, ip="10.0.0.1"):
+        return self.client.post(reverse("login"), {"username": username, "password": password}, REMOTE_ADDR=ip)
+
+    def test_five_failures_lock_the_username_even_with_right_password(self):
+        user = self.users[Role.SECRETARIA]
+        for _ in range(5):
+            self.post_login(user.username, "errada")
+        resp = self.post_login(user.username, PW)
+        self.assertContains(resp, "Muitas tentativas")
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_lock_does_not_reveal_if_account_exists(self):
+        for _ in range(5):
+            self.post_login("nao-existe", "x")
+        self.assertContains(self.post_login("nao-existe", "x"), "Muitas tentativas")
+
+    def test_other_accounts_and_old_failures_are_not_affected(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.core.models import AuditLog
+
+        user = self.users[Role.SECRETARIA]
+        for _ in range(5):
+            self.post_login(user.username, "errada", ip="10.0.0.9")
+        # Outra conta, outro computador: entra normalmente.
+        resp = self.post_login(self.users[Role.DIRECAO].username, PW, ip="10.0.0.2")
+        self.assertEqual(resp.status_code, 302)
+        # Passada a janela de 15 minutos, a conta volta a entrar.
+        AuditLog.objects.filter(action="login_failed").update(created_at=timezone.now() - timedelta(minutes=16))
+        self.client.logout()
+        self.assertEqual(self.post_login(user.username, PW, ip="10.0.0.9").status_code, 302)
+
+    def test_many_failures_from_one_address_lock_that_address(self):
+        for i in range(20):
+            self.post_login(f"conta{i}", "x", ip="10.0.0.66")
+        resp = self.post_login(self.users[Role.DIRECAO].username, PW, ip="10.0.0.66")
+        self.assertContains(resp, "Muitas tentativas")
+        self.assertEqual(self.post_login(self.users[Role.DIRECAO].username, PW, ip="10.0.0.67").status_code, 302)
+
+
+class SessionSettingsTests(SimpleTestCase):
+    def test_session_is_short_and_ends_with_the_browser(self):
+        self.assertLessEqual(settings.SESSION_COOKIE_AGE, 8 * 3600)
+        self.assertTrue(settings.SESSION_EXPIRE_AT_BROWSER_CLOSE)
+        self.assertTrue(settings.SESSION_SAVE_EVERY_REQUEST)
+
+
+class ErrorPagesTests(Round2Base):
+    """Páginas de erro no visual da plataforma, em português e com saída."""
+
+    def test_404_is_friendly(self):
+        self.login(self.users[Role.SECRETARIA])
+        resp = self.client.get("/nao-existe-esta-pagina/")
+        self.assertEqual(resp.status_code, 404)
+        self.assertContains(resp, "Não encontramos esta página", status_code=404)
+        self.assertContains(resp, 'class="sidebar', status_code=404)  # com o menu da pessoa
+
+    def test_403_shows_reason_and_way_out(self):
+        self.login(self.users[Role.RESPONSAVEL])
+        resp = self.client.get(reverse("analytics:student_dashboard", args=[self.bia.pk]))
+        self.assertEqual(resp.status_code, 403)
+        self.assertContains(resp, "não está disponível para você", status_code=403)
+        self.assertContains(resp, reverse("home"), status_code=403)
+
+    def test_expired_form_page(self):
+        from django.test import Client
+
+        c = Client(enforce_csrf_checks=True)
+        resp = c.post(reverse("login"), {"username": "x", "password": "y"})
+        self.assertEqual(resp.status_code, 403)
+        self.assertContains(resp, "O formulário expirou", status_code=403)
+
+    def test_500_template_renders_without_request(self):
+        from django.template.loader import render_to_string
+
+        html = render_to_string("500.html")
+        self.assertIn("Algo deu errado", html)

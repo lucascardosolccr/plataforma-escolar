@@ -103,3 +103,22 @@ class PublicSignupTests(TestCase):
                 action="create", target_type="User", detail__contains="Cadastro público"
             ).exists()
         )
+
+class SignupRateLimitTests(TestCase):
+    def setUp(self):
+        School.objects.create(name="Escola Teste", code="escola-teste")
+
+    def signup(self, n, ip):
+        return self.client.post(reverse("signup"), {
+            "school_code": "escola-teste", "username": f"resp{n}", "first_name": "R", "email": f"r{n}@t.com",
+            "password1": "senha-forte-1", "password2": "senha-forte-1",
+        }, REMOTE_ADDR=ip)
+
+    def test_sixth_signup_from_same_address_in_an_hour_is_refused(self):
+        for n in range(5):
+            self.assertEqual(self.signup(n, "10.1.1.1").status_code, 302)
+        resp = self.signup(5, "10.1.1.1")
+        self.assertContains(resp, "Muitos cadastros")
+        self.assertFalse(User.objects.filter(username="resp5").exists())
+        # Outro endereço continua podendo se cadastrar.
+        self.assertEqual(self.signup(6, "10.1.1.2").status_code, 302)

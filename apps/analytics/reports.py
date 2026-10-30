@@ -210,15 +210,17 @@ def _r_frequencia(user, params):
         if end:
             records = records.filter(date__lte=end)
         students = services.class_students(class_group)
+        # Uma consulta para a turma inteira (antes, uma por estudante).
+        counts = {}
+        for sid, status in records.values_list("student_id", "status"):
+            counts.setdefault(sid, {"presente": 0, "atraso": 0, "falta": 0})[status] += 1
         rows = []
         for s in students:
-            recs = list(records.filter(student=s))
-            present = sum(1 for r in recs if r.status == AttendanceRecord.Status.PRESENT)
-            late = sum(1 for r in recs if r.status == AttendanceRecord.Status.LATE)
-            absent = sum(1 for r in recs if r.status == AttendanceRecord.Status.ABSENT)
-            total = len(recs)
-            pct = round((present + late) / total * 100, 1) if total else 0
-            rows.append([str(s), present, late, absent, f"{pct}%"])
+            c = counts.get(s.pk, {"presente": 0, "atraso": 0, "falta": 0})
+            total = c["presente"] + c["atraso"] + c["falta"]
+            # Sem registro no período: "—", nunca 0% (seria afirmar ausência total).
+            pct = f"{round((c['presente'] + c['atraso']) / total * 100, 1)}%" if total else "—"
+            rows.append([str(s), c["presente"], c["atraso"], c["falta"], pct])
         criteria = f"Turma: {class_group}. Presença = presentes + atrasos."
         title = f"Frequência — {class_group}"
     else:

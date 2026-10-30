@@ -19,58 +19,52 @@
   </div>
 </div>
 
-<div class="card mb-3">
-  <div class="card-body py-3">
-    <form method="get" class="row g-2 align-items-end">
-      {% if show_student %}
-      <div class="col-md-4">
-        <label class="form-label small text-uppercase text-body-secondary">Estudante</label>
-        <select name="student" class="form-select form-select-sm">
-          <option value="">— Todos do meu escopo —</option>
-          {% for s in filter_students %}
-            <option value="{{ s.pk }}"{% if params.student == s.pk|stringformat:"s" %} selected{% endif %}>{{ s }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      {% endif %}
-      {% if show_class %}
-      <div class="col-md-3">
-        <label class="form-label small text-uppercase text-body-secondary">Turma</label>
-        <select name="class" class="form-select form-select-sm">
-          <option value="">— Todas —</option>
-          {% for c in filter_classes %}
-            <option value="{{ c.pk }}"{% if params.class == c.pk|stringformat:"s" %} selected{% endif %}>{{ c.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      {% endif %}
-      {% if show_subject %}
-      <div class="col-md-3">
-        <label class="form-label small text-uppercase text-body-secondary">Disciplina</label>
-        <select name="subject" class="form-select form-select-sm">
-          <option value="">— Todas —</option>
-          {% for sub in filter_subjects %}
-            <option value="{{ sub.pk }}"{% if params.subject == sub.pk|stringformat:"s" %} selected{% endif %}>{{ sub.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      {% endif %}
-      {% if show_dates %}
-      <div class="col-md-2">
-        <label class="form-label small text-uppercase text-body-secondary">De</label>
-        <input type="date" name="start" value="{{ params.start }}" class="form-control form-control-sm">
-      </div>
-      <div class="col-md-2">
-        <label class="form-label small text-uppercase text-body-secondary">Até</label>
-        <input type="date" name="end" value="{{ params.end }}" class="form-control form-control-sm">
-      </div>
-      {% endif %}
-      <div class="col-auto">
-        <button class="btn btn-primary" type="submit">Gerar</button>
-      </div>
-    </form>
+<form method="get" class="filter-bar" aria-label="Filtros do relatório">
+  {% if show_student %}
+  <div class="filter-field filter-search">
+    <label for="r-student">Estudante{% if report.needs_student and not report.needs_class %} <span class="required-mark" aria-hidden="true">*</span>{% endif %}</label>
+    <select id="r-student" name="student" class="form-select form-select-sm">
+      <option value="">{% if report.needs_student and not report.needs_class %}Escolha um estudante…{% elif report.needs_class %}Toda a turma{% else %}Todos que você acompanha{% endif %}</option>
+      {% for s in filter_students %}
+        <option value="{{ s.pk }}"{% if params.student == s.pk|stringformat:"s" %} selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
   </div>
-</div>
+  {% endif %}
+  {% if show_class %}
+  <div class="filter-field">
+    <label for="r-class">Turma</label>
+    <select id="r-class" name="class" class="form-select form-select-sm">
+      <option value="">{% if report.needs_class and report.needs_student %}Escolha a turma…{% else %}Todas{% endif %}</option>
+      {% for c in filter_classes %}
+        <option value="{{ c.pk }}"{% if params.class == c.pk|stringformat:"s" %} selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+  {% if show_subject %}
+  <div class="filter-field">
+    <label for="r-subject">Disciplina</label>
+    <select id="r-subject" name="subject" class="form-select form-select-sm">
+      <option value="">Todas</option>
+      {% for sub in filter_subjects %}
+        <option value="{{ sub.pk }}"{% if params.subject == sub.pk|stringformat:"s" %} selected{% endif %}>{{ sub.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+  {% if show_dates %}
+  <div class="filter-field">
+    <label for="r-start">De</label>
+    <input type="date" id="r-start" name="start" value="{{ params.start }}" class="form-control form-control-sm">
+  </div>
+  <div class="filter-field">
+    <label for="r-end">Até</label>
+    <input type="date" id="r-end" name="end" value="{{ params.end }}" class="form-control form-control-sm">
+  </div>
+  {% endif %}
+  <button class="btn btn-primary btn-sm" type="submit">Gerar relatório</button>
+</form>
 
 {% if error %}
   <div class="alert alert-info">{{ error }}</div>

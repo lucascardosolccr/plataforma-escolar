@@ -459,3 +459,31 @@ class ChartTests(TestCase):
     def test_gauge_marks_danger(self):
         html = charts.gauge(70, limit=25)
         self.assertIn("danger", html)
+
+
+class AttendanceReportByClassTests(AnalyticsBase):
+    """Relatório de frequência por turma (sem escolher estudante)."""
+
+    def test_class_only_generates_the_report(self):
+        self.make_attendance(self.ana, present=3, absent=1)
+        self.login("sec")
+        resp = self.client.get(reverse("analytics:report_detail", args=["frequencia"]) + f"?class={self.turma.pk}")
+        self.assertIsNone(resp.context["error"])
+        rows = resp.context["result"].rows
+        self.assertIn(["Ana", 3, 0, 1, "75.0%"], [[str(c) if i == 0 else c for i, c in enumerate(r)] for r in rows])
+
+    def test_student_without_records_shows_dash_not_zero(self):
+        caio = Student.objects.create(school=self.school, first_name="Caio")
+        Enrollment.objects.create(school=self.school, student=caio, class_group=self.turma, school_year=self.year)
+        self.make_attendance(self.ana, present=2, absent=0)
+        self.login("sec")
+        resp = self.client.get(reverse("analytics:report_detail", args=["frequencia"]) + f"?class={self.turma.pk}")
+        caio_row = [r for r in resp.context["result"].rows if str(r[0]).startswith("Caio")][0]
+        self.assertEqual(caio_row[-1], "—")
+
+    def test_csv_by_class(self):
+        self.make_attendance(self.ana, present=1, absent=1)
+        self.login("sec")
+        resp = self.client.get(reverse("analytics:report_csv", args=["frequencia"]) + f"?class={self.turma.pk}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("50.0%", resp.content.decode("utf-8-sig"))

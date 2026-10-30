@@ -7,6 +7,8 @@ Variáveis do ambiente (arquivo .env na raiz do projeto):
   DJANGO_ALLOWED_HOSTS  hosts permitidos separados por vírgula (vazio = localhost)
   DJANGO_LANG         pt-br
   DJANGO_TZ           America/Sao_Paulo
+  DJANGO_SESSION_HOURS  horas sem uso até sair da conta (padrão 8)
+  DJANGO_SESSION_KEEP   "1" mantém o login depois de fechar o navegador
 """
 
 import os
@@ -151,6 +153,13 @@ AUTH_USER_MODEL = "core.User"
 LOGIN_URL = "login"
 
 SESSION_COOKIE_HTTPONLY = True
+# Sessão curta: a plataforma roda em computadores compartilhados da escola e
+# guarda dados de crianças. O padrão do Django mantinha o login por 2 semanas,
+# mesmo com o navegador fechado. Agora: sai ao fechar o navegador e depois de
+# 8 horas sem uso (o prazo recomeça a cada página aberta).
+SESSION_COOKIE_AGE = int(os.environ.get("DJANGO_SESSION_HOURS", "8")) * 3600
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = os.environ.get("DJANGO_SESSION_KEEP", "0") != "1"
 CSRF_COOKIE_HTTPONLY = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"

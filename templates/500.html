@@ -1,0 +1,19 @@
+{% load static %}<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Erro interno — Plataforma Escolar</title>
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/ds-tokens.css' %}">
+  <link rel="stylesheet" href="{% static 'css/ds-components.css' %}">
+</head>
+<body>
+  <main class="error-page" id="main-content">
+    <h1>Algo deu errado do nosso lado</h1>
+    <p>A plataforma encontrou um erro e não concluiu esta ação. O que estava salvo antes continua salvo.</p>
+    <p class="text-body-secondary">Tente de novo em instantes. Se o erro continuar, avise a secretaria, dizendo o que você estava fazendo.</p>
+    <div class="error-actions"><a href="/" class="btn btn-primary">Ir para o início</a></div>
+  </main>
+</body>
+</html>

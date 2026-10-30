@@ -124,12 +124,13 @@ class AuditLog(models.Model):
         return f"{self.created_at:%Y-%m-%d %H:%M} {self.action} {self.target_type}"
 
 
-def create_audit_log(*, user, action, request=None, target=None, detail="", school=None, target_id=None):
+def create_audit_log(*, user, action, request=None, target=None, detail="", school=None, target_id=None,
+                     target_type=None):
     return AuditLog.objects.create(
         user=user,
         school=school or getattr(user, "school", None),
         action=action,
-        target_type=target.__class__.__name__ if target else "",
+        target_type=target_type if target_type is not None else (target.__class__.__name__ if target else ""),
         target_id=target_id if target_id is not None else (getattr(target, "pk", "") if target else ""),
         detail=detail,
         ip_address=getattr(request, "META", {}).get("REMOTE_ADDR"),

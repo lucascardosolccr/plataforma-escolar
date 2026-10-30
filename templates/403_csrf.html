@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Formulário expirado — Plataforma Escolar{% endblock %}
+{% block content %}
+<div class="error-page">
+  <span class="error-icon" aria-hidden="true">{% icon "clock" "ds-icon-lg" %}</span>
+  <h1>O formulário expirou</h1>
+  <p>A página ficou aberta por muito tempo ou a sessão terminou, e o envio não foi aceito por segurança. Nada foi gravado.</p>
+  <p class="text-body-secondary">Volte, recarregue a página e envie de novo. Se você saiu da conta, entre outra vez.</p>
+  <div class="error-actions">
+    <a href="{% url 'home' %}" class="btn btn-primary">{% icon "house" %}Ir para o início</a>
+    <a href="{% url 'login' %}" class="btn btn-outline-secondary">{% icon "key-round" %}Entrar</a>
+  </div>
+</div>
+{% endblock %}

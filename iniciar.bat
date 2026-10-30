@@ -12,6 +12,20 @@ if not exist ".venv\Scripts\python.exe" (
   exit /b 1
 )
 
+rem Copia de seguranca a cada inicio, ANTES de atualizar o banco: se uma
+rem atualizacao der errado, a copia de agora esta em backups\ (guarda as 10
+rem mais recentes). A falha no backup nao impede o uso, mas avisa.
+if exist "db.sqlite3" (
+  echo Fazendo copia de seguranca do banco de dados...
+  ".venv\Scripts\python.exe" manage.py backupdb
+  if errorlevel 1 (
+    echo.
+    echo  ATENCAO: a copia de seguranca falhou. Veja a mensagem acima.
+    echo  A plataforma vai abrir mesmo assim; avise o responsavel tecnico.
+    echo.
+  )
+)
+
 echo Aplicando atualizacoes do banco de dados...
 ".venv\Scripts\python.exe" manage.py migrate --noinput
 if errorlevel 1 (

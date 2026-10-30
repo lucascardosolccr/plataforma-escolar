@@ -898,3 +898,9 @@ th[aria-sort] .th-sort .ds-icon { opacity: 1; color: var(--ds-primary); }
 .seg-input:checked + .seg-atraso { background: var(--ds-warning-bg); color: var(--ds-warning); }
 .seg-input:checked + .seg-falta { background: var(--ds-danger); color: #fff; }
 @media (max-width: 575.98px) { .seg { width: 100%; } .seg-btn { flex: 1; justify-content: center; } }
+
+/* ---------- Páginas de erro (403, 404, 500, formulário expirado) ---------- */
+.error-page { max-width: 36rem; margin: 3rem auto; padding: 0 1rem; text-align: center; }
+.error-page h1 { font-family: var(--ds-font-display); font-size: var(--ds-fs-2xl); font-weight: 600; margin: 1rem 0 .5rem; }
+.error-icon { display: inline-grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: 50%; background: var(--ds-primary-soft); color: var(--ds-primary); }
+.error-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: .5rem; margin-top: 1.5rem; }

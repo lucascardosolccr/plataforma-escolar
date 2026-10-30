@@ -458,12 +458,15 @@ def report_detail(request, slug):
         params["student"] = _default_student(request.user)
 
     missing = []
-    if report.needs_student and params["student"] is None:
-        missing.append("estudante")
-    if report.slug == "frequencia" and not params["student"] and not params["class_group"]:
-        missing.append("estudante ou turma")
+    if report.slug == "frequencia":
+        # Aceita estudante OU turma. Antes a regra geral de "precisa de
+        # estudante" vinha primeiro e o relatório por turma nunca era gerado.
+        if not params["student"] and not params["class_group"]:
+            missing.append("um estudante ou uma turma")
+    elif report.needs_student and params["student"] is None:
+        missing.append("um estudante")
     if report.needs_class and report.slug == "turma_indicadores" and not params["class_group"]:
-        missing.append("turma")
+        missing.append("uma turma")
 
     result = None
     error = None
@@ -473,7 +476,7 @@ def report_detail(request, slug):
         except PermissionDenied as exc:
             error = str(exc)
     else:
-        error = "Selecione " + " e ".join(missing) + " para gerar o relatório."
+        error = "Escolha " + " e ".join(missing) + " para gerar o relatório."
 
     is_print = request.GET.get("print") == "1"
     show_class = report.needs_class or report.slug in (
@@ -515,10 +518,14 @@ def report_csv(request, slug):
     _enforce_scope(request.user, report, params)
     if report.needs_student and params["student"] is None:
         params["student"] = _default_student(request.user)
-    if report.needs_student and params["student"] is None:
-        raise PermissionDenied("Selecione o estudante.")
+    # Mesma regra da tela: frequência aceita estudante OU turma.
+    if report.slug == "frequencia":
+        if not params["student"] and not params["class_group"]:
+            raise PermissionDenied("Escolha um estudante ou uma turma.")
+    elif report.needs_student and params["student"] is None:
+        raise PermissionDenied("Escolha um estudante.")
     if report.needs_class and params["class_group"] is None and not params["student"]:
-        raise PermissionDenied("Selecione a turma.")
+        raise PermissionDenied("Escolha uma turma.")
 
     result = report.run(request.user, params)
 

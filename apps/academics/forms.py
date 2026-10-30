@@ -82,8 +82,12 @@ class ClassGroupForm(forms.ModelForm):
 class SubjectForm(forms.ModelForm):
     class Meta:
         model = Subject
-        fields = ["name", "code", "grade_level", "workload_hours", "is_active"]
+        fields = ["name", "code", "grade_level", "workload_hours", "is_active", "valid_from", "valid_until"]
         labels = {"name": "Nome da disciplina", "code": "Código"}
+        widgets = {
+            "valid_from": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+            "valid_until": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+        }
 
     def __init__(self, *args, school=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -93,6 +97,9 @@ class SubjectForm(forms.ModelForm):
         cleaned = super().clean()
         if self.errors:
             return cleaned
+        start, end = cleaned.get("valid_from"), cleaned.get("valid_until")
+        if start and end and end < start:
+            self.add_error("valid_until", "O fim da vigência não pode ser antes do início.")
         dup = Subject.objects.filter(school=self.school, name=cleaned.get("name")).exclude(
             pk=self.instance.pk
         )
@@ -122,7 +129,7 @@ class TeacherAssignmentForm(forms.ModelForm):
                 role=Role.PROFESSOR.value, school=school
             ).order_by("first_name")
             self.fields["class_group"].queryset = ClassGroup.objects.filter(school=school)
-            self.fields["subject"].queryset = Subject.objects.filter(school=school, is_active=True)
+            self.fields["subject"].queryset = Subject.choices_for(school, keep=self.instance.subject_id)
             self.fields["school_year"].queryset = SchoolYear.objects.filter(school=school)
 
     def clean(self):

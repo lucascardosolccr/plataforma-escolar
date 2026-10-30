@@ -167,6 +167,8 @@ ITEMS = {
                         "Pedir e acompanhar impressões"),
     "prints_queue": Item("Fila de impressão", "printing:queue", "printer",
                          ("printing:queue", "printing:detail"), "Analisar, imprimir e entregar"),
+    "lesson_plans": Item("Planejamento", "pedagogy:lessonplan_list", "clipboard-check",
+                         ("pedagogy:lessonplan_",), "Planos de aula e devolutivas da coordenação"),
     "coord_panel": Item("Painel da coordenação", "coordination:panel", "layout-dashboard",
                         ("coordination:panel",), "Turmas, alertas e intervenções que você acompanha"),
     "coord_records": Item("Registros da coordenação", "coordination:records", "notebook-pen",
@@ -214,7 +216,8 @@ LAYOUT = {
     ],
     PROFESSOR: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
-        ("Sala de aula", ["classrooms", "attendance", "evaluations", "activities", "prints_mine", "works"]),
+        ("Sala de aula", ["classrooms", "lesson_plans", "attendance", "evaluations", "activities", "prints_mine",
+                          "works"]),
         ("Acompanhamento", ["occurrences", "observations", "justifications"]),
         COMMUNICATION_STAFF,
         ("Análises", ["teacher_bi", "subject_bi", "reports", "methodology"]),
@@ -231,7 +234,7 @@ LAYOUT = {
     ],
     COORDENACAO: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
-        ("Coordenação", ["coord_panel", "prints_queue", "coord_records"]),
+        ("Coordenação", ["coord_panel", "lesson_plans", "prints_queue", "coord_records"]),
         ("Pedagógico", ["students", "evaluations", "activities", "works", "attendance",
                         "occurrences", "observations", "plans", "justifications"]),
         ("Acadêmico", ["classes", "subjects", "years", "assignments"]),
@@ -240,7 +243,7 @@ LAYOUT = {
     ],
     DIRECAO: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
-        ("Coordenação", ["coord_panel", "prints_queue", "coord_designations"]),
+        ("Coordenação", ["coord_panel", "lesson_plans", "prints_queue", "coord_designations"]),
         ("Análises", ["institutional", "subject_bi", "quality", "reports", "methodology"]),
         ("Pedagógico", ["students", "evaluations", "activities", "works", "attendance",
                         "occurrences", "observations", "plans", "justifications"]),

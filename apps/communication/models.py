@@ -25,6 +25,7 @@ class Notification(models.Model):
         OBSERVATION = "observacao", "Observação pedagógica"
         GRADE = "nota", "Nota lançada ou alterada"
         PHOTO = "foto", "Fotografia pendente"
+        PLANNING = "planejamento", "Planejamento docente"
 
     school = models.ForeignKey(
         School, on_delete=models.CASCADE, related_name="notifications", verbose_name="escola"

@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 
 class SchoolYear(models.Model):
@@ -84,6 +85,11 @@ class Subject(models.Model):
     workload_hours = models.PositiveSmallIntegerField("carga horária anual (h)", null=True, blank=True)
     grade_level = models.CharField("ano/série", max_length=60, blank=True,
                                    help_text="Ex.: 1º ao 5º ano. Em branco: todas.")
+    # Vigência: fora dela a disciplina sai das listas de escolha (como a
+    # desativada), mas o histórico continua. Em branco: sem limite.
+    valid_from = models.DateField("vigente a partir de", null=True, blank=True)
+    valid_until = models.DateField("vigente até", null=True, blank=True,
+                                   help_text="Em branco: sem data para encerrar.")
 
     class Meta:
         verbose_name = "disciplina"
@@ -95,6 +101,34 @@ class Subject(models.Model):
 
     def __str__(self):
         return self.name
+
+    @staticmethod
+    def available_q(today=None):
+        """Filtro das disciplinas que podem ser escolhidas hoje: ativas e na vigência."""
+        today = today or timezone.localdate()
+        return (models.Q(is_active=True)
+                & (models.Q(valid_from__isnull=True) | models.Q(valid_from__lte=today))
+                & (models.Q(valid_until__isnull=True) | models.Q(valid_until__gte=today)))
+
+    @classmethod
+    def choices_for(cls, school, keep=None, today=None):
+        """Disciplinas da escola disponíveis para escolha, mais ``keep`` (a já
+        gravada no registro em edição, para ele continuar válido)."""
+        q = cls.available_q(today)
+        if keep:
+            q |= models.Q(pk=keep)
+        return cls.objects.filter(models.Q(school=school) & q)
+
+    def availability(self, today=None):
+        """Rótulo curto da situação, ou "" quando disponível."""
+        today = today or timezone.localdate()
+        if not self.is_active:
+            return "Inativa"
+        if self.valid_from and self.valid_from > today:
+            return f"A partir de {self.valid_from:%d/%m/%Y}"
+        if self.valid_until and self.valid_until < today:
+            return f"Vigência encerrada em {self.valid_until:%d/%m/%Y}"
+        return ""
 
 
 class TeacherAssignment(models.Model):

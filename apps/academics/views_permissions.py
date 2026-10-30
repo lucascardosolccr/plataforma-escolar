@@ -39,7 +39,7 @@ class PermissionForm(forms.ModelForm):
         self.fields["teacher"].queryset = User.objects.filter(
             school=school, role=Role.PROFESSOR.value, is_active=True).order_by("first_name")
         self.fields["class_group"].queryset = ClassGroup.objects.filter(school=school).order_by("name")
-        self.fields["subject"].queryset = Subject.objects.filter(school=school, is_active=True)
+        self.fields["subject"].queryset = Subject.choices_for(school, keep=self.instance.subject_id)
         self.fields["starts_on"].initial = timezone.localdate()
 
     def clean(self):

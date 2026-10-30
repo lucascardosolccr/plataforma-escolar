@@ -71,14 +71,14 @@ class EvaluationForm(forms.ModelForm):
         self.school = school
         if school:
             self.fields["class_group"].queryset = ClassGroup.objects.filter(school=school)
-            self.fields["subject"].queryset = Subject.objects.filter(school=school)
+            self.fields["subject"].queryset = Subject.choices_for(school, keep=self.instance.subject_id)
         if user and user.role == Role.PROFESSOR.value:
             self.fields["class_group"].queryset = ClassGroup.objects.filter(
                 pk__in=teacher_class_ids(user, edit=True)
             )
-            self.fields["subject"].queryset = Subject.objects.filter(
-                pk__in=teacher_subject_ids(user, edit=True)
-            )
+            self.fields["subject"].queryset = Subject.choices_for(
+                school or user.school, keep=self.instance.subject_id
+            ).filter(pk__in=teacher_subject_ids(user, edit=True))
         if class_group:
             self.fields["class_group"].initial = class_group
         if subject:
@@ -193,6 +193,7 @@ class ActivityForm(forms.ModelForm):
             "class_group",
             "subject",
             "title",
+            "work_mode",
             "content",
             "objective",
             "description",
@@ -210,6 +211,7 @@ class ActivityForm(forms.ModelForm):
             "deadline": forms.DateInput(format=r"%Y-%m-%d", attrs={"type": "date"}),
             "published_date": forms.DateInput(format=r"%Y-%m-%d", attrs={"type": "date"}),
             "class_date": forms.DateInput(format=r"%Y-%m-%d", attrs={"type": "date"}),
+            "work_mode": forms.RadioSelect,
         }
         labels = {
             "class_group": "Turma",
@@ -218,13 +220,19 @@ class ActivityForm(forms.ModelForm):
             "description": "Instruções para o estudante",
             "materials": "Materiais necessários",
             "criteria": "Critérios de avaliação",
-            "class_date": "Data da aula de referência",
+            "class_date": "Data de aplicação",
+            "work_mode": "Realização",
+            "content": "Conteúdo trabalhado",
+            "objective": "Objetivo pedagógico",
+            "internal_notes": "Observações internas",
             "deadline": "Data de entrega",
             "published_date": "Data de publicação",
         }
         help_texts = {
             "description": "Detalhe o que deve ser feito. É o texto que a família lê.",
             "published_date": "A família passa a ver a atividade a partir desta data.",
+            "class_date": "Dia em que a atividade será aplicada em aula. Vai para o calendário.",
+            "work_mode": "Para formar grupos com entrega por grupo, use Trabalhos em grupo.",
         }
 
     def __init__(self, *args, user=None, school=None, **kwargs):
@@ -240,17 +248,19 @@ class ActivityForm(forms.ModelForm):
             self.fields["class_group"].queryset = ClassGroup.objects.filter(
                 school=school
             ).select_related("school_year")
-            self.fields["subject"].queryset = school.subjects.all()
+            self.fields["subject"].queryset = Subject.choices_for(school, keep=self.instance.subject_id)
         if user and user.role == Role.PROFESSOR.value:
             self.fields["class_group"].queryset = ClassGroup.objects.filter(
                 pk__in=teacher_class_ids(user, edit=True)
             ).select_related("school_year")
-            self.fields["subject"].queryset = school.subjects.filter(
-                pk__in=teacher_subject_ids(user, edit=True)
-            )
+            self.fields["subject"].queryset = Subject.choices_for(
+                school, keep=self.instance.subject_id
+            ).filter(pk__in=teacher_subject_ids(user, edit=True))
         # Data de aplicação obrigatória nas atividades novas (Prompt 14): é ela
         # que entra no calendário e orienta a fila de impressão.
         self.fields["class_date"].required = not self.instance.pk
+        # Sem escolha (ou cliente antigo que não envia o campo): individual.
+        self.fields["work_mode"].required = False
         self.fields["internal_notes"].help_text = "Só a equipe vê (coordenação, impressão). A família nunca vê."
         self.fields["internal_notes"].widget = forms.Textarea(attrs={"rows": 2})
         if self.instance.pk and self.instance.status != Activity.Status.DRAFT:
@@ -293,6 +303,9 @@ class ActivityForm(forms.ModelForm):
 
     def clean_published_date(self):
         return self.cleaned_data.get("published_date") or timezone.localdate()
+
+    def clean_work_mode(self):
+        return self.cleaned_data.get("work_mode") or Activity.WorkMode.INDIVIDUAL
 
 
 class GroupWorkForm(forms.ModelForm):
@@ -367,14 +380,14 @@ class GroupWorkForm(forms.ModelForm):
             self.fields["class_group"].queryset = ClassGroup.objects.filter(
                 school=school
             ).select_related("school_year")
-            self.fields["subject"].queryset = school.subjects.all()
+            self.fields["subject"].queryset = Subject.choices_for(school, keep=self.instance.subject_id)
         if user and user.role == Role.PROFESSOR.value:
             self.fields["class_group"].queryset = ClassGroup.objects.filter(
                 pk__in=teacher_class_ids(user, edit=True)
             ).select_related("school_year")
-            self.fields["subject"].queryset = school.subjects.filter(
-                pk__in=teacher_subject_ids(user, edit=True)
-            )
+            self.fields["subject"].queryset = Subject.choices_for(
+                school, keep=self.instance.subject_id
+            ).filter(pk__in=teacher_subject_ids(user, edit=True))
         if self.instance.pk:
             # Trocar a turma depois de formar os grupos deixaria integrantes de
             # outra turma no trabalho. A turma fica travada após a criação.
@@ -617,7 +630,7 @@ class PedagogicalObservationForm(forms.ModelForm):
             self.fields["student"].queryset = (
                 school.students.all() if self.instance.pk else _students_for(user, school)
             )
-            self.fields["subject"].queryset = school.subjects.all()
+            self.fields["subject"].queryset = Subject.choices_for(school, keep=self.instance.subject_id)
             self.fields["subject"].required = False
         if student:
             self.fields["student"].initial = student

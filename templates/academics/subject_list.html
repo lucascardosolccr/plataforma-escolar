@@ -26,7 +26,7 @@
       <tbody>
         {% for s in subjects %}
         <tr>
-          <td class="fw-semibold">{% if user_is_staff and user_role != ROLE_PROFESSOR %}<a href="{% url 'analytics:subject_dashboard' s.pk %}" title="Painel da disciplina">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td>
+          <td class="fw-semibold">{% if user_is_staff and user_role != ROLE_PROFESSOR %}<a href="{% url 'analytics:subject_dashboard' s.pk %}" title="Painel da disciplina">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}{% with off=s.availability %}{% if off %} <span class="chip">{{ off }}</span>{% endif %}{% endwith %}</td>
           <td>{{ s.code|default:"—" }}</td>
           {% if can_manage %}
           <td class="text-end cell-actions"><a class="btn btn-sm btn-outline-secondary" href="{% url 'subject_edit' s.pk %}">Editar</a></td>

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import views, views_planning
 
 app_name = "pedagogy"
 
@@ -25,6 +25,14 @@ urlpatterns = [
         views.activity_submissions,
         name="activity_submissions",
     ),
+    path("planejamento/", views_planning.lessonplan_list, name="lessonplan_list"),
+    path("planejamento/novo/", views_planning.lessonplan_create, name="lessonplan_create"),
+    path("planejamento/<int:pk>/", views_planning.lessonplan_detail, name="lessonplan_detail"),
+    path("planejamento/<int:pk>/editar/", views_planning.lessonplan_edit, name="lessonplan_edit"),
+    path("planejamento/<int:pk>/enviar/", views_planning.lessonplan_submit, name="lessonplan_submit"),
+    path("planejamento/<int:pk>/devolutiva/", views_planning.lessonplan_review, name="lessonplan_review"),
+    path("planejamento/<int:pk>/copiar/", views_planning.lessonplan_duplicate, name="lessonplan_duplicate"),
+    path("planejamento/<int:pk>/excluir/", views_planning.lessonplan_delete, name="lessonplan_delete"),
     path("trabalhos/", views.group_work_list, name="group_work_list"),
     path("trabalhos/novo/", views.group_work_create, name="group_work_create"),
     path("trabalhos/<int:pk>/", views.group_work_detail, name="group_work_detail"),

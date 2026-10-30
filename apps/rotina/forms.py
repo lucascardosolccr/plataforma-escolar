@@ -46,7 +46,8 @@ class ScheduleSlotForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.class_group = class_group
         assigned = TeacherAssignment.objects.filter(class_group=class_group)
-        self.fields["subject"].queryset = Subject.objects.filter(school=class_group.school).order_by("name")
+        self.fields["subject"].queryset = Subject.choices_for(
+            class_group.school, keep=self.instance.subject_id).order_by("name")
         self.fields["teacher"].queryset = User.objects.filter(
             school=class_group.school, role=Role.PROFESSOR.value, is_active=True
         ).order_by("first_name")

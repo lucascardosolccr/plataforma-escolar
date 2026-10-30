@@ -147,6 +147,19 @@ GUIDES = [
         ("Ingredientes e alergênicos só aparecem com o nome de quem validou.", None),
         ("Horários: escolha a turma e inclua as aulas; conflitos são avisados.", "rotina:schedule_index"),
     ]),
+    ("Planejar as aulas", "clipboard-check", (PROFESSOR,), [
+        ("Em Planejamento, crie o plano da semana (ou do período) por turma e disciplina.", "pedagogy:lessonplan_list"),
+        ("Fica como rascunho até você enviar para a coordenação.", None),
+        ("Se voltar para ajustes, a orientação aparece no plano: corrija e envie de novo.", None),
+        ("“Copiar para o próximo período” poupa digitação quando o plano continua.", None),
+    ]),
+    ("Acompanhar o planejamento docente", "clipboard-check", (COORDENACAO, DIRECAO), [
+        ("Em Planejamento, os planos enviados das turmas que você acompanha esperam devolutiva.",
+         "pedagogy:lessonplan_list"),
+        ("Valide ou devolva para ajustes; devolver pede uma orientação, que o professor recebe.", None),
+        ("O painel da coordenação mostra quais turmas e disciplinas estão sem plano nesta semana.",
+         "coordination:panel"),
+    ]),
     ("Pedir a impressão de uma atividade", "printer", (PROFESSOR,), [
         ("Em Atividades e impressões, escolha a atividade e “Pedir impressão”.", "printing:mine"),
         ("Confira a data de aplicação, a data desejada e as cópias (sugeridas pela turma).", None),

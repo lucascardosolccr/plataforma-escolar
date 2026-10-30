@@ -20,6 +20,8 @@
   <div class="kpi"><span class="kpi-label">{% icon "user-cog" %}Professores</span><span class="kpi-value">{{ teachers_count }}</span></div>
   <div class="kpi"><span class="kpi-label">{% icon "users" %}Estudantes</span><span class="kpi-value">{{ students_count }}</span></div>
   <div class="kpi{% if alerts %} is-attention{% endif %}"><span class="kpi-label">{% icon "triangle-alert" %}Alertas de acompanhamento</span><span class="kpi-value">{{ alerts|length }}</span><span class="kpi-hint">Pelos critérios dos painéis (até 3 por turma)</span></div>
+  <div class="kpi{% if plans_waiting %} is-attention{% endif %}"><span class="kpi-label">{% icon "clipboard-check" %}Planejamentos a analisar</span><span class="kpi-value">{{ plans_waiting }}</span><a class="stretched-link kpi-hint" href="{% url 'pedagogy:lessonplan_list' %}">Abrir o planejamento</a></div>
+  <div class="kpi"><span class="kpi-label">{% icon "calendar-check" %}Planejamento desta semana</span><span class="kpi-value">{{ coverage.covered }} de {{ coverage.total }}</span><span class="kpi-hint">Turma e disciplina com plano enviado</span></div>
   <div class="kpi{% if prints %} is-attention{% endif %}"><span class="kpi-label">{% icon "printer" %}Impressões a analisar</span><span class="kpi-value">{{ prints|length }}</span>{% if prints %}<a class="stretched-link kpi-hint" href="{% url 'printing:queue' %}">Abrir a fila</a>{% endif %}</div>
 </div>
 
@@ -76,6 +78,13 @@
       <div class="card-body"><h2 class="h6">Novo registro (orientação, reunião…)</h2>{% include "partials/_form_fields.html" with f=form %}</div>
       <div class="form-actions"><button type="submit" class="btn btn-primary">Salvar registro</button></div>
     </form>
+    {% if coverage.missing %}
+    <section class="card mb-3"><div class="card-body">
+      <h2 class="h6">Sem planejamento nesta semana <span class="small text-body-secondary fw-normal">({{ coverage.monday|date:"d/m" }} a {{ coverage.friday|date:"d/m" }})</span></h2>
+      {% for cg, subj, t in coverage.missing|slice:":8" %}<p class="small mb-1">{{ cg.name }} · {{ subj.name }} <span class="text-body-secondary">({{ t.get_full_name|default:t.username }})</span></p>{% endfor %}
+      {% if coverage.missing|length > 8 %}<p class="small text-body-secondary mb-0">E mais {{ coverage.missing|length|add:"-8" }}.</p>{% endif %}
+    </div></section>
+    {% endif %}
     <section class="card mb-3"><div class="card-body">
       <h2 class="h6">Próximos compromissos</h2>
       {% for e in upcoming %}<p class="small mb-1"><strong>{{ e.start|date:"d/m" }}</strong> · {{ e.title }} <span class="text-body-secondary">({{ e.get_kind_display }})</span></p>{% empty %}<p class="small text-body-secondary mb-0">Nada no calendário oficial nos próximos 30 dias.</p>{% endfor %}

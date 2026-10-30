@@ -179,12 +179,20 @@ class Activity(FamilyVisibility, models.Model):
         PUBLISHED = "publicada", "Publicada"
         CANCELED = "cancelada", "Cancelada"
 
+    class WorkMode(models.TextChoices):
+        INDIVIDUAL = "individual", "Individual"
+        GROUP = "grupo", "Em grupo"
+
     school = models.ForeignKey(School, on_delete=models.CASCADE, verbose_name="escola")
     class_group = models.ForeignKey(
         ClassGroup, on_delete=models.CASCADE, verbose_name="turma"
     )
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, verbose_name="disciplina")
     title = models.CharField("título", max_length=200)
+    # Só informa como a atividade é feita. A composição de grupos com entrega
+    # por grupo continua no módulo "Trabalhos em grupo".
+    work_mode = models.CharField("realização", max_length=10, choices=WorkMode.choices,
+                                 default=WorkMode.INDIVIDUAL)
     description = models.TextField("instruções", blank=True)
     content = models.CharField("conteúdo trabalhado", max_length=200, blank=True)
     objective = models.CharField("objetivo pedagógico", max_length=300, blank=True)
@@ -836,3 +844,69 @@ class SchoolConfig(models.Model):
 
     def __str__(self):
         return f"Config de {self.school} — faltas <= {self.max_absences_percent}%"
+
+
+class LessonPlan(models.Model):
+    """Planejamento docente: o que o professor vai trabalhar com a turma num período.
+
+    Documento interno da equipe: a família e o estudante nunca veem. O
+    professor escreve e envia; a coordenação que acompanha a turma (e a
+    direção) devolve com orientação ou valida. Cada devolutiva fica em
+    ``LessonPlanReview``, então o histórico de idas e vindas não se perde.
+    """
+
+    class Status(models.TextChoices):
+        DRAFT = "rascunho", "Rascunho"
+        SUBMITTED = "enviado", "Enviado para a coordenação"
+        ADJUST = "ajustes", "Devolvido para ajustes"
+        APPROVED = "validado", "Validado"
+
+    #: Situações em que o professor ainda pode editar.
+    EDITABLE = (Status.DRAFT, Status.ADJUST)
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, verbose_name="escola")
+    teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name="lesson_plans",
+                                verbose_name="professor")
+    class_group = models.ForeignKey(ClassGroup, on_delete=models.CASCADE, verbose_name="turma")
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, verbose_name="disciplina")
+    starts_on = models.DateField("início do período")
+    ends_on = models.DateField("fim do período")
+    title = models.CharField("tema ou unidade", max_length=200)
+    content = models.TextField("conteúdos")
+    objectives = models.TextField("objetivos de aprendizagem")
+    methodology = models.TextField("estratégias e metodologia", blank=True)
+    resources = models.TextField("recursos e materiais", blank=True)
+    assessment = models.TextField("avaliação prevista", blank=True)
+    status = models.CharField("situação", max_length=10, choices=Status.choices, default=Status.DRAFT)
+    submitted_at = models.DateTimeField("enviado em", null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-starts_on", "-created_at"]
+        indexes = [models.Index(fields=["school", "status"]), models.Index(fields=["class_group", "starts_on"])]
+        verbose_name = "planejamento"
+        verbose_name_plural = "planejamentos"
+
+    def __str__(self):
+        return f"{self.title} — {self.class_group} / {self.subject}"
+
+    @property
+    def is_editable(self):
+        return self.status in self.EDITABLE
+
+
+class LessonPlanReview(models.Model):
+    """Devolutiva da coordenação (ou da direção) sobre um planejamento."""
+
+    plan = models.ForeignKey(LessonPlan, on_delete=models.CASCADE, related_name="reviews",
+                             verbose_name="planejamento")
+    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="+")
+    decision = models.CharField("decisão", max_length=10, choices=LessonPlan.Status.choices)
+    comment = models.TextField("orientação", blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        verbose_name = "devolutiva de planejamento"
+        verbose_name_plural = "devolutivas de planejamento"

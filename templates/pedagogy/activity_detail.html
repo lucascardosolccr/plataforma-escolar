@@ -62,12 +62,11 @@
   <div class="col-lg-8">
     <div class="card h-100">
       <div class="card-body">
-        {% if activity.content or activity.objective %}
         <dl class="review-list mb-3">
+          <dt>Realização</dt><dd>{{ activity.get_work_mode_display }}</dd>
           {% if activity.content %}<dt>Conteúdo</dt><dd>{{ activity.content }}</dd>{% endif %}
           {% if activity.objective %}<dt>Objetivo</dt><dd>{{ activity.objective }}</dd>{% endif %}
         </dl>
-        {% endif %}
         <h2 class="h6 text-body-secondary mb-2">Instruções</h2>
         {% if activity.description %}
           <div class="activity-instructions mb-0">{{ activity.description }}</div>

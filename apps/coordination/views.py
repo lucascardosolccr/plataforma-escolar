@@ -41,7 +41,9 @@ class DesignationForm(forms.ModelForm):
         self.fields["coordinator"].queryset = User.objects.filter(
             school=school, role=Role.COORDENACAO.value, is_active=True).order_by("first_name")
         self.fields["class_groups"].queryset = ClassGroup.objects.filter(school=school).order_by("name")
-        self.fields["subjects"].queryset = Subject.objects.filter(school=school, is_active=True)
+        current = list(self.instance.subjects.values_list("pk", flat=True)) if self.instance.pk else []
+        self.fields["subjects"].queryset = (Subject.choices_for(school)
+                                            | Subject.objects.filter(school=school, pk__in=current)).distinct()
         self.fields["teachers"].queryset = User.objects.filter(
             school=school, role=Role.PROFESSOR.value, is_active=True).order_by("first_name")
         self.fields["starts_on"].initial = timezone.localdate()
@@ -178,6 +180,8 @@ def panel(request):
     today = timezone.localdate()
     upcoming = [e for e in events_for_user(user, today, today + timedelta(days=30))
                 if e.kind in ("reuniao", "conselho", "planejamento", "evento")][:5]
+    from apps.pedagogy.views_planning import _visible_qs, week_coverage
+
     from .print_hooks import pending_print_requests
 
     form = RecordForm(user=user)
@@ -190,6 +194,8 @@ def panel(request):
         "follow_ups": records.filter(follow_up_on__isnull=False, follow_up_on__gte=today).order_by("follow_up_on")[:5],
         "upcoming": upcoming, "period": period, "presets": bi.PRESETS, "form": form,
         "prints": pending_print_requests(user)[:6],
+        "plans_waiting": _visible_qs(user).filter(status="enviado").count(),
+        "coverage": week_coverage(user),
     })
 
 

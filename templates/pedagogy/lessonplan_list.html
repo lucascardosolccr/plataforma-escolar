@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Planejamento — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Planejamento</h1>
+    <p>{% if is_teacher %}Seus planos de aula por turma e disciplina. Envie para a coordenação acompanhar e dar devolutiva.{% else %}Planos de aula enviados pelos professores das turmas que você acompanha.{% endif %} A família e os estudantes não veem.</p>
+  </div>
+  {% if is_teacher %}<a class="btn btn-primary" href="{% url 'pedagogy:lessonplan_create' %}">{% icon "plus" %}Novo planejamento</a>{% endif %}
+</div>
+
+<nav aria-label="Situação" class="d-flex flex-wrap gap-2 mb-3">
+  <a href="?situacao=" class="summary-pill{% if not status %} active{% endif %}"{% if not status %} aria-current="true"{% endif %}>Todos</a>
+  {% for value, label, n in tabs %}
+  <a href="?situacao={{ value }}" class="summary-pill{% if status == value %} active{% endif %}"{% if status == value %} aria-current="true"{% endif %}>{{ label }} <span class="summary-count">{{ n }}</span></a>
+  {% endfor %}
+</nav>
+
+<form method="get" class="filter-bar" aria-label="Filtrar planejamentos">
+  <input type="hidden" name="situacao" value="{{ status }}">
+  <div class="filter-field">
+    <label for="f-turma">Turma</label>
+    <select id="f-turma" name="turma" class="form-select" data-autosubmit>
+      <option value="">Todas</option>
+      {% for c in classes %}<option value="{{ c.pk }}"{% if class_id == c.pk|stringformat:"s" %} selected{% endif %}>{{ c.name }}</option>{% endfor %}
+    </select>
+  </div>
+  {% if teachers %}
+  <div class="filter-field">
+    <label for="f-prof">Professor</label>
+    <select id="f-prof" name="professor" class="form-select" data-autosubmit>
+      <option value="">Todos</option>
+      {% for t in teachers %}<option value="{{ t.pk }}"{% if teacher_id == t.pk|stringformat:"s" %} selected{% endif %}>{{ t.get_full_name|default:t.username }}</option>{% endfor %}
+    </select>
+  </div>
+  {% endif %}
+  {% if class_id or teacher_id %}{% include "partials/_filter_end.html" with filtered=True clear_url="?situacao="|add:status count=page.paginator.count noun="planejamento(s)" %}{% else %}{% include "partials/_filter_end.html" with count=page.paginator.count noun="planejamento(s)" %}{% endif %}
+</form>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 table-stack">
+      <thead><tr><th>Tema</th>{% if not is_teacher %}<th>Professor</th>{% endif %}<th>Período</th><th>Situação</th><th><span class="visually-hidden">Ações</span></th></tr></thead>
+      <tbody>
+        {% for p in plans %}
+        <tr>
+          <td class="fw-semibold">{{ p.title }}<span class="d-block small text-body-secondary fw-normal">{{ p.class_group.name }} · {{ p.subject.name }}</span></td>
+          {% if not is_teacher %}<td data-label="Professor">{{ p.teacher.get_full_name|default:p.teacher.username }}</td>{% endif %}
+          <td data-label="Período" class="text-nowrap">{{ p.starts_on|date:"d/m" }} a {{ p.ends_on|date:"d/m/Y" }}</td>
+          <td data-label="Situação"><span class="chip chip-state state-{{ p.status }}">{{ p.get_status_display }}</span></td>
+          <td class="text-end cell-actions"><a class="btn btn-sm btn-outline-secondary" href="{% url 'pedagogy:lessonplan_detail' p.pk %}">{% if not is_teacher and p.status == "enviado" %}Analisar{% else %}Abrir{% endif %}</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5"><div class="empty-state py-4">{% icon "notebook-pen" %}<strong>{% if is_teacher %}Nenhum planejamento aqui{% else %}Nada esperando por você{% endif %}</strong>{% if is_teacher %}<span>Comece pelo botão “Novo planejamento”.</span>{% endif %}</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/_pager.html" %}
+{% endblock %}

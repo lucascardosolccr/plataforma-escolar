@@ -35,14 +35,18 @@
             <legend><span class="step" aria-hidden="true">2</span>O que fazer</legend>
             <div class="row g-3">
               {% include "partials/_field.html" with field=form.title col="col-12" %}
+              {% include "partials/_field.html" with field=form.work_mode col="col-12" %}
+              {% include "partials/_field.html" with field=form.content col="col-md-6" %}
+              {% include "partials/_field.html" with field=form.objective col="col-md-6" %}
               {% include "partials/_field.html" with field=form.description %}
               {% include "partials/_field.html" with field=form.materials %}
               {% include "partials/_field.html" with field=form.criteria %}
+              {% include "partials/_field.html" with field=form.internal_notes %}
             </div>
           </fieldset>
 
           <fieldset class="form-section">
-            <legend><span class="step" aria-hidden="true">3</span>Quando<small>Só o título e a turma são obrigatórios</small></legend>
+            <legend><span class="step" aria-hidden="true">3</span>Quando<small>A data de aplicação é obrigatória</small></legend>
             <div class="row g-3">
               {% include "partials/_field.html" with field=form.published_date col="col-md-4" %}
               {% include "partials/_field.html" with field=form.deadline col="col-md-4" %}

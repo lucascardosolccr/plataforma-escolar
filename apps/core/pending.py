@@ -81,6 +81,11 @@ def _teacher(user):
     out.append(_item("Entregas recebidas aguardando correção", to_grade, reverse("pedagogy:activity_list")))
     corr = PrintRequest.objects.filter(requested_by=user, status=PrintRequest.Status.CORRECTION).count()
     out.append(_item("Pedidos de impressão com correção solicitada", corr, reverse("printing:mine")))
+    from apps.pedagogy.models import LessonPlan
+
+    adjust = LessonPlan.objects.filter(teacher=user, status=LessonPlan.Status.ADJUST).count()
+    out.append(_item("Planejamentos devolvidos para ajustes", adjust,
+                     reverse("pedagogy:lessonplan_list") + "?situacao=ajustes"))
     no_date = Activity.objects.filter(school=user.school, class_date__isnull=True,
                                       status=Activity.Status.DRAFT).filter(pairs_q(user, edit=True)).count()
     out.append(_item("Rascunhos de atividade sem data de aplicação", no_date, reverse("pedagogy:activity_list"),
@@ -117,9 +122,13 @@ def _coordination(user):
     from apps.coordination.models import CoordinationRecord
     from apps.coordination.print_hooks import pending_print_requests
 
+    from apps.pedagogy.views_planning import _visible_qs
+
     today = timezone.localdate()
+    plans = _visible_qs(user).filter(status="enviado").count()
     return [
         _item("Impressões aguardando sua análise", len(pending_print_requests(user)), reverse("printing:queue")),
+        _item("Planejamentos aguardando devolutiva", plans, reverse("pedagogy:lessonplan_list")),
         _item("Registros da coordenação com retorno vencido", CoordinationRecord.objects.filter(
             school=user.school, created_by=user, follow_up_on__lt=today).count(), reverse("coordination:records"),
             tone="info"),

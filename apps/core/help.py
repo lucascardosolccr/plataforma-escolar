@@ -119,6 +119,13 @@ GUIDES = [
         ("Baixe as linhas com erro, corrija e envie de novo: quem já entrou não duplica.", None),
         ("Fotos: envie em lote com o código do aluno no nome do arquivo.", "student_photo_batch"),
     ]),
+    ("Rematricular para o ano seguinte", "layers", (SECRETARIA, ADMIN), [
+        ("Cadastre o novo ano letivo e as turmas dele.", "school_year_list"),
+        ("Em Matrículas, abra Rematrícula em lote e escolha a turma de origem.", "enrollment_rollover"),
+        ("Desmarque quem fica retido ou sai, escolha a turma de destino e confirme.", None),
+        ("Os retidos são rematriculados depois, em outra turma de destino.", None),
+        ("Ao começar as aulas, marque o novo ano como atual em Anos letivos.", "school_year_list"),
+    ]),
     ("Analisar pré-cadastros das famílias", "id-card", (SECRETARIA, ADMIN), [
         ("Abra Pré-cadastros e escolha um pedido enviado.", "application_review_list"),
         ("Aprove (cria a ficha e o vínculo), peça correção ou recuse, sempre com mensagem.", None),
@@ -177,6 +184,9 @@ GUIDES = [
 
 # Perguntas comuns a todos os perfis: (pergunta, resposta, perfis)
 FAQ = [
+    ("A escola avisa quando o prazo de uma atividade está chegando?",
+     "Sim, se a escola deixar ligado: na véspera ou no dia do prazo, quem ainda não tem entrega registrada recebe um lembrete, uma única vez. Para não receber, desmarque “Atividades” em Notificações → Preferências.",
+     (RESPONSAVEL, ESTUDANTE)),
     ("Por que só vejo algumas disciplinas?",
      "Cada professor vê as disciplinas atribuídas a ele. Acesso a outra disciplina é concedido pela direção, secretaria ou administração, com prazo.",
      (PROFESSOR,)),

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Rematrícula em lote — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Rematrícula em lote</h1>
+    <p>Leve os estudantes de uma turma para a turma do ano seguinte. A matrícula antiga é encerrada como concluída e o histórico continua consultável.</p>
+  </div>
+  <a href="{% url 'enrollment_list' %}" class="btn btn-outline-secondary">{% icon "arrow-left" %}Matrículas</a>
+</div>
+
+<form method="get" class="filter-bar" aria-label="Turma de origem">
+  <div class="filter-field">
+    <label for="f-origem">Turma de origem</label>
+    <select id="f-origem" name="origem" class="form-select" data-autosubmit>
+      <option value="">Escolha…</option>
+      {% for c in classes %}<option value="{{ c.pk }}"{% if origin and origin.pk == c.pk %} selected{% endif %}>{{ c.name }} · {{ c.school_year.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <noscript><button type="submit" class="btn btn-outline-secondary">Abrir</button></noscript>
+</form>
+
+{% if not origin %}
+<div class="card"><div class="empty-state py-5">{% icon "layers" %}<strong>Escolha a turma de origem</strong><span>Depois marque quem segue e a turma de destino.</span></div></div>
+{% else %}
+  {% if warning %}{% if can_close %}<div class="callout mb-3">{% icon "info" %}<div>{{ warning }}</div></div>{% else %}<div class="alert alert-warning" role="status">{{ warning }}</div>{% endif %}{% endif %}
+  {% if errors %}<div class="alert alert-danger" role="alert"><ul class="mb-0">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+
+  {% if can_close %}
+  <form method="post" class="card" data-bulk>
+    {% csrf_token %}
+    <input type="hidden" name="origem" value="{{ origin.pk }}">
+    <div class="bulk-bar" data-bulk-bar>
+      <label class="d-flex align-items-center gap-2 mb-0">
+        <input type="checkbox" class="form-check-input mt-0" data-bulk-all aria-label="Selecionar todos">
+        <span data-bulk-count>0 selecionados</span>
+      </label>
+      <span class="small text-body-secondary">Desmarque quem fica retido ou sai da escola.</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 table-stack">
+        <thead><tr><th><span class="visually-hidden">Selecionar</span></th><th>Estudante</th><th>Nº matrícula</th></tr></thead>
+        <tbody>
+          {% for e in enrollments %}
+          <tr>
+            <td><input type="checkbox" class="form-check-input" name="ids" value="{{ e.pk }}" aria-label="Rematricular {{ e.student.full_name }}"{% if chosen is None or e.pk|stringformat:"s" in chosen %} checked{% endif %}></td>
+            <td class="fw-semibold"><span class="d-inline-flex align-items-center gap-2">{% avatar e.student %}{{ e.student.full_name }}</span></td>
+            <td data-label="Nº matrícula">{{ e.enrollment_number|default:"—" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3"><div class="empty-state py-4">{% icon "circle-check" %}<strong>Nenhuma matrícula ativa nesta turma</strong><span>Quem já foi rematriculado não aparece mais aqui.</span></div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if enrollments %}
+    <div class="card-body border-top">
+      <label for="f-destino" class="form-label">Turma de destino</label>
+      <select id="f-destino" name="destino" class="form-select mw-100" required>
+        <option value="">Escolha…</option>
+        {% for c in destinations %}<option value="{{ c.pk }}"{% if dest_id == c.pk|stringformat:"s" %} selected{% endif %}>{{ c.name }} · {{ c.school_year.name }}</option>{% endfor %}
+      </select>
+      {% if not destinations %}<p class="small text-body-secondary mt-2 mb-0">Nenhuma turma em outro ano letivo. Cadastre o ano seguinte e as turmas dele primeiro.</p>{% endif %}
+      {% if needs_confirmation %}
+      <div class="form-check mt-3">
+        <input class="form-check-input" type="checkbox" name="confirmo" value="1" id="f-confirmo">
+        <label class="form-check-label" for="f-confirmo">As aulas de {{ origin.school_year.name }} já terminaram.</label>
+      </div>
+      {% endif %}
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" data-confirm="As matrículas marcadas serão encerradas como concluídas em {{ origin.school_year.name }} e abertas na turma de destino." data-confirm-title="Rematricular?" data-confirm-ok="Rematricular">Rematricular selecionados</button>
+    </div>
+    {% endif %}
+  </form>
+  {% endif %}
+{% endif %}
+{% endblock %}

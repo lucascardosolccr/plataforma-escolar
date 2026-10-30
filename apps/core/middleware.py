@@ -52,12 +52,15 @@ class ScheduledPublicationMiddleware:
     consulta curta a cada ``INTERVAL`` segundos por processo, não por página —
     e sempre na primeira requisição de um novo dia, para a publicação agendada
     não esperar o intervalo depois da meia-noite.
+    Na primeira requisição de cada dia também saem os lembretes de prazo
+    (``family_events.send_deadline_reminders``).
     Uma falha aqui nunca derruba a página: o aviso fica para a próxima vez.
     """
 
     INTERVAL = 300
     _last_run = None
     _last_day = None
+    _last_reminder_day = None
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -84,6 +87,16 @@ class ScheduledPublicationMiddleware:
                 deliver_due_publications()
             except Exception:  # o aviso não pode quebrar a navegação
                 logger.exception("Falha ao entregar avisos de publicações agendadas")
+            # Lembretes de prazo: uma vez por dia por processo (e sem repetir
+            # entre processos, pelo dedupe_key de cada aviso).
+            if ScheduledPublicationMiddleware._last_reminder_day != hoje:
+                ScheduledPublicationMiddleware._last_reminder_day = hoje
+                from apps.communication.family_events import send_deadline_reminders
+
+                try:
+                    send_deadline_reminders(hoje)
+                except Exception:
+                    logger.exception("Falha ao enviar lembretes de prazo")
         return self.get_response(request)
 
 

@@ -9,6 +9,7 @@
     <p>Vínculos de estudantes com turmas por ano letivo.</p>
   </div>
   <div class="page-actions">
+    {% if can_rollover %}<a href="{% url 'enrollment_rollover' %}" class="btn btn-outline-secondary">{% icon "layers" %}Rematrícula em lote</a>{% endif %}
     <a href="{% url 'enrollment_create' %}" class="btn btn-primary">{% icon "plus" %}Nova matrícula</a>
   </div>
 </div>

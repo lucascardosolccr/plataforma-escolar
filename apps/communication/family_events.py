@@ -16,7 +16,10 @@ Separação pedida pelo Prompt 14:
 Os textos dizem o que aconteceu e onde ver, sem repetir dado sensível.
 """
 
+import datetime
+
 from django.urls import reverse
+from django.utils import timezone
 
 from .models import Notification, NotificationMute, NotificationRule
 
@@ -29,6 +32,7 @@ EVENTS = {
     "atividade_atribuida": ("Nova atividade de casa", K.ACTIVITY, True),
     "atividade_corrigida": ("Atividade corrigida (nota ou comentário)", K.ACTIVITY, True),
     "entrega_registrada": ("Entrega registrada ou marcada como não entregue", K.ACTIVITY, True),
+    "prazo_proximo": ("Lembrete de prazo: atividade não entregue vencendo hoje ou amanhã", K.ACTIVITY, True),
     "falta_registrada": ("Falta registrada", K.ATTENDANCE, True),
     "falta_corrigida": ("Falta corrigida para presença", K.ATTENDANCE, True),
     "limite_faltas": ("Faltas perto do limite", K.ATTENDANCE, True),
@@ -77,3 +81,44 @@ def notify_family(student, key, title, body="", url="", dedupe_key="", include_s
 def student_url(name, student, **extra):
     url = reverse(name)
     return f"{url}?estudante={student.pk}"
+
+
+def send_deadline_reminders(today=None):
+    """Lembra a família da atividade ainda não entregue que vence hoje ou amanhã.
+
+    Um lembrete por estudante e atividade (``dedupe_key``): quem foi lembrado
+    na véspera não recebe outro no dia. Não há agendador: o
+    ``ScheduledPublicationMiddleware`` chama esta função na primeira
+    requisição de cada dia. Só entra quem a atividade alcança (matrícula
+    ativa e ``covers``) e ainda não tem entrega registrada. Devolve quantos
+    avisos foram tentados.
+    """
+    from apps.pedagogy.models import Activity, Submission
+    from apps.registry.models import Enrollment
+
+    today = today or timezone.localdate()
+    tomorrow = today + datetime.timedelta(days=1)
+    acts = (Activity.objects.filter(Activity.family_visible_q(today=today), status=Activity.Status.PUBLISHED,
+                                    deadline__in=[today, tomorrow])
+            .select_related("school", "subject", "class_group"))
+    enabled, total = {}, 0
+    for act in acts:
+        if act.school_id not in enabled:
+            enabled[act.school_id] = event_enabled(act.school, "prazo_proximo")
+        if not enabled[act.school_id]:
+            continue
+        delivered = set(Submission.objects.filter(activity=act, status__in=Submission.DELIVERED_STATUSES)
+                        .values_list("student_id", flat=True))
+        when = "hoje" if act.deadline == today else "amanhã"
+        url = reverse("pedagogy:activity_detail", args=[act.pk])
+        for enr in (Enrollment.objects.filter(class_group=act.class_group, status="ativo")
+                    .select_related("student__school", "student__user")):
+            if enr.student_id in delivered or not enr.covers(act.published_date, act.deadline):
+                continue
+            total += notify_family(
+                enr.student, "prazo_proximo", f"Prazo {when}: {act.title}",
+                body=f"{enr.student} — {act.subject}, entrega até {act.deadline:%d/%m/%Y}. "
+                     "Se já entregou, desconsidere: o professor ainda vai registrar.",
+                url=url, dedupe_key=f"prazo:{act.pk}:{enr.student_id}",
+            )
+    return total

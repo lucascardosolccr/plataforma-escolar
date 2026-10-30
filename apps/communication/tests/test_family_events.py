@@ -165,3 +165,69 @@ class EmailChannelTests(FamBase):
         msg = mail.outbox[0]
         self.assertEqual(msg.to, ["fam@x.com"])
         self.assertNotIn("Ana", msg.body + msg.subject)
+
+
+class DeadlineReminderTests(FamBase):
+    """Lembrete de prazo (véspera ou dia) sem agendador."""
+
+    def make(self, deadline, **kw):
+        today = timezone.localdate()
+        return Activity.objects.create(school=self.school, class_group=self.cg, subject=self.mat, title="Mapa",
+                                       deadline=deadline, published_date=kw.pop("published", today - timedelta(days=3)),
+                                       class_date=today, created_by=self.prof, notified_at=timezone.now(), **kw)
+
+    def reminders(self, user=None):
+        return self.fam_notes(user).filter(dedupe_key__startswith="prazo:")
+
+    def test_reminds_only_who_has_not_delivered_once(self):
+        from apps.communication.family_events import send_deadline_reminders
+        from apps.pedagogy.models import Submission
+
+        today = timezone.localdate()
+        act = self.make(today + timedelta(days=1))
+        Submission.objects.create(school=self.school, activity=act, student=self.bia, status="entregue")
+        send_deadline_reminders(today)
+        n = self.reminders().get()
+        self.assertEqual((n.title, n.student, n.kind), ("Prazo amanhã: Mapa", self.ana, "atividade"))
+        self.assertFalse(self.reminders(self.outra).exists())  # Bia já entregou
+        # No dia do prazo não repete o lembrete.
+        send_deadline_reminders(today + timedelta(days=1))
+        self.assertEqual(self.reminders().count(), 1)
+
+    def test_ignores_far_deadlines_drafts_canceled_and_scheduled(self):
+        from apps.communication.family_events import send_deadline_reminders
+
+        today = timezone.localdate()
+        self.make(today + timedelta(days=3))
+        self.make(today, status="rascunho")
+        self.make(today, status="cancelada", visible_before_cancel=True)
+        self.make(today + timedelta(days=1), published=today + timedelta(days=1))  # ainda agendada
+        self.make(today - timedelta(days=1))  # prazo vencido
+        send_deadline_reminders(today)
+        self.assertFalse(self.reminders().exists())
+
+    def test_rule_off_and_personal_mute(self):
+        from apps.communication.family_events import send_deadline_reminders
+
+        today = timezone.localdate()
+        self.make(today)
+        NotificationMute.objects.create(user=self.outra, kind="atividade")
+        send_deadline_reminders(today)
+        self.assertEqual(self.reminders().get().title, "Prazo hoje: Mapa")
+        self.assertFalse(self.reminders(self.outra).exists())
+        Notification.objects.all().delete()
+        NotificationRule.objects.create(school=self.school, event="prazo_proximo", enabled=False)
+        send_deadline_reminders(today)
+        self.assertFalse(Notification.objects.filter(dedupe_key__startswith="prazo:").exists())
+
+    def test_runs_from_the_first_request_of_the_day(self):
+        from apps.core.middleware import ScheduledPublicationMiddleware as M
+
+        self.make(timezone.localdate())
+        M._last_run = M._last_day = M._last_reminder_day = None
+        self.login(self.prof)
+        self.client.get(reverse("home"))
+        self.assertTrue(self.reminders().exists())
+        Notification.objects.all().delete()
+        self.client.get(reverse("home"))  # mesmo dia: não roda de novo
+        self.assertFalse(self.reminders().exists())

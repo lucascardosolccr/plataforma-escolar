@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_application, views_import
+from . import views, views_application, views_import, views_rollover
 
 urlpatterns = [
     path("estudantes/", views.student_list, name="student_list"),
@@ -53,6 +53,7 @@ urlpatterns = [
     path("vinculos/<int:link_id>/rejeitar/", views.link_reject, name="link_reject"),
     path("matriculas/", views.enrollment_list, name="enrollment_list"),
     path("matriculas/nova/", views.enrollment_create, name="enrollment_create"),
+    path("matriculas/rematricula/", views_rollover.enrollment_rollover, name="enrollment_rollover"),
     path(
         "matriculas/<int:enrollment_id>/editar/",
         views.enrollment_edit,

@@ -661,6 +661,7 @@ def enrollment_list(request):
             "q": q,
             "years": SchoolYear.objects.filter(school=request.user.school),
             "statuses": Enrollment.STATUS_CHOICES,
+            "can_rollover": can_import_students(request.user),
         },
     )
 

@@ -35,6 +35,12 @@ if errorlevel 1 (
   exit /b 1
 )
 
+rem Retencao (LGPD): apaga foto e documentos de pre-cadastros recusados ou
+rem cancelados ha mais de 180 dias. Roda depois da copia de seguranca; uma
+rem falha aqui so avisa, nao impede o uso.
+".venv\Scripts\python.exe" manage.py purgeapplications
+if errorlevel 1 echo  ATENCAO: a limpeza de pre-cadastros antigos falhou. Veja a mensagem acima.
+
 echo.
 echo ================================================================
 echo  Plataforma Escolar Integrada

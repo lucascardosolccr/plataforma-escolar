@@ -57,3 +57,39 @@ def can_view_reports(user):
         Role.PROFESSOR.value,
         Role.RESPONSAVEL.value,
     )
+
+
+def can_view_data_quality(user):
+    """Qualidade dos dados: quem administra registros da escola."""
+    return user.is_authenticated and user.role in ADMIN_RECORD_ROLES
+
+
+def subject_classes_for(user, subject):
+    """Turmas em que este usuário pode analisar a disciplina, ou None.
+
+    A gestão vê todas as turmas da escola que têm a disciplina (por atribuição
+    ou avaliação); o professor, só as turmas em que a leciona.
+    """
+    from django.db.models import Q
+
+    from apps.academics.models import ClassGroup
+
+    if not user.is_authenticated or user.school_id != subject.school_id:
+        return None
+    if user.role in ADMIN_RECORD_ROLES:
+        return (
+            ClassGroup.objects.filter(school=user.school)
+            .filter(Q(teacher_assignments__subject=subject) | Q(evaluation__subject=subject))
+            .distinct().select_related("school_year").order_by("name")
+        )
+    if user.role == Role.PROFESSOR.value:
+        qs = ClassGroup.objects.filter(
+            pk__in=TeacherAssignment.objects.filter(teacher=user, subject=subject).values("class_group_id")
+        ).select_related("school_year").order_by("name")
+        return qs if qs.exists() else None
+    return None
+
+
+def can_view_teacher_dashboard(user):
+    """Painel do professor: só o próprio professor (não é avaliação docente)."""
+    return user.is_authenticated and user.role == Role.PROFESSOR.value

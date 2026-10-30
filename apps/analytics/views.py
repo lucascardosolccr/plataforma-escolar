@@ -29,6 +29,9 @@ from apps.registry.models import Enrollment, GuardianLink, Student
 from . import bi, charts, reports, services
 from .access import (
     can_view_class_dashboard,
+    can_view_data_quality,
+    can_view_teacher_dashboard,
+    subject_classes_for,
     can_view_institutional_dashboard,
     can_view_reports,
     can_view_secretaria_panel,
@@ -350,44 +353,42 @@ def class_export(request, class_group_id, fmt):
 def institutional_dashboard(request):
     if not can_view_institutional_dashboard(request.user):
         raise PermissionDenied("Painel restrito à coordenação e direção.")
-    data = services.institutional_indicators(request.user.school)
-    classes = services.class_overview(request.user.school)
-    limite = services.school_max_absences(request.user.school)
-    min_attendance = 100 - float(limite) if limite is not None else None
-    return render(
-        request,
-        "analytics/institutional_dashboard.html",
-        {
-            "data": data,
-            "classes": classes,
-            "total_students": data["students"],
-            "active_enrollments": Enrollment.objects.filter(
-                school=request.user.school, status="ativo"
-            ).count(),
-            "class_groups_count": data["class_groups"],
-            # Sem registro de frequência é "sem dado" (—), nunca 0%: zero
-            # pareceria uma turma inteira faltando.
-            "attendance_rate": data["attendance_percent"],
-            "min_attendance": min_attendance,
-            "class_chart": charts.bar_chart(
-                [
-                    {
-                        "label": c["class_group"].name,
-                        "value": c["attendance"],
-                        "below": (
-                            c["attendance"] is not None
-                            and min_attendance is not None
-                            and c["attendance"] < min_attendance
-                        ),
-                    }
-                    for c in classes
-                ],
-                max_value=100,
-                suffix="%",
-            ),
-            "generated_at": timezone.now(),
-        },
-    )
+    school = request.user.school
+    period = bi.resolve_period(request.GET, school)
+    r = bi.institutional_report(school, period)
+    min_attendance = round(100 - r["limit"], 1)
+    return render(request, "analytics/institutional_dashboard.html", {
+        "report": r,
+        "period": period,
+        "presets": bi.PRESETS,
+        # Chaves mantidas por compatibilidade com telas e testes anteriores.
+        "total_students": r["students_active"],
+        "active_enrollments": r["enrollments_active"],
+        "class_groups_count": len(r["classes"]),
+        "attendance_rate": r["attendance"],
+        "min_attendance": min_attendance,
+        "class_chart": charts.bar_chart(
+            [
+                {"label": c["class_group"].name, "value": c["attendance"],
+                 "below": c["attendance"] is not None and c["attendance"] < min_attendance,
+                 "url": reverse("analytics:class_dashboard", args=[c["class_group"].pk]) + "?" + period.querystring()}
+                for c in r["classes"] if not c["small"]
+            ],
+            max_value=100, suffix="%",
+        ),
+        "subject_chart": charts.bar_chart(
+            [{"label": s["subject"].name, "value": s["mean"],
+              "url": reverse("analytics:subject_dashboard", args=[s["subject"].pk]) + "?" + period.querystring()}
+             for s in r["subjects"]],
+        ),
+        "trend_chart": charts.line_chart(
+            [{"label": m["label"], "value": m["attendance"]} for m in r["monthly"]], y_min=0, y_max=100, suffix="%"),
+        "grade_trend_chart": charts.line_chart(
+            [{"label": m["label"], "value": m["grade"]} for m in r["monthly"]], y_min=0, y_max=10),
+        "sections": [("visao-geral", "Visão geral"), ("turmas", "Turmas"), ("disciplinas", "Disciplinas"),
+                     ("composicao", "Série e turno"), ("evolucao", "Evolução"), ("gestao", "Gestão")],
+        "generated_at": timezone.now(),
+    })
 
 
 # --------------------------------------------------------------------------- #
@@ -651,3 +652,147 @@ def methodology(request):
 
     grupos = [(g, [m for m in METRICS.values() if m.group == g]) for g in GROUPS]
     return render(request, "analytics/methodology.html", {"groups": grupos, "rules": INSIGHT_RULES})
+
+
+# --------------------------------------------------------------------------- #
+# Painel por disciplina
+# --------------------------------------------------------------------------- #
+def _subject_options(user):
+    from apps.academics.models import Subject, TeacherAssignment
+    from apps.registry.access import ADMIN_RECORD_ROLES
+
+    qs = Subject.objects.filter(school=user.school).order_by("name")
+    if user.role == Role.PROFESSOR.value:
+        return qs.filter(pk__in=TeacherAssignment.objects.filter(teacher=user).values("subject_id"))
+    return qs if user.role in ADMIN_RECORD_ROLES else Subject.objects.none()
+
+
+def _subject_scope(request, subject_id):
+    from apps.academics.models import Subject
+
+    if subject_id is None:
+        first = _subject_options(request.user).first()
+        if first is None:
+            raise PermissionDenied("Nenhuma disciplina disponível para análise.")
+        subject_id = first.pk
+    subject = get_object_or_404(Subject.objects.select_related("school"), pk=subject_id)
+    classes = subject_classes_for(request.user, subject)
+    if classes is None:
+        raise PermissionDenied("Você não tem acesso a esta disciplina.")
+    turma = id_param(request, "turma")
+    chosen = classes.filter(pk=turma) if turma else classes
+    if turma and not chosen.exists():
+        raise PermissionDenied("Turma fora do seu acesso nesta disciplina.")
+    return subject, classes, list(chosen), turma
+
+
+def subject_dashboard(request, subject_id=None):
+    subject, classes, chosen, turma = _subject_scope(request, subject_id)
+    period = bi.resolve_period(request.GET, subject.school)
+    r = bi.subject_report(subject, chosen, period)
+    qs = period.querystring() + (f"&turma={turma}" if turma else "")
+    return render(request, "analytics/subject_dashboard.html", {
+        "subject": subject, "report": r, "period": period, "presets": bi.PRESETS, "qs": qs,
+        "subject_options": [
+            (reverse("analytics:subject_dashboard", args=[sj.pk]) + "?" + period.querystring(), sj.name, sj.pk)
+            for sj in _subject_options(request.user)
+        ],
+        "extra_filters": [{"name": "turma", "label": "Turma", "empty_label": "Todas as turmas",
+                           "selected": turma or "", "options": [(c.pk, c.name) for c in classes]}],
+        "export_links": [
+            {"label": "CSV", "url": reverse("analytics:subject_export", args=[subject.pk, "csv"]) + "?" + qs},
+            {"label": "Excel", "url": reverse("analytics:subject_export", args=[subject.pk, "xlsx"]) + "?" + qs},
+        ],
+        "class_chart": charts.bar_chart([
+            {"label": c["class_group"].name, "value": c["mean"] if not c["small"] else None,
+             "url": reverse("analytics:class_dashboard", args=[c["class_group"].pk]) + "?" + period.querystring()}
+            for c in r["classes"]
+        ]),
+        "distribution_chart": charts.bar_chart(r["distribution"], suffix=" estudante(s)"),
+        "monthly_chart": charts.line_chart([{"label": m["label"], "value": m["value"]} for m in r["monthly"]],
+                                           y_min=0, y_max=10),
+        "sections": [("visao-geral", "Visão geral"), ("turmas", "Turmas"), ("avaliacoes", "Avaliações"),
+                     ("retomada", "Retomada"), ("acompanhamento", "Acompanhamento")],
+    })
+
+
+def subject_export(request, subject_id, fmt):
+    subject, classes, chosen, turma = _subject_scope(request, subject_id)
+    period = bi.resolve_period(request.GET, subject.school)
+    r = bi.subject_report(subject, chosen, period)
+    turmas = [["Turma", "Estudantes", "Com média", "Média", "Mediana", "Mín.", "Máx.", "Desvio",
+               "Abaixo da aprovação", "Taxa de entrega (%)"]]
+    for c in r["classes"]:
+        oculto = c["small"]
+        turmas.append([c["class_group"].name, c["students"], c["n"],
+                       None if oculto else c["mean"], None if oculto else c["median"],
+                       None if oculto else c["min"], None if oculto else c["max"],
+                       None if oculto else c["stdev"], c["below_count"], c["delivery_rate"]])
+    avaliacoes = [["Data", "Turma", "Avaliação", "Tipo", "Notas", "Média", "Mediana", "Mín.", "Máx.", "Desvio"]]
+    for e in r["evaluations"]:
+        ev = e["evaluation"]
+        avaliacoes.append([ev.date, ev.class_group.name, ev.title, ev.get_kind_display(), e["n"],
+                           e["mean"], e["median"], e["min"], e["max"], e["stdev"]])
+    acomp = [["Estudante", "Turma", "Média", "Aprovação", "Notas"]] + [
+        [x["student"].full_name, x["class_group"].name, x["average"], x["passing"], x["count"]]
+        for x in r["follow_up"]
+    ]
+    return _bi_export(request, title="Painel da disciplina", context=subject.name, period=period, fmt=fmt,
+                      target=subject, sheets=[("Turmas", turmas), ("Avaliações", avaliacoes),
+                                              ("Para acompanhamento", acomp)])
+
+
+# --------------------------------------------------------------------------- #
+# Painel do professor
+# --------------------------------------------------------------------------- #
+def teacher_dashboard(request):
+    from apps.academics.models import TeacherAssignment
+
+    user = request.user
+    if not can_view_teacher_dashboard(user):
+        raise PermissionDenied("Painel do professor: somente o próprio professor.")
+    period = bi.resolve_period(request.GET, user.school)
+    todas = list(
+        TeacherAssignment.objects.filter(teacher=user, school=user.school)
+        .select_related("class_group", "subject", "school_year")
+        .order_by("class_group__name", "subject__name")
+    )
+    turma, disciplina = id_param(request, "turma"), id_param(request, "disciplina")
+    escolhidas = [a for a in todas if (not turma or a.class_group_id == turma)
+                  and (not disciplina or a.subject_id == disciplina)]
+    r = bi.teacher_report(user, period, escolhidas)
+    turmas = sorted({(a.class_group_id, a.class_group.name) for a in todas}, key=lambda t: t[1])
+    disciplinas = sorted({(a.subject_id, a.subject.name) for a in todas}, key=lambda t: t[1])
+    return render(request, "analytics/teacher_dashboard.html", {
+        "report": r, "period": period, "presets": bi.PRESETS,
+        "extra_filters": [
+            {"name": "turma", "label": "Turma", "empty_label": "Todas", "selected": turma or "", "options": turmas},
+            {"name": "disciplina", "label": "Disciplina", "empty_label": "Todas", "selected": disciplina or "",
+             "options": disciplinas},
+        ],
+        "totals": {
+            "students": sum(x["students"] for x in r["rows"]),
+            "records_pending": sum(x["records_pending"] for x in r["rows"]),
+            "drafts": sum(x["evaluations_draft"] for x in r["rows"]),
+            "evaluations": sum(x["evaluations_published"] for x in r["rows"]),
+            "observations": sum(x["observations"] for x in r["rows"]),
+        },
+        "average_chart": charts.bar_chart([
+            {"label": f"{x['class_group'].name} {x['subject'].name}"[:28], "value": x["average"],
+             "url": reverse("analytics:subject_dashboard", args=[x["subject"].pk])
+             + f"?turma={x['class_group'].pk}&{period.querystring()}"}
+            for x in r["rows"]
+        ]),
+    })
+
+
+# --------------------------------------------------------------------------- #
+# Qualidade dos dados
+# --------------------------------------------------------------------------- #
+def data_quality_dashboard(request):
+    if not can_view_data_quality(request.user):
+        raise PermissionDenied("Painel restrito à gestão da escola.")
+    period = bi.resolve_period(request.GET, request.user.school)
+    return render(request, "analytics/data_quality.html", {
+        "q": bi.data_quality(request.user.school, period), "period": period, "presets": bi.PRESETS,
+    })

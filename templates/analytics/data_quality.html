@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load static ui bi_tags %}
+{% block title %}Qualidade dos dados — Plataforma Escolar{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/bi.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Painéis de BI</span>
+    <h1>Qualidade dos dados</h1>
+    <p>Lacunas e inconsistências que fazem os indicadores dizerem menos do que deveriam. Corrigir aqui melhora todos os painéis.</p>
+  </div>
+</div>
+{% include "analytics/bi/_filters.html" with presets=presets period=period %}
+
+<div class="kpi-grid mb-4">
+  {% include "analytics/bi/_kpi.html" with label="Avaliações com notas pendentes" value=q.missing_grades|length icon="clipboard-check" attention=q.missing_grades href="#notas" hint="Ver lista" %}
+  {% include "analytics/bi/_kpi.html" with label="Chamadas incompletas" value=q.partial_days_total icon="calendar-check" attention=q.partial_days_total href="#chamadas" hint="Dias com parte da turma sem registro" %}
+  {% include "analytics/bi/_kpi.html" with label="Turmas sem chamada há 14+ dias" value=q.stale_attendance|length icon="clock" attention=q.stale_attendance href="#chamadas" hint="Ver turmas" %}
+  {% include "analytics/bi/_kpi.html" with label="Atividades vencidas sem nenhum registro" value=q.activities_no_records|length icon="notebook-pen" metric="record_coverage" href="#atividades" hint="Ver lista" %}
+  {% include "analytics/bi/_kpi.html" with label="Matrículas ativas duplicadas" value=q.duplicate_enrollments.count icon="layers" attention=q.duplicate_enrollments.count href="#cadastro" hint="Mesmo estudante, mesmo ano" %}
+  {% include "analytics/bi/_kpi.html" with label="Ativos sem matrícula" value=q.without_enrollment.count icon="id-card" href="#cadastro" hint="Ficha ativa sem turma" %}
+</div>
+
+<section class="bi-section" id="notas"><h2>Avaliações publicadas com notas pendentes</h2>
+  <p class="bi-lead">Nota pendente não é zero: o estudante simplesmente não entra na média até o lançamento.</p>
+  <div class="card"><div class="table-responsive"><table class="table align-middle mb-0" data-sortable>
+    <thead><tr><th>Data</th><th>Turma</th><th>Disciplina</th><th>Avaliação</th><th class="text-end">Lançadas</th><th class="text-end">Pendentes</th></tr></thead>
+    <tbody>{% for m in q.missing_grades %}<tr><td data-value="{{ m.evaluation.date|date:'Ymd' }}">{{ m.evaluation.date|date:"d/m/Y" }}</td><td>{{ m.evaluation.class_group.name }}</td><td>{{ m.evaluation.subject.name }}</td><td><a href="{% url 'pedagogy:evaluation_grade' m.evaluation.pk %}">{{ m.evaluation.title }}</a></td><td class="text-end">{{ m.graded }}/{{ m.expected }}</td><td class="text-end fw-bold">{{ m.missing }}</td></tr>
+    {% empty %}<tr><td colspan="6" class="text-center text-body-secondary py-3">Todas as avaliações do período têm as notas lançadas.</td></tr>{% endfor %}</tbody>
+  </table></div></div>
+</section>
+
+<section class="bi-section" id="chamadas"><h2>Frequência</h2>
+  <div class="row g-3">
+    <div class="col-lg-7"><div class="card h-100"><div class="card-header">Chamadas incompletas ({{ q.partial_days_total }}{% if q.partial_days_total > 50 %}; mostrando as 50 mais recentes{% endif %})</div>
+      <ul class="list-group list-group-flush">{% for d in q.partial_days %}<li class="list-group-item d-flex justify-content-between small"><span>{{ d.date|date:"d/m/Y" }} · {{ d.class_group.name }}</span><span>{{ d.missing }} estudante(s) sem registro</span></li>
+      {% empty %}<li class="list-group-item text-body-secondary small">Nenhuma chamada incompleta no período.</li>{% endfor %}</ul></div></div>
+    <div class="col-lg-5"><div class="card h-100"><div class="card-header">Turmas sem chamada há mais de 14 dias</div>
+      <ul class="list-group list-group-flush">{% for s in q.stale_attendance %}<li class="list-group-item d-flex justify-content-between small"><span>{{ s.class_group.name }}</span><span>{% if s.last %}última em {{ s.last|date:"d/m/Y" }}{% else %}nenhuma chamada{% endif %}</span></li>
+      {% empty %}<li class="list-group-item text-body-secondary small">Todas as turmas com chamada recente.</li>{% endfor %}</ul></div></div>
+  </div>
+</section>
+
+<section class="bi-section" id="atividades"><h2>Atividades vencidas sem nenhum registro de entrega</h2>
+  <div class="card"><ul class="list-group list-group-flush">{% for a in q.activities_no_records %}<li class="list-group-item d-flex justify-content-between small flex-wrap gap-2"><a href="{% url 'pedagogy:activity_detail' a.pk %}">{{ a.title }}</a><span>{{ a.class_group.name }} · {{ a.subject.name }} · prazo {{ a.deadline|date:"d/m/Y" }}</span></li>
+  {% empty %}<li class="list-group-item text-body-secondary small">Todas as atividades vencidas do período têm entregas registradas.</li>{% endfor %}</ul></div>
+</section>
+
+<section class="bi-section" id="cadastro"><h2>Cadastro</h2>
+  <div class="row g-3">
+    <div class="col-md-6 col-xl-3"><div class="card h-100"><div class="card-header">Matrículas ativas duplicadas</div><ul class="list-group list-group-flush small">{% for s in q.duplicate_enrollments %}<li class="list-group-item"><a href="{% url 'student_detail' s.pk %}">{{ s.full_name }}</a></li>{% empty %}<li class="list-group-item text-body-secondary">Nenhuma.</li>{% endfor %}</ul></div></div>
+    <div class="col-md-6 col-xl-3"><div class="card h-100"><div class="card-header">Ativos sem matrícula</div><ul class="list-group list-group-flush small">{% for s in q.without_enrollment|slice:":30" %}<li class="list-group-item"><a href="{% url 'student_detail' s.pk %}">{{ s.full_name }}</a></li>{% empty %}<li class="list-group-item text-body-secondary">Nenhum.</li>{% endfor %}</ul></div></div>
+    <div class="col-md-6 col-xl-3"><div class="card h-100"><div class="card-header">Situação inconsistente</div><p class="small text-body-secondary px-3 pt-2 mb-0">Ficha não ativa com matrícula ativa.</p><ul class="list-group list-group-flush small">{% for s in q.inconsistent_status %}<li class="list-group-item"><a href="{% url 'student_detail' s.pk %}">{{ s.full_name }}</a> ({{ s.get_status_display }})</li>{% empty %}<li class="list-group-item text-body-secondary">Nenhuma.</li>{% endfor %}</ul></div></div>
+    <div class="col-md-6 col-xl-3"><div class="card h-100"><div class="card-header">Ativos sem responsável aprovado ({{ q.without_guardian.count }})</div><ul class="list-group list-group-flush small">{% for s in q.without_guardian|slice:":15" %}<li class="list-group-item"><a href="{% url 'student_detail' s.pk %}">{{ s.full_name }}</a></li>{% empty %}<li class="list-group-item text-body-secondary">Nenhum.</li>{% endfor %}</ul></div></div>
+  </div>
+  {% if q.out_of_range %}<div class="alert alert-warning mt-3">{% icon "triangle-alert" %}<div>{{ q.out_of_range|length }} nota(s) fora da faixa 0–10 — confira se a disciplina usa a regra "soma".</div></div>{% endif %}
+</section>
+
+<section class="bi-section" id="nao-calculaveis"><h2>Indicadores que não podem ser calculados com os dados atuais</h2>
+  <div class="card"><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Indicador</th><th>Por quê</th></tr></thead>
+    <tbody>{% for nome, motivo in q.not_computable %}<tr><th scope="row">{{ nome }}</th><td>{{ motivo }}</td></tr>{% endfor %}</tbody></table></div></div>
+</section>
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% load static ui bi_tags %}
+{% block title %}Painel de {{ subject.name }} — Plataforma Escolar{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/bi.css' %}">{% endblock %}
+{% block crumb %}<li><span aria-current="page">{{ subject.name }}</span></li>{% endblock %}
+
+{% block content %}
+{% with r=report %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Painel por disciplina</span>
+    <h1>{{ subject.name }}</h1>
+    <p>Resultados da disciplina nas turmas do seu acesso. Médias pela regra da disciplina; média da turma = média das médias individuais.</p>
+  </div>
+  {% if subject_options|length > 1 %}
+  <div><label class="visually-hidden" for="troca-disc">Trocar de disciplina</label>
+    <select id="troca-disc" class="form-select form-select-sm" data-autonav>
+      {% for url, label, pk in subject_options %}<option value="{{ url }}"{% if pk == subject.pk %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select></div>
+  {% endif %}
+</div>
+
+{% include "analytics/bi/_filters.html" with presets=presets period=period extra_filters=extra_filters export_links=export_links %}
+{% include "analytics/bi/_subnav.html" with sections=sections %}
+
+<section class="bi-section" id="visao-geral" aria-labelledby="h-v">
+  <h2 id="h-v">Visão geral</h2>
+  <div class="kpi-grid">
+    {% include "analytics/bi/_kpi.html" with label="Média da disciplina" value=r.overall.mean|num:2 icon="graduation-cap" metric="subject_average" hint=r.overall.n|cat:" estudante(s) com média" %}
+    {% include "analytics/bi/_kpi.html" with label="Mediana" value=r.overall.median|num:2 icon="chart-column" metric="evaluation_stats" hint="Metade dos estudantes abaixo, metade acima" %}
+    {% include "analytics/bi/_kpi.html" with label="Desvio padrão" value=r.overall.stdev|num:2 icon="sliders-horizontal" metric="evaluation_stats" hint="Quanto maior, mais heterogênea" %}
+    {% include "analytics/bi/_kpi.html" with label="Abaixo da aprovação" value=r.follow_up|length icon="flag" metric="follow_up" attention=r.follow_up hint="Ver lista de acompanhamento" href="#acompanhamento" %}
+    {% include "analytics/bi/_kpi.html" with label="Avaliações no período" value=r.evaluations|length icon="clipboard-check" metric="evaluation_stats" %}
+  </div>
+</section>
+
+<section class="bi-section" id="turmas" aria-labelledby="h-t">
+  <h2 id="h-t">Resultados por turma {% metric_info "small_group" %}</h2>
+  <p class="bi-lead">Clique numa barra para abrir o painel da turma. Turmas com menos de 5 estudantes com média não exibem estatísticas (proteção contra identificação).</p>
+  <div class="row g-3">
+    <div class="col-lg-6"><div class="card h-100 bi-chart-card"><div class="card-header">Média por turma</div><div class="card-body">{{ class_chart }}</div></div></div>
+    <div class="col-lg-6"><div class="card h-100 bi-chart-card"><div class="card-header">Distribuição das médias {% metric_info "grade_distribution" %}</div><div class="card-body">{{ distribution_chart }}</div></div></div>
+  </div>
+  <div class="card mt-3"><div class="table-responsive"><table class="table align-middle mb-0" data-sortable>
+    <thead><tr><th>Turma</th><th class="text-end">Estudantes</th><th class="text-end">Média</th><th class="text-end">Mediana</th><th class="text-end">Desvio</th><th class="text-end">Abaixo da aprovação</th><th class="text-end">Atividades</th><th class="text-end">Taxa de entrega</th></tr></thead>
+    <tbody>{% for c in r.classes %}<tr>
+      <th scope="row"><a href="{% url 'analytics:class_dashboard' c.class_group.pk %}?{{ period.querystring }}">{{ c.class_group.name }}</a></th>
+      <td class="text-end">{{ c.students }}</td>
+      {% if c.small %}<td class="text-end" colspan="3"><span class="chip">grupo pequeno</span></td>{% else %}
+      <td class="text-end fw-bold">{{ c.mean|num:2 }}</td><td class="text-end">{{ c.median|num:2 }}</td><td class="text-end">{{ c.stdev|num:2 }}</td>{% endif %}
+      <td class="text-end">{{ c.below_count }}</td><td class="text-end">{{ c.activities }}</td>
+      <td class="text-end">{{ c.delivery_rate|num:1 }}{% if c.delivery_rate is not None %}%{% endif %}</td>
+    </tr>{% empty %}<tr><td colspan="8" class="text-center text-body-secondary py-3">Nenhuma turma com esta disciplina no seu acesso.</td></tr>{% endfor %}</tbody>
+  </table></div></div>
+  <div class="card mt-3 bi-chart-card"><div class="card-header">Evolução mensal</div><div class="card-body">{{ monthly_chart }}</div></div>
+</section>
+
+<section class="bi-section" id="avaliacoes" aria-labelledby="h-a">
+  <h2 id="h-a">Resultado por avaliação {% metric_info "evaluation_stats" %}</h2>
+  {% if r.by_kind|length > 1 %}
+  <div class="kpi-grid mb-3">{% for k in r.by_kind %}{% include "analytics/bi/_kpi.html" with label=k.kind value=k.mean|num:2 hint=k.n|cat:" nota(s)" metric="recovery" %}{% endfor %}</div>
+  {% endif %}
+  <div class="card"><div class="table-responsive"><table class="table align-middle mb-0" data-sortable>
+    <thead><tr><th>Data</th><th>Turma</th><th>Avaliação</th><th>Tipo</th><th class="text-end">Notas</th><th class="text-end">Média</th><th class="text-end">Mediana</th><th class="text-end">Mín.</th><th class="text-end">Máx.</th><th class="text-end">Desvio</th></tr></thead>
+    <tbody>{% for e in r.evaluations %}<tr><td data-value="{{ e.evaluation.date|date:'Ymd' }}">{{ e.evaluation.date|date:"d/m/Y" }}</td><td>{{ e.evaluation.class_group.name }}</td><td>{{ e.evaluation.title }}</td><td class="small">{{ e.evaluation.get_kind_display }}</td><td class="text-end">{{ e.n }}</td><td class="text-end fw-bold">{{ e.mean|num:2 }}</td><td class="text-end">{{ e.median|num:2 }}</td><td class="text-end">{{ e.min|num:1 }}</td><td class="text-end">{{ e.max|num:1 }}</td><td class="text-end">{{ e.stdev|num:2 }}</td></tr>
+    {% empty %}<tr><td colspan="10" class="text-center text-body-secondary py-3">Nenhuma avaliação publicada no período.</td></tr>{% endfor %}</tbody>
+  </table></div></div>
+</section>
+
+<section class="bi-section" id="retomada" aria-labelledby="h-r">
+  <h2 id="h-r">Avaliações com menor resultado</h2>
+  <p class="bi-lead">Sem cadastro estruturado de conteúdos ou habilidades, a avaliação é o melhor indicador disponível do que pode precisar de retomada. Sugestão para avaliação do professor, não conclusão.</p>
+  <div class="card"><ul class="list-group list-group-flush">
+    {% for e in r.lowest %}<li class="list-group-item d-flex justify-content-between flex-wrap gap-2"><span>{{ e.evaluation.title }} · {{ e.evaluation.class_group.name }} · {{ e.evaluation.date|date:"d/m/Y" }}</span><span>média <strong>{{ e.mean|num:2 }}</strong> ({{ e.n }} nota(s))</span></li>
+    {% empty %}<li class="list-group-item text-body-secondary">Sem avaliações com notas no período.</li>{% endfor %}
+  </ul></div>
+</section>
+
+<section class="bi-section" id="acompanhamento" aria-labelledby="h-ac">
+  <h2 id="h-ac">Estudantes abaixo da aprovação {% metric_info "follow_up" %}</h2>
+  <div class="card"><div class="table-responsive"><table class="table align-middle mb-0 table-stack" data-sortable>
+    <thead><tr><th>Estudante</th><th>Turma</th><th class="text-end">Média</th><th class="text-end">Aprovação</th><th class="text-end">Notas</th></tr></thead>
+    <tbody>{% for x in r.follow_up %}<tr>
+      <td><a href="{% url 'analytics:student_dashboard' x.student.pk %}?{{ period.querystring }}">{{ x.student.full_name }}</a></td>
+      <td data-label="Turma">{{ x.class_group.name }}</td><td class="text-end fw-bold" data-label="Média">{{ x.average|num:2 }}</td>
+      <td class="text-end" data-label="Aprovação">{{ x.passing|num:1 }}</td><td class="text-end" data-label="Notas">{{ x.count }}</td>
+    </tr>{% empty %}<tr><td colspan="5"><div class="empty-state py-4">{% icon "circle-check" %}<strong>Nenhum estudante abaixo da aprovação no período</strong></div></td></tr>{% endfor %}</tbody>
+  </table></div></div>
+</section>
+{% endwith %}
+{% endblock %}

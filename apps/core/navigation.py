@@ -133,6 +133,14 @@ ITEMS = {
                              "Vínculos, matrículas e pendências"),
     "reports": Item("Relatórios", "analytics:report_hub", "file-text",
                     ("analytics:report_",), "Exportar CSV e imprimir"),
+    "teacher_bi": Item("Meu painel de turmas", "analytics:teacher_dashboard", "chart-column",
+                       ("analytics:teacher_dashboard",), "Médias, entregas e pendências"),
+    "subject_bi": Item("Painéis por disciplina", "analytics:subject_index", "book-marked",
+                       ("analytics:subject_",), "Resultados de cada disciplina"),
+    "quality": Item("Qualidade dos dados", "analytics:data_quality", "check",
+                    ("analytics:data_quality",), "Lançamentos pendentes e inconsistências"),
+    "methodology": Item("Metodologia dos indicadores", "analytics:methodology", "info",
+                        ("analytics:methodology",), "Como cada número é calculado"),
 }
 
 # Ações rápidas: aparecem na busca global e no topo da tela inicial.
@@ -160,7 +168,7 @@ LAYOUT = {
         ("Acompanhamento", ["children", "fam_activities", "fam_works", "fam_grades", "fam_attendance"]),
         ("Escola", ["threads_family", "announcements", "requests", "notifications"]),
         ("Secretaria", ["justify", "links"]),
-        ("Análises", ["reports"]),
+        ("Análises", ["reports", "methodology"]),
     ],
     ESTUDANTE: [
         (None, ["home", "calendar", "my_dashboard"]),
@@ -171,7 +179,7 @@ LAYOUT = {
         ("Sala de aula", ["classrooms", "attendance", "evaluations", "activities", "works"]),
         ("Acompanhamento", ["occurrences", "observations", "justifications"]),
         COMMUNICATION_STAFF,
-        ("Análises", ["reports"]),
+        ("Análises", ["teacher_bi", "subject_bi", "reports", "methodology"]),
     ],
     SECRETARIA: [
         (None, ["home", "calendar"]),
@@ -179,7 +187,7 @@ LAYOUT = {
         ("Acadêmico", ["classes", "subjects", "years", "assignments"]),
         ("Pedagógico", ["evaluations", "activities", "works", "attendance", "occurrences"]),
         COMMUNICATION_STAFF,
-        ("Análises", ["secretaria_panel", "reports"]),
+        ("Análises", ["secretaria_panel", "subject_bi", "quality", "reports", "methodology"]),
         ("Configuração", ["config"]),
     ],
     COORDENACAO: [
@@ -188,11 +196,11 @@ LAYOUT = {
                         "occurrences", "observations", "plans", "justifications"]),
         ("Acadêmico", ["classes", "subjects", "years", "assignments"]),
         COMMUNICATION_STAFF,
-        ("Análises", ["institutional", "reports"]),
+        ("Análises", ["institutional", "subject_bi", "quality", "reports", "methodology"]),
     ],
     DIRECAO: [
         (None, ["home", "calendar"]),
-        ("Análises", ["institutional", "reports"]),
+        ("Análises", ["institutional", "subject_bi", "quality", "reports", "methodology"]),
         ("Pedagógico", ["students", "evaluations", "activities", "works", "attendance",
                         "occurrences", "observations", "plans", "justifications"]),
         ("Acadêmico", ["classes", "subjects", "years"]),
@@ -206,7 +214,7 @@ LAYOUT = {
         ("Pedagógico", ["evaluations", "activities", "works", "attendance", "occurrences",
                         "justifications"]),
         COMMUNICATION_STAFF,
-        ("Análises", ["institutional", "secretaria_panel", "reports"]),
+        ("Análises", ["institutional", "secretaria_panel", "subject_bi", "quality", "reports", "methodology"]),
     ],
 }
 

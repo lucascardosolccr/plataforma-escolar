@@ -1,81 +1,90 @@
 {% extends "base.html" %}
-{% load ui %}
-{% block title %}Painel institucional{% endblock %}
+{% load static ui bi_tags %}
+{% block title %}Painel institucional — Plataforma Escolar{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/bi.css' %}">{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+{% with r=report %}
+<div class="page-head">
   <div>
-    <h1 class="h4 mb-0">Painel institucional</h1>
-    <p class="text-body-secondary small mb-0">{{ user.school.name }} · Gerado em {{ generated_at|date:"d/m/Y H:i" }}</p>
+    <span class="eyebrow">Visão executiva</span>
+    <h1>Painel institucional</h1>
+    <p>{{ user.school.name }} · indicadores da escola no período, com comparações entre turmas, séries e turnos.</p>
   </div>
-  <a href="{% url 'analytics:report_detail' 'institucional' %}" class="btn btn-outline-primary btn-sm">Relatório institucional</a>
+  <a href="{% url 'analytics:data_quality' %}?{{ period.querystring }}" class="btn btn-outline-secondary btn-sm">{% icon "check" %}Qualidade dos dados</a>
 </div>
 
-<div class="kpi-grid mb-4">
-  <div class="kpi">
-    <span class="kpi-label">{% icon "id-card" %}Estudantes ativos</span>
-    <span class="kpi-value">{{ total_students }}</span>
-    <span class="kpi-hint">Fichas com situação "ativo"</span>
-  </div>
-  <div class="kpi">
-    <span class="kpi-label">{% icon "clipboard-list" %}Matrículas ativas</span>
-    <span class="kpi-value">{{ active_enrollments }}</span>
-    <span class="kpi-hint">Estudante em turma no ano letivo</span>
-  </div>
-  <div class="kpi">
-    <span class="kpi-label">{% icon "layers" %}Turmas</span>
-    <span class="kpi-value">{{ class_groups_count }}</span>
-    <span class="kpi-hint">Todos os anos letivos cadastrados</span>
-  </div>
-  <div class="kpi">
-    <span class="kpi-label">{% icon "calendar-check" %}Frequência média</span>
-    <span class="kpi-value">{% if attendance_rate is not None %}{{ attendance_rate|floatformat:1 }}%{% else %}—{% endif %}</span>
-    <span class="kpi-hint">Presenças e atrasos sobre todos os registros</span>
-  </div>
-</div>
+{% include "analytics/bi/_filters.html" with presets=presets period=period %}
+{% include "analytics/bi/_subnav.html" with sections=sections %}
 
-<div class="row g-3 mb-3">
-  <div class="col-lg-8">
-    <div class="card h-100">
-      <div class="card-header bg-transparent fw-semibold">Frequência por turma (%)</div>
-      <div class="card-body p-4">{{ class_chart }}
-        <div class="chart-legend"><span><i class="l-main"></i>Frequência da turma</span>{% if min_attendance is not None %}<span><i class="l-alert"></i>Abaixo de {{ min_attendance|floatformat:0 }}% (limite de faltas da escola)</span>{% endif %}</div>
-        <p class="chart-source mb-0">Fonte: registros de frequência lançados pelos professores. Turma sem nenhum registro não aparece no gráfico.</p></div>
-    </div>
+<section class="bi-section" id="visao-geral" aria-labelledby="h-v">
+  <h2 id="h-v">Visão geral</h2>
+  <div class="kpi-grid">
+    {% include "analytics/bi/_kpi.html" with label="Estudantes ativos" value=r.students_active icon="id-card" hint=r.enrollments_active|cat:" matrícula(s) ativa(s)" %}
+    {% include "analytics/bi/_kpi.html" with label="Turmas" value=r.classes|length icon="layers" %}
+    {% include "analytics/bi/_kpi.html" with label="Média geral da escola" value=r.overall.mean|num:2 icon="graduation-cap" metric="overall_average" hint="Média das médias gerais dos estudantes" %}
+    {% with v=r.attendance|num:1|cat:"%" %}{% include "analytics/bi/_kpi.html" with label="Frequência média" value=v icon="calendar-check" metric="attendance_percent" hint="Taxa de faltas: "|cat:r.absence_rate|num:1|cat:"%" %}{% endwith %}
+    {% with v=r.delivery_rate|num:1|cat:"%" %}{% include "analytics/bi/_kpi.html" with label="Taxa de entrega" value=v icon="notebook-pen" metric="delivery_rate" %}{% endwith %}
+    {% include "analytics/bi/_kpi.html" with label="Ingressos no período" value=r.movement.entries icon="user-check" metric="enrollment_movement" hint=r.movement.transferred|cat:" transferência(s), "|cat:r.movement.dropped|cat:" desistência(s)" %}
   </div>
-  <div class="col-lg-4">
-    <div class="card h-100">
-      <div class="card-header bg-transparent fw-semibold">Indicadores</div>
-      <div class="card-body">
-        <table class="table table-sm mb-0">
-          <tbody>
-            <tr><td>Turmas</td><td class="text-end">{{ data.class_groups }}</td></tr>
-            <tr><td>Professores com atribuição</td><td class="text-end">{{ data.teachers }}</td></tr>
-            <tr><td>Vínculos pendentes</td><td class="text-end">{{ data.links_pending }}</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
+</section>
 
-<div class="card">
-  <div class="card-header bg-transparent fw-semibold">Turmas</div>
-  <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead><tr><th>Turma</th><th>Ano letivo</th><th class="text-end">Estudantes</th><th class="text-end">Frequência</th><th class="text-end"></th></tr></thead>
-      <tbody>
-        {% for c in classes %}
-        <tr>
-          <td class="fw-semibold">{{ c.class_group.name }}</td>
-          <td>{{ c.class_group.school_year }}</td>
-          <td class="text-end">{{ c.students }}</td>
-          <td class="text-end">{% if c.attendance is not None %}{{ c.attendance }}%{% else %}—{% endif %}</td>
-          <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'analytics:class_dashboard' c.class_group.pk %}">Painel</a></td>
-        </tr>
-        {% empty %}<tr><td colspan="5" class="text-body-secondary">Nenhuma turma cadastrada.</td></tr>{% endfor %}
-      </tbody>
-    </table>
+<section class="bi-section" id="turmas" aria-labelledby="h-t">
+  <h2 id="h-t">Comparação entre turmas {% metric_info "small_group" %}</h2>
+  <p class="bi-lead">Turmas diferem em composição e contexto: a comparação orienta onde olhar, não ranqueia. Clique numa barra para o painel da turma. Barras em laranja: frequência abaixo de {{ min_attendance|num:0 }}% (limite de faltas da escola).</p>
+  <div class="card mb-3 bi-chart-card"><div class="card-header">Frequência por turma</div><div class="card-body">{{ class_chart }}
+    <div class="chart-legend"><span><i class="l-main"></i>Frequência da turma</span><span><i class="l-alert"></i>Abaixo de {{ min_attendance|num:0 }}%</span></div></div></div>
+  <div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0" data-sortable>
+    <thead><tr><th>Turma</th><th>Ano letivo</th><th>Série</th><th>Turno</th><th class="text-end">Estudantes</th><th class="text-end">Média</th><th class="text-end">Frequência</th><th class="text-end">Entrega</th></tr></thead>
+    <tbody>{% for c in r.classes %}<tr>
+      <th scope="row"><a href="{% url 'analytics:class_dashboard' c.class_group.pk %}?{{ period.querystring }}">{{ c.class_group.name }}</a></th>
+      <td>{{ c.class_group.school_year.name }}</td><td>{{ c.class_group.grade|default:"—" }}</td><td>{{ c.class_group.get_turn_display|default:"—" }}</td>
+      <td class="text-end">{{ c.students }}</td>
+      {% if c.small %}<td class="text-end" colspan="3"><span class="chip">grupo pequeno</span></td>{% else %}
+      <td class="text-end fw-bold">{{ c.average|num:2 }}</td><td class="text-end">{{ c.attendance|num:1 }}{% if c.attendance is not None %}%{% endif %}</td><td class="text-end">{{ c.delivery_rate|num:1 }}{% if c.delivery_rate is not None %}%{% endif %}</td>{% endif %}
+    </tr>{% empty %}<tr><td colspan="8" class="text-center text-body-secondary py-3">Nenhuma turma cadastrada.</td></tr>{% endfor %}</tbody>
+  </table></div></div>
+</section>
+
+<section class="bi-section" id="disciplinas" aria-labelledby="h-d">
+  <h2 id="h-d">Desempenho por disciplina</h2>
+  <div class="row g-3">
+    <div class="col-lg-7"><div class="card h-100 bi-chart-card"><div class="card-header">Média da escola por disciplina (clique para o painel da disciplina)</div><div class="card-body">{{ subject_chart }}</div></div></div>
+    <div class="col-lg-5"><div class="card h-100"><div class="table-responsive"><table class="table align-middle mb-0" data-sortable>
+      <thead><tr><th>Disciplina</th><th class="text-end">Média</th><th class="text-end">Desvio</th><th class="text-end">Abaixo</th></tr></thead>
+      <tbody>{% for s in r.subjects %}<tr><th scope="row"><a href="{% url 'analytics:subject_dashboard' s.subject.pk %}?{{ period.querystring }}">{{ s.subject.name }}</a></th><td class="text-end fw-bold">{{ s.mean|num:2 }}</td><td class="text-end">{{ s.stdev|num:2 }}</td><td class="text-end">{{ s.below_count }}</td></tr>
+      {% empty %}<tr><td colspan="4" class="text-center text-body-secondary py-3">Sem notas publicadas no período.</td></tr>{% endfor %}</tbody>
+    </table></div></div></div>
   </div>
-</div>
+</section>
+
+<section class="bi-section" id="composicao" aria-labelledby="h-c">
+  <h2 id="h-c">Série e turno</h2>
+  <div class="row g-3">
+    <div class="col-lg-6"><div class="card h-100"><div class="card-header">Por ano/série</div><table class="table mb-0"><thead><tr><th>Série</th><th class="text-end">Estudantes</th><th class="text-end">Média</th><th class="text-end">Frequência</th></tr></thead>
+      <tbody>{% for g in r.by_grade %}<tr><th scope="row">{{ g.label }}</th><td class="text-end">{{ g.students }}</td>{% if g.small %}<td class="text-end" colspan="2"><span class="chip">grupo pequeno</span></td>{% else %}<td class="text-end">{{ g.average|num:2 }}</td><td class="text-end">{{ g.attendance|num:1 }}%</td>{% endif %}</tr>{% endfor %}</tbody></table></div></div>
+    <div class="col-lg-6"><div class="card h-100"><div class="card-header">Por turno</div><table class="table mb-0"><thead><tr><th>Turno</th><th class="text-end">Estudantes</th><th class="text-end">Média</th><th class="text-end">Frequência</th></tr></thead>
+      <tbody>{% for g in r.by_turn %}<tr><th scope="row">{{ g.label }}</th><td class="text-end">{{ g.students }}</td>{% if g.small %}<td class="text-end" colspan="2"><span class="chip">grupo pequeno</span></td>{% else %}<td class="text-end">{{ g.average|num:2 }}</td><td class="text-end">{{ g.attendance|num:1 }}%</td>{% endif %}</tr>{% endfor %}</tbody></table></div></div>
+  </div>
+</section>
+
+<section class="bi-section" id="evolucao" aria-labelledby="h-e">
+  <h2 id="h-e">Evolução no período</h2>
+  <div class="row g-3">
+    <div class="col-lg-6"><div class="card h-100 bi-chart-card"><div class="card-header">Frequência por mês</div><div class="card-body">{{ trend_chart }}</div></div></div>
+    <div class="col-lg-6"><div class="card h-100 bi-chart-card"><div class="card-header">Média das notas por mês</div><div class="card-body">{{ grade_trend_chart }}</div></div></div>
+  </div>
+</section>
+
+<section class="bi-section" id="gestao" aria-labelledby="h-g">
+  <h2 id="h-g">Indicadores de gestão</h2>
+  <div class="kpi-grid">
+    {% include "analytics/bi/_kpi.html" with label="Ocorrências em aberto" value=r.follow_up.occurrences_open icon="flag" hint="Abertas ou em acompanhamento" %}
+    {% include "analytics/bi/_kpi.html" with label="Planos de acompanhamento ativos" value=r.follow_up.plans_active icon="heart-handshake" metric="intervention_effect" %}
+    {% include "analytics/bi/_kpi.html" with label="Transferências no período" value=r.movement.transferred icon="arrow-right" metric="enrollment_movement" %}
+    {% include "analytics/bi/_kpi.html" with label="Concluintes no período" value=r.movement.concluded icon="graduation-cap" metric="enrollment_movement" %}
+  </div>
+  <p class="bi-chart-note mt-2">Metas institucionais não são cadastradas na plataforma, então o alcance de metas não pode ser medido. Ver <a href="{% url 'analytics:methodology' %}">metodologia</a>.</p>
+</section>
+{% endwith %}
 {% endblock %}

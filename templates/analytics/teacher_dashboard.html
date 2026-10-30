@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load static ui bi_tags %}
+{% block title %}Meu painel de turmas — Plataforma Escolar{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/bi.css' %}">{% endblock %}
+
+{% block content %}
+{% with r=report %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Painel do professor</span>
+    <h1>Minhas turmas em números</h1>
+    <p>Uma visão consolidada das suas turmas e disciplinas para planejar — não é uma avaliação do seu trabalho, e só você vê este painel.</p>
+  </div>
+</div>
+
+{% include "analytics/bi/_filters.html" with presets=presets period=period extra_filters=extra_filters %}
+
+<div class="kpi-grid mb-4">
+  {% include "analytics/bi/_kpi.html" with label="Turma × disciplina" value=r.rows|length icon="school" %}
+  {% include "analytics/bi/_kpi.html" with label="Estudantes" value=totals.students icon="users" hint="Soma das turmas (um estudante pode contar mais de uma vez)" %}
+  {% include "analytics/bi/_kpi.html" with label="Avaliações publicadas" value=totals.evaluations icon="clipboard-check" hint=totals.drafts|cat:" em rascunho" %}
+  {% include "analytics/bi/_kpi.html" with label="Entregas a registrar" value=totals.records_pending icon="notebook-pen" metric="record_coverage" attention=totals.records_pending hint="Atividades vencidas × estudantes, sem registro" %}
+  {% include "analytics/bi/_kpi.html" with label="Observações registradas" value=totals.observations icon="eye" hint="No período, por você" %}
+</div>
+
+<div class="card mb-4 bi-chart-card"><div class="card-header">Média por turma e disciplina (clique para o painel da disciplina)</div><div class="card-body">{{ average_chart }}</div></div>
+
+<div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0" data-sortable>
+  <caption class="visually-hidden">Indicadores por turma e disciplina</caption>
+  <thead><tr><th>Turma</th><th>Disciplina</th><th class="text-end">Estudantes</th><th class="text-end">Média {% metric_info "class_comparison" %}</th><th class="text-end">Abaixo da aprovação</th><th class="text-end">Avaliações</th><th class="text-end">Rascunhos</th><th class="text-end">Atividades</th><th class="text-end">Entrega {% metric_info "delivery_rate" %}</th><th class="text-end">A registrar</th><th>Última chamada</th><th data-nosort><span class="visually-hidden">Ações</span></th></tr></thead>
+  <tbody>{% for x in r.rows %}<tr>
+    <th scope="row">{{ x.class_group.name }}</th><td>{{ x.subject.name }}</td>
+    <td class="text-end">{{ x.students }}</td><td class="text-end fw-bold">{{ x.average|num:2 }}</td>
+    <td class="text-end">{{ x.below }}</td><td class="text-end">{{ x.evaluations_published }}</td><td class="text-end">{{ x.evaluations_draft }}</td>
+    <td class="text-end">{{ x.activities }}</td><td class="text-end">{{ x.delivery_rate|num:1 }}{% if x.delivery_rate is not None %}%{% endif %}</td>
+    <td class="text-end">{{ x.records_pending }}</td>
+    <td data-value="{{ x.last_attendance|date:'Ymd' }}">{{ x.last_attendance|date:"d/m/Y"|default:"—" }}</td>
+    <td class="text-end text-nowrap">
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'analytics:class_dashboard' x.class_group.pk %}?{{ period.querystring }}">Turma</a>
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'analytics:subject_dashboard' x.subject.pk %}?turma={{ x.class_group.pk }}&{{ period.querystring }}">Disciplina</a>
+    </td>
+  </tr>{% empty %}<tr><td colspan="12"><div class="empty-state py-4">{% icon "school" %}<strong>Sem atribuições neste filtro</strong></div></td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endwith %}
+{% endblock %}

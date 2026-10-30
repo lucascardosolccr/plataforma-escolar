@@ -14,6 +14,7 @@
     </div>
     <span class="chip">{{ r.students|length }} estudante(s)</span>
     <a href="{% url 'analytics:class_dashboard' r.assignment.class_group.pk %}" class="btn btn-sm btn-outline-primary">Painel da turma</a>
+    <a href="{% url 'analytics:subject_dashboard' r.assignment.subject.pk %}?turma={{ r.assignment.class_group.pk }}" class="btn btn-sm btn-outline-secondary">Painel da disciplina</a>
   </div>
   <ul class="list-group list-group-flush">
     {% for s in r.students %}

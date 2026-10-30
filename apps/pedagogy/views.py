@@ -7,10 +7,12 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Avg, Count, Max, Q
 from django.http import FileResponse, Http404
+from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from apps.academics.models import ClassGroup, SchoolYear, Subject, TeacherAssignment
+from apps.communication.family_events import notify_family
 from apps.communication.services import (
     announce_publication,
     notify_attendance_limit,
@@ -435,6 +437,15 @@ def evaluation_grade(request, pk):
                             grade,
                             f"Nota {student}: {old if old is not None else '—'} → {value}",
                         )
+                        if ev.status == Evaluation.Status.PUBLISHED:
+                            notify_family(
+                                student, "nota_alterada",
+                                f"{'Nota alterada' if old is not None else 'Nova nota'}: {ev.title}",
+                                body=f"A nota de {student.first_name} em {ev.subject} foi "
+                                     f"{'atualizada' if old is not None else 'lançada'} pelo professor.",
+                                url=f"{reverse('pedagogy:evaluation_list')}?estudante={student.pk}",
+                                dedupe_key=f"nota-{grade.pk}-{value}",
+                            )
             messages.success(request, f"{changed} nota(s) registrada(s).")
             return redirect("pedagogy:evaluation_grade", pk=ev.pk)
     else:
@@ -1027,6 +1038,8 @@ def activity_submissions(request, pk):
                 if not ok:
                     invalid.append(st.first_name)
                     grade = existing[st.pk].grade if st.pk in existing else None
+                before = existing.get(st.pk)
+                prev = (before.status, before.grade, before.comment) if before else (None, None, "")
                 sub, created = Submission.objects.update_or_create(
                     school=user.school, activity=act, student=st,
                     defaults={
@@ -1042,6 +1055,16 @@ def activity_submissions(request, pk):
                     sub,
                     f"Entrega de {st}: {status}",
                 )
+                if act.is_visible_to_family:
+                    url = reverse("pedagogy:activity_detail", args=[act.pk])
+                    if (sub.grade, sub.comment) != prev[1:] and (sub.grade is not None or sub.comment):
+                        notify_family(st, "atividade_corrigida", f"Atividade corrigida: {act.title}",
+                                      body=f"O resultado de {st.first_name} em {act.subject} está disponível.",
+                                      url=url, dedupe_key=f"correcao-{sub.pk}-{sub.grade}-{hash(sub.comment)}")
+                    if sub.status != prev[0]:
+                        notify_family(st, "entrega_registrada", f"{act.title}: {sub.get_status_display()}",
+                                      body=f"O professor registrou a situação da entrega de {st.first_name}.",
+                                      url=url, dedupe_key=f"entrega-{sub.pk}-{sub.status}")
                 count += 1
             messages.success(request, f"{count} entrega(s) registrada(s).")
         if invalid:
@@ -1996,6 +2019,8 @@ def attendance_register(request, class_group_id):
         if form.is_valid():
             tdate = form.cleaned_data["date"]
             with transaction.atomic():
+                before = dict(AttendanceRecord.objects.filter(class_group=class_group, date=tdate)
+                              .values_list("student_id", "status"))
                 for student, field_name in form.rows:
                     status = form.cleaned_data[field_name]
                     rec, created = AttendanceRecord.objects.update_or_create(
@@ -2010,6 +2035,17 @@ def attendance_register(request, class_group_id):
                         rec,
                         f"Frequência {student} em {tdate}: {status}",
                     )
+                    old = before.get(student.pk)
+                    furl = f"{reverse('pedagogy:attendance_list')}?estudante={student.pk}"
+                    if status == "falta" and old != "falta":
+                        notify_family(student, "falta_registrada", f"Falta registrada em {tdate:%d/%m}",
+                                      body=f"{student.first_name} teve falta registrada na turma {class_group.name}. "
+                                           "Se houver motivo, você pode enviar uma justificativa.",
+                                      url=furl, dedupe_key=f"falta-{rec.pk}-falta")
+                    elif old == "falta" and status != "falta":
+                        notify_family(student, "falta_corrigida", f"Falta corrigida em {tdate:%d/%m}",
+                                      body=f"A falta de {student.first_name} foi corrigida pelo professor.",
+                                      url=furl, dedupe_key=f"falta-{rec.pk}-{status}")
             _flag_attendance_limits(class_group, tdate)
             messages.success(request, f"Frequência de {tdate:%d/%m/%Y} registrada.")
             return redirect("pedagogy:attendance_class", class_group_id=class_group.pk)
@@ -2187,6 +2223,8 @@ def observation_list(request):
         qs = qs.filter(student_id__in=student_ids)
     else:
         acc.require(acc.can_view_observations(user))
+    if user.role == Role.RESPONSAVEL.value:
+        qs = qs.filter(shared_with_family=True)  # registro interno da equipe não chega à família
     page = paginate(request, qs.order_by("-observed_at", "-created_at"))
     return render(
         request,
@@ -2207,7 +2245,13 @@ def observation_create(request):
             obs.school = user.school
             obs.teacher = user
             obs.save()
-            _log(request, "create", obs, f"Registrou observação pedagógica de {student}")
+            _log(request, "create", obs, f"Registrou observação pedagógica de {student}"
+                 + ("" if obs.shared_with_family else " (interna)"))
+            if obs.shared_with_family:
+                notify_family(student, "observacao", "Nova observação pedagógica",
+                              body=f"O professor registrou uma observação sobre {student.first_name}.",
+                              url=f"{reverse('pedagogy:observation_list')}?estudante={student.pk}",
+                              dedupe_key=f"observacao-{obs.pk}", include_student=False)
         messages.success(request, "Observação registrada.")
         return redirect("pedagogy:observation_list")
     return render(request, "pedagogy/observation_form.html", {"form": form, "obj": None})

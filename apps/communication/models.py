@@ -267,3 +267,33 @@ class ServiceRequest(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.get_status_display()})"
+
+class NotificationRule(models.Model):
+    """Liga ou desliga um tipo de aviso automático para a escola inteira.
+
+    Sem linha para o evento, vale o padrão de ``family_events.EVENTS``.
+    Configurado pela direção e pela administração.
+    """
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="notification_rules")
+    event = models.CharField("evento", max_length=40)
+    enabled = models.BooleanField("ativo", default=True)
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="+")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "regra de notificação"
+        verbose_name_plural = "regras de notificação"
+        constraints = [models.UniqueConstraint(fields=["school", "event"], name="uniq_rule_per_event")]
+
+
+class NotificationMute(models.Model):
+    """Tipo de aviso que a própria pessoa preferiu não receber."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notification_mutes")
+    kind = models.CharField("tipo", max_length=15)
+
+    class Meta:
+        verbose_name = "preferência de notificação"
+        verbose_name_plural = "preferências de notificação"
+        constraints = [models.UniqueConstraint(fields=["user", "kind"], name="uniq_mute_per_kind")]

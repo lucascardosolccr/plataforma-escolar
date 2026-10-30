@@ -8,7 +8,7 @@ from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import Announcement, Notification
+from .models import Announcement, Notification, NotificationMute
 
 
 def notify(school, user, kind, title, body="", url="", student=None, dedupe_key=""):
@@ -16,10 +16,35 @@ def notify(school, user, kind, title, body="", url="", student=None, dedupe_key=
     pessoa (ex.: pedido de impressão reenviado)."""
     if dedupe_key and Notification.objects.filter(user=user, dedupe_key=dedupe_key).exists():
         return None
-    return Notification.objects.create(
+    n = Notification.objects.create(
         school=school, user=user, kind=kind, title=title, body=body, url=url,
         student=student, dedupe_key=dedupe_key,
     )
+    email_notice([user])
+    return n
+
+
+def email_notice(users):
+    """Canal opcional: e-mail curto, sem nenhum dado do estudante, para quem
+    escolheu e-mail como preferência. Falha de envio nunca derruba a tela."""
+    from django.conf import settings
+
+    if not getattr(settings, "NOTIFY_BY_EMAIL", False):
+        return 0
+    from django.core.mail import send_mass_mail
+
+    from apps.registry.models import GuardianProfile
+
+    ids = [u.pk for u in users if getattr(u, "email", "")]
+    wants = set(GuardianProfile.objects.filter(user_id__in=ids, comm_preference="email")
+                .values_list("user_id", flat=True))
+    msgs = [("Nova notificação na Plataforma Escolar",
+             "Olá! Há uma nova notificação para você na Plataforma Escolar. "
+             "Entre na plataforma para ler.\n\nEste e-mail não traz detalhes por segurança.",
+             settings.DEFAULT_FROM_EMAIL, [u.email]) for u in users if u.pk in wants]
+    if msgs:
+        send_mass_mail(msgs, fail_silently=True)
+    return len(msgs)
 
 
 def notify_many(school, users, kind, title, body="", url="", student=None, dedupe_key=""):
@@ -37,6 +62,19 @@ def notify_many(school, users, kind, title, body="", url="", student=None, dedup
         )
         for u in users
     )
+    email_notice(users)
+
+
+def _allowed(school, event, kind, users):
+    """Regra da escola ligada e pessoas que não silenciaram o tipo."""
+    from .family_events import ESSENTIAL_KINDS, event_enabled
+
+    if not event_enabled(school, event):
+        return set()
+    ids = {u.pk for u in users}
+    if kind not in ESSENTIAL_KINDS:
+        ids -= set(NotificationMute.objects.filter(user_id__in=ids, kind=kind).values_list("user_id", flat=True))
+    return ids
 
 
 def notify_evaluation_published(evaluation, request=None):
@@ -57,12 +95,16 @@ def notify_evaluation_published(evaluation, request=None):
         .select_related("guardian", "student")
         .distinct()
     )
+    ok = _allowed(evaluation.school, "nota_publicada", Notification.Kind.EVALUATION, [l.guardian for l in links])
     pendings = []
     for link in links:
+        if link.guardian_id not in ok:
+            continue
         pendings.append(
             Notification(
                 school=evaluation.school,
                 user=link.guardian,
+                student=link.student,
                 kind=Notification.Kind.EVALUATION,
                 title=f"Notas publicadas: {evaluation.title}",
                 body=(
@@ -74,6 +116,7 @@ def notify_evaluation_published(evaluation, request=None):
         )
     if pendings:
         Notification.objects.bulk_create(pendings)
+        email_notice([x.user for x in pendings])
 
 
 def _group_work_member_ids(work):
@@ -119,9 +162,14 @@ def _notify_class_families(item, title, url, detail="", student_ids=None):
     contexto = f"{item.subject}, turma {item.class_group}.{detail}"
     seen = set()
     pending = []
+    from .family_events import event_enabled
+
+    if not event_enabled(item.school, "atividade_atribuida"):
+        return
+    muted = set(NotificationMute.objects.filter(kind=Notification.Kind.ACTIVITY).values_list("user_id", flat=True))
     for link in links:
         key = (link.guardian_id, link.student_id)
-        if key in seen:
+        if key in seen or link.guardian_id in muted:
             continue
         seen.add(key)
         pending.append(
@@ -150,6 +198,7 @@ def _notify_class_families(item, title, url, detail="", student_ids=None):
         )
     if pending:
         Notification.objects.bulk_create(pending)
+        email_notice([x.user for x in pending])
 
 
 def _prazo(item):
@@ -382,13 +431,9 @@ def notify_attendance_limit(student, class_group, percent):
 
     User = get_user_model()
     url = reverse("pedagogy:attendance_list") + f"?estudante={student.pk}"
-    already = Notification.objects.filter(
-        school=student.school,
-        kind=Notification.Kind.ATTENDANCE,
-        url=url,
-    ).exists()
-    if already:
-        return
+    # Um alerta por estudante e turma (antes: "já existe aviso de frequência com
+    # este link", o que os avisos de falta diária passariam a satisfazer).
+    key = f"limite-faltas-{student.pk}-{class_group.pk}"
     staff = User.objects.filter(
         school=student.school, role=Role.SECRETARIA.value, is_active=True
     )
@@ -402,6 +447,17 @@ def notify_attendance_limit(student, class_group, percent):
             "Confira a frequência e, se necessário, comunique a família."
         ),
         url=url,
+        student=student,
+        dedupe_key=key,
+    )
+    # A família também é avisada (se a escola mantiver a regra ligada).
+    from .family_events import notify_family
+
+    notify_family(
+        student, "limite_faltas", f"Faltas de {student.first_name} perto do limite",
+        body=f"{student.first_name} chegou a {percent:.1f}% de faltas na turma {class_group.name}. "
+             "Procure a escola ou envie justificativas, se houver.",
+        url=url, dedupe_key=key, include_student=False,
     )
 
 def _approved_guardians(student):
@@ -415,6 +471,10 @@ def notify_occurrence_created(occurrence):
     """Avisa os responsáveis: a família vê a ocorrência, mas antes só a
     encontrava se abrisse a lista por conta própria."""
     student = occurrence.student
+    from .family_events import event_enabled
+
+    if not event_enabled(occurrence.school, "ocorrencia"):
+        return
     notify_many(
         occurrence.school,
         _approved_guardians(student),
@@ -423,6 +483,7 @@ def notify_occurrence_created(occurrence):
         body=f"A escola registrou uma ocorrência sobre {student.full_name} em "
              f"{occurrence.date:%d/%m/%Y}. Abra para ler e acompanhar.",
         url=reverse("pedagogy:occurrence_detail", args=[occurrence.pk]),
+        student=student,
     )
 
 

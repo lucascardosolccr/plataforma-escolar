@@ -528,7 +528,7 @@ def _student_quality(student, enrollments, period, act):
 
 
 def student_report(student, period, *, show_class_comparison=False, show_observations=False,
-                   only_subjects=None):
+                   only_subjects=None, shared_only=False):
     today = timezone.localdate()
     school = student.school
     rules = rules_by_subject(school)
@@ -668,7 +668,7 @@ def student_report(student, period, *, show_class_comparison=False, show_observa
     }
     report["interventions"] = _interventions(student, today)
     report["insights"] = student_insights(student, report, show_observations=show_observations,
-                                          only_subjects=only_subjects)
+                                          only_subjects=only_subjects, shared_only=shared_only)
     return report
 
 
@@ -679,7 +679,7 @@ def _fmt(v, places=1):
     return f"{v:.{places}f}".replace(".", ",")
 
 
-def student_insights(student, report, *, show_observations=False, only_subjects=None):
+def student_insights(student, report, *, show_observations=False, only_subjects=None, shared_only=False):
     out = []
     acad, att, act = report["academic"], report["attendance"], report["activities"]
     for s in acad["subjects"]:
@@ -758,6 +758,8 @@ def student_insights(student, report, *, show_observations=False, only_subjects=
     if show_observations:
         counts = defaultdict(int)
         obs = PedagogicalObservation.objects.filter(student=student).exclude(dificuldades="")
+        if shared_only:
+            obs = obs.filter(shared_with_family=True)
         if only_subjects is not None:
             obs = obs.filter(Q(subject__isnull=True) | Q(subject_id__in=list(only_subjects)))
         for subj_name in obs.values_list("subject__name", flat=True):

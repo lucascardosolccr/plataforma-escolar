@@ -229,12 +229,14 @@ def difficulty_contents(student):
     return rows
 
 
-def consolidated_skills(student, only_subjects=None):
+def consolidated_skills(student, only_subjects=None, shared_only=False):
     """Habilidades consolidadas e reforços recomendados (observações)."""
     from django.db.models import Q
 
     skills, strategies = [], []
     qs = student.observations.all()
+    if shared_only:
+        qs = qs.filter(shared_with_family=True)
     if only_subjects is not None:
         qs = qs.filter(Q(subject__isnull=True) | Q(subject_id__in=list(only_subjects)))
     for obs in qs.order_by("-observed_at")[:50]:

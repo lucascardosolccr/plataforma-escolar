@@ -6,6 +6,8 @@ app_name = "communication"
 
 urlpatterns = [
     path("notificacoes/", views.notification_list, name="notification_list"),
+    path("notificacoes/preferencias/", views.notification_preferences, name="notification_preferences"),
+    path("notificacoes/regras/", views.notification_rules, name="notification_rules"),
     path(
         "notificacoes/<int:pk>/abrir/",
         views.notification_read,

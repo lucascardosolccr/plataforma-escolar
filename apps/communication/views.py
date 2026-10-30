@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -59,6 +60,31 @@ def notification_list(request):
         qs = qs.filter(is_read=False)
     elif situacao == "lidas":
         qs = qs.filter(is_read=True)
+    # Filtro por estudante: só os que aparecem nas próprias notificações
+    # (a família escolhe entre os filhos; ninguém lista aluno alheio).
+    student_choices = [
+        (str(sid), name) for sid, name in
+        Notification.objects.filter(user=user, student__isnull=False)
+        .values_list("student_id", "student__first_name").distinct().order_by("student__first_name")
+    ]
+    aluno = request.GET.get("aluno", "")
+    if aluno in dict(student_choices):
+        qs = qs.filter(student_id=aluno)
+    else:
+        aluno = ""
+    from datetime import date as _date
+
+    def _d(v):
+        try:
+            return _date.fromisoformat(v)
+        except (TypeError, ValueError):
+            return None
+
+    de, ate = _d(request.GET.get("de")), _d(request.GET.get("ate"))
+    if de:
+        qs = qs.filter(created_at__date__gte=de)
+    if ate:
+        qs = qs.filter(created_at__date__lte=ate)
     page = paginate(request, qs)
     # Agrupa por dia ("Hoje", "Ontem" ou a data) para a lista ler como um feed.
     today = timezone.localdate()
@@ -78,7 +104,11 @@ def notification_list(request):
             "page": page,
             "kind": kind,
             "situacao": situacao,
-            "filtered": bool(kind or situacao),
+            "filtered": bool(kind or situacao or aluno or de or ate),
+            "student_choices": student_choices,
+            "aluno": aluno,
+            "de": de,
+            "ate": ate,
             "kind_choices": Notification.Kind.choices,
             "situacao_choices": [("nao_lidas", "Não lidas"), ("lidas", "Lidas")],
             "unread_total": Notification.objects.filter(user=user, is_read=False).count(),
@@ -446,3 +476,66 @@ def request_detail(request, pk):
         "communication/request_detail.html",
         {"request_": req, "form": form, "history": history},
     )
+
+
+# ---------- Preferências pessoais e regras da escola ----------
+
+def notification_preferences(request):
+    """Tipos de aviso que a própria pessoa prefere não receber."""
+    from .family_events import MUTABLE_KINDS
+    from .models import NotificationMute
+
+    user = request.user
+    acc.require(acc.can_view_notifications(user))
+    labels = dict(Notification.Kind.choices)
+    if request.method == "POST":
+        wanted = set(request.POST.getlist("receber"))
+        with transaction.atomic():
+            for kind in MUTABLE_KINDS:
+                if kind in wanted:
+                    NotificationMute.objects.filter(user=user, kind=kind).delete()
+                else:
+                    NotificationMute.objects.get_or_create(user=user, kind=kind)
+        messages.success(request, "Preferências salvas.")
+        return redirect("communication:notification_preferences")
+    muted = set(NotificationMute.objects.filter(user=user).values_list("kind", flat=True))
+    profile = getattr(user, "guardian_profile", None)
+    return render(request, "communication/notification_preferences.html", {
+        "kinds": [(k, labels[k], k not in muted) for k in MUTABLE_KINDS],
+        "profile": profile,
+        "email_enabled": _email_channel_on(),
+    })
+
+
+def _email_channel_on():
+    from django.conf import settings
+
+    return bool(getattr(settings, "NOTIFY_BY_EMAIL", False))
+
+
+def notification_rules(request):
+    """Direção e administração: quais eventos geram aviso automático à família."""
+    from apps.core.models import Role as _Role
+
+    from .family_events import EVENTS
+    from .models import NotificationRule
+
+    user = request.user
+    if user.role not in (_Role.DIRECAO.value, _Role.ADMIN.value):
+        raise PermissionDenied
+    if request.method == "POST":
+        on = set(request.POST.getlist("ativo"))
+        with transaction.atomic():
+            for key in EVENTS:
+                NotificationRule.objects.update_or_create(
+                    school=user.school, event=key, defaults={"enabled": key in on, "updated_by": user})
+            _log(request, "update", None, "Atualizou as regras de aviso à família: "
+                 + (", ".join(sorted(on)) or "todas desligadas"), target_type="NotificationRule",
+                 target_id="escola")
+        messages.success(request, "Regras de aviso salvas.")
+        return redirect("communication:notification_rules")
+    from .family_events import event_enabled
+
+    return render(request, "communication/notification_rules.html", {
+        "events": [(k, label, event_enabled(user.school, k)) for k, (label, _kind, _d) in EVENTS.items()],
+    })

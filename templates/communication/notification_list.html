@@ -8,17 +8,23 @@
     <h1>Central de notificações</h1>
     <p>Avisos da plataforma: notas publicadas, prazos, comunicados, mensagens e solicitações.{% if unread_total %} <strong>{{ unread_total }} não lida{{ unread_total|pluralize }}.</strong>{% endif %}</p>
   </div>
+  <div class="d-flex flex-wrap gap-2">
+  <a class="btn btn-outline-secondary" href="{% url 'communication:notification_preferences' %}">{% icon "sliders-horizontal" %}Preferências</a>
   {% if unread_total %}
   <form method="post" action="{% url 'communication:notification_read_all' %}">
     {% csrf_token %}
     <button type="submit" class="btn btn-outline-secondary">{% icon "check-check" %}Marcar todas como lidas</button>
   </form>
   {% endif %}
+  </div>
 </div>
 
 <form method="get" class="filter-bar" aria-label="Filtrar notificações">
   {% include "partials/_filter_select.html" with name="situacao" label="Situação" options=situacao_choices selected=situacao all_label="Todas" %}
   {% include "partials/_filter_select.html" with name="tipo" label="Tipo" options=kind_choices selected=kind all_label="Todos" %}
+  {% if student_choices|length > 1 %}{% include "partials/_filter_select.html" with name="aluno" label="Estudante" options=student_choices selected=aluno all_label="Todos" %}{% endif %}
+  <div class="filter-field"><label for="f-de" class="form-label">De</label><input type="date" id="f-de" name="de" class="form-control" value="{{ de|date:'Y-m-d' }}" data-autosubmit></div>
+  <div class="filter-field"><label for="f-ate" class="form-label">Até</label><input type="date" id="f-ate" name="ate" class="form-control" value="{{ ate|date:'Y-m-d' }}" data-autosubmit></div>
   {% include "partials/_filter_end.html" with count=page.paginator.count noun="notificação(ões)" %}
 </form>
 

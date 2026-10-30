@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Preferências de notificação — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  {% url 'communication:notification_list' as back %}
+  {% include "partials/_form_head.html" with back_url=back back_label="Notificações" heading="Preferências de notificação" subheading="Escolha o que você quer receber. Avisos de ocorrência, de vínculo e de cadastro sempre chegam." %}
+  <form method="post" class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">
+      <fieldset>
+        <legend class="form-label fs-6">Quero receber avisos de</legend>
+        {% for key, label, on in kinds %}
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="receber" value="{{ key }}" id="k-{{ key }}"{% if on %} checked{% endif %}>
+          <label class="form-check-label" for="k-{{ key }}">{{ label }}</label>
+        </div>
+        {% endfor %}
+      </fieldset>
+      <div class="callout mt-3">{% icon "info" %}<div>
+        Os avisos ficam aqui na plataforma.
+        {% if email_enabled %}A escola também envia um e-mail curto, sem dados do estudante, avisando que há notificação nova, para quem escolheu “E-mail” em <a href="{% if profile %}{% url 'guardian_profile' user.pk %}{% else %}#{% endif %}">Meus dados de contato</a>.
+        {% else %}O envio por e-mail não está ligado nesta escola (é opcional e sem custo quando a escola usa um e-mail próprio).{% endif %}
+      </div></div>
+    </div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Salvar preferências" %}
+  </form>
+</div>
+{% endblock %}

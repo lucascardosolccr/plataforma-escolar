@@ -9,6 +9,11 @@ Variáveis do ambiente (arquivo .env na raiz do projeto):
   DJANGO_TZ           America/Sao_Paulo
   DJANGO_SESSION_HOURS  horas sem uso até sair da conta (padrão 8)
   DJANGO_SESSION_KEEP   "1" mantém o login depois de fechar o navegador
+  DJANGO_NOTIFY_EMAIL   "1" liga o aviso por e-mail (opcional; desligado por padrão)
+  DJANGO_EMAIL_HOST, DJANGO_EMAIL_PORT, DJANGO_EMAIL_USER, DJANGO_EMAIL_PASSWORD,
+  DJANGO_EMAIL_TLS ("1"), DJANGO_EMAIL_FROM   servidor SMTP da própria escola.
+      Sem custo quando a escola usa uma conta de e-mail que já tem. O e-mail
+      só diz que há notificação nova: nenhum dado do estudante sai por ele.
 """
 
 import os
@@ -190,3 +195,18 @@ MESSAGE_TAGS = {
     30: "warning",  # WARNING
     40: "danger",  # ERROR
 }
+
+# --- Aviso por e-mail (opcional) ------------------------------------------
+# Desligado por padrão: as notificações ficam na plataforma. Ligado, manda
+# um e-mail genérico ("há notificação nova") a quem escolheu e-mail como
+# preferência de comunicação. Sem servidor configurado, nada é enviado.
+NOTIFY_BY_EMAIL = os.environ.get("DJANGO_NOTIFY_EMAIL", "0") == "1" and bool(os.environ.get("DJANGO_EMAIL_HOST"))
+if NOTIFY_BY_EMAIL:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = os.environ["DJANGO_EMAIL_HOST"]
+    EMAIL_PORT = int(os.environ.get("DJANGO_EMAIL_PORT", "587"))
+    EMAIL_HOST_USER = os.environ.get("DJANGO_EMAIL_USER", "")
+    EMAIL_HOST_PASSWORD = os.environ.get("DJANGO_EMAIL_PASSWORD", "")
+    EMAIL_USE_TLS = os.environ.get("DJANGO_EMAIL_TLS", "1") == "1"
+    EMAIL_TIMEOUT = 10
+DEFAULT_FROM_EMAIL = os.environ.get("DJANGO_EMAIL_FROM", "plataforma@escola.local")

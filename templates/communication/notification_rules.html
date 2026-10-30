@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Avisos automáticos à família — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with heading="Avisos automáticos à família" subheading="Quais registros dos professores e da escola geram notificação aos responsáveis vinculados." %}
+  <form method="post" class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">
+      <fieldset>
+        <legend class="form-label fs-6">Eventos que avisam a família</legend>
+        {% for key, label, on in events %}
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="ativo" value="{{ key }}" id="e-{{ key }}"{% if on %} checked{% endif %}>
+          <label class="form-check-label" for="e-{{ key }}">{{ label }}</label>
+        </div>
+        {% endfor %}
+      </fieldset>
+      <ul class="rule-list small mt-3">
+        <li><strong>Nunca geram aviso:</strong> observação marcada como interna, registros da coordenação, observações internas das atividades e pedidos de impressão. São da equipe.</li>
+        <li>Observação pedagógica só avisa quando o professor marca “compartilhar com a família”.</li>
+        <li>Cada pessoa pode silenciar tipos nas próprias preferências, menos ocorrência, vínculo e cadastro.</li>
+      </ul>
+    </div>
+    {% include "partials/_form_actions.html" with submit_label="Salvar regras" %}
+  </form>
+</div>
+{% endblock %}

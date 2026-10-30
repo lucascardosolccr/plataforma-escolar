@@ -752,6 +752,12 @@ class PedagogicalObservation(models.Model):
     dificuldades = models.TextField("dificuldades observadas", blank=True)
     habilidades = models.TextField("habilidades consolidadas", blank=True)
     estrategias = models.TextField("estratégias/reforço recomendado", blank=True)
+    # Registro interno da equipe x informação compartilhada com a família.
+    # Padrão "compartilhar" preserva o comportamento anterior (a família já via).
+    shared_with_family = models.BooleanField(
+        "compartilhar com a família", default=True,
+        help_text="Desmarcado: registro interno da equipe pedagógica. A família não vê nem é avisada.",
+    )
     observed_at = models.DateField("data", default=timezone.localdate)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

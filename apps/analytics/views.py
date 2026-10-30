@@ -194,7 +194,7 @@ def student_dashboard(request, student_id):
     only_subjects = _teacher_only_subjects(user, student=student)
     report = bi.student_report(
         student, period, show_class_comparison=is_team, show_observations=can_view_obs,
-        only_subjects=only_subjects,
+        only_subjects=only_subjects, shared_only=user.role == Role.RESPONSAVEL.value,
     )
     if not can_view_plan:
         report["interventions"] = []
@@ -205,7 +205,9 @@ def student_dashboard(request, student_id):
         if not subject_filter or e["evaluation"].subject_id == subject_filter
     ]
     base_qs = period.querystring()
-    skills, strategies = services.consolidated_skills(student, only_subjects) if can_view_obs else ([], [])
+    skills, strategies = (services.consolidated_skills(student, only_subjects,
+                                                       shared_only=user.role == Role.RESPONSAVEL.value)
+                          if can_view_obs else ([], []))
 
     context = {
         "student": student,

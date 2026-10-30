@@ -595,7 +595,8 @@ class OccurrenceUpdateForm(forms.ModelForm):
 class PedagogicalObservationForm(forms.ModelForm):
     class Meta:
         model = PedagogicalObservation
-        fields = ["student", "subject", "content", "dificuldades", "habilidades", "estrategias", "observed_at"]
+        fields = ["student", "subject", "content", "dificuldades", "habilidades", "estrategias", "observed_at",
+                  "shared_with_family"]
         widgets = {"observed_at": forms.DateInput(format=r"%Y-%m-%d", attrs={"type": "date"})}
         labels = {
             "student": "Estudante",

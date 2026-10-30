@@ -282,6 +282,11 @@ def _visible_classes(user):
         qs = qs.filter(pk__in=teacher_class_ids(user))
     elif user.role not in ADMIN_RECORD_ROLES:
         return ClassGroup.objects.none()
+    from apps.coordination.scope import class_scope
+
+    scope = class_scope(user)
+    if scope is not None:
+        qs = qs.filter(pk__in=scope)
     return qs.order_by("name")
 
 

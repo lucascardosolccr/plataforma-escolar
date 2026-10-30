@@ -35,7 +35,7 @@ class ProfessionalUserForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ["username", "first_name", "last_name", "email", "role", "school"]
+        fields = ["username", "first_name", "last_name", "email", "phone", "staff_code", "role", "school"]
         labels = {
             "username": "Usuário (login)",
             "first_name": "Nome",

@@ -57,6 +57,9 @@ class User(AbstractUser):
         null=True,
         blank=True,
     )
+    phone = models.CharField("telefone", max_length=30, blank=True)
+    staff_code = models.CharField("identificação funcional", max_length=40, blank=True,
+                                  help_text="Matrícula funcional, quando a escola usa.")
     photo = models.ImageField(
         "fotografia", upload_to=safe_photo_path, validators=[validate_photo], null=True, blank=True,
         help_text="Identificação visual. Nunca usada para reconhecimento facial.",

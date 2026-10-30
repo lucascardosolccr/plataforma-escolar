@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     "apps.analytics",
     "apps.school_calendar",
     "apps.rotina",
+    "apps.coordination",
 ]
 
 MIDDLEWARE = [

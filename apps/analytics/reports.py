@@ -67,7 +67,10 @@ class Report:
 def allowed_students(user):
     base = Student.objects.filter(school=user.school)
     if user.role in STAFF:
-        return base
+        from apps.coordination.scope import student_ids
+
+        ids = student_ids(user)  # coordenação restrita à designação
+        return base if ids is None else base.filter(pk__in=ids)
     if user.role == PROF:
         from apps.academics.permissions import teacher_class_ids
 
@@ -88,7 +91,10 @@ def allowed_classes(user):
 
     base = ClassGroup.objects.filter(school=user.school)
     if user.role in STAFF:
-        return base
+        from apps.coordination.scope import class_scope
+
+        scope = class_scope(user)
+        return base if scope is None else base.filter(pk__in=scope)
     if user.role == PROF:
         from apps.academics.permissions import teacher_class_ids
 

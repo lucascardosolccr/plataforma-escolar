@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Painel da coordenação — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Painel da coordenação</h1>
+    <p>{% if designations %}{% for d in designations %}{{ d.area|default:"Designação" }}{% if d.all_school %} · escola toda{% endif %}{% if not forloop.last %}; {% endif %}{% endfor %}{% else %}Turmas, professores e estudantes que você acompanha.{% endif %}</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{% url 'coordination:records' %}">{% icon "notebook-pen" %}Registros</a>
+</div>
+
+{% if no_designation %}
+<div class="callout mb-3">{% icon "info" %}<div><strong>Você ainda não tem designação.</strong> A direção define quais turmas, disciplinas ou professores você acompanha. Até lá, os dados de estudantes ficam fechados.</div></div>
+{% endif %}
+
+<div class="kpi-grid mb-4">
+  <div class="kpi"><span class="kpi-label">{% icon "layers" %}Turmas acompanhadas</span><span class="kpi-value">{{ classes_total }}</span></div>
+  <div class="kpi"><span class="kpi-label">{% icon "user-cog" %}Professores</span><span class="kpi-value">{{ teachers_count }}</span></div>
+  <div class="kpi"><span class="kpi-label">{% icon "users" %}Estudantes</span><span class="kpi-value">{{ students_count }}</span></div>
+  <div class="kpi{% if alerts %} is-attention{% endif %}"><span class="kpi-label">{% icon "triangle-alert" %}Alertas de acompanhamento</span><span class="kpi-value">{{ alerts|length }}</span><span class="kpi-hint">Pelos critérios dos painéis (até 3 por turma)</span></div>
+  <div class="kpi{% if prints %} is-attention{% endif %}"><span class="kpi-label">{% icon "printer" %}Impressões a analisar</span><span class="kpi-value">{{ prints|length }}</span>{% if prints %}<a class="stretched-link kpi-hint" href="{% url 'printing:queue' %}">Abrir a fila</a>{% endif %}</div>
+</div>
+
+<div class="row g-3">
+  <div class="col-xl-8">
+    <section class="card mb-3" aria-labelledby="h-turmas">
+      <div class="card-header bg-transparent d-flex justify-content-between align-items-center"><h2 id="h-turmas" class="h6 mb-0">Evolução das turmas · {{ period.label }}</h2></div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 table-stack">
+          <thead><tr><th>Turma</th><th>Estudantes</th><th>Média</th><th>Frequência</th><th>Entregas</th><th>Em acompanhamento</th></tr></thead>
+          <tbody>
+            {% for r in class_rows %}
+            <tr>
+              <td class="fw-semibold"><a href="{% url 'analytics:class_dashboard' r.cg.pk %}">{{ r.cg.name }}</a></td>
+              <td data-label="Estudantes">{{ r.active }}</td>
+              <td data-label="Média">{{ r.mean|default_if_none:"—" }}</td>
+              <td data-label="Frequência">{% if r.attendance is not None %}{{ r.attendance }}%{% else %}—{% endif %}</td>
+              <td data-label="Entregas">{% if r.delivery is not None %}{{ r.delivery }}%{% else %}—{% endif %}</td>
+              <td data-label="Em acompanhamento">{{ r.follow }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6"><div class="empty-state py-4">{% icon "layers" %}<strong>Nenhuma turma no seu alcance</strong></div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if classes_total > 15 %}<p class="small text-body-secondary p-3 mb-0">Mostrando 15 de {{ classes_total }} turmas. As demais estão no painel de cada turma.</p>{% endif %}
+    </section>
+
+    <section class="card mb-3" aria-labelledby="h-alertas">
+      <div class="card-header bg-transparent"><h2 id="h-alertas" class="h6 mb-0">Estudantes que precisam de atenção</h2></div>
+      <ul class="feed">
+        {% for a in alerts %}
+        <li class="feed-item"><div class="feed-body flex-grow-1"><p class="feed-title"><a href="{% url 'analytics:student_dashboard' a.student.pk %}">{{ a.student.full_name }}</a> <span class="small text-body-secondary fw-normal">· {{ a.cg.name }}</span></p><p class="feed-meta">{{ a.reasons|join:"; " }}</p></div></li>
+        {% empty %}
+        <li><div class="empty-state py-3"><span>Nenhum alerta pelos critérios atuais.</span></div></li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="card mb-3" aria-labelledby="h-reg">
+      <div class="card-header bg-transparent d-flex justify-content-between"><h2 id="h-reg" class="h6 mb-0">Últimos registros da coordenação</h2><a class="small" href="{% url 'coordination:records' %}">Todos</a></div>
+      <ul class="feed">
+        {% for r in records %}
+        <li class="feed-item"><div class="feed-body flex-grow-1"><p class="feed-title">{{ r.title }} <span class="chip">{{ r.get_kind_display }}</span></p><p class="feed-meta">{{ r.date|date:"d/m/Y" }}{% if r.teacher %} · {{ r.teacher.get_full_name|default:r.teacher.username }}{% endif %}{% if r.class_group %} · {{ r.class_group.name }}{% endif %}</p></div></li>
+        {% empty %}<li><div class="empty-state py-3"><span>Nenhum registro ainda.</span></div></li>{% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  <div class="col-xl-4">
+    <form method="post" action="{% url 'coordination:records' %}" class="card mb-3" novalidate>
+      {% csrf_token %}<input type="hidden" name="voltar" value="painel">
+      <div class="card-body"><h2 class="h6">Novo registro (orientação, reunião…)</h2>{% include "partials/_form_fields.html" with f=form %}</div>
+      <div class="form-actions"><button type="submit" class="btn btn-primary">Salvar registro</button></div>
+    </form>
+    <section class="card mb-3"><div class="card-body">
+      <h2 class="h6">Próximos compromissos</h2>
+      {% for e in upcoming %}<p class="small mb-1"><strong>{{ e.start|date:"d/m" }}</strong> · {{ e.title }} <span class="text-body-secondary">({{ e.get_kind_display }})</span></p>{% empty %}<p class="small text-body-secondary mb-0">Nada no calendário oficial nos próximos 30 dias.</p>{% endfor %}
+      {% for r in follow_ups %}<p class="small mb-1">{% icon "clock" %} Retomar em {{ r.follow_up_on|date:"d/m" }}: {{ r.title }}</p>{% endfor %}
+    </div></section>
+    <section class="card mb-3"><div class="card-body">
+      <h2 class="h6">Intervenções em andamento</h2>
+      {% for p in plans %}<p class="small mb-1"><a href="{% url 'pedagogy:plan_detail' p.pk %}">{{ p.student.full_name }}</a> · {{ p.title|default:"" }}</p>{% empty %}<p class="small text-body-secondary mb-0">Nenhum plano ativo.</p>{% endfor %}
+    </div></section>
+    <section class="card"><div class="card-body">
+      <h2 class="h6">Registros pedagógicos recentes</h2>
+      {% for o in observations %}<p class="small mb-1">{{ o.observed_at|date:"d/m" }} · {{ o.student.full_name }}{% if o.subject %} · {{ o.subject.name }}{% endif %} <span class="text-body-secondary">({{ o.teacher.get_full_name|default:o.teacher.username }})</span></p>{% empty %}<p class="small text-body-secondary mb-0">Nenhuma observação recente.</p>{% endfor %}
+    </div></section>
+  </div>
+</div>
+{% endblock %}

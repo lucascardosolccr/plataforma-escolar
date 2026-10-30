@@ -2,6 +2,7 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 
 from apps.academics.permissions import teacher_class_ids, teaches
+from apps.coordination.scope import reaches_class, reaches_student
 from apps.core.models import Role
 from apps.registry.models import Enrollment
 
@@ -177,8 +178,9 @@ def can_view_activity(user, activity):
     """
     if not user.is_authenticated or user.school_id != activity.school_id:
         return False
+    if user.role == Role.COORDENACAO.value:
+        return reaches_class(user, activity.class_group)
     if user.role in (
-        Role.COORDENACAO.value,
         Role.DIRECAO.value,
         Role.SECRETARIA.value,
         Role.ADMIN.value,
@@ -216,8 +218,9 @@ def can_view_group_work(user, work):
     """
     if not user.is_authenticated or user.school_id != work.school_id:
         return False
+    if user.role == Role.COORDENACAO.value:
+        return reaches_class(user, work.class_group)
     if user.role in (
-        Role.COORDENACAO.value,
         Role.DIRECAO.value,
         Role.SECRETARIA.value,
         Role.ADMIN.value,
@@ -295,6 +298,8 @@ def can_manage_occurrences(user, student=None):
     if not user.is_authenticated:
         return False
     if user.role in (Role.COORDENACAO.value, Role.DIRECAO.value):
+        if user.role == Role.COORDENACAO.value and student is not None:
+            return reaches_student(user, student)
         return True
     if user.role == Role.PROFESSOR.value:
         return _teacher_of_student(user, student) if student else True
@@ -310,6 +315,8 @@ def can_view_occurrences(user, student=None):
         Role.ADMIN.value,
         Role.SECRETARIA.value,
     ):
+        if user.role == Role.COORDENACAO.value and student is not None:
+            return reaches_student(user, student)
         return True
     if user.role == Role.PROFESSOR.value:
         return _teacher_of_student(user, student) if student else True
@@ -322,6 +329,8 @@ def can_manage_observations(user, student=None):
     if not user.is_authenticated:
         return False
     if user.role == Role.COORDENACAO.value:
+        if user.role == Role.COORDENACAO.value and student is not None:
+            return reaches_student(user, student)
         return True
     if user.role == Role.PROFESSOR.value:
         return _teacher_of_student(user, student) if student else True
@@ -332,6 +341,8 @@ def can_view_observations(user, student=None):
     if not user.is_authenticated:
         return False
     if user.role in (Role.COORDENACAO.value, Role.DIRECAO.value):
+        if user.role == Role.COORDENACAO.value and student is not None:
+            return reaches_student(user, student)
         return True
     if user.role == Role.PROFESSOR.value:
         return _teacher_of_student(user, student) if student else True
@@ -367,6 +378,8 @@ def can_view_plans(user, student=None):
     ):
         if user.role == Role.PROFESSOR.value and student:
             return _teacher_of_student(user, student)
+        if user.role == Role.COORDENACAO.value and student:
+            return reaches_student(user, student)
         return True
     if user.role == Role.RESPONSAVEL.value:
         return _guardian_of(user, student) if student else False
@@ -387,6 +400,8 @@ def can_view_justifications(user, student=None):
         Role.DIRECAO.value,
         Role.ADMIN.value,
     ):
+        if user.role == Role.COORDENACAO.value and student is not None:
+            return reaches_student(user, student)
         return True
     if user.role == Role.PROFESSOR.value:
         return _teacher_of_student(user, student) if student else True

@@ -138,6 +138,20 @@ def _mark_left(items, left, attr="student_id"):
     return items
 
 
+
+def _coord_limit(user, qs, class_field=None, student_field=None):
+    """Coordenação restrita à designação: só turmas/estudantes que ela
+    acompanha. Para os demais perfis (e coordenação "escola toda"), nada muda."""
+    if user.role != Role.COORDENACAO.value:
+        return qs
+    from apps.coordination.scope import class_scope, student_ids
+
+    if class_field:
+        scope = class_scope(user)
+        return qs if scope is None else qs.filter(**{f"{class_field}__in": scope})
+    ids = student_ids(user)
+    return qs if ids is None else qs.filter(**{f"{student_field}__in": ids})
+
 def _teacher_assignments(user):
     return TeacherAssignment.objects.filter(teacher=user, school=user.school).select_related(
         "class_group", "subject", "school_year"
@@ -254,6 +268,7 @@ def evaluation_list(request):
             acc.enrollment_window_q(acc.family_enrollments(user), "date"),
             status=Evaluation.Status.PUBLISHED,
         )
+    qs = _coord_limit(user, qs, class_field="class_group_id")
     is_teacher = user.role == Role.PROFESSOR.value
     # Pares turma+disciplina que o professor leciona: só neles aparecem
     # "Notas", "Editar" e "Publicar". Antes os botões apareciam também nas
@@ -707,6 +722,7 @@ def activity_list(request):
         )
     if user.role == Role.PROFESSOR.value:
         qs = qs.filter(_teacher_pairs_q(user))
+    qs = _coord_limit(user, qs, class_field="class_group_id")
 
     status = request.GET.get("status")
     if status in dict(Activity.Status.choices):
@@ -1239,6 +1255,7 @@ def group_work_list(request):
     )
     if user.role == Role.PROFESSOR.value:
         qs = qs.filter(_teacher_pairs_q(user))
+    qs = _coord_limit(user, qs, class_field="class_group_id")
     status = request.GET.get("status")
     if status in dict(GroupWork.Status.choices):
         qs = qs.filter(status=status)
@@ -1841,6 +1858,8 @@ def attendance_list(request):
         classes = classes.filter(
             pk__in=teacher_class_ids(user)
         )
+    elif user.role == Role.COORDENACAO.value:
+        classes = _coord_limit(user, classes, class_field="pk")
     elif user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
         enrs = acc.family_enrollments(user)
         classes = classes.filter(pk__in={e.class_group_id for e in enrs})
@@ -2054,6 +2073,8 @@ def occurrence_list(request):
             )
         )
         qs = qs.filter(student_id__in=student_ids)
+    elif user.role == Role.COORDENACAO.value:
+        qs = _coord_limit(user, qs, student_field="student_id")
     elif user.role == Role.RESPONSAVEL.value:
         qs = qs.filter(student_id__in=_guardian_child_ids(user)[0])
     status = request.GET.get("status")
@@ -2149,6 +2170,8 @@ def observation_list(request):
             qs = qs.filter(acc.teacher_observations_q(user, student))
     elif user.role == Role.PROFESSOR.value:
         qs = qs.filter(teacher=user)
+    elif user.role == Role.COORDENACAO.value:
+        qs = _coord_limit(user, qs, student_field="student_id")
     elif user.role == Role.RESPONSAVEL.value:
         from apps.registry.models import GuardianLink
 
@@ -2232,6 +2255,8 @@ def plan_list(request):
             )
         )
         qs = qs.filter(student_id__in=student_ids)
+    elif user.role == Role.COORDENACAO.value:
+        qs = _coord_limit(user, qs, student_field="student_id")
     elif user.role == Role.RESPONSAVEL.value:
         from apps.registry.models import GuardianLink
 
@@ -2332,6 +2357,8 @@ def justification_list(request):
             )
         )
         qs = qs.filter(student_id__in=student_ids)
+    elif user.role == Role.COORDENACAO.value:
+        qs = _coord_limit(user, qs, student_field="student_id")
     elif user.role == Role.RESPONSAVEL.value:
         from apps.registry.models import GuardianLink
 

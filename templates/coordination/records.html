@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Registros da coordenação — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'coordination:panel' %}" class="back-link">{% icon "arrow-left" %}Painel da coordenação</a>
+    <h1>Registros da coordenação</h1>
+    <p>Orientações a professores, reuniões e acompanhamentos. São internos da equipe: nunca vão para as famílias.</p>
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-5">
+    <form method="post" class="card" novalidate>
+      {% csrf_token %}
+      <div class="card-body"><h2 class="h6">Novo registro</h2>{% include "partials/_form_fields.html" with f=form %}</div>
+      <div class="form-actions"><button type="submit" class="btn btn-primary">Salvar registro</button></div>
+    </form>
+  </div>
+  <div class="col-lg-7">
+    <nav aria-label="Tipo" class="d-flex flex-wrap gap-2 mb-2">
+      <a href="?" class="summary-pill{% if not kind %} active{% endif %}">Todos</a>
+      {% for k, label in kinds %}<a href="?tipo={{ k }}" class="summary-pill{% if kind == k %} active{% endif %}">{{ label }}</a>{% endfor %}
+    </nav>
+    <div class="card">
+      <ul class="feed">
+        {% for r in records %}
+        <li class="feed-item d-block">
+          <p class="feed-title">{{ r.title }} <span class="chip">{{ r.get_kind_display }}</span></p>
+          <p class="feed-meta">{{ r.date|date:"d/m/Y" }}{% if r.teacher %} · {{ r.teacher.get_full_name|default:r.teacher.username }}{% endif %}{% if r.class_group %} · {{ r.class_group.name }}{% endif %}{% if r.participants %} · {{ r.participants }}{% endif %} · por {{ r.created_by.get_full_name|default:r.created_by.username }}</p>
+          <p class="small mb-0">{{ r.notes|linebreaksbr }}</p>
+          {% if r.follow_up_on %}<p class="small text-body-secondary mb-0">Retomar em {{ r.follow_up_on|date:"d/m/Y" }}</p>{% endif %}
+        </li>
+        {% empty %}<li><div class="empty-state py-4">{% icon "notebook-pen" %}<strong>Nenhum registro</strong></div></li>{% endfor %}
+      </ul>
+    </div>
+    {% include "partials/_pager.html" %}
+  </div>
+</div>
+{% endblock %}

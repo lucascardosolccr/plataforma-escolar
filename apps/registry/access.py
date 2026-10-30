@@ -89,7 +89,11 @@ def students_visible_to(user):
             enrollments__class_group_id__in=teacher_class_ids(user),
         ).distinct()
     if can_manage_registry(user):
-        return Student.objects.filter(school=user.school)
+        qs = Student.objects.filter(school=user.school)
+        from apps.coordination.scope import student_ids
+
+        ids = student_ids(user)  # coordenação restrita à designação
+        return qs if ids is None else qs.filter(pk__in=ids)
     return None
 
 
@@ -97,7 +101,13 @@ def can_view_student(user, student):
     if not user.is_authenticated:
         return False
     if user.role in ADMIN_RECORD_ROLES:
-        return user.school_id == student.school_id
+        if user.school_id != student.school_id:
+            return False
+        if user.role == Role.COORDENACAO.value:
+            from apps.coordination.scope import reaches_student
+
+            return reaches_student(user, student)
+        return True
     if guardian_of(user, student):
         return True
     if user.role == Role.PROFESSOR.value:

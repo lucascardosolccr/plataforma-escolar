@@ -158,6 +158,12 @@ ITEMS = {
     "methodology": Item("Metodologia dos indicadores", "analytics:methodology", "info",
                         ("analytics:methodology",), "Como cada número é calculado"),
     "help": Item("Ajuda", "help", "circle-help", ("help",), "Guias passo a passo e perguntas frequentes"),
+    "coord_panel": Item("Painel da coordenação", "coordination:panel", "layout-dashboard",
+                        ("coordination:panel",), "Turmas, alertas e intervenções que você acompanha"),
+    "coord_records": Item("Registros da coordenação", "coordination:records", "notebook-pen",
+                          ("coordination:records",), "Orientações, reuniões e acompanhamentos"),
+    "coord_designations": Item("Designação da coordenação", "coordination:designations", "user-cog",
+                               ("coordination:designation",), "Quem acompanha quais turmas"),
 }
 
 # Itens do rodapé do menu, iguais para todos os perfis.
@@ -216,6 +222,7 @@ LAYOUT = {
     ],
     COORDENACAO: [
         (None, ["home", "calendar", "schedule", "menu"]),
+        ("Coordenação", ["coord_panel", "coord_records"]),
         ("Pedagógico", ["students", "evaluations", "activities", "works", "attendance",
                         "occurrences", "observations", "plans", "justifications"]),
         ("Acadêmico", ["classes", "subjects", "years", "assignments"]),
@@ -224,6 +231,7 @@ LAYOUT = {
     ],
     DIRECAO: [
         (None, ["home", "calendar", "schedule", "menu"]),
+        ("Coordenação", ["coord_panel", "coord_designations"]),
         ("Análises", ["institutional", "subject_bi", "quality", "reports", "methodology"]),
         ("Pedagógico", ["students", "evaluations", "activities", "works", "attendance",
                         "occurrences", "observations", "plans", "justifications"]),
@@ -233,7 +241,7 @@ LAYOUT = {
     ],
     ADMIN: [
         (None, ["home", "calendar", "schedule", "menu"]),
-        ("Administração", ["users", "config", "registration_cfg"]),
+        ("Administração", ["users", "coord_designations", "config", "registration_cfg"]),
         ("Cadastro", ["students", "applications", "student_import", "photos", "guardians", "staff_links",
                       "enrollments"]),
         ("Acadêmico", ["classes", "subjects", "years", "official_calendar", "assignments", "teacher_perms"]),

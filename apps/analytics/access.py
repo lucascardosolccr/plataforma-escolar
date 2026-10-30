@@ -6,6 +6,7 @@ duplicar a matriz RBAC.
 """
 
 from apps.academics.permissions import teacher_pairs, teaches
+from apps.coordination.scope import class_scope, reaches_class
 from apps.core.models import Role
 from apps.registry.access import ADMIN_RECORD_ROLES, can_view_student
 
@@ -29,6 +30,8 @@ def can_view_student_dashboard(user, student):
 def can_view_class_dashboard(user, class_group):
     if not user.is_authenticated or user.school_id != class_group.school_id:
         return False
+    if user.role == Role.COORDENACAO.value:
+        return reaches_class(user, class_group)
     if user.role in ADMIN_RECORD_ROLES:
         return True
     if user.role == Role.PROFESSOR.value:
@@ -37,7 +40,11 @@ def can_view_class_dashboard(user, class_group):
 
 
 def can_view_institutional_dashboard(user):
-    return user.is_authenticated and user.role in INSTITUTIONAL_ROLES
+    """Visão agregada da escola. Coordenação só com designação "escola toda":
+    a restrita usa o painel da coordenação, com as turmas dela."""
+    if not (user.is_authenticated and user.role in INSTITUTIONAL_ROLES):
+        return False
+    return user.role != Role.COORDENACAO.value or class_scope(user) is None
 
 
 def can_view_secretaria_panel(user):
@@ -75,11 +82,13 @@ def subject_classes_for(user, subject):
     if not user.is_authenticated or user.school_id != subject.school_id:
         return None
     if user.role in ADMIN_RECORD_ROLES:
-        return (
+        qs = (
             ClassGroup.objects.filter(school=user.school)
             .filter(Q(teacher_assignments__subject=subject) | Q(evaluation__subject=subject))
             .distinct().select_related("school_year").order_by("name")
         )
+        scope = class_scope(user)
+        return qs if scope is None else qs.filter(pk__in=scope)
     if user.role == Role.PROFESSOR.value:
         qs = ClassGroup.objects.filter(
             pk__in={c for c, s in teacher_pairs(user) if s == subject.pk}

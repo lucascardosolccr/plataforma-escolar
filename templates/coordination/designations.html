@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Designação da coordenação — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Designação da coordenação pedagógica</h1>
+    <p>Defina o que cada coordenador acompanha. Ele só alcança os dados das turmas, disciplinas e professores designados.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{% url 'user_create' %}">{% icon "plus" %}Cadastrar coordenador</a>
+</div>
+{% if without %}<div class="callout mb-3">{% icon "triangle-alert" %}<div>Sem designação vigente: {% for u in without %}<strong>{{ u.get_full_name|default:u.username }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}. Enquanto isso, não veem dados de estudantes.</div></div>{% endif %}
+<div class="row g-3">
+  <div class="col-lg-5">
+    <form method="post" class="card" novalidate>
+      {% csrf_token %}
+      <div class="card-body"><h2 class="h6">{% if edit %}Editar designação{% else %}Nova designação{% endif %}</h2>{% include "partials/_form_fields.html" with f=form %}</div>
+      <div class="form-actions">{% if edit %}<a class="btn btn-outline-secondary" href="{% url 'coordination:designations' %}">Cancelar</a>{% endif %}<button type="submit" class="btn btn-primary">Salvar designação</button></div>
+    </form>
+  </div>
+  <div class="col-lg-7">
+    <div class="card">
+      <ul class="feed">
+        {% for d in designations %}
+        <li class="feed-item">
+          <div class="feed-body flex-grow-1">
+            <p class="feed-title">{{ d.coordinator.get_full_name|default:d.coordinator.username }}{% if d.area %} · {{ d.area }}{% endif %}
+              {% if d.ends_on and d.ends_on < today %}<span class="chip chip-state state-cancelado">Encerrada</span>{% elif d.starts_on > today %}<span class="chip chip-state state-previa">Futura</span>{% else %}<span class="chip chip-state state-aprovado">Vigente</span>{% endif %}</p>
+            <p class="feed-meta">{% if d.all_school %}Escola toda{% else %}{% for c in d.class_groups.all %}{{ c.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if d.subjects.all %} · Disciplinas: {% for s in d.subjects.all %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}{% if d.teachers.all %} · Professores: {% for t in d.teachers.all %}{{ t.get_full_name|default:t.username }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}{% endif %}</p>
+            <p class="feed-meta">{{ d.starts_on|date:"d/m/Y" }}{% if d.ends_on %} a {{ d.ends_on|date:"d/m/Y" }}{% else %} em diante{% endif %}{% if d.notes %} · {{ d.notes }}{% endif %}</p>
+          </div>
+          <div class="feed-actions d-flex gap-2">
+            <a class="btn btn-sm btn-outline-secondary" href="?editar={{ d.pk }}">Editar</a>
+            {% if not d.ends_on or d.ends_on >= today %}<form method="post" action="{% url 'coordination:designation_end' d.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit" data-confirm="O coordenador deixa de alcançar estas turmas." data-confirm-title="Encerrar designação?" data-confirm-ok="Encerrar" data-confirm-tone="danger">Encerrar</button></form>{% endif %}
+          </div>
+        </li>
+        {% empty %}<li><div class="empty-state py-4">{% icon "user-cog" %}<strong>Nenhuma designação</strong></div></li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

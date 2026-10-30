@@ -177,6 +177,9 @@ LAYOUT = {
     ESTUDANTE: [
         (None, ["home", "calendar", "my_dashboard"]),
         ("Meus estudos", ["my_activities", "my_works", "my_grades", "my_attendance"]),
+        # Comunicados da escola e da turma (a regra de acesso já os mostrava ao
+        # estudante, mas o menu não tinha o caminho).
+        ("Escola", ["announcements", "notifications"]),
     ],
     PROFESSOR: [
         (None, ["home", "calendar"]),

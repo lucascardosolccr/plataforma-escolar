@@ -111,6 +111,9 @@
             <span class="fw-normal">{{ user_role_label }}{% if user.school %} · {{ user.school.name }}{% endif %}</span>
           </h2></li>
           <li><hr class="dropdown-divider"></li>
+          {% if user_role == ROLE_RESPONSAVEL %}
+          <li><a class="dropdown-item" href="{% url 'guardian_profile' user.pk %}">{% icon "id-card" %}Meus dados de contato</a></li>
+          {% endif %}
           <li><a class="dropdown-item" href="{% url 'password_change' %}">{% icon "key-round" %}Alterar senha</a></li>
           <li><a class="dropdown-item" href="{% url 'help' %}">{% icon "circle-help" %}Ajuda</a></li>
           <li><button class="dropdown-item" type="button" data-shortcuts-open>{% icon "keyboard" %}Atalhos de teclado</button></li>

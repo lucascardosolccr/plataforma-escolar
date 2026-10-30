@@ -251,6 +251,29 @@ def deliver_due_publications(school=None):
     return total
 
 
+def notify_justification_created(justification):
+    """Avisa a secretaria, que é quem analisa, de nova justificativa de falta.
+    Antes ela só aparecia na contagem da tela inicial."""
+    from django.contrib.auth import get_user_model
+
+    from apps.core.models import Role
+
+    sec = get_user_model().objects.filter(
+        school=justification.school, role=Role.SECRETARIA.value, is_active=True
+    )
+    periodo = justification.start_date.strftime("%d/%m")
+    if justification.end_date and justification.end_date != justification.start_date:
+        periodo += f" a {justification.end_date.strftime('%d/%m')}"
+    notify_many(
+        justification.school,
+        sec,
+        Notification.Kind.JUSTIFICATION,
+        f"Nova justificativa de falta: {justification.student}",
+        body=f"Período {periodo}. {justification.reason[:120]}",
+        url=reverse("pedagogy:justification_list"),
+    )
+
+
 def notify_justification_resolved(justification, decision_label):
     requester = justification.submitted_by
     if not requester:

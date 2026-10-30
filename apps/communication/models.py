@@ -12,7 +12,7 @@ class Notification(models.Model):
         EVALUATION = "avaliacao", "Avaliação/nota publicada"
         ACTIVITY = "atividade", "Atividade/prazo"
         ANNOUNCEMENT = "comunicado", "Comunicado da escola"
-        JUSTIFICATION = "justificativa", "Justificativa analisada"
+        JUSTIFICATION = "justificativa", "Justificativa de falta"
         MESSAGE = "mensagem", "Nova mensagem"
         REQUEST = "solicitacao", "Solicitação"
         ATTENDANCE = "frequencia", "Frequência/pendência"

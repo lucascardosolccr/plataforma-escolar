@@ -117,10 +117,24 @@ FAQ = [
      "Sim. A estrela na barra superior guarda a página nos Favoritos, no topo do menu. Os favoritos ficam neste navegador.", TODOS),
     ("Como sei onde estou?",
      "A trilha no topo (Início / seção / página) mostra o caminho. Clique num nível para voltar a ele.", TODOS),
+    # Quem redefine é regra de passwords.can_reset_password: a secretaria só
+    # cuida de contas de família (e do acesso do estudante, pela ficha).
     ("Esqueci minha senha.",
-     "Procure a secretaria da escola: ela gera uma senha temporária, que você troca no primeiro acesso.", TODOS),
+     "Procure a secretaria da escola: ela gera uma senha temporária, que você troca no primeiro acesso.",
+     (RESPONSAVEL, ESTUDANTE)),
+    ("Esqueci minha senha.",
+     "Peça à administração da escola: ela gera uma senha temporária, que você troca no primeiro acesso. "
+     "A secretaria só redefine senhas de famílias.",
+     GESTAO + (SECRETARIA, PROFESSOR)),
+    ("Esqueci minha senha.",
+     "Outra conta da administração da escola gera uma senha temporária. Se não houver outra, quem instalou a "
+     "plataforma pode definir uma nova pelo comando changepassword.",
+     (ADMIN,)),
     ("Quem vê os dados do meu filho?",
      "Só a equipe da escola, conforme a função, e os responsáveis com vínculo aprovado. As observações pedagógicas ficam com a equipe pedagógica e com vocês: a secretaria e a administração não as veem.",
+     (RESPONSAVEL,)),
+    ("Como atualizo meu telefone ou o contato de emergência?",
+     "No seu nome, no canto superior direito, abra “Meus dados de contato”. A escola usa esses dados numa emergência.",
      (RESPONSAVEL,)),
     ("Por que uma nota não aparece?",
      "O professor ainda não publicou a avaliação. Enquanto está em rascunho, só ele vê.", (RESPONSAVEL, ESTUDANTE)),

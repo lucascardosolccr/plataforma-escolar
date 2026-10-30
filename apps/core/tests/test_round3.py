@@ -64,6 +64,55 @@ class StudentChoicesTests(Round2Base):
         self.assertIn(self.carla, list(page.context["form"].fields["student"].queryset))
 
 
+class JustificationNoticeTests(Round2Base):
+    def test_secretaria_is_notified_of_new_justification(self):
+        from apps.communication.models import Notification
+
+        self.login(self.users[Role.RESPONSAVEL])
+        hoje = timezone.localdate().isoformat()
+        self.client.post(reverse("pedagogy:justification_create") + f"?estudante={self.ana.pk}", {
+            "student_id": self.ana.pk, "start_date": hoje, "end_date": hoje, "reason": "Consulta médica",
+        })
+        aviso = Notification.objects.get(user=self.users[Role.SECRETARIA])
+        self.assertIn("Ana", aviso.title)
+        self.assertIn("Consulta médica", aviso.body)
+        # Só a secretaria analisa: ninguém mais recebe.
+        self.assertEqual(Notification.objects.count(), 1)
+
+
+class ForgotPasswordHelpTests(Round2Base):
+    """A ajuda manda cada perfil a quem de fato pode redefinir a senha dele."""
+
+    def test_each_role_gets_one_correct_answer(self):
+        from apps.core.passwords import can_reset_password
+
+        for role, user in self.users.items():
+            self.login(user)
+            body = self.client.get(reverse("help")).content.decode()
+            self.assertEqual(body.count("Esqueci minha senha."), 1, role)
+            if can_reset_password(self.users[Role.SECRETARIA], user) or role == Role.ESTUDANTE:
+                self.assertIn("Procure a secretaria", body, role)
+            else:
+                self.assertNotIn("Procure a secretaria", body, role)
+
+
+class FamilyOwnContactTests(Round2Base):
+    def test_family_reaches_and_updates_own_contact(self):
+        from apps.registry.models import GuardianProfile
+
+        fam = self.users[Role.RESPONSAVEL]
+        self.login(fam)
+        url = reverse("guardian_profile", args=[fam.pk])
+        self.assertContains(self.client.get(reverse("home")), f'href="{url}"')
+        self.client.post(url, {"phone": "(11) 99999-0000", "emergency_contact": "Avó Lúcia",
+                               "comm_preference": GuardianProfile._meta.get_field("comm_preference").default})
+        self.assertEqual(GuardianProfile.objects.get(user=fam).emergency_contact, "Avó Lúcia")
+
+    def test_staff_menu_has_no_family_link(self):
+        self.login(self.prof)
+        self.assertNotContains(self.client.get(reverse("home")), "Meus dados de contato")
+
+
 class FutureDatesTests(Round2Base):
     def test_occurrence_cannot_be_in_the_future(self):
         self.login(self.prof)

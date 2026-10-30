@@ -15,6 +15,7 @@ from apps.communication.services import (
     announce_publication,
     notify_attendance_limit,
     notify_evaluation_published,
+    notify_justification_created,
     notify_justification_resolved,
     notify_occurrence_created,
     notify_publication_canceled,
@@ -2392,6 +2393,7 @@ def justification_create(request):
             just.submitted_by = user
             just.save()
             _log(request, "create", just, f"Enviou justificativa de falta para {student}")
+            notify_justification_created(just)
         messages.success(
             request,
             "Justificativa recebida. A secretaria analisará — a frequência oficial não muda automaticamente.",

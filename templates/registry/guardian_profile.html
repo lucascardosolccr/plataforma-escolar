@@ -1,9 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Perfil do responsável — Plataforma Escolar{% endblock %}
+{% block title %}{% if is_self %}Meus dados de contato{% else %}Perfil do responsável{% endif %} — Plataforma Escolar{% endblock %}
 
 {% block content %}
+{% if is_self %}
+{% include "partials/_form_head.html" with heading="Meus dados de contato" subheading="Telefone, contato de emergência e endereço que a escola usa para falar com você." %}
+{% else %}
+{% url 'guardian_list' as back %}
+{% include "partials/_form_head.html" with back_url=back back_label="Responsáveis" heading="Perfil do responsável" %}
+{% endif %}
 <div class="row g-3">
-  <div class="col-lg-5">
+  <div class="col-lg-7">
     <div class="card p-4">
       <div class="d-flex align-items-center gap-3 mb-3">
         {% if form.instance.photo %}
@@ -27,7 +33,7 @@
     </div>
   </div>
 
-  <div class="col-lg-7">
+  <div class="col-lg-5">
     {% if is_admin %}
     <div class="card">
       <div class="card-header bg-transparent"><h2 class="h6 mb-0">Filhos vinculados (aprovados)</h2></div>
@@ -49,7 +55,7 @@
       </div>
     </div>
     {% else %}
-    <div class="alert alert-info">Mantenha seus dados de contato atualizados. A secretaria os utiliza para comunicação.</div>
+    <div class="alert alert-info">Mantenha seus dados de contato atualizados: é por eles que a escola fala com você numa emergência. Só a equipe da escola os vê.</div>
     {% endif %}
 
     {% if can_reset_password %}

@@ -185,7 +185,7 @@ def can_view_activity(user, activity):
     ):
         return True
     if user.role == Role.PROFESSOR.value:
-        return _teacher_of(user, activity.class_group)
+        return _teacher_of(user, activity.class_group, activity.subject)
     if user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
         if not activity.is_visible_to_family:
             return False
@@ -224,7 +224,7 @@ def can_view_group_work(user, work):
     ):
         return True
     if user.role == Role.PROFESSOR.value:
-        return _teacher_of(user, work.class_group)
+        return _teacher_of(user, work.class_group, work.subject)
     if not work.is_visible_to_family:
         return False
     return _family_reaches(user, work)
@@ -271,7 +271,7 @@ def visible_groups_for(user, work):
         Role.ADMIN.value,
     ):
         return todos
-    if user.role == Role.PROFESSOR.value and _teacher_of(user, work.class_group):
+    if user.role == Role.PROFESSOR.value and _teacher_of(user, work.class_group, work.subject):
         return todos
     alvos = [s.pk for s in group_work_students_for(user, work)]
     if not alvos:

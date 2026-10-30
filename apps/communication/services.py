@@ -4,6 +4,7 @@ Todas as notificações são persistentes e 100% internas (sem serviços pagos),
 conforme a seção 10 do Prompt 1.
 """
 
+from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
 
@@ -29,8 +30,6 @@ def notify_many(school, users, kind, title, body="", url=""):
 
 def notify_evaluation_published(evaluation, request=None):
     """Notifica responsáveis dos estudantes da turma quando as notas saem."""
-    from django.contrib.auth import get_user_model
-
     from apps.registry.models import Enrollment, GuardianLink
 
     student_ids = list(
@@ -38,26 +37,32 @@ def notify_evaluation_published(evaluation, request=None):
             class_group=evaluation.class_group, status="ativo"
         ).values_list("student_id", flat=True)
     )
-    guardian_ids = list(
-        GuardianLink.objects.filter(
-            student_id__in=student_ids, status="aprovado"
-        ).values_list("guardian_id", flat=True)
-    )
-    if not guardian_ids:
+    if not student_ids:
         return
-    User = get_user_model()
-    guardians = User.objects.filter(pk__in=guardian_ids, is_active=True)
-    notify_many(
-        evaluation.school,
-        guardians,
-        Notification.Kind.EVALUATION,
-        f"Notas publicadas: {evaluation.title}",
-        body=(
-            f"A avaliação de {evaluation.subject} da turma {evaluation.class_group} "
-            "já está disponível para a família."
-        ),
-        url=reverse("pedagogy:evaluation_list"),
+    links = (
+        GuardianLink.objects.filter(
+            student_id__in=student_ids, status="aprovado", guardian__is_active=True
+        )
+        .select_related("guardian", "student")
+        .distinct()
     )
+    pendings = []
+    for link in links:
+        pendings.append(
+            Notification(
+                school=evaluation.school,
+                user=link.guardian,
+                kind=Notification.Kind.EVALUATION,
+                title=f"Notas publicadas: {evaluation.title}",
+                body=(
+                    f"A avaliação de {evaluation.subject} da turma {evaluation.class_group} "
+                    f"de {link.student} já está disponível para a família."
+                ),
+                url=reverse("pedagogy:evaluation_list"),
+            )
+        )
+    if pendings:
+        Notification.objects.bulk_create(pendings)
 
 
 def _group_work_member_ids(work):
@@ -187,16 +192,17 @@ def announce_publication(item):
         if not member_ids:
             return False
     agora = timezone.now()
-    claimed = type(item).objects.filter(
-        pk=item.pk, notified_at__isnull=True
-    ).update(notified_at=agora)
-    if not claimed:
-        return False
-    item.notified_at = agora
-    if isinstance(item, Activity):
-        notify_activity_created(item)
-    else:
-        notify_group_work_published(item, member_ids)
+    with transaction.atomic():
+        claimed = type(item).objects.filter(
+            pk=item.pk, notified_at__isnull=True
+        ).update(notified_at=agora)
+        if not claimed:
+            return False
+        item.notified_at = agora
+        if isinstance(item, Activity):
+            notify_activity_created(item)
+        else:
+            notify_group_work_published(item, member_ids)
     return True
 
 
@@ -345,7 +351,6 @@ def notify_attendance_limit(student, class_group, percent):
     already = Notification.objects.filter(
         school=student.school,
         kind=Notification.Kind.ATTENDANCE,
-        is_read=False,
         url=url,
     ).exists()
     if already:

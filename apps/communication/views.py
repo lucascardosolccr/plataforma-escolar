@@ -248,7 +248,7 @@ def announcement_create(request):
                 ann.student = None
             ann.save()
             _log(request, "create", ann, f"Publicou comunicado '{ann.title}'")
-        notify_announcement_created(ann)
+            notify_announcement_created(ann)
         messages.success(request, "Comunicado publicado e notificações enviadas.")
         return redirect("communication:announcement_list")
     return render(request, "communication/announcement_form.html", {"form": form})
@@ -319,7 +319,7 @@ def request_create(request):
             req.requester = user
             req.save()
             _log(request, "create", req, f"Solicitação '{req.title}'")
-        notify_request_created(req)
+            notify_request_created(req)
         messages.success(request, "Solicitação enviada. Acompanhe o andamento.")
         return redirect("communication:request_list")
     return render(request, "communication/request_form.html", {"form": form})
@@ -350,9 +350,11 @@ def request_detail(request, pk):
                     req,
                     f"Solicitação '{req.title}': {req.get_status_display()}",
                 )
-            if original_status != req.status:
-                notify_request_resolved(req)
+                if original_status != req.status:
+                    notify_request_resolved(req)
             messages.success(request, "Solicitação atualizada.")
+            # Redireciona depois de salvar: sem isso, atualizar a página
+            # reenviava o formulário (auditoria e aviso à família em dobro).
             return redirect("communication:request_detail", pk=req.pk)
     history = AuditLog.objects.filter(
         target_type="ServiceRequest", target_id=str(req.pk)

@@ -13,6 +13,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 
 from apps.academics.models import Subject, TeacherAssignment
 from apps.communication.models import ServiceRequest
@@ -68,9 +69,9 @@ def allowed_students(user):
     if user.role in STAFF:
         return base
     if user.role == PROF:
-        class_ids = TeacherAssignment.objects.filter(teacher=user).values_list(
-            "class_group_id", flat=True
-        )
+        from apps.academics.permissions import teacher_class_ids
+
+        class_ids = teacher_class_ids(user)
         return base.filter(
             enrollments__class_group_id__in=list(class_ids),
             enrollments__status="ativo",
@@ -89,9 +90,9 @@ def allowed_classes(user):
     if user.role in STAFF:
         return base
     if user.role == PROF:
-        class_ids = TeacherAssignment.objects.filter(teacher=user).values_list(
-            "class_group_id", flat=True
-        )
+        from apps.academics.permissions import teacher_class_ids
+
+        class_ids = teacher_class_ids(user)
         return base.filter(pk__in=list(class_ids))
     return base.none()
 
@@ -139,9 +140,21 @@ def _attendance_rows(records, extra_label=None):
 # --------------------------------------------------------------------------- #
 # Relatórios
 # --------------------------------------------------------------------------- #
+def _prof_subjects(user):
+    """Disciplinas que o professor alcança (None para os demais perfis)."""
+    if user.role != PROF:
+        return None
+    from apps.academics.permissions import teacher_subject_ids
+
+    return teacher_subject_ids(user)
+
+
 def _r_boletim(user, params):
     student = params["student"]
     averages = services.subject_averages(student, params["start"], params["end"])
+    allowed = _prof_subjects(user)
+    if allowed is not None:  # professor: só as disciplinas que leciona
+        averages = [a for a in averages if a["subject"].pk in allowed]
     rows = [
         [
             a["subject"].name,
@@ -170,6 +183,12 @@ def _r_evolucao(user, params):
     evolution = services.grade_evolution(
         student, params["subject"], params["start"], params["end"]
     )
+    allowed = _prof_subjects(user)
+    if allowed is not None:
+        from apps.academics.models import Subject
+
+        names = set(Subject.objects.filter(pk__in=allowed).values_list("name", flat=True))
+        evolution = [e for e in evolution if str(e["subject"]) in names]
     rows = [
         [e["date"].strftime("%d/%m/%Y"), e["subject"], e["title"], e["value"]]
         for e in evolution
@@ -248,6 +267,9 @@ def _r_dificuldades(user, params):
         qs = qs.filter(student__enrollments__class_group=params["class_group"])
     if params["subject"]:
         qs = qs.filter(subject=params["subject"])
+    allowed = _prof_subjects(user)
+    if allowed is not None:
+        qs = qs.filter(Q(teacher=user) | Q(subject__isnull=True) | Q(subject_id__in=allowed))
     if params["start"]:
         qs = qs.filter(observed_at__gte=params["start"])
     if params["end"]:

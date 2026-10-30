@@ -5,6 +5,7 @@
 {% block crumb %}<li><span aria-current="page">Turma {{ class_group.name }}</span></li>{% endblock %}
 
 {% block content %}
+{% if subject_limited %}<div class="callout mb-3">{% icon "info" %}<div>Você vê aqui só as disciplinas que leciona (ou tem permissão de consultar). As demais ficam com os respectivos professores e a coordenação.</div></div>{% endif %}
 {% with r=report %}
 <div class="page-head">
   <div>

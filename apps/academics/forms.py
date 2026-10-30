@@ -82,7 +82,7 @@ class ClassGroupForm(forms.ModelForm):
 class SubjectForm(forms.ModelForm):
     class Meta:
         model = Subject
-        fields = ["name", "code"]
+        fields = ["name", "code", "grade_level", "workload_hours", "is_active"]
         labels = {"name": "Nome da disciplina", "code": "Código"}
 
     def __init__(self, *args, school=None, **kwargs):
@@ -106,7 +106,13 @@ class TeacherAssignmentForm(forms.ModelForm):
 
     class Meta:
         model = TeacherAssignment
-        fields = ["teacher", "class_group", "subject", "school_year"]
+        fields = ["teacher", "class_group", "subject", "school_year", "starts_on", "ends_on"]
+        widgets = {
+            "starts_on": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+            "ends_on": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+        }
+        help_texts = {"starts_on": "Em branco: desde o início do ano letivo.",
+                      "ends_on": "Em branco: até o fim do ano letivo. Use em substituições."}
 
     def __init__(self, *args, school=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -116,7 +122,7 @@ class TeacherAssignmentForm(forms.ModelForm):
                 role=Role.PROFESSOR.value, school=school
             ).order_by("first_name")
             self.fields["class_group"].queryset = ClassGroup.objects.filter(school=school)
-            self.fields["subject"].queryset = Subject.objects.filter(school=school)
+            self.fields["subject"].queryset = Subject.objects.filter(school=school, is_active=True)
             self.fields["school_year"].queryset = SchoolYear.objects.filter(school=school)
 
     def clean(self):

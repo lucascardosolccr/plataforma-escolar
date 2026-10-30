@@ -138,13 +138,15 @@ class EvaluationListTests(Round2Base):
                                                 title="Mapa do bairro", date=date(2026, 3, 12), created_by=self.colega)
 
     def test_grade_buttons_only_where_the_teacher_teaches(self):
-        """Antes, "Notas" e "Editar" apareciam na avaliação do colega e davam 403."""
+        """Antes, "Notas" e "Editar" apareciam na avaliação do colega e davam 403.
+        Desde o Prompt 14, a avaliação de outra disciplina nem aparece: o
+        professor vê só as disciplinas que leciona."""
         self.login(self.prof)
         resp = self.client.get(reverse("pedagogy:evaluation_list"))
         self.assertContains(resp, reverse("pedagogy:evaluation_grade", args=[self.minha.pk]))
         self.assertNotContains(resp, reverse("pedagogy:evaluation_grade", args=[self.alheia.pk]))
         self.assertNotContains(resp, reverse("pedagogy:evaluation_edit", args=[self.alheia.pk]))
-        self.assertContains(resp, "De outro professor")
+        self.assertNotContains(resp, "Mapa do bairro")
 
     def test_scope_filter_shows_only_own_subjects(self):
         self.login(self.prof)

@@ -76,7 +76,9 @@ def schedule_for(user, day=None):
             blocks.append({"title": title, "class_group": cg, "slots": slots,
                            "has_schedule": ClassSchedule.objects.filter(class_group=cg).exists()})
     elif user.role == Role.PROFESSOR.value:
-        pairs = set(TeacherAssignment.objects.filter(teacher=user).values_list("class_group_id", "subject_id"))
+        from apps.academics.permissions import teacher_pairs
+
+        pairs = teacher_pairs(user)
         slots = [
             s for s in ClassSchedule.objects.filter(school=user.school, weekday=weekday)
             .select_related("subject", "class_group", "teacher")

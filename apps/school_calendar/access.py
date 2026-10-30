@@ -173,11 +173,9 @@ class CalendarScope:
         if self._assignments is None:
             from apps.academics.models import TeacherAssignment
 
-            self._assignments = set(
-                TeacherAssignment.objects.filter(
-                    teacher=self.user, school=self.user.school
-                ).values_list("class_group_id", "subject_id")
-            )
+            from apps.academics.permissions import teacher_pairs
+
+            self._assignments = set(teacher_pairs(self.user))
             self._assigned_class_ids = {cid for cid, _ in self._assignments}
         return self._assignments
 

@@ -199,6 +199,8 @@ SEARCH_LIMIT = 8
 
 
 def global_search(request):
+    from apps.academics.permissions import teacher_class_ids
+
     """Busca de registros para a paleta Ctrl+K (estudantes e turmas).
 
     Usa exatamente as regras de acesso das telas de destino: estudantes por
@@ -248,7 +250,7 @@ def global_search(request):
             turmas = ClassGroup.objects.filter(school=user.school)
         elif user.role == Role.PROFESSOR.value:
             turmas = ClassGroup.objects.filter(
-                pk__in=TeacherAssignment.objects.filter(teacher=user).values("class_group_id")
+                pk__in=teacher_class_ids(user)
             )
         if turmas is not None:
             for cg in turmas.filter(name__icontains=q).select_related("school_year").order_by(

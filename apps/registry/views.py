@@ -168,11 +168,9 @@ def student_detail(request, student_id):
         # itens das outras disciplinas levariam a "acesso negado".
         from apps.academics.models import TeacherAssignment
 
-        pares = set(
-            TeacherAssignment.objects.filter(teacher=request.user).values_list(
-                "class_group_id", "subject_id"
-            )
-        )
+        from apps.academics.permissions import teacher_pairs
+
+        pares = teacher_pairs(request.user)
         activity_rows = [
             r for r in activity_rows
             if (r["activity"].class_group_id, r["activity"].subject_id) in pares

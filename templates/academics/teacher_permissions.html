@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Permissões adicionais — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'assignment_list' %}" class="back-link">{% icon "arrow-left" %}Atribuições</a>
+    <h1>Permissões adicionais de professores</h1>
+    <p>Por padrão, cada professor vê só as disciplinas atribuídas a ele. Aqui a escola concede acesso extra, com prazo e justificativa.</p>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    <form method="post" class="card" novalidate>
+      {% csrf_token %}
+      <div class="card-body">
+        <h2 class="h6">Conceder permissão</h2>
+        {% include "partials/_form_fields.html" with f=form %}
+        <p class="small text-body-secondary mb-0"><strong>Consulta:</strong> vê notas, atividades e painéis da disciplina na turma. <strong>Consulta e lançamento:</strong> também lança notas, publica atividades e faz a chamada.</p>
+      </div>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">{% icon "check" %}Conceder</button></div>
+    </form>
+  </div>
+  <div class="col-lg-7">
+    <nav aria-label="Situação" class="d-flex gap-2 mb-2">
+      <a href="?situacao=ativa" class="summary-pill{% if status == 'ativa' %} active{% endif %}">Ativas</a>
+      <a href="?situacao=revogada" class="summary-pill{% if status == 'revogada' %} active{% endif %}">Revogadas</a>
+      <a href="?situacao=todas" class="summary-pill{% if status != 'ativa' and status != 'revogada' %} active{% endif %}">Todas</a>
+    </nav>
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table align-middle mb-0 table-stack">
+          <thead><tr><th>Professor</th><th>Disciplina · turma</th><th>Tipo</th><th>Período</th><th>Situação</th><th><span class="visually-hidden">Ações</span></th></tr></thead>
+          <tbody>
+            {% for p in permissions %}
+            <tr>
+              <td class="fw-semibold">{{ p.teacher.get_full_name|default:p.teacher.username }}</td>
+              <td data-label="Disciplina · turma">{{ p.subject.name }} · {{ p.class_group.name }}<span class="d-block small text-body-secondary">{{ p.justification }}</span></td>
+              <td data-label="Tipo">{{ p.get_kind_display }}</td>
+              <td data-label="Período">{{ p.starts_on|date:"d/m/Y" }}{% if p.ends_on %} a {{ p.ends_on|date:"d/m/Y" }}{% else %} em diante{% endif %}<span class="d-block small text-body-secondary">por {{ p.granted_by.get_full_name|default:p.granted_by.username|default:"—" }}</span></td>
+              <td data-label="Situação">{% if p.status == "revogada" %}<span class="chip chip-state state-cancelado">Revogada {{ p.revoked_at|date:"d/m" }}</span>{% elif p.current %}<span class="chip chip-state state-aprovado">Em vigor</span>{% else %}<span class="chip chip-state state-previa">Fora do prazo</span>{% endif %}</td>
+              <td class="text-end cell-actions">{% if p.status == "ativa" %}<form method="post" action="{% url 'teacher_permission_revoke' p.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit" data-confirm="O acesso extra acaba agora. O registro fica no histórico." data-confirm-title="Revogar permissão?" data-confirm-ok="Revogar" data-confirm-tone="danger">Revogar</button></form>{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6"><div class="empty-state py-4">{% icon "shield" %}<strong>Nenhuma permissão nesta situação</strong></div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% include "partials/_pager.html" %}
+  </div>
+</div>
+{% endblock %}

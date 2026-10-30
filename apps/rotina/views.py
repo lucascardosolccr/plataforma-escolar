@@ -160,7 +160,9 @@ def _can_view_class_schedule(user, cg):
     if user.role in SCHEDULE_MANAGERS:
         return True
     if user.role == Role.PROFESSOR.value:
-        return TeacherAssignment.objects.filter(teacher=user, class_group=cg).exists()
+        from apps.academics.permissions import teaches
+
+        return teaches(user, cg)
     from .services import _class_ids_for
 
     return cg in _class_ids_for(user)
@@ -234,7 +236,9 @@ def schedule_delete(request, pk):
 def schedule_teacher(request):
     if request.user.role != Role.PROFESSOR.value:
         raise PermissionDenied
-    pairs = set(TeacherAssignment.objects.filter(teacher=request.user).values_list("class_group_id", "subject_id"))
+    from apps.academics.permissions import teacher_pairs
+
+    pairs = teacher_pairs(request.user)
     slots = [
         s for s in ClassSchedule.objects.filter(school=request.user.school).select_related("subject", "class_group")
         if s.teacher_id == request.user.pk or (s.teacher_id is None and (s.class_group_id, s.subject_id) in pairs)

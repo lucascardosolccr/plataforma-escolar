@@ -11,6 +11,8 @@ from datetime import timedelta
 
 from django.utils import timezone
 
+from apps.academics.permissions import active_assignments
+
 from .models import Role, User
 
 OPEN_STATES = ("a_vencer", "pendente")
@@ -167,7 +169,7 @@ def build(user):
         from django.db.models import Count, Q
 
         atribuicoes = list(
-            TeacherAssignment.objects.filter(teacher=user, school=user.school)
+            active_assignments(user)
             .select_related("class_group", "subject")
             .order_by("class_group__name", "subject__name")
         )

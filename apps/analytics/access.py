@@ -5,7 +5,7 @@ de acesso já existentes nos módulos de origem (cadastro e pedagógico) para n�
 duplicar a matriz RBAC.
 """
 
-from apps.academics.models import TeacherAssignment
+from apps.academics.permissions import teacher_pairs, teaches
 from apps.core.models import Role
 from apps.registry.access import ADMIN_RECORD_ROLES, can_view_student
 
@@ -32,9 +32,7 @@ def can_view_class_dashboard(user, class_group):
     if user.role in ADMIN_RECORD_ROLES:
         return True
     if user.role == Role.PROFESSOR.value:
-        return TeacherAssignment.objects.filter(
-            teacher=user, class_group=class_group
-        ).exists()
+        return teaches(user, class_group)
     return False
 
 
@@ -84,7 +82,7 @@ def subject_classes_for(user, subject):
         )
     if user.role == Role.PROFESSOR.value:
         qs = ClassGroup.objects.filter(
-            pk__in=TeacherAssignment.objects.filter(teacher=user, subject=subject).values("class_group_id")
+            pk__in={c for c, s in teacher_pairs(user) if s == subject.pk}
         ).select_related("school_year").order_by("name")
         return qs if qs.exists() else None
     return None

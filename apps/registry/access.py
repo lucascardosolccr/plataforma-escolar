@@ -1,6 +1,5 @@
 from django.core.exceptions import PermissionDenied
 
-from apps.academics.models import TeacherAssignment
 from apps.core.models import Role
 
 from .models import Enrollment, GuardianLink
@@ -45,11 +44,11 @@ def teacher_of_student(user, student):
             "class_group_id", flat=True
         )
     )
-    if not class_ids:
+    if not class_ids or student.school_id != user.school_id:
         return False
-    return TeacherAssignment.objects.filter(
-        teacher=user, class_group_id__in=class_ids, school=student.school
-    ).exists()
+    from apps.academics.permissions import teacher_class_ids
+
+    return bool(set(class_ids) & teacher_class_ids(user))
 
 
 def student_of(user):
@@ -82,10 +81,12 @@ def students_visible_to(user):
         )
         return Student.objects.filter(pk__in=ids)
     if user.role == Role.PROFESSOR.value:
+        from apps.academics.permissions import teacher_class_ids
+
         return Student.objects.filter(
             school=user.school,
             enrollments__status="ativo",
-            enrollments__class_group__teacher_assignments__teacher=user,
+            enrollments__class_group_id__in=teacher_class_ids(user),
         ).distinct()
     if can_manage_registry(user):
         return Student.objects.filter(school=user.school)

@@ -20,6 +20,7 @@ from apps.communication.services import (
     notify_occurrence_created,
     notify_publication_canceled,
 )
+from apps.academics.permissions import pairs_q, teacher_class_ids, teacher_pairs, teacher_subject_ids
 from apps.core.params import id_param, name_q
 from apps.core.models import AuditLog, Role, create_audit_log
 from apps.core.pagination import Sort, paginate
@@ -149,12 +150,7 @@ def _teacher_pairs_q(user):
     É a mesma regra de ``access.can_view_activity`` e ``can_view_group_work``:
     a lista do professor não mostra o que ele não conseguiria abrir.
     """
-    q = Q(pk__in=[])
-    for class_id, subject_id in _teacher_assignments(user).values_list(
-        "class_group_id", "subject_id"
-    ):
-        q |= Q(class_group_id=class_id, subject_id=subject_id)
-    return q
+    return pairs_q(user)
 
 
 def _grade_max(school, subject):
@@ -246,7 +242,9 @@ def evaluation_list(request):
             )
         )
     if user.role == Role.PROFESSOR.value:
-        qs = qs.filter(class_group_id__in=_teacher_assignments(user).values("class_group_id"))
+        # Só as disciplinas que ele leciona (ou tem permissão de consultar):
+        # avaliações dos colegas da mesma turma não aparecem.
+        qs = qs.filter(pairs_q(user))
     elif user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
         # Só avaliação publicada, das turmas por onde o estudante passou e do
         # período em que esteve em cada uma. Antes a família perdia as notas
@@ -260,7 +258,7 @@ def evaluation_list(request):
     # Pares turma+disciplina que o professor leciona: só neles aparecem
     # "Notas", "Editar" e "Publicar". Antes os botões apareciam também nas
     # avaliações dos colegas da mesma turma e levavam a "acesso negado".
-    managed = set(_teacher_assignments(user).values_list("class_group_id", "subject_id")) if is_teacher else set()
+    managed = teacher_pairs(user, edit=True) if is_teacher else set()
     classes = ClassGroup.objects.filter(pk__in=qs.values("class_group_id")).order_by("name")
     subjects = Subject.objects.filter(pk__in=qs.values("subject_id")).order_by("name")
     status = request.GET.get("status")
@@ -736,9 +734,7 @@ def activity_list(request):
     # Os pares turma+disciplina do professor vêm numa consulta só. Chamar
     # can_manage_activities por linha custava uma consulta por atividade.
     pares = (
-        set(
-            _teacher_assignments(user).values_list("class_group_id", "subject_id")
-        )
+        teacher_pairs(user, edit=True)
         if user.role == Role.PROFESSOR.value
         else set()
     )
@@ -755,10 +751,10 @@ def activity_list(request):
         )
     if user.role == Role.PROFESSOR.value:
         classes = ClassGroup.objects.filter(
-            pk__in=_teacher_assignments(user).values("class_group_id")
+            pk__in=teacher_class_ids(user)
         )
         subjects = user.school.subjects.filter(
-            pk__in=_teacher_assignments(user).values("subject_id")
+            pk__in=teacher_subject_ids(user)
         )
     else:
         classes = ClassGroup.objects.filter(school=user.school)
@@ -1266,7 +1262,7 @@ def group_work_list(request):
     )
     today = timezone.localdate()
     pares = (
-        set(_teacher_assignments(user).values_list("class_group_id", "subject_id"))
+        teacher_pairs(user, edit=True)
         if user.role == Role.PROFESSOR.value
         else set()
     )
@@ -1283,10 +1279,10 @@ def group_work_list(request):
         )
     if user.role == Role.PROFESSOR.value:
         classes = ClassGroup.objects.filter(
-            pk__in=_teacher_assignments(user).values("class_group_id")
+            pk__in=teacher_class_ids(user)
         )
         subjects = user.school.subjects.filter(
-            pk__in=_teacher_assignments(user).values("subject_id")
+            pk__in=teacher_subject_ids(user)
         )
     else:
         classes = ClassGroup.objects.filter(school=user.school)
@@ -1843,7 +1839,7 @@ def attendance_list(request):
     current_ids = None
     if user.role == Role.PROFESSOR.value:
         classes = classes.filter(
-            pk__in=_teacher_assignments(user).values("class_group_id")
+            pk__in=teacher_class_ids(user)
         )
     elif user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
         enrs = acc.family_enrollments(user)
@@ -2051,7 +2047,7 @@ def occurrence_list(request):
         acc.require(acc.can_view_occurrences(user, student))
         qs = qs.filter(student=student)
     elif user.role == Role.PROFESSOR.value:
-        class_ids = list(_teacher_assignments(user).values_list("class_group_id", flat=True))
+        class_ids = list(teacher_class_ids(user))
         student_ids = list(
             Enrollment.objects.filter(class_group_id__in=class_ids, status="ativo").values_list(
                 "student_id", flat=True
@@ -2149,6 +2145,8 @@ def observation_list(request):
         student = get_object_or_404(Student, pk=student_id, school=user.school)
         qs = qs.filter(student=student)
         acc.require(acc.can_view_observations(user, student))
+        if user.role == Role.PROFESSOR.value:
+            qs = qs.filter(acc.teacher_observations_q(user, student))
     elif user.role == Role.PROFESSOR.value:
         qs = qs.filter(teacher=user)
     elif user.role == Role.RESPONSAVEL.value:
@@ -2227,7 +2225,7 @@ def plan_list(request):
         acc.require(acc.can_view_plans(user, student))
         qs = qs.filter(student=student)
     if user.role == Role.PROFESSOR.value:
-        class_ids = list(_teacher_assignments(user).values_list("class_group_id", flat=True))
+        class_ids = list(teacher_class_ids(user))
         student_ids = list(
             Enrollment.objects.filter(class_group_id__in=class_ids, status="ativo").values_list(
                 "student_id", flat=True
@@ -2327,7 +2325,7 @@ def justification_list(request):
         qs = qs.filter(student=student)
         acc.require(acc.can_view_justifications(user, student))
     elif user.role == Role.PROFESSOR.value:
-        class_ids = list(_teacher_assignments(user).values_list("class_group_id", flat=True))
+        class_ids = list(teacher_class_ids(user))
         student_ids = list(
             Enrollment.objects.filter(class_group_id__in=class_ids, status="ativo").values_list(
                 "student_id", flat=True

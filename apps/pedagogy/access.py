@@ -1,25 +1,25 @@
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 
-from apps.academics.models import TeacherAssignment
+from apps.academics.permissions import teacher_class_ids, teaches
 from apps.core.models import Role
 from apps.registry.models import Enrollment
 
 
-def _teacher_of(user, class_group, subject=None):
+def _teacher_of(user, class_group, subject=None, edit=False):
+    """Professor que alcança a turma (e a disciplina, se dada). Regra única em
+    ``academics.permissions``: atribuição no período de atuação ou permissão
+    adicional ativa. ``edit`` exige atribuição ou permissão de lançamento."""
     if not user.is_authenticated or user.role != Role.PROFESSOR.value:
         return False
-    qs = TeacherAssignment.objects.filter(
-        teacher=user, class_group=class_group, school=class_group.school
-    )
-    if subject is not None:
-        qs = qs.filter(subject=subject)
-    return qs.exists()
+    if class_group.school_id != user.school_id:
+        return False
+    return teaches(user, class_group, subject, edit=edit)
 
 
 def can_manage_evaluations(user, class_group, subject):
     """Cria/edita/lança notas apenas o professor com atribuição na turma/disciplina."""
-    return _teacher_of(user, class_group, subject)
+    return _teacher_of(user, class_group, subject, edit=True)
 
 
 def can_view_evaluations(user):
@@ -164,7 +164,7 @@ def can_manage_activities(user, class_group=None, subject=None):
     """
     if class_group is None:
         return user.is_authenticated and user.role == Role.PROFESSOR.value
-    return _teacher_of(user, class_group, subject)
+    return _teacher_of(user, class_group, subject, edit=True)
 
 
 def can_view_activity(user, activity):
@@ -204,7 +204,7 @@ def can_manage_group_works(user, class_group=None, subject=None):
     """
     if class_group is None:
         return user.is_authenticated and user.role == Role.PROFESSOR.value
-    return _teacher_of(user, class_group, subject)
+    return _teacher_of(user, class_group, subject, edit=True)
 
 
 def can_view_group_work(user, work):
@@ -282,7 +282,7 @@ def visible_groups_for(user, work):
 
 
 def can_register_attendance(user, class_group):
-    return _teacher_of(user, class_group)
+    return _teacher_of(user, class_group, edit=True)
 
 
 def can_view_attendance(user):
@@ -338,6 +338,18 @@ def can_view_observations(user, student=None):
     if user.role == Role.RESPONSAVEL.value:
         return _guardian_of(user, student) if student else False
     return False
+
+
+def teacher_observations_q(user, student):
+    """Observações de um estudante que o professor pode ler: as que ele
+    escreveu, as gerais (sem disciplina) e as das disciplinas que leciona nas
+    turmas do estudante. Registros de outras disciplinas ficam com os
+    respectivos professores e a coordenação."""
+    from apps.academics.permissions import teacher_subject_ids
+
+    class_ids = set(Enrollment.objects.filter(student=student).values_list("class_group_id", flat=True))
+    return (Q(teacher=user) | Q(subject__isnull=True)
+            | Q(subject_id__in=teacher_subject_ids(user, class_ids=class_ids)))
 
 
 def can_manage_plans(user):
@@ -405,11 +417,9 @@ def _teacher_of_student(user, student):
             "class_group_id", flat=True
         )
     )
-    if not class_ids:
+    if not class_ids or student.school_id != user.school_id:
         return False
-    return TeacherAssignment.objects.filter(
-        teacher=user, class_group_id__in=class_ids, school=student.school
-    ).exists()
+    return bool(set(class_ids) & teacher_class_ids(user))
 
 
 def require(view_ok):

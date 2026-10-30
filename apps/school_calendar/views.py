@@ -57,11 +57,9 @@ def _user_class_ids(user):
     """Turmas dentro do escopo do usuário."""
     role = user.role
     if role == Role.PROFESSOR.value:
-        return list(
-            TeacherAssignment.objects.filter(teacher=user, school=user.school)
-            .values_list("class_group_id", flat=True)
-            .distinct()
-        )
+        from apps.academics.permissions import teacher_class_ids
+
+        return list(teacher_class_ids(user))
     if role == Role.RESPONSAVEL.value:
         student_ids = _user_student_ids(user)
         return list(
@@ -400,9 +398,10 @@ def calendar_index(request):
     classes = ClassGroup.objects.filter(school=request.user.school).order_by("name")
     subjects = Subject.objects.filter(school=request.user.school).order_by("name")
     if request.user.role == Role.PROFESSOR.value:
-        assigned = TeacherAssignment.objects.filter(teacher=request.user)
-        classes = classes.filter(pk__in=assigned.values("class_group_id"))
-        subjects = subjects.filter(pk__in=assigned.values("subject_id"))
+        from apps.academics.permissions import teacher_class_ids, teacher_subject_ids
+
+        classes = classes.filter(pk__in=teacher_class_ids(request.user))
+        subjects = subjects.filter(pk__in=teacher_subject_ids(request.user))
     elif request.user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
         # A família só escolhe entre as turmas dos próprios estudantes; as
         # demais não aparecem nem como opção de filtro.

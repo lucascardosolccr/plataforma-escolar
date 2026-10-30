@@ -275,9 +275,9 @@ def my_classrooms(request):
 
     from apps.pedagogy.models import AttendanceRecord
 
-    assignments = TeacherAssignment.objects.filter(
-        teacher=request.user, school=request.user.school
-    ).select_related("class_group", "school_year", "subject").order_by("class_group__name", "subject__name")
+    from .permissions import active_assignments
+
+    assignments = active_assignments(request.user).select_related("class_group", "school_year", "subject").order_by("class_group__name", "subject__name")
     by_class = {}
     for a in assignments:
         entry = by_class.setdefault(a.class_group_id, {"class_group": a.class_group, "year": a.school_year,

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import views, views_permissions
 
 urlpatterns = [
     path("turmas/", views.class_group_list, name="class_group_list"),
@@ -26,6 +26,9 @@ urlpatterns = [
     ),
     path("atribuicoes/", views.assignment_list, name="assignment_list"),
     path("atribuicoes/nova/", views.assignment_create, name="assignment_create"),
+    path("atribuicoes/permissoes/", views_permissions.permission_list, name="teacher_permissions"),
+    path("atribuicoes/permissoes/<int:pk>/revogar/", views_permissions.permission_revoke,
+         name="teacher_permission_revoke"),
     path(
         "atribuicoes/<int:assignment_id>/remover/",
         views.assignment_delete,

@@ -218,8 +218,11 @@ def months_between(start, end):
 # --------------------------------------------------------------------------- #
 # Carga em lote
 # --------------------------------------------------------------------------- #
-def load_grades(student_ids, start, end, class_group=None, subject=None):
-    """{estudante: [Grade]} de avaliações publicadas no período, com nota."""
+def load_grades(student_ids, start, end, class_group=None, subject=None, subject_ids=None):
+    """{estudante: [Grade]} de avaliações publicadas no período, com nota.
+
+    ``subject_ids``: restringe às disciplinas dadas (o professor só vê as
+    disciplinas que leciona)."""
     qs = (
         Grade.objects.filter(
             student_id__in=list(student_ids),
@@ -235,6 +238,8 @@ def load_grades(student_ids, start, end, class_group=None, subject=None):
         qs = qs.filter(evaluation__class_group=class_group)
     if subject is not None:
         qs = qs.filter(evaluation__subject=subject)
+    if subject_ids is not None:
+        qs = qs.filter(evaluation__subject_id__in=list(subject_ids))
     out = defaultdict(list)
     for g in qs:
         out[g.student_id].append(g)
@@ -303,7 +308,7 @@ def _class_subject_means(class_group, start, end, rules):
     return {k: (round(statistics.fmean(v), 2), len(v)) for k, v in acc.items()}
 
 
-def _activity_breakdown(student, enrollments, period, today):
+def _activity_breakdown(student, enrollments, period, today, subject_ids=None):
     """Atividades que alcançam o estudante, classificadas pela situação."""
     from apps.pedagogy.access import reaches
 
@@ -321,7 +326,8 @@ def _activity_breakdown(student, enrollments, period, today):
         .select_related("subject")
         .order_by("deadline", "published_date")
     )
-    acts = [a for a in acts if reaches(enrollments, a)]
+    acts = [a for a in acts if reaches(enrollments, a)
+            and (subject_ids is None or a.subject_id in subject_ids)]
     subs = {
         s.activity_id: s
         for s in Submission.objects.filter(student=student, activity__in=acts)
@@ -521,7 +527,8 @@ def _student_quality(student, enrollments, period, act):
     }
 
 
-def student_report(student, period, *, show_class_comparison=False, show_observations=False):
+def student_report(student, period, *, show_class_comparison=False, show_observations=False,
+                   only_subjects=None):
     today = timezone.localdate()
     school = student.school
     rules = rules_by_subject(school)
@@ -533,8 +540,8 @@ def student_report(student, period, *, show_class_comparison=False, show_observa
     current = max(active, key=lambda e: (e.started_on or date.min)) if active else None
 
     prev = period.previous()
-    grades = load_grades([student.pk], period.start, period.end).get(student.pk, [])
-    prev_grades = load_grades([student.pk], prev.start, prev.end).get(student.pk, [])
+    grades = load_grades([student.pk], period.start, period.end, subject_ids=only_subjects).get(student.pk, [])
+    prev_grades = load_grades([student.pk], prev.start, prev.end, subject_ids=only_subjects).get(student.pk, [])
     subj = _subject_rows(grades, rules)
     prev_subj = _subject_rows(prev_grades, rules)
     class_means = (
@@ -616,8 +623,8 @@ def student_report(student, period, *, show_class_comparison=False, show_observa
         for d, s in reversed(records) if s == AttendanceRecord.Status.ABSENT
     ][:30]
 
-    act = _activity_breakdown(student, enrollments, period, today)
-    prev_act = _activity_breakdown(student, enrollments, prev, today)
+    act = _activity_breakdown(student, enrollments, period, today, only_subjects)
+    prev_act = _activity_breakdown(student, enrollments, prev, today, only_subjects)
     groups = _group_participation(student, period)
     trd = trend([(g.evaluation.date, g.value) for g in grades])
 
@@ -660,7 +667,8 @@ def student_report(student, period, *, show_class_comparison=False, show_observa
         "quality": _student_quality(student, enrollments, period, act),
     }
     report["interventions"] = _interventions(student, today)
-    report["insights"] = student_insights(student, report, show_observations=show_observations)
+    report["insights"] = student_insights(student, report, show_observations=show_observations,
+                                          only_subjects=only_subjects)
     return report
 
 
@@ -671,7 +679,7 @@ def _fmt(v, places=1):
     return f"{v:.{places}f}".replace(".", ",")
 
 
-def student_insights(student, report, *, show_observations=False):
+def student_insights(student, report, *, show_observations=False, only_subjects=None):
     out = []
     acad, att, act = report["academic"], report["attendance"], report["activities"]
     for s in acad["subjects"]:
@@ -749,11 +757,10 @@ def student_insights(student, report, *, show_observations=False):
         })
     if show_observations:
         counts = defaultdict(int)
-        for subj_name in (
-            PedagogicalObservation.objects.filter(student=student)
-            .exclude(dificuldades="")
-            .values_list("subject__name", flat=True)
-        ):
+        obs = PedagogicalObservation.objects.filter(student=student).exclude(dificuldades="")
+        if only_subjects is not None:
+            obs = obs.filter(Q(subject__isnull=True) | Q(subject_id__in=list(only_subjects)))
+        for subj_name in obs.values_list("subject__name", flat=True):
             counts[subj_name or "Geral"] += 1
         for name, n in counts.items():
             if n >= 2:
@@ -771,7 +778,7 @@ def student_insights(student, report, *, show_observations=False):
 # --------------------------------------------------------------------------- #
 # Painel da turma
 # --------------------------------------------------------------------------- #
-def class_report(class_group, period, *, min_subjects_below=1, min_delivery=60):
+def class_report(class_group, period, *, min_subjects_below=1, min_delivery=60, only_subjects=None):
     from apps.registry.models import Student
 
     today = timezone.localdate()
@@ -785,7 +792,8 @@ def class_report(class_group, period, *, min_subjects_below=1, min_delivery=60):
     students = {
         s.pk: s for s in Student.objects.filter(pk__in=active_ids).order_by("first_name", "last_name")
     }
-    grades = load_grades(active_ids, period.start, period.end, class_group=class_group)
+    grades = load_grades(active_ids, period.start, period.end, class_group=class_group,
+                         subject_ids=only_subjects)
     records = load_attendance(active_ids, period.start, period.end, class_group=class_group)
 
     acts = list(
@@ -796,6 +804,8 @@ def class_report(class_group, period, *, min_subjects_below=1, min_delivery=60):
             | Q(deadline__isnull=True, published_date__gte=period.start, published_date__lte=period.end)
         )
     )
+    if only_subjects is not None:
+        acts = [a for a in acts if a.subject_id in only_subjects]
     subs = defaultdict(dict)
     for s in Submission.objects.filter(activity__in=acts, student_id__in=active_ids).only(
         "activity_id", "student_id", "status"

@@ -2,6 +2,7 @@ from django import forms
 from django.utils import timezone
 
 from apps.academics.models import ClassGroup, Subject, TeacherAssignment
+from apps.academics.permissions import teacher_class_ids, teacher_subject_ids, teaches
 from apps.core.models import Role, User
 from apps.core.uploads import (
     MAX_ATTACHMENT_SIZE_MB,
@@ -72,12 +73,11 @@ class EvaluationForm(forms.ModelForm):
             self.fields["class_group"].queryset = ClassGroup.objects.filter(school=school)
             self.fields["subject"].queryset = Subject.objects.filter(school=school)
         if user and user.role == Role.PROFESSOR.value:
-            assigned = TeacherAssignment.objects.filter(teacher=user, school=school)
             self.fields["class_group"].queryset = ClassGroup.objects.filter(
-                pk__in=assigned.values("class_group_id")
+                pk__in=teacher_class_ids(user, edit=True)
             )
             self.fields["subject"].queryset = Subject.objects.filter(
-                pk__in=assigned.values("subject_id")
+                pk__in=teacher_subject_ids(user, edit=True)
             )
         if class_group:
             self.fields["class_group"].initial = class_group
@@ -101,9 +101,7 @@ class EvaluationForm(forms.ModelForm):
             and self.user.role == Role.PROFESSOR.value
             and cg
             and subj
-            and not TeacherAssignment.objects.filter(
-                teacher=self.user, class_group=cg, subject=subj, school=self.school
-            ).exists()
+            and not teaches(self.user, cg, subj, edit=True)
         ):
             raise forms.ValidationError("Você só pode criar avaliações nas turmas/disciplinas que leciona.")
         return cleaned
@@ -241,14 +239,11 @@ class ActivityForm(forms.ModelForm):
             ).select_related("school_year")
             self.fields["subject"].queryset = school.subjects.all()
         if user and user.role == Role.PROFESSOR.value:
-            self._assignments = TeacherAssignment.objects.filter(
-                teacher=user, school=school
-            )
             self.fields["class_group"].queryset = ClassGroup.objects.filter(
-                pk__in=self._assignments.values("class_group_id")
+                pk__in=teacher_class_ids(user, edit=True)
             ).select_related("school_year")
             self.fields["subject"].queryset = school.subjects.filter(
-                pk__in=self._assignments.values("subject_id")
+                pk__in=teacher_subject_ids(user, edit=True)
             )
         if self.instance.pk and self.instance.status != Activity.Status.DRAFT:
             # Mudar a turma de uma atividade já publicada a tiraria em silêncio
@@ -275,12 +270,7 @@ class ActivityForm(forms.ModelForm):
             and self.user
             and self.user.role == Role.PROFESSOR.value
         ):
-            if not TeacherAssignment.objects.filter(
-                teacher=self.user,
-                school=self.school,
-                class_group=class_group,
-                subject=subject,
-            ).exists():
+            if not teaches(self.user, class_group, subject, edit=True):
                 raise forms.ValidationError(
                     f"Você não tem atribuição de {subject} na turma "
                     f"{class_group}. Escolha uma combinação da sua atribuição."
@@ -371,12 +361,11 @@ class GroupWorkForm(forms.ModelForm):
             ).select_related("school_year")
             self.fields["subject"].queryset = school.subjects.all()
         if user and user.role == Role.PROFESSOR.value:
-            assigned = TeacherAssignment.objects.filter(teacher=user, school=school)
             self.fields["class_group"].queryset = ClassGroup.objects.filter(
-                pk__in=assigned.values("class_group_id")
+                pk__in=teacher_class_ids(user, edit=True)
             ).select_related("school_year")
             self.fields["subject"].queryset = school.subjects.filter(
-                pk__in=assigned.values("subject_id")
+                pk__in=teacher_subject_ids(user, edit=True)
             )
         if self.instance.pk:
             # Trocar a turma depois de formar os grupos deixaria integrantes de
@@ -404,12 +393,7 @@ class GroupWorkForm(forms.ModelForm):
             and self.user
             and self.user.role == Role.PROFESSOR.value
         ):
-            if not TeacherAssignment.objects.filter(
-                teacher=self.user,
-                school=self.school,
-                class_group=class_group,
-                subject=subject,
-            ).exists():
+            if not teaches(self.user, class_group, subject, edit=True):
                 raise forms.ValidationError(
                     f"Você não tem atribuição de {subject} na turma "
                     f"{class_group}. Escolha uma combinação da sua atribuição."

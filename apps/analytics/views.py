@@ -16,6 +16,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from apps.academics.models import ClassGroup
+from apps.academics.permissions import active_assignments
 from apps.core.params import id_param
 from apps.core.models import Role
 from apps.pedagogy.access import (
@@ -153,6 +154,24 @@ def _switchable_students(user, student):
     return list(qs.order_by("first_name", "last_name")[:200])
 
 
+def _teacher_only_subjects(user, student=None, class_group=None):
+    """Disciplinas que o professor pode ver neste painel, ou None (sem limite).
+
+    O professor vê só as disciplinas que leciona (ou tem permissão de
+    consultar) nas turmas do estudante / na turma: notas de colegas de outras
+    disciplinas ficam fora, por padrão.
+    """
+    if user.role != Role.PROFESSOR.value:
+        return None
+    from apps.academics.permissions import teacher_subject_ids
+
+    if class_group is not None:
+        class_ids = {class_group.pk}
+    else:
+        class_ids = set(Enrollment.objects.filter(student=student).values_list("class_group_id", flat=True))
+    return teacher_subject_ids(user, class_ids=class_ids)
+
+
 def student_dashboard(request, student_id):
     from apps.pedagogy.access import can_view_justifications
     from apps.registry.access import ADMIN_RECORD_ROLES, can_view_birth_date
@@ -172,8 +191,10 @@ def student_dashboard(request, student_id):
     can_view_obs = can_view_observations(user, student)
     can_just = can_view_justifications(user, student)
 
+    only_subjects = _teacher_only_subjects(user, student=student)
     report = bi.student_report(
-        student, period, show_class_comparison=is_team, show_observations=can_view_obs
+        student, period, show_class_comparison=is_team, show_observations=can_view_obs,
+        only_subjects=only_subjects,
     )
     if not can_view_plan:
         report["interventions"] = []
@@ -184,7 +205,7 @@ def student_dashboard(request, student_id):
         if not subject_filter or e["evaluation"].subject_id == subject_filter
     ]
     base_qs = period.querystring()
-    skills, strategies = services.consolidated_skills(student) if can_view_obs else ([], [])
+    skills, strategies = services.consolidated_skills(student, only_subjects) if can_view_obs else ([], [])
 
     context = {
         "student": student,
@@ -192,6 +213,7 @@ def student_dashboard(request, student_id):
         "period": period,
         "presets": bi.PRESETS,
         "is_team": is_team,
+        "subject_limited": only_subjects is not None,
         "can_view_occ": can_view_occ,
         "can_view_plan": can_view_plan,
         "can_view_obs": can_view_obs,
@@ -255,7 +277,9 @@ def _visible_classes(user):
 
     qs = ClassGroup.objects.filter(school=user.school).select_related("school_year")
     if user.role == Role.PROFESSOR.value:
-        qs = qs.filter(pk__in=TeacherAssignment.objects.filter(teacher=user).values("class_group_id"))
+        from apps.academics.permissions import teacher_class_ids
+
+        qs = qs.filter(pk__in=teacher_class_ids(user))
     elif user.role not in ADMIN_RECORD_ROLES:
         return ClassGroup.objects.none()
     return qs.order_by("name")
@@ -277,7 +301,9 @@ def class_dashboard(request, class_group_id):
     period = bi.resolve_period(request.GET, class_group.school)
     n_below = _int_param(request, "disciplinas", 1, 1, 10)
     min_delivery = _int_param(request, "entrega", 60, 0, 100)
-    report = bi.class_report(class_group, period, min_subjects_below=n_below, min_delivery=min_delivery)
+    only_subjects = _teacher_only_subjects(request.user, class_group=class_group)
+    report = bi.class_report(class_group, period, min_subjects_below=n_below, min_delivery=min_delivery,
+                             only_subjects=only_subjects)
     only_follow = request.GET.get("acompanhamento") == "1"
     rows = report["follow_up"] if only_follow else report["rows"]
     qs = period.querystring() + f"&disciplinas={n_below}&entrega={min_delivery}"
@@ -285,6 +311,7 @@ def class_dashboard(request, class_group_id):
     return render(request, "analytics/class_dashboard.html", {
         "class_group": class_group,
         "report": report,
+        "subject_limited": only_subjects is not None,
         "rows": rows,
         "only_follow": only_follow,
         "period": period,
@@ -327,7 +354,8 @@ def class_export(request, class_group_id, fmt):
     period = bi.resolve_period(request.GET, class_group.school)
     r = bi.class_report(class_group, period,
                         min_subjects_below=_int_param(request, "disciplinas", 1, 1, 10),
-                        min_delivery=_int_param(request, "entrega", 60, 0, 100))
+                        min_delivery=_int_param(request, "entrega", 60, 0, 100),
+                        only_subjects=_teacher_only_subjects(request.user, class_group=class_group))
     mapa = [["Estudante"] + [s.name for s in r["subjects"]]
             + ["Média geral", "Frequência (%)", "Taxa de entrega (%)", "Sem registro", "Evolução", "Acompanhamento"]]
     for row in r["rows"]:
@@ -614,7 +642,8 @@ def student_export(request, student_id, fmt):
 
     is_team = user.role in ADMIN_RECORD_ROLES or user.role == Role.PROFESSOR.value
     period = bi.resolve_period(request.GET, student.school)
-    r = bi.student_report(student, period, show_class_comparison=is_team)
+    r = bi.student_report(student, period, show_class_comparison=is_team,
+                          only_subjects=_teacher_only_subjects(user, student=student))
     a, att, act = r["academic"], r["attendance"], r["activities"]
     resumo = [
         ["Indicador", "Valor", "Período anterior"],
@@ -670,7 +699,9 @@ def _subject_options(user):
 
     qs = Subject.objects.filter(school=user.school).order_by("name")
     if user.role == Role.PROFESSOR.value:
-        return qs.filter(pk__in=TeacherAssignment.objects.filter(teacher=user).values("subject_id"))
+        from apps.academics.permissions import teacher_subject_ids
+
+        return qs.filter(pk__in=teacher_subject_ids(user))
     return qs if user.role in ADMIN_RECORD_ROLES else Subject.objects.none()
 
 
@@ -760,7 +791,7 @@ def teacher_dashboard(request):
         raise PermissionDenied("Painel do professor: somente o próprio professor.")
     period = bi.resolve_period(request.GET, user.school)
     todas = list(
-        TeacherAssignment.objects.filter(teacher=user, school=user.school)
+        active_assignments(user)
         .select_related("class_group", "subject", "school_year")
         .order_by("class_group__name", "subject__name")
     )

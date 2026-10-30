@@ -58,11 +58,9 @@ def _guardian_class_ids(user):
 
 
 def _teacher_class_ids(user):
-    return list(
-        TeacherAssignment.objects.filter(teacher=user, school=user.school).values_list(
-            "class_group_id", flat=True
-        )
-    )
+    from apps.academics.permissions import teacher_class_ids
+
+    return list(teacher_class_ids(user))
 
 
 def _teacher_student_ids(user):

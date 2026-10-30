@@ -16,6 +16,8 @@ class Notification(models.Model):
         MESSAGE = "mensagem", "Nova mensagem"
         REQUEST = "solicitacao", "Solicitação"
         ATTENDANCE = "frequencia", "Frequência/pendência"
+        OCCURRENCE = "ocorrencia", "Ocorrência registrada"
+        LINK = "vinculo", "Vínculo analisado"
 
     school = models.ForeignKey(
         School, on_delete=models.CASCADE, related_name="notifications", verbose_name="escola"

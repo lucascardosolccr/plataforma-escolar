@@ -50,7 +50,8 @@ class FamilyActivityFilterTests(PedagogyBase):
         self._cenario()
         self.login("resp")  # um filho só (Ana)
         resp = self.client.get(reverse("pedagogy:activity_list"))
-        self.assertContains(resp, 'name="situacao"')
+        self.assertRegex(resp.content.decode(), r'class="summary-pill[^"]*"|href="[^"]*\?situacao=')
+        self.assertContains(resp, "?situacao=")
 
     def test_student_account_sees_situation_filter(self):
         conta = User.objects.create_user(
@@ -62,7 +63,8 @@ class FamilyActivityFilterTests(PedagogyBase):
         self._cenario()
         self.login("aluna")
         resp = self.client.get(reverse("pedagogy:activity_list"))
-        self.assertContains(resp, 'name="situacao"')
+        self.assertRegex(resp.content.decode(), r'class="summary-pill[^"]*"|href="[^"]*\?situacao=')
+        self.assertContains(resp, "?situacao=")
         self.assertContains(resp, "Publicada hoje")
 
     def test_summary_counts_by_situation(self):
@@ -143,7 +145,8 @@ class FamilyGroupWorkFilterTests(GroupWorkBase):
         self.make_group(work, "Grupo 1", [self.ana, self.bruno])
         self.login("resp_ana")
         resp = self.client.get(reverse("pedagogy:group_work_list"))
-        self.assertContains(resp, 'name="situacao"')
+        self.assertRegex(resp.content.decode(), r'class="summary-pill[^"]*"|href="[^"]*\?situacao=')
+        self.assertContains(resp, "?situacao=")
         resumo = {s["key"]: s["count"] for s in resp.context["summary"]}
         self.assertEqual(resumo, {"nova": 1, "a_vencer": 1})
         self.assertEqual(work.status, GroupWork.Status.PUBLISHED)

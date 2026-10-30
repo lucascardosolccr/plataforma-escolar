@@ -16,6 +16,45 @@ from .models import Role, User
 OPEN_STATES = ("a_vencer", "pendente")
 
 
+def setup_steps(user):
+    """Primeiros passos de uma escola nova, na ordem em que um depende do outro.
+
+    Cada passo diz se já está feito (pelo que existe no banco) e leva à tela
+    de cadastro quando o perfil pode fazê-lo. Sem esta lista, a secretaria
+    abria uma plataforma vazia sem saber por onde começar.
+    """
+    from django.urls import reverse
+
+    from apps.academics.models import ClassGroup, SchoolYear, Subject, TeacherAssignment
+    from apps.pedagogy.models import AcademicRule
+    from apps.registry.models import Enrollment, Student
+
+    school = user.school
+    is_admin = user.role == Role.ADMIN.value
+    steps = [
+        ("Ano letivo", SchoolYear.objects.filter(school=school).exists(), "school_year_create",
+         "O ano a que turmas e matrículas pertencem."),
+        ("Disciplinas", Subject.objects.filter(school=school).exists(), "subject_create",
+         "Matemática, Português e as demais."),
+        ("Turmas", ClassGroup.objects.filter(school=school).exists(), "class_group_create",
+         "Cada turma com série e turno."),
+        ("Contas dos professores", User.objects.filter(school=school, role=Role.PROFESSOR.value).exists(),
+         "user_create" if is_admin else None,
+         "Criadas pela administração." if not is_admin else "Uma conta por professor."),
+        ("Atribuições", TeacherAssignment.objects.filter(school=school).exists(), "assignment_create",
+         "Quem leciona qual disciplina em qual turma."),
+        ("Estudantes", Student.objects.filter(school=school).exists(), "student_create",
+         "A ficha de cada estudante."),
+        ("Matrículas", Enrollment.objects.filter(school=school).exists(), "enrollment_create",
+         "Cada estudante na sua turma."),
+        ("Regras de média", AcademicRule.objects.filter(school=school).exists(), "pedagogy:config_edit",
+         "Fórmula e nota de aprovação de cada disciplina."),
+    ]
+    out = [{"label": label, "done": done, "url": reverse(name) if name else None, "hint": hint}
+           for label, done, name, hint in steps]
+    return out if not all(s["done"] for s in out) else []
+
+
 def _recent_announcements(user, limit=3):
     from apps.communication.access import announcement_q, can_view_announcements
     from apps.communication.models import Announcement, AnnouncementRead
@@ -85,6 +124,20 @@ def build(user):
         rows, students = _student_own_rows(user)
         data["own"] = _children_summary(rows, students)[0] if students else None
         data["announcements"] = _recent_announcements(user)
+        if students:
+            # Progresso do próprio estudante: últimas notas publicadas e
+            # frequência (nada de comparação com colegas).
+            from apps.analytics.services import attendance_stats
+            from apps.pedagogy.models import Evaluation, Grade
+
+            student = students[0]
+            data["recent_grades"] = list(
+                Grade.objects.filter(student=student, value__isnull=False,
+                                     evaluation__status=Evaluation.Status.PUBLISHED)
+                .select_related("evaluation__subject").order_by("-evaluation__date", "-pk")[:4]
+            )
+            data["attendance"] = attendance_stats(student)
+            data["student_pk"] = student.pk
 
     elif role == Role.PROFESSOR.value:
         from apps.academics.models import TeacherAssignment
@@ -163,6 +216,9 @@ def build(user):
             school=user.school,
             status__in=[ServiceRequest.Status.RECEIVED, ServiceRequest.Status.UNDER_REVIEW],
         ).count()
+        if role in (Role.SECRETARIA.value, Role.ADMIN.value):
+            data["setup"] = setup_steps(user)
+            data["setup_done"] = sum(1 for s in data["setup"] if s["done"])
         if role == Role.ADMIN.value:
             data["active_users"] = User.objects.filter(
                 school=user.school, is_active=True

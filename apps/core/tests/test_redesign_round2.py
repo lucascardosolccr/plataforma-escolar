@@ -432,3 +432,81 @@ class HomeTodayTests(Round2Base):
         resp = self.client.get(reverse("home"))
         self.assertEqual(resp.context["ws"]["requests_open"], 1)
         self.assertContains(resp, "Solicitações em aberto")
+
+
+class NewNotificationsTests(Round2Base):
+    def test_family_is_notified_of_a_new_occurrence(self):
+        self.login(self.prof)
+        self.client.post(reverse("pedagogy:occurrence_create"), {
+            "student": self.ana.pk, "date": "2026-04-01", "description": "Chegou atrasada sem aviso.",
+            "status": "aberta",
+        })
+        occ = Occurrence.objects.get(student=self.ana)
+        n = Notification.objects.get(user=self.users[Role.RESPONSAVEL], kind="ocorrencia")
+        self.assertEqual(n.url, reverse("pedagogy:occurrence_detail", args=[occ.pk]))
+        # O responsável consegue abrir o que o aviso aponta.
+        self.login(self.users[Role.RESPONSAVEL])
+        self.assertEqual(self.client.get(n.url).status_code, 200)
+
+    def test_guardian_is_notified_when_link_is_approved_or_rejected(self):
+        novo = User.objects.create_user(username="pai", password=PW, role=Role.RESPONSAVEL, school=self.school)
+        pedido = GuardianLink.objects.create(school=self.school, guardian=novo, student=self.bia, status="pendente")
+        outro = GuardianLink.objects.create(school=self.school, guardian=novo, student=self.ana, status="pendente")
+        self.login(self.users[Role.SECRETARIA])
+        self.client.post(reverse("link_approve", args=[pedido.pk]))
+        self.client.post(reverse("link_reject", args=[outro.pk]), {"reason": "Documento ilegível"})
+        titles = list(Notification.objects.filter(user=novo, kind="vinculo").values_list("title", "body"))
+        self.assertEqual(len(titles), 2)
+        self.assertTrue(any("aprovado" in t for t, _ in titles))
+        self.assertTrue(any("Documento ilegível" in b for _, b in titles))
+
+
+class SetupStepsTests(TestCase):
+    def test_new_school_sees_first_steps_with_links(self):
+        school = School.objects.create(name="Nova", code="nova")
+        sec = User.objects.create_user(username="sec", password=PW, role=Role.SECRETARIA, school=school)
+        self.client.login(username="sec", password=PW)
+        ws = self.client.get(reverse("home")).context["ws"]
+        self.assertEqual(ws["setup_done"], 0)
+        labels = {s["label"]: s for s in ws["setup"]}
+        self.assertEqual(labels["Ano letivo"]["url"], reverse("school_year_create"))
+        self.assertIsNone(labels["Contas dos professores"]["url"])   # só a administração cria
+        for s in ws["setup"]:
+            if s["url"]:
+                self.assertEqual(self.client.get(s["url"]).status_code, 200, s["label"])
+        self.assertTrue(sec)
+
+
+class SetupStepsDoneTests(Round2Base):
+    def test_checklist_disappears_when_everything_exists(self):
+        from apps.pedagogy.models import AcademicRule
+
+        self.login(self.users[Role.SECRETARIA])
+        ws = self.client.get(reverse("home")).context["ws"]
+        self.assertEqual([s["label"] for s in ws["setup"] if not s["done"]], ["Regras de média"])
+        AcademicRule.objects.create(school=self.school, subject=self.mat, formula="aritmetica")
+        self.assertEqual(self.client.get(reverse("home")).context["ws"]["setup"], [])
+
+
+class StudentHomeTests(Round2Base):
+    def test_student_home_shows_own_recent_grades_and_attendance(self):
+        from decimal import Decimal
+
+        from apps.pedagogy.models import AttendanceRecord, Grade
+
+        conta = self.users[Role.ESTUDANTE]
+        self.ana.user = conta
+        self.ana.save(update_fields=["user"])
+        ev = Evaluation.objects.create(school=self.school, subject=self.mat, class_group=self.turma, title="P1",
+                                       date=date(2026, 3, 10), created_by=self.prof, status=Evaluation.Status.PUBLISHED)
+        rascunho = Evaluation.objects.create(school=self.school, subject=self.mat, class_group=self.turma, title="P2",
+                                             date=date(2026, 3, 20), created_by=self.prof)
+        Grade.objects.create(school=self.school, evaluation=ev, student=self.ana, value=Decimal("8"))
+        Grade.objects.create(school=self.school, evaluation=rascunho, student=self.ana, value=Decimal("2"))
+        Grade.objects.create(school=self.school, evaluation=ev, student=self.bia, value=Decimal("5"))
+        AttendanceRecord.objects.create(school=self.school, class_group=self.turma, student=self.ana,
+                                        date=date(2026, 3, 10), status="falta", recorded_by=self.prof)
+        self.login(conta)
+        ws = self.client.get(reverse("home")).context["ws"]
+        self.assertEqual([(g.evaluation.title, g.value) for g in ws["recent_grades"]], [("P1", Decimal("8"))])
+        self.assertEqual(ws["attendance"]["absent"], 1)

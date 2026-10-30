@@ -16,6 +16,7 @@ from apps.communication.services import (
     notify_attendance_limit,
     notify_evaluation_published,
     notify_justification_resolved,
+    notify_occurrence_created,
     notify_publication_canceled,
 )
 from apps.core.params import id_param, name_q
@@ -2054,7 +2055,8 @@ def occurrence_create(request):
             occ.recorded_by = user
             occ.save()
             _log(request, "create", occ, f"Registrou ocorrência de {student}")
-        messages.success(request, "Ocorrência registrada.")
+            notify_occurrence_created(occ)
+        messages.success(request, "Ocorrência registrada. Os responsáveis foram avisados.")
         return redirect("pedagogy:occurrence_list")
     return render(request, "pedagogy/occurrence_form.html", {"form": form, "obj": None})
 

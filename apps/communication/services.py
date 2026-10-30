@@ -369,3 +369,37 @@ def notify_attendance_limit(student, class_group, percent):
         ),
         url=url,
     )
+
+def _approved_guardians(student):
+    from apps.registry.models import GuardianLink
+
+    return [link.guardian for link in GuardianLink.objects.filter(
+        student=student, status="aprovado", guardian__is_active=True).select_related("guardian")]
+
+
+def notify_occurrence_created(occurrence):
+    """Avisa os responsáveis: a família vê a ocorrência, mas antes só a
+    encontrava se abrisse a lista por conta própria."""
+    student = occurrence.student
+    notify_many(
+        occurrence.school,
+        _approved_guardians(student),
+        Notification.Kind.OCCURRENCE,
+        f"Ocorrência registrada: {student.first_name}",
+        body=f"A escola registrou uma ocorrência sobre {student.full_name} em "
+             f"{occurrence.date:%d/%m/%Y}. Abra para ler e acompanhar.",
+        url=reverse("pedagogy:occurrence_detail", args=[occurrence.pk]),
+    )
+
+
+def notify_link_resolved(link):
+    """Avisa quem pediu o vínculo do resultado da análise da secretaria."""
+    if link.status == "aprovado":
+        title = f"Vínculo aprovado: {link.student.full_name}"
+        body = "Você já pode acompanhar notas, frequência, atividades e ocorrências."
+        url = reverse("my_children")
+    else:
+        title = "Pedido de vínculo não aprovado"
+        body = "A secretaria não aprovou o pedido" + (f": {link.rejection_reason}" if link.rejection_reason else ".") +             " Procure a escola se precisar de esclarecimento."
+        url = reverse("link_list")
+    notify(link.school, link.guardian, Notification.Kind.LINK, title, body=body, url=url)

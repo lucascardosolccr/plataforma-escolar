@@ -40,7 +40,7 @@
       {% for n in g.items %}
       <li class="feed-item{% if not n.is_read %} is-unread{% endif %}">
         <input type="checkbox" class="form-check-input" name="ids" value="{{ n.pk }}" id="n-{{ n.pk }}" aria-label="Selecionar: {{ n.title }}">
-        <span class="feed-icon" aria-hidden="true">{% if n.kind == 'avaliacao' %}{% icon "graduation-cap" %}{% elif n.kind == 'atividade' %}{% icon "notebook-pen" %}{% elif n.kind == 'comunicado' %}{% icon "megaphone" %}{% elif n.kind == 'justificativa' %}{% icon "file-check" %}{% elif n.kind == 'mensagem' %}{% icon "message-circle" %}{% elif n.kind == 'solicitacao' %}{% icon "inbox" %}{% else %}{% icon "calendar-check" %}{% endif %}</span>
+        <span class="feed-icon" aria-hidden="true">{% if n.kind == 'avaliacao' %}{% icon "graduation-cap" %}{% elif n.kind == 'atividade' %}{% icon "notebook-pen" %}{% elif n.kind == 'comunicado' %}{% icon "megaphone" %}{% elif n.kind == 'justificativa' %}{% icon "file-check" %}{% elif n.kind == 'mensagem' %}{% icon "message-circle" %}{% elif n.kind == 'solicitacao' %}{% icon "inbox" %}{% elif n.kind == 'ocorrencia' %}{% icon "flag" %}{% elif n.kind == 'vinculo' %}{% icon "link" %}{% else %}{% icon "calendar-check" %}{% endif %}</span>
         <div class="feed-body">
           <p class="feed-title">{% if not n.is_read %}<span class="visually-hidden">Não lida: </span>{% endif %}{{ n.title }}</p>
           {% if n.body %}<p class="feed-text">{{ n.body|truncatechars:180 }}</p>{% endif %}

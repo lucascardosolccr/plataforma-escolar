@@ -119,6 +119,36 @@
         <div class="empty-state">{% icon "circle-check" %}<strong>Tudo em dia</strong>Quando um professor publicar uma tarefa para a sua turma, ela aparece aqui.</div>
       {% endif %}
     </section>
+    <div class="row g-3 mb-4">
+      <div class="col-lg-7">
+        <section class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">Últimas notas <a class="small fw-normal" href="{% url 'pedagogy:evaluation_list' %}">Ver todas</a></div>
+          {% if ws.recent_grades %}
+          <ul class="list-group list-group-flush">
+            {% for g in ws.recent_grades %}
+            <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+              <span><strong>{{ g.evaluation.subject.name }}</strong> <span class="small text-body-secondary">· {{ g.evaluation.title }} · {{ g.evaluation.date|date:"d/m" }}</span></span>
+              <span class="fw-bold fs-5">{{ g.value|floatformat:"-2" }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}<div class="empty-state">{% icon "graduation-cap" %}<strong>Nenhuma nota publicada ainda</strong></div>{% endif %}
+        </section>
+      </div>
+      <div class="col-lg-5">
+        <section class="card h-100">
+          <div class="card-header">Minha frequência</div>
+          <div class="card-body">
+            {% if ws.attendance.percent is not None %}
+              <p class="kpi-value mb-1">{{ ws.attendance.percent|floatformat:1 }}%</p>
+              <p class="small text-body-secondary mb-2">de presença em {{ ws.attendance.total }} dia{{ ws.attendance.total|pluralize }} com chamada · {{ ws.attendance.absent }} falta{{ ws.attendance.absent|pluralize }}</p>
+              {% if ws.attendance.near_limit %}<p class="callout mb-0">{% icon "triangle-alert" %}<span>Suas faltas chegaram ao limite da escola ({{ ws.attendance.limit|floatformat:0 }}%). Converse com a sua família e com a escola.</span></p>{% endif %}
+            {% else %}<p class="text-body-secondary mb-0">Ainda não há chamada registrada.</p>{% endif %}
+            <a href="{% url 'analytics:student_dashboard' ws.student_pk %}" class="btn btn-sm btn-outline-secondary mt-3">{% icon "chart-line" %}Ver meu painel</a>
+          </div>
+        </section>
+      </div>
+    </div>
   {% else %}
     <div class="alert alert-warning">{% icon "triangle-alert" %}<div>Sua conta ainda não está ligada a uma ficha de estudante. Procure a secretaria.</div></div>
   {% endif %}
@@ -194,6 +224,30 @@
       </section>
     </div>
   </div>
+{% endif %}
+
+{# ================= Primeiros passos de uma escola nova ================= #}
+{% if ws.setup %}
+<section class="card setup-card mb-4" aria-labelledby="h-setup">
+  <div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-3">
+      <h2 id="h-setup" class="h5 mb-0">Primeiros passos da escola</h2>
+      <span class="small text-body-secondary">{{ ws.setup_done }} de {{ ws.setup|length }} prontos</span>
+    </div>
+    <ol class="setup-steps">
+      {% for s in ws.setup %}
+      <li class="setup-step{% if s.done %} is-done{% endif %}">
+        <span class="setup-mark" aria-hidden="true">{% if s.done %}{% icon "check" %}{% else %}{{ forloop.counter }}{% endif %}</span>
+        <div class="setup-text">
+          <strong>{{ s.label }}</strong>{% if s.done %}<span class="visually-hidden"> (pronto)</span>{% endif %}
+          <span>{{ s.hint }}</span>
+        </div>
+        {% if not s.done and s.url %}<a href="{{ s.url }}" class="btn btn-sm btn-outline-primary">Cadastrar</a>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+</section>
 {% endif %}
 
 {# ================= Gestão: secretaria, coordenação, direção, administração ================= #}

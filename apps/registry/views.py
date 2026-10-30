@@ -12,6 +12,7 @@ from django.views.decorators.http import require_POST
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
+from apps.communication.services import notify_link_resolved
 from apps.core.params import id_param
 from apps.core.models import AuditLog, Role, User, create_audit_log
 from apps.core.pagination import Sort, paginate
@@ -554,6 +555,7 @@ def link_approve(request, link_id):
             target=link,
             detail=f"Aprovou vínculo {link.guardian} ↔ {link.student}",
         )
+        notify_link_resolved(link)
     messages.success(request, "Vínculo aprovado.")
     return redirect("link_list")
 
@@ -579,6 +581,7 @@ def link_reject(request, link_id):
             target=link,
             detail=f"Rejeitou vínculo {link.guardian} ↔ {link.student}: {reason[:120]}",
         )
+        notify_link_resolved(link)
     messages.success(request, "Vínculo rejeitado.")
     return redirect("link_list")
 

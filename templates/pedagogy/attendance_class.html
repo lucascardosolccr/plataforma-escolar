@@ -1,23 +1,26 @@
 {% extends "base.html" %}
+{% load ui %}
 {% load pedagogy_extras %}
 {% block title %}Frequência — {{ class_group.name }} — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<div class="page-head">
   <div>
-    <h1 class="h4 mb-0">Frequência — {{ class_group.name }}</h1>
-    <p class="text-body-secondary small mb-0">Limite de faltas desta escola: <strong>{{ max_absences }}%</strong></p>
+    <a href="{% url 'pedagogy:attendance_list' %}" class="back-link">{% icon "arrow-left" %}Voltar</a>
+    <h1>Frequência — {{ class_group.name }}</h1>
+    <p>Limite de faltas desta escola: <strong>{{ max_absences }}%</strong></p>
   </div>
-  <div class="d-flex gap-2">
+  <div class="page-actions">
+    <div class="d-flex gap-2">
     {% if user_role == ROLE_RESPONSAVEL %}
       <span class="chip">Mostrando apenas seus filhos</span>
     {% elif user_role == ROLE_ESTUDANTE %}
       <span class="chip">Mostrando apenas a sua frequência</span>
     {% endif %}
     {% if can_register %}
-      <a href="{% url 'pedagogy:attendance_register' class_group.pk %}" class="btn btn-primary btn-sm">+ Registrar novo dia</a>
+      <a href="{% url 'pedagogy:attendance_register' class_group.pk %}" class="btn btn-primary">{% icon "plus" %}Registrar novo dia</a>
     {% endif %}
-    <a href="{% url 'pedagogy:attendance_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+  </div>
   </div>
 </div>
 

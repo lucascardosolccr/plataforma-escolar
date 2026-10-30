@@ -1,77 +1,109 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Avaliações e notas — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<div class="page-head">
   <div>
-    <h1 class="h4 mb-0">Avaliações e notas</h1>
-    <p class="text-body-secondary small mb-0">
-      {% if user_role == ROLE_RESPONSAVEL %}Notas publicadas pelos professores para a família.
-      {% else %}Provas, trabalhos e lançamento de notas por turma e disciplina.{% endif %}
+    <h1>{% if user_role == ROLE_RESPONSAVEL or user_role == ROLE_ESTUDANTE %}Notas{% else %}Avaliações e notas{% endif %}</h1>
+    <p>
+      {% if user_role == ROLE_RESPONSAVEL %}Notas publicadas pelos professores. Avaliações em rascunho não aparecem até serem publicadas.
+      {% elif user_role == ROLE_ESTUDANTE %}Suas notas, conforme os professores publicam.
+      {% elif can_edit_any %}Crie a avaliação, lance as notas e publique: só então a família vê.
+      {% else %}Avaliações de todas as turmas, com a média de cada uma.{% endif %}
     </p>
   </div>
   {% if can_edit_any %}
-    <a href="{% url 'pedagogy:evaluation_create' %}" class="btn btn-primary">+ Nova avaliação</a>
+    <a href="{% url 'pedagogy:evaluation_create' %}" class="btn btn-primary">{% icon "plus" %}Nova avaliação</a>
   {% endif %}
 </div>
 
-<div class="card mb-3">
-  <div class="card-body py-2">
-    <form method="get" class="row g-2 align-items-center">
-      <div class="col-auto">
-        <label class="col-form-label small text-uppercase text-body-secondary">Situação</label>
-      </div>
-      <div class="col-auto">
-        <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-          <option value="">Todas</option>
-          <option value="rascunho"{% if status == 'rascunho' %} selected{% endif %}>Rascunho</option>
-          <option value="publicada"{% if status == 'publicada' %} selected{% endif %}>Publicada</option>
-        </select>
-      </div>
-    </form>
+<form method="get" class="filter-bar" aria-label="Filtrar avaliações">
+  {% if student_id %}<input type="hidden" name="estudante" value="{{ student_id }}">{% endif %}
+  {% if request.GET.ordem %}<input type="hidden" name="ordem" value="{{ request.GET.ordem }}">{% endif %}
+  {% if can_edit_any %}
+  <div class="filter-field">
+    <label for="f-escopo">Mostrar</label>
+    <select id="f-escopo" name="escopo" class="form-select form-select-sm" data-autosubmit>
+      <option value="">Minhas turmas</option>
+      <option value="minhas"{% if escopo == 'minhas' %} selected{% endif %}>Só minhas disciplinas</option>
+    </select>
   </div>
-</div>
+  {% endif %}
+  {% if class_options|length > 1 %}{% include "partials/_filter_select.html" with name="turma" label="Turma" options=class_options selected=turma %}{% endif %}
+  {% if subject_options|length > 1 %}{% include "partials/_filter_select.html" with name="disciplina" label="Disciplina" options=subject_options selected=disciplina %}{% endif %}
+  {% if user_role != ROLE_RESPONSAVEL and user_role != ROLE_ESTUDANTE %}
+  <div class="filter-field">
+    <label for="f-status">Situação</label>
+    <select id="f-status" name="status" class="form-select form-select-sm" data-autosubmit>
+      <option value="">Todas</option>
+      <option value="rascunho"{% if status == 'rascunho' %} selected{% endif %}>Rascunho</option>
+      <option value="publicada"{% if status == 'publicada' %} selected{% endif %}>Publicada</option>
+    </select>
+  </div>
+  {% endif %}
+  {% include "partials/_filter_end.html" with count=page.paginator.count noun="avaliação(ões)" %}
+</form>
 
 <div class="card">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead><tr><th>Disciplina</th><th>Turma</th><th>Título</th><th>Data</th><th>Peso</th><th>Situação</th><th class="text-end">Média</th><th class="text-end">Ações</th></tr></thead>
+    <table class="table table-hover align-middle mb-0 table-stack">
+      <thead><tr>
+        {% sort_th sort "titulo" "Avaliação" %}
+        {% sort_th sort "disciplina" "Disciplina" %}
+        {% sort_th sort "turma" "Turma" %}
+        {% sort_th sort "data" "Data" %}
+        <th scope="col" class="text-end">Peso</th>
+        {% if user_role != ROLE_RESPONSAVEL and user_role != ROLE_ESTUDANTE %}{% sort_th sort "situacao" "Situação" %}{% endif %}
+        <th scope="col" class="text-end">Média da turma</th>
+        {% if can_edit_any %}<th scope="col" class="text-end"><span class="visually-hidden">Ações</span></th>{% endif %}
+      </tr></thead>
       <tbody>
         {% for row in rows %}
         {% with ev=row.eval %}
         <tr>
+          <td class="fw-semibold">{{ ev.title }}{% if ev.kind %} <span class="chip">{{ ev.get_kind_display }}</span>{% endif %}</td>
           <td>{{ ev.subject.name }}</td>
-          <td>{{ ev.class_group.name }}</td>
-          <td class="fw-semibold">{{ ev.title }}</td>
-          <td>{{ ev.date|date:"d/m/Y" }}</td>
-          <td>{{ ev.weight }}</td>
+          <td class="text-nowrap">{{ ev.class_group.name }}</td>
+          <td class="text-nowrap">{{ ev.date|date:"d/m/Y" }}</td>
+          <td class="text-end">{{ ev.weight|floatformat:"-2" }}</td>
+          {% if user_role != ROLE_RESPONSAVEL and user_role != ROLE_ESTUDANTE %}
           <td>
-            {% if ev.status == 'publicada' %}<span class="chip text-success">Publicada</span>
-            {% else %}<span class="chip text-warning">Rascunho</span>{% endif %}
+            {% if ev.status == 'publicada' %}<span class="chip chip-state text-success">{% icon "circle-check" %}Publicada</span>
+            {% else %}<span class="chip chip-state text-warning">{% icon "pencil" %}Rascunho</span>{% endif %}
           </td>
+          {% endif %}
           <td class="text-end">
             {% if row.avg is not None %}
-              <span class="fw-semibold {% if row.rule and row.avg >= row.rule.passing_grade %}text-success{% else %}text-danger{% endif %}">{{ row.avg|floatformat:2 }}</span>
-            {% else %}—{% endif %}
+              <span class="fw-semibold {% if row.rule and row.avg >= row.rule.passing_grade %}text-success{% elif row.rule %}text-danger{% endif %}">{{ row.avg|floatformat:2 }}</span>
+            {% else %}<span class="text-body-secondary" title="Nenhuma nota lançada">—</span>{% endif %}
           </td>
-          <td class="text-end">
-            {% if can_edit_any %}
-              <a href="{% url 'pedagogy:evaluation_grade' ev.pk %}" class="btn btn-sm btn-outline-primary" title="Lançar/editar notas">Notas</a>
+          {% if can_edit_any %}
+          <td class="text-end cell-actions text-nowrap">
+            {% if row.managed %}
+              <a href="{% url 'pedagogy:evaluation_grade' ev.pk %}" class="btn btn-sm btn-outline-primary">Notas</a>
               <a href="{% url 'pedagogy:evaluation_edit' ev.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
               {% if ev.status == 'rascunho' %}
                 <form method="post" action="{% url 'pedagogy:evaluation_publish' ev.pk %}" class="d-inline"
-                      onsubmit="return confirm('Publicar esta avaliação? A família passará a visualizar as notas.');">
+                      data-confirm="A família e o estudante passam a ver as notas desta avaliação." data-confirm-title="Publicar avaliação?" data-confirm-ok="Publicar">
                   {% csrf_token %}
                   <button class="btn btn-sm btn-outline-success" type="submit">Publicar</button>
                 </form>
               {% endif %}
+            {% else %}
+              <span class="small text-body-secondary">De outro professor</span>
             {% endif %}
           </td>
+          {% endif %}
         </tr>
         {% endwith %}
         {% empty %}
-        <tr><td colspan="8" class="text-center text-body-secondary py-4">
-          {% if user_role == ROLE_RESPONSAVEL %}Nenhuma avaliação publicada para os seus filhos ainda.{% else %}Nenhuma avaliação registrada.{% endif %}
+        <tr><td colspan="8">
+          <div class="empty-state py-4">{% icon "graduation-cap" %}
+            <strong>{% if filtered %}Nenhuma avaliação com estes filtros{% elif user_role == ROLE_RESPONSAVEL %}Nenhuma nota publicada ainda{% else %}Nenhuma avaliação registrada{% endif %}</strong>
+            {% if filtered %}<a href="{{ clear_url }}">Limpar filtros</a>
+            {% elif can_edit_any %}<a href="{% url 'pedagogy:evaluation_create' %}">Criar a primeira avaliação</a>{% endif %}
+          </div>
         </td></tr>
         {% endfor %}
       </tbody>

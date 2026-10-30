@@ -7,7 +7,7 @@ from django.views.decorators.http import require_POST
 
 from apps.core.params import id_param
 from apps.core.models import AuditLog, Role, create_audit_log
-from apps.core.pagination import paginate
+from apps.core.pagination import Sort, paginate
 from apps.registry.models import Student
 
 from . import access as acc
@@ -54,15 +54,34 @@ def notification_list(request):
     kind = request.GET.get("tipo")
     if kind in dict(Notification.Kind.choices):
         qs = qs.filter(kind=kind)
+    situacao = request.GET.get("situacao")
+    if situacao == "nao_lidas":
+        qs = qs.filter(is_read=False)
+    elif situacao == "lidas":
+        qs = qs.filter(is_read=True)
     page = paginate(request, qs)
+    # Agrupa por dia ("Hoje", "Ontem" ou a data) para a lista ler como um feed.
+    today = timezone.localdate()
+    groups = []
+    for n in page:
+        day = timezone.localdate(n.created_at)
+        label = "Hoje" if day == today else "Ontem" if (today - day).days == 1 else day.strftime("%d/%m/%Y")
+        if not groups or groups[-1]["label"] != label:
+            groups.append({"label": label, "items": []})
+        groups[-1]["items"].append(n)
     return render(
         request,
         "communication/notification_list.html",
         {
             "notifications": page,
+            "groups": groups,
             "page": page,
             "kind": kind,
+            "situacao": situacao,
+            "filtered": bool(kind or situacao),
             "kind_choices": Notification.Kind.choices,
+            "situacao_choices": [("nao_lidas", "Não lidas"), ("lidas", "Lidas")],
+            "unread_total": Notification.objects.filter(user=user, is_read=False).count(),
         },
     )
 
@@ -75,6 +94,27 @@ def notification_read(request, pk):
     if notif.url:
         return redirect(notif.url)
     return redirect("communication:notification_list")
+
+
+@require_POST
+def notification_read_selected(request):
+    """Marca como lidas as notificações escolhidas (seleção em lote).
+
+    Só as do próprio usuário: um id alheio na lista é ignorado em silêncio.
+    """
+    ids = [int(i) for i in request.POST.getlist("ids") if i.isdigit()][:200]
+    count = Notification.objects.filter(user=request.user, pk__in=ids, is_read=False).update(
+        is_read=True, read_at=timezone.now()
+    )
+    messages.success(request, f"{count} notificação(ões) marcada(s) como lida(s).")
+    return redirect(request.POST.get("next") if _is_safe_next(request) else "communication:notification_list")
+
+
+def _is_safe_next(request):
+    from django.utils.http import url_has_allowed_host_and_scheme
+
+    nxt = request.POST.get("next", "")
+    return bool(nxt) and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()})
 
 
 @require_POST
@@ -99,19 +139,28 @@ def thread_list(request):
     if student_id:
         student = get_object_or_404(Student, pk=student_id, school=user.school)
         qs = qs.filter(student=student)
+    q = request.GET.get("q", "").strip()[:80]
+    if q:
+        qs = qs.filter(
+            Q(title__icontains=q) | Q(student__first_name__icontains=q) | Q(student__last_name__icontains=q)
+            | Q(participants__first_name__icontains=q) | Q(participants__last_name__icontains=q)
+        ).distinct()
+    leitura = request.GET.get("leitura")
+    if leitura == "nao_lidas":
+        # Subconsulta: "tem mensagem sem leitura que não fui eu que mandei" na MESMA mensagem.
+        qs = qs.filter(pk__in=Message.objects.filter(read_at__isnull=True).exclude(sender=user).values("thread_id"))
     page = paginate(request, qs.order_by("-updated_at"))
     threads = []
     for t in page:
-        unread = sum(
-            1
-            for m in t.messages.all()
-            if m.sender_id != user.pk and not m.read_at
-        )
-        threads.append((t, unread))
+        msgs = list(t.messages.all())
+        unread = sum(1 for m in msgs if m.sender_id != user.pk and not m.read_at)
+        others = [p for p in t.participants.all() if p.pk != user.pk]
+        threads.append({"thread": t, "unread": unread, "last": msgs[-1] if msgs else None, "others": others})
     return render(
         request,
         "communication/thread_list.html",
-        {"threads": threads, "page": page, "student_id": student_id},
+        {"threads": threads, "page": page, "student_id": student_id, "q": q, "leitura": leitura,
+         "leitura_choices": [("nao_lidas", "Com mensagens não lidas")], "filtered": bool(q or leitura)},
     )
 
 
@@ -199,6 +248,15 @@ def announcement_list(request):
     scope = request.GET.get("abrangencia")
     if scope in dict(Announcement.Scope.choices):
         qs = qs.filter(scope=scope)
+    q = request.GET.get("q", "").strip()[:80]
+    if q:
+        qs = qs.filter(Q(title__icontains=q) | Q(body__icontains=q))
+    read_qs = AnnouncementRead.objects.filter(user=user).values("announcement_id")
+    leitura = request.GET.get("leitura")
+    if leitura == "nao_lidos":
+        qs = qs.exclude(pk__in=read_qs)
+    elif leitura == "lidos":
+        qs = qs.filter(pk__in=read_qs)
     read_ids = set(
         AnnouncementRead.objects.filter(
             announcement_id__in=qs.values("pk"), user=user
@@ -213,6 +271,10 @@ def announcement_list(request):
             "page": page,
             "read_ids": read_ids,
             "scope": scope,
+            "q": q,
+            "leitura": leitura,
+            "leitura_choices": [("nao_lidos", "Não lidos"), ("lidos", "Lidos")],
+            "filtered": bool(scope or q or leitura),
             "student_id": student_id,
             "scope_choices": Announcement.Scope.choices,
             "can_create": any(
@@ -293,7 +355,15 @@ def request_list(request):
     status = request.GET.get("status")
     if status in dict(ServiceRequest.Status.choices):
         qs = qs.filter(status=status)
-    page = paginate(request, qs)
+    categoria = request.GET.get("categoria")
+    if categoria in dict(ServiceRequest.Category.choices):
+        qs = qs.filter(category=categoria)
+    q = request.GET.get("q", "").strip()[:80]
+    if q:
+        qs = qs.filter(Q(title__icontains=q) | Q(student__first_name__icontains=q)
+                       | Q(student__last_name__icontains=q))
+    sort = Sort(request, {"data": "created_at", "titulo": "title", "situacao": "status"}, "-data")
+    page = paginate(request, sort.apply(qs))
     return render(
         request,
         "communication/request_list.html",
@@ -301,6 +371,11 @@ def request_list(request):
             "requests": page,
             "page": page,
             "status": status,
+            "categoria": categoria,
+            "category_choices": ServiceRequest.Category.choices,
+            "q": q,
+            "sort": sort,
+            "filtered": bool(status or q or categoria),
             "status_choices": ServiceRequest.Status.choices,
             "can_manage": acc.can_manage_requests(user),
             "can_create": acc.can_create_request(user),

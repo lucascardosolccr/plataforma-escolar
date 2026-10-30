@@ -1,0 +1,5 @@
+{% load ui %}
+<div class="filter-field filter-search">
+  <label for="f-q">{{ label|default:"Buscar" }}</label>
+  <input type="search" id="f-q" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="{{ placeholder }}">
+</div>

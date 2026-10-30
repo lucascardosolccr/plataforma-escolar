@@ -1,17 +1,20 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Vínculos — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<div class="page-head">
   <div>
-    <h1 class="h4 mb-0">Vínculos responsável–estudante</h1>
-    <p class="text-body-secondary small mb-0">
+    <h1>Vínculos responsável–estudante</h1>
+    <p>
       {% if can_manage %}Validação de vínculos pendentes.{% else %}Acompanhe o status das suas solicitações.{% endif %}
     </p>
   </div>
-  {% if can_manage %}
-  <a href="{% url 'link_create' %}" class="btn btn-primary btn-sm">+ Criar vínculo validado</a>
+  <div class="page-actions">
+    {% if can_manage %}
+  <a href="{% url 'link_create' %}" class="btn btn-primary">{% icon "plus" %}Criar vínculo validado</a>
   {% endif %}
+  </div>
 </div>
 
 <div class="mb-3 d-flex gap-2 flex-wrap">
@@ -23,7 +26,7 @@
 
 <div class="card">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
+    <table class="table table-hover align-middle mb-0 table-stack">
       <thead>
         <tr>
           <th>Responsável</th>
@@ -56,7 +59,7 @@
               </form>
               <form method="post" action="{% url 'link_reject' l.pk %}" class="d-inline-flex gap-1">
                 {% csrf_token %}
-                <input type="text" name="reason" class="form-control form-control-sm" placeholder="Motivo" style="max-width:140px">
+                <input type="text" name="reason" class="form-control form-control-sm reason-input" placeholder="Motivo" aria-label="Motivo da rejeição do vínculo de {{ l.guardian.get_full_name|default:l.guardian.username }}">
                 <button class="btn btn-sm btn-outline-danger" type="submit">Rejeitar</button>
               </form>
             </div>

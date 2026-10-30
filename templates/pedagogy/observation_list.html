@@ -1,40 +1,43 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Observações pedagógicas — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<div class="page-head">
   <div>
-    <h1 class="h4 mb-0">Observações pedagógicas</h1>
-    <p class="text-body-secondary small mb-0">
+    <h1>Observações pedagógicas</h1>
+    <p>
       {% if user_role == ROLE_PROFESSOR %}Seus registros de acompanhamento.
       {% elif user_role == ROLE_RESPONSAVEL %}Observações dos seus filhos.
       {% else %}Acompanhamento pedagógico dos estudantes.{% endif %}
     </p>
   </div>
-  {% if user_role == ROLE_PROFESSOR or user_role == ROLE_COORDENACAO %}
-    <a href="{% url 'pedagogy:observation_create' %}" class="btn btn-primary">+ Nova observação</a>
+  <div class="page-actions">
+    {% if user_role == ROLE_PROFESSOR or user_role == ROLE_COORDENACAO %}
+    <a href="{% url 'pedagogy:observation_create' %}" class="btn btn-primary">{% icon "plus" %}Nova observação</a>
   {% endif %}
+  </div>
 </div>
 
 <div class="card">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
+    <table class="table table-hover align-middle mb-0 table-stack">
       <thead><tr><th>Data</th><th>Estudante</th><th>Conteúdo/tema</th><th>Disciplina</th><th class="text-end">Ações</th></tr></thead>
       <tbody>
         {% for o in observations %}
         <tr>
           <td>{{ o.observed_at|date:"d/m/Y" }}</td>
           <td class="fw-semibold">{{ o.student.full_name }}</td>
-          <td class="text-truncate" style="max-width:320px">{{ o.content }}</td>
+          <td class="cell-clamp">{{ o.content }}</td>
           <td>{{ o.subject.name|default:"—" }}</td>
-          <td class="text-end">
+          <td class="text-end cell-actions">
             {% if user_role == ROLE_COORDENACAO or user_role == ROLE_PROFESSOR and o.teacher_id == user.id %}
               <a href="{% url 'pedagogy:observation_edit' o.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
             {% endif %}
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="5" class="text-center text-body-secondary py-4">Nenhuma observação.</td></tr>
+        <tr><td colspan="5"><div class="empty-state py-4">{% icon "inbox" %}<strong>Nenhuma observação.</strong></div></td></tr>
         {% endfor %}
       </tbody>
     </table>

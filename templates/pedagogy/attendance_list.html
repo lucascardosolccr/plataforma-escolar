@@ -1,33 +1,53 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Frequência — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="mb-3">
-  <h1 class="h4 mb-0">Frequência</h1>
-  <p class="text-body-secondary small mb-0">Registros de presença, atraso e falta por turma.</p>
+<div class="page-head">
+  <div>
+    <h1>Frequência</h1>
+    <p>{% if can_register %}Faça a chamada do dia e acompanhe o mapa de presença de cada turma.{% elif is_staff_view %}Situação da chamada e mapa de presença de cada turma.{% else %}Presenças, atrasos e faltas, turma por turma.{% endif %}</p>
+  </div>
 </div>
+
+{% if can_register and school_day and pending_today %}
+<div class="callout mb-3">{% icon "calendar-check" %}<span><strong>{{ pending_today }} turma{{ pending_today|pluralize }} sem chamada hoje.</strong> Use “Fazer chamada”: todos começam como presentes, marque só as faltas e os atrasos.</span></div>
+{% endif %}
 
 <div class="card">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead><tr><th>Turma</th><th>Ano letivo</th><th class="text-end">Ações</th></tr></thead>
+    <table class="table table-hover align-middle mb-0 table-stack">
+      <thead><tr>
+        <th scope="col">Turma</th><th scope="col">Ano letivo</th>
+        <th scope="col">Última chamada</th>
+        {% if is_staff_view %}<th scope="col">Hoje</th>{% endif %}
+        <th scope="col" class="text-end"><span class="visually-hidden">Ações</span></th>
+      </tr></thead>
       <tbody>
-        {% for c in classes %}
+        {% for r in rows %}
         <tr>
           <td class="fw-semibold">
-            {{ c.name }}
-            {% if current_ids is not None and c.pk not in current_ids %}<span class="chip ms-1">turma anterior</span>{% endif %}
+            {{ r.class.name }}
+            {% if current_ids is not None and r.class.pk not in current_ids %}<span class="chip ms-1">turma anterior</span>{% endif %}
           </td>
-          <td>{{ c.school_year.name }}</td>
-          <td class="text-end">
-            <a href="{% url 'pedagogy:attendance_class' c.pk %}" class="btn btn-sm btn-outline-primary">Ver mapa</a>
+          <td>{{ r.class.school_year.name }}</td>
+          <td class="text-nowrap">{{ r.last|date:"d/m/Y"|default:"—" }}</td>
+          {% if is_staff_view %}
+          <td>
+            {% if r.today %}<span class="chip chip-state text-success">{% icon "circle-check" %}Feita</span>
+            {% elif school_day %}<span class="chip chip-state text-warning">{% icon "clock" %}Pendente</span>
+            {% else %}<span class="text-body-secondary small">Sem aula</span>{% endif %}
+          </td>
+          {% endif %}
+          <td class="text-end cell-actions text-nowrap">
+            <a href="{% url 'pedagogy:attendance_class' r.class.pk %}" class="btn btn-sm btn-outline-secondary">{% if is_staff_view %}Mapa da turma{% else %}Ver frequência{% endif %}</a>
             {% if can_register %}
-              <a href="{% url 'pedagogy:attendance_register' c.pk %}" class="btn btn-sm btn-primary">Registrar</a>
+              <a href="{% url 'pedagogy:attendance_register' r.class.pk %}" class="btn btn-sm {% if r.today %}btn-outline-primary{% else %}btn-primary{% endif %}">{% if r.today %}Corrigir chamada{% else %}Fazer chamada{% endif %}</a>
             {% endif %}
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="3" class="text-center text-body-secondary py-4">Nenhuma turma disponível para o seu perfil.</td></tr>
+        <tr><td colspan="5"><div class="empty-state py-4">{% icon "calendar-check" %}<strong>Nenhuma turma disponível para o seu perfil</strong></div></td></tr>
         {% endfor %}
       </tbody>
     </table>

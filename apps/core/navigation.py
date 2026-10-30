@@ -141,7 +141,11 @@ ITEMS = {
                     ("analytics:data_quality",), "Lançamentos pendentes e inconsistências"),
     "methodology": Item("Metodologia dos indicadores", "analytics:methodology", "info",
                         ("analytics:methodology",), "Como cada número é calculado"),
+    "help": Item("Ajuda", "help", "circle-help", ("help",), "Guias passo a passo e perguntas frequentes"),
 }
+
+# Itens do rodapé do menu, iguais para todos os perfis.
+FOOTER = ["help"]
 
 # Ações rápidas: aparecem na busca global e no topo da tela inicial.
 ACTIONS = {
@@ -274,6 +278,17 @@ def build(user, view_name=None):
         if items:
             sections.append({"title": title, "items": items})
 
+    footer = []
+    for key in FOOTER:
+        item = ITEMS[key]
+        entry = {"key": key, "label": item.label, "url": _resolve(item, user), "icon": item.icon,
+                 "desc": item.desc, "section": "", "active": False}
+        if active is None and _is_active(item, view_name):
+            entry["active"] = True
+            active = entry
+        footer.append(entry)
+        flat.append(entry)
+
     actions = []
     for key in ROLE_ACTIONS.get(user.role, []):
         item = ACTIONS[key]
@@ -299,7 +314,7 @@ def build(user, view_name=None):
          "hint": "", "key": a["key"]}
         for a in actions
     ]
-    return {"sections": sections, "flat": flat, "actions": actions, "crumbs": crumbs,
+    return {"sections": sections, "footer": footer, "flat": flat, "actions": actions, "crumbs": crumbs,
             "active": active, "palette": palette}
 
 

@@ -1,0 +1,8 @@
+{% load ui %}
+{% comment %}
+Fim da .filter-bar: botão para quem está sem JavaScript, "Limpar filtros"
+(clear_url) quando há filtro ativo e a contagem de registros (count, noun).
+{% endcomment %}
+<button type="submit" class="btn btn-sm btn-outline-secondary js-hide">{% icon "filter" %}Filtrar</button>
+{% if filtered %}<a href="{{ clear_url|default:'?' }}" class="btn btn-sm btn-link">Limpar filtros</a>{% endif %}
+{% if count is not None %}<span class="filter-count" role="status">{{ count }} {{ noun }}</span>{% endif %}

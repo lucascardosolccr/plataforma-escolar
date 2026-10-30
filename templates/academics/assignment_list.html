@@ -1,18 +1,21 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Atribuições de professores — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<div class="page-head">
   <div>
-    <h1 class="h4 mb-0">Atribuições de professores</h1>
-    <p class="text-body-secondary small mb-0">Professor × turma × disciplina por ano letivo.</p>
+    <h1>Atribuições de professores</h1>
+    <p>Professor × turma × disciplina por ano letivo.</p>
   </div>
-  <a href="{% url 'assignment_create' %}" class="btn btn-primary">+ Nova atribuição</a>
+  <div class="page-actions">
+    <a href="{% url 'assignment_create' %}" class="btn btn-primary">{% icon "plus" %}Nova atribuição</a>
+  </div>
 </div>
 
 <div class="card">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
+    <table class="table table-hover align-middle mb-0 table-stack">
       <thead><tr><th>Professor</th><th>Disciplina</th><th>Turma</th><th>Ano letivo</th><th class="text-end">Ações</th></tr></thead>
       <tbody>
         {% for a in assignments %}
@@ -23,14 +26,14 @@
           <td>{{ a.school_year.name }}</td>
           <td class="text-end">
             <form method="post" action="{% url 'assignment_delete' a.pk %}" class="d-inline"
-                  onsubmit="return confirm('Remover esta atribuição?');">
+                  data-confirm="O professor deixa de ter acesso a esta turma nesta disciplina." data-confirm-title="Remover atribuição?" data-confirm-ok="Remover" data-confirm-tone="danger">
               {% csrf_token %}
               <button class="btn btn-sm btn-outline-danger" type="submit">Remover</button>
             </form>
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="5" class="text-center text-body-secondary py-4">Nenhuma atribuição registrada.</td></tr>
+        <tr><td colspan="5"><div class="empty-state py-4">{% icon "inbox" %}<strong>Nenhuma atribuição registrada.</strong></div></td></tr>
         {% endfor %}
       </tbody>
     </table>

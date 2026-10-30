@@ -1,19 +1,22 @@
 {% extends "base.html" %}
+{% load ui %}
 {% load pedagogy_extras %}
 {% block title %}Entregas — {{ activity.title }} — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<div class="page-head">
   <div>
-    <h1 class="h4 mb-0">Controle de entregas</h1>
-    <p class="text-body-secondary small mb-0">
+    <a href="{% url 'pedagogy:activity_list' %}" class="back-link">{% icon "arrow-left" %}Voltar</a>
+    <h1>Controle de entregas</h1>
+    <p>
       {{ activity.title }} · {{ activity.class_group.name }} · {{ activity.subject.name }}
       {% if activity.deadline %}· Entrega até {{ activity.deadline|date:"d/m/Y" }}{% endif %}
     </p>
   </div>
-  <div class="d-flex gap-2">
+  <div class="page-actions">
+    <div class="d-flex gap-2">
     <a href="{% url 'pedagogy:activity_detail' activity.pk %}" class="btn btn-outline-secondary btn-sm">Ver atividade</a>
-    <a href="{% url 'pedagogy:activity_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+  </div>
   </div>
 </div>
 
@@ -33,11 +36,11 @@
 {% if not read_only and students %}
 <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
   <span class="small text-body-secondary fw-semibold">Ações rápidas:</span>
-  <button type="button" class="btn btn-sm btn-outline-success" id="btn-mark-all-delivered">
-    ✓ Marcar todos como "Entregue"
+  <button type="button" class="btn btn-sm btn-outline-success" data-fill-all="select[name^='status_']" data-fill-value="entregue">
+    {% icon "check-check" %}Marcar todos como “Entregue”
   </button>
-  <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-clear-all">
-    Limpar seleções (sem registro)
+  <button type="button" class="btn btn-sm btn-outline-secondary" data-fill-all="select[name^='status_']" data-fill-value="">
+    Voltar todos para “sem registro”
   </button>
 </div>
 {% endif %}
@@ -114,17 +117,3 @@
 </form>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-  document.getElementById("btn-mark-all-delivered")?.addEventListener("click", function() {
-    document.querySelectorAll("select[name^='status_']").forEach(function(select) {
-      select.value = "entregue";
-    });
-  });
-  document.getElementById("btn-clear-all")?.addEventListener("click", function() {
-    document.querySelectorAll("select[name^='status_']").forEach(function(select) {
-      select.value = "";
-    });
-  });
-</script>
-{% endblock %}

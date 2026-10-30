@@ -1,18 +1,21 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Disciplinas — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<div class="page-head">
   <div>
-    <h1 class="h4 mb-0">Disciplinas</h1>
-    <p class="text-body-secondary small mb-0">Componentes curriculares da escola.</p>
+    <h1>Disciplinas</h1>
+    <p>Componentes curriculares da escola.</p>
   </div>
-  {% if can_manage %}<a href="{% url 'subject_create' %}" class="btn btn-primary">+ Nova disciplina</a>{% endif %}
+  <div class="page-actions">
+    {% if can_manage %}<a href="{% url 'subject_create' %}" class="btn btn-primary">{% icon "plus" %}Nova disciplina</a>{% endif %}
+  </div>
 </div>
 
 <div class="card">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
+    <table class="table table-hover align-middle mb-0 table-stack">
       <thead><tr><th>Disciplina</th><th>Código</th>{% if can_manage %}<th class="text-end">Ações</th>{% endif %}</tr></thead>
       <tbody>
         {% for s in subjects %}
@@ -20,7 +23,7 @@
           <td class="fw-semibold">{% if user_is_staff and user_role != ROLE_PROFESSOR %}<a href="{% url 'analytics:subject_dashboard' s.pk %}" title="Painel da disciplina">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td>
           <td>{{ s.code|default:"—" }}</td>
           {% if can_manage %}
-          <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{% url 'subject_edit' s.pk %}">Editar</a></td>
+          <td class="text-end cell-actions"><a class="btn btn-sm btn-outline-secondary" href="{% url 'subject_edit' s.pk %}">Editar</a></td>
           {% endif %}
         </tr>
         {% empty %}

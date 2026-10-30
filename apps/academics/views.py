@@ -248,21 +248,39 @@ def assignment_delete(request, assignment_id):
 
 
 def my_classrooms(request):
+    """Uma ficha por turma: disciplinas que o professor dá ali, chamada e atalhos.
+
+    Antes era uma lista por turma+disciplina com todos os estudantes abertos:
+    com 8 atribuições, mais de 140 linhas antes de chegar à segunda turma.
+    """
     if request.user.role != Role.PROFESSOR.value:
         raise PermissionDenied
+    from django.utils import timezone
+
+    from apps.pedagogy.models import AttendanceRecord
+
     assignments = TeacherAssignment.objects.filter(
         teacher=request.user, school=request.user.school
-    ).select_related("class_group", "school_year", "subject")
+    ).select_related("class_group", "school_year", "subject").order_by("class_group__name", "subject__name")
+    by_class = {}
+    for a in assignments:
+        entry = by_class.setdefault(a.class_group_id, {"class_group": a.class_group, "year": a.school_year,
+                                                       "subjects": []})
+        entry["subjects"].append(a.subject)
+    today = timezone.localdate()
+    done_today = set(
+        AttendanceRecord.objects.filter(class_group_id__in=by_class, date=today)
+        .values_list("class_group_id", flat=True).distinct()
+    )
     rosters = []
-    for a in assignments.order_by("class_group__name", "subject__name"):
-        students = Student.objects.filter(
-            school=request.user.school,
-            enrollments__class_group=a.class_group,
-            enrollments__status="ativo",
-        ).distinct().order_by("first_name")
-        rosters.append({"assignment": a, "students": students})
+    for class_id, entry in by_class.items():
+        entry["students"] = Student.objects.filter(
+            school=request.user.school, enrollments__class_group_id=class_id, enrollments__status="ativo",
+        ).distinct().order_by("first_name", "last_name")
+        entry["attendance_today"] = class_id in done_today
+        rosters.append(entry)
     return render(
         request,
         "academics/my_classrooms.html",
-        {"rosters": rosters},
+        {"rosters": rosters, "school_day": today.weekday() < 5},
     )

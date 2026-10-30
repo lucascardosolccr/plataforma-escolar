@@ -1281,6 +1281,24 @@ class RulesAndConfigTests(PedagogyBase):
         )
         self.assertEqual(AcademicRule.objects.filter(subject=self.mat).count(), 1)
 
+    def test_academic_rule_edit_from_screen_row_without_subject_field(self):
+        """A linha de edição da tela envia só fórmula e nota; a disciplina vem da URL."""
+        AcademicRule.objects.create(school=self.school, subject=self.mat, formula="aritmetica")
+        self.login("sec")
+        self.client.post(
+            reverse("pedagogy:academic_rule_edit", args=[self.mat.pk]),
+            {"formula": "soma", "passing_grade": "5.50"},
+        )
+        rule = AcademicRule.objects.get(subject=self.mat)
+        self.assertEqual((rule.formula, float(rule.passing_grade)), ("soma", 5.5))
+
+    def test_invalid_rule_post_does_not_create_a_rule(self):
+        """Uma regra nunca nasce de um envio inválido: a fórmula seria presumida."""
+        self.login("sec")
+        self.client.post(reverse("pedagogy:academic_rule_edit", args=[self.mat.pk]),
+                         {"formula": "inexistente", "passing_grade": ""})
+        self.assertFalse(AcademicRule.objects.filter(subject=self.mat).exists())
+
 
 class AttendanceClassAccessTests(PedagogyBase):
     def test_professor_only_own_class(self):

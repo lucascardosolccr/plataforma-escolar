@@ -25,6 +25,7 @@ check school building-2 link id-card user-check file-check flag eye
 heart-handshake arrow-left filter download printer sliders-horizontal
 calendar-check layers user-cog circle-check circle-alert info sparkles
 book-marked pencil ban paperclip arrow-right corner-down-left
+trash-2 check-check arrow-up-down send
 """.split()
 
 DEST = Path(__file__).resolve().parent.parent / "static" / "icons" / "sprite.svg"

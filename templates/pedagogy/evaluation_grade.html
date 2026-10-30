@@ -1,51 +1,89 @@
 {% extends "base.html" %}
-{% load pedagogy_extras form_extras %}
+{% load ui form_extras bi_tags %}
 {% block title %}Lançar notas — {{ evaluation.title }} — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<a href="{% url 'pedagogy:evaluation_list' %}" class="back-link">{% icon "arrow-left" %}Avaliações e notas</a>
+<div class="page-head">
   <div>
-    <h1 class="h4 mb-0">Lançar notas</h1>
-    <p class="text-body-secondary small mb-0">
-      {{ evaluation.title }} · {{ evaluation.class_group.name }} · {{ evaluation.subject.name }}
-      · {{ evaluation.date|date:"d/m/Y" }}
-    </p>
+    <span class="eyebrow">Lançar notas</span>
+    <h1>{{ evaluation.title }}</h1>
+    <p>{{ evaluation.subject.name }} · {{ evaluation.class_group.name }} · {{ evaluation.date|date:"d/m/Y" }} · peso {{ evaluation.weight|floatformat:"-2" }}</p>
   </div>
-  <a href="{% url 'pedagogy:evaluation_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+  <div class="page-actions">
+    {% if evaluation.status == 'publicada' %}<span class="chip chip-state text-success">{% icon "circle-check" %}Publicada: a família vê</span>
+    {% else %}<span class="chip chip-state text-warning">{% icon "pencil" %}Rascunho: só você vê</span>{% endif %}
+  </div>
 </div>
 
-{% if evaluation.status == 'rascunho' %}
-<div class="alert alert-warning">Esta avaliação ainda está em <strong>rascunho</strong> — os responsáveis não visualizam as notas. Quando estiver completa, <form method="post" action="{% url 'pedagogy:evaluation_publish' evaluation.pk %}" class="d-inline">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-link btn-sm p-0 align-baseline">publique-a</button>
-  </form>.</div>
+<div class="kpi-grid mb-3">
+  {% with f=filled|cat:" de "|cat:total p=passing|floatformat:"-2" %}
+  {% include "analytics/bi/_kpi.html" with label="Notas lançadas" value=f icon="list-checks" %}
+  {% if mean is not None %}{% include "analytics/bi/_kpi.html" with label="Média da turma" value=mean|floatformat:2 icon="graduation-cap" hint="Só das notas já salvas" %}
+  {% else %}{% include "analytics/bi/_kpi.html" with label="Média da turma" value="—" icon="graduation-cap" hint="Nenhuma nota salva ainda" %}{% endif %}
+  {% include "analytics/bi/_kpi.html" with label="Abaixo da aprovação" value=below_count icon="triangle-alert" hint="Aprovação a partir de "|cat:p %}
+  {% endwith %}
+</div>
+
+{% if form.errors %}
+<div class="alert alert-danger" role="alert">Algumas notas não foram aceitas. Corrija os campos marcados: a nota vai de 0 a 100, com até duas casas decimais.</div>
 {% endif %}
 
-<form method="post" novalidate>
+<form method="post" novalidate class="card">
   {% csrf_token %}
-  <div class="card mb-3">
-    <div class="card-body py-2">
-      <label for="id_observation_all" class="form-label">{{ form.observation_all.label }}</label>
-      {{ form.observation_all|bs }}
-      {% for error in form.observation_all.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
-    </div>
+  <div class="table-responsive">
+    <table class="table align-middle mb-0 grade-table" data-enter-next>
+      <thead><tr>
+        <th scope="col" class="text-end cell-num">Nº</th>
+        <th scope="col">Estudante</th>
+        <th scope="col">Nota <span class="fw-normal text-body-secondary">(0 a 100)</span></th>
+        <th scope="col">Situação</th>
+      </tr></thead>
+      <tbody>
+        {% for row in rows %}
+        <tr{% if row.field.errors %} class="has-error"{% endif %}>
+          <td class="text-end text-body-secondary cell-num">{{ forloop.counter }}</td>
+          <th scope="row" class="fw-semibold">{{ row.student.full_name }}</th>
+          <td>
+            {{ row.field|bs }}
+            {% for error in row.field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </td>
+          <td>
+            {% if row.saved is None %}<span class="text-body-secondary small">Sem nota</span>
+            {% elif row.below %}<span class="chip chip-state text-danger">Abaixo de {{ passing|floatformat:"-2" }}</span>
+            {% else %}<span class="chip chip-state text-success">{% icon "check" %}Na média</span>{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4"><div class="empty-state py-4">{% icon "users" %}<strong>Nenhum estudante com matrícula ativa nesta turma</strong></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 
-  <div class="card">
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead><tr><th class="w-50">Estudante</th><th class="text-center">Nota (0,00–100,00)</th></tr></thead>
-        <tbody>
-          {% for student, field_name in form.grades %}
-          <tr>
-            <td class="fw-semibold">{{ student.full_name }}</td>
-            <td class="text-center">{{ form|getitem:field_name|bs }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+  <details class="grade-obs">
+    <summary>{% icon "pencil" %}Observação para todas as notas lançadas agora <span class="text-body-secondary fw-normal">(opcional)</span></summary>
+    <div class="px-3 pb-3">
+      <label for="id_observation_all" class="visually-hidden">{{ form.observation_all.label }}</label>
+      {{ form.observation_all|bs }}
+      {% for error in form.observation_all.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
     </div>
+  </details>
+
+  <div class="form-actions">
+    <span class="hint">Enter leva ao próximo estudante. Campo vazio não apaga uma nota já salva.</span>
+    <button type="submit" class="btn btn-primary">Salvar notas</button>
   </div>
-  <button type="submit" class="btn btn-primary mt-3">Salvar notas</button>
 </form>
+
+{% if evaluation.status == 'rascunho' %}
+<div class="callout mt-3 justify-content-between flex-wrap">
+  <span>{% icon "info" %} Terminou de lançar? Publique para a família e o estudante verem as notas.</span>
+  <form method="post" action="{% url 'pedagogy:evaluation_publish' evaluation.pk %}"
+        data-confirm="A família e o estudante passam a ver as notas desta avaliação." data-confirm-title="Publicar avaliação?" data-confirm-ok="Publicar">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-sm btn-success">{% icon "send" %}Publicar avaliação</button>
+  </form>
+</div>
+{% endif %}
 {% endblock %}

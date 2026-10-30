@@ -1,18 +1,21 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Anos letivos — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<div class="page-head">
   <div>
-    <h1 class="h4 mb-0">Anos letivos</h1>
-    <p class="text-body-secondary small mb-0">Períodos letivos da escola.</p>
+    <h1>Anos letivos</h1>
+    <p>Períodos letivos da escola.</p>
   </div>
-  {% if can_manage %}<a href="{% url 'school_year_create' %}" class="btn btn-primary">+ Novo ano letivo</a>{% endif %}
+  <div class="page-actions">
+    {% if can_manage %}<a href="{% url 'school_year_create' %}" class="btn btn-primary">{% icon "plus" %}Novo ano letivo</a>{% endif %}
+  </div>
 </div>
 
 <div class="card">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
+    <table class="table table-hover align-middle mb-0 table-stack">
       <thead><tr><th>Ano</th><th>Início</th><th>Fim</th><th>Atual</th>{% if can_manage %}<th class="text-end">Ações</th>{% endif %}</tr></thead>
       <tbody>
         {% for y in years %}
@@ -22,7 +25,7 @@
           <td>{{ y.end_date|date:"d/m/Y"|default:"—" }}</td>
           <td>{% if y.is_current %}<span class="badge text-bg-success">Atual</span>{% else %}—{% endif %}</td>
           {% if can_manage %}
-          <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{% url 'school_year_edit' y.pk %}">Editar</a></td>
+          <td class="text-end cell-actions"><a class="btn btn-sm btn-outline-secondary" href="{% url 'school_year_edit' y.pk %}">Editar</a></td>
           {% endif %}
         </tr>
         {% empty %}

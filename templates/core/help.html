@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Ajuda — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Ajuda</span>
+    <h1>Como fazer na plataforma</h1>
+    <p>Guias curtos para as tarefas do seu dia a dia, como {{ user_role_label|lower }}. Os links levam direto à tela certa.</p>
+  </div>
+</div>
+
+<div class="help-tips" role="list">
+  <div class="help-tip" role="listitem">{% icon "search" %}<div><strong>Buscar</strong><span><kbd>Ctrl</kbd> <kbd>K</kbd> ou <kbd>/</kbd> abre a busca de páginas e ações.</span></div></div>
+  <div class="help-tip" role="listitem">{% icon "star" %}<div><strong>Favoritos</strong><span>A estrela na barra superior guarda a página no topo do menu.</span></div></div>
+  <div class="help-tip" role="listitem">{% icon "keyboard" %}<div><strong>Atalhos</strong><span><kbd>?</kbd> mostra todos os atalhos de teclado.</span></div></div>
+</div>
+
+{% if guides %}
+<section class="mb-4" aria-labelledby="h-guias">
+  <h2 id="h-guias" class="h5 mb-3">Passo a passo</h2>
+  <div class="help-guides">
+    {% for g in guides %}
+    <details class="help-guide"{% if forloop.first %} open{% endif %}>
+      <summary>{% icon g.icon %}<span>{{ g.title }}</span>{% icon "chevron-down" "help-chevron" %}</summary>
+      <ol class="help-steps">
+        {% for step in g.steps %}
+        <li>{{ step.text }}{% if step.url %} <a href="{{ step.url }}" class="help-go">Abrir {% icon "arrow-right" %}</a>{% endif %}</li>
+        {% endfor %}
+      </ol>
+    </details>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section aria-labelledby="h-faq">
+  <h2 id="h-faq" class="h5 mb-3">Perguntas frequentes</h2>
+  <div class="help-guides">
+    {% for item in faq %}
+    <details class="help-guide">
+      <summary>{% icon "circle-help" %}<span>{{ item.q }}</span>{% icon "chevron-down" "help-chevron" %}</summary>
+      <p class="help-answer">{{ item.a }}</p>
+    </details>
+    {% endfor %}
+  </div>
+</section>
+
+<p class="text-body-secondary small mt-4 mb-0">Não encontrou o que procurava? Fale com a secretaria da escola.</p>
+{% endblock %}

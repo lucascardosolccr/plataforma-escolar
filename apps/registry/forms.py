@@ -12,7 +12,7 @@ class StudentForm(forms.ModelForm):
     class Meta:
         model = Student
         fields = ["first_name", "last_name", "birth_date", "photo", "status", "notes"]
-        widgets = {"birth_date": forms.DateInput(attrs={"type": "date"})}
+        widgets = {"birth_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"})}
         labels = {
             "first_name": "Nome",
             "last_name": "Sobrenome",

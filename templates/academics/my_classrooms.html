@@ -1,33 +1,48 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Minhas turmas — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<h1 class="h4 mb-1">Minhas turmas</h1>
-<p class="text-body-secondary small mb-3">Turmas e estudantes relacionados às suas atribuições.</p>
-
-{% for r in rosters %}
-<div class="card mb-3">
-  <div class="card-header bg-transparent d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <div>
-      <span class="fw-semibold">{{ r.assignment.class_group.name }}</span>
-      <span class="text-body-secondary">· {{ r.assignment.subject.name }} · {{ r.assignment.school_year.name }}</span>
-    </div>
-    <span class="chip">{{ r.students|length }} estudante(s)</span>
-    <a href="{% url 'analytics:class_dashboard' r.assignment.class_group.pk %}" class="btn btn-sm btn-outline-primary">Painel da turma</a>
-    <a href="{% url 'analytics:subject_dashboard' r.assignment.subject.pk %}?turma={{ r.assignment.class_group.pk }}" class="btn btn-sm btn-outline-secondary">Painel da disciplina</a>
+<div class="page-head">
+  <div>
+    <h1>Minhas turmas</h1>
+    <p>Cada turma em que você leciona, com as suas disciplinas, a chamada do dia e os atalhos do trabalho em sala.</p>
   </div>
-  <ul class="list-group list-group-flush">
-    {% for s in r.students %}
-    <li class="list-group-item d-flex justify-content-between align-items-center">
-      <a href="{% url 'student_detail' s.pk %}" class="text-decoration-none">{{ s.full_name }}</a>
-      <a href="{% url 'student_detail' s.pk %}" class="btn btn-sm btn-outline-secondary">Ver</a>
-    </li>
-    {% empty %}
-    <li class="list-group-item text-body-secondary">Nenhum estudante matriculado nesta turma.</li>
-    {% endfor %}
-  </ul>
 </div>
-{% empty %}
-<div class="alert alert-info">Você ainda não possui atribuições. Procure a coordenação.</div>
-{% endfor %}
+
+<div class="class-grid">
+  {% for r in rosters %}
+  <article class="card class-card" aria-labelledby="turma-{{ r.class_group.pk }}">
+    <div class="card-body">
+      <div class="class-card-head">
+        <div>
+          <h2 id="turma-{{ r.class_group.pk }}" class="class-card-title">{{ r.class_group.name }}</h2>
+          <p class="class-card-sub">{{ r.year.name }} · {{ r.students|length }} estudante{{ r.students|length|pluralize }}</p>
+        </div>
+        {% if r.attendance_today %}<span class="chip chip-state text-success">{% icon "circle-check" %}Chamada feita</span>
+        {% elif school_day %}<span class="chip chip-state text-warning">{% icon "clock" %}Chamada pendente</span>{% endif %}
+      </div>
+      <p class="class-card-subjects">{% for s in r.subjects %}<span class="chip">{{ s.name }}</span>{% endfor %}</p>
+      <div class="class-card-actions">
+        <a href="{% url 'pedagogy:attendance_register' r.class_group.pk %}" class="btn btn-sm {% if r.attendance_today %}btn-outline-primary{% else %}btn-primary{% endif %}">{% icon "calendar-check" %}{% if r.attendance_today %}Corrigir chamada{% else %}Fazer chamada{% endif %}</a>
+        <a href="{% url 'pedagogy:activity_create' %}?turma={{ r.class_group.pk }}" class="btn btn-sm btn-outline-secondary">{% icon "notebook-pen" %}Nova atividade</a>
+        <a href="{% url 'pedagogy:evaluation_list' %}?turma={{ r.class_group.pk }}&amp;escopo=minhas" class="btn btn-sm btn-outline-secondary">{% icon "graduation-cap" %}Avaliações</a>
+        <a href="{% url 'analytics:class_dashboard' r.class_group.pk %}" class="btn btn-sm btn-outline-secondary">{% icon "chart-column" %}Painel da turma</a>
+      </div>
+    </div>
+    <details class="class-roster">
+      <summary>{% icon "users" %}Estudantes da turma{% icon "chevron-down" "help-chevron" %}</summary>
+      <ul class="roster-list">
+        {% for s in r.students %}
+        <li><a href="{% url 'student_detail' s.pk %}">{{ s.full_name }}</a></li>
+        {% empty %}
+        <li class="text-body-secondary">Nenhum estudante com matrícula ativa.</li>
+        {% endfor %}
+      </ul>
+    </details>
+  </article>
+  {% empty %}
+  <div class="empty-state py-5">{% icon "school" %}<strong>Você ainda não tem turmas atribuídas</strong><span>A coordenação ou a secretaria cadastra as atribuições de cada professor.</span></div>
+  {% endfor %}
+</div>
 {% endblock %}

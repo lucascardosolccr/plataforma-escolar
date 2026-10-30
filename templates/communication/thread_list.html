@@ -1,51 +1,47 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Mensagens — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<div class="page-head">
   <div>
-    <h1 class="h4 mb-0">Mensagens</h1>
-    <p class="text-body-secondary small mb-0">
-      {% if user_role == ROLE_RESPONSAVEL %}Conversas com professores e setores da escola.
-      {% else %}Responda dúvidas e solicitações das famílias.{% endif %}
+    <h1>Mensagens</h1>
+    <p>
+      {% if user_role == ROLE_RESPONSAVEL %}Conversas com os professores e a secretaria. A escola responde por aqui.
+      {% else %}Conversas com as famílias. Cada conversa pode ser ligada a um estudante.{% endif %}
     </p>
   </div>
-  <a href="{% url 'communication:thread_create' %}" class="btn btn-primary btn-sm">+ Nova mensagem</a>
+  <a href="{% url 'communication:thread_create' %}" class="btn btn-primary">{% icon "plus" %}Nova mensagem</a>
 </div>
 
-<div class="card mb-3">
-  <div class="card-body py-2">
-    <form method="get" class="row g-2 align-items-center">
-      <div class="col-auto">
-        <label class="col-form-label small text-uppercase text-body-secondary">Estudante</label>
-      </div>
-      <div class="col-auto">
-        <input type="text" name="estudante" value="{{ student_id|default:'' }}" class="form-control form-control-sm" placeholder="ID do estudante" style="width:130px">
-      </div>
-      <div class="col-auto"><button type="submit" class="btn btn-outline-secondary btn-sm">Filtrar</button></div>
-    </form>
-  </div>
-</div>
+<form method="get" class="filter-bar" aria-label="Filtrar conversas">
+  {% if student_id %}<input type="hidden" name="estudante" value="{{ student_id }}">{% endif %}
+  {% include "partials/_filter_search.html" with label="Buscar" placeholder="Assunto, pessoa ou estudante" %}
+  {% include "partials/_filter_select.html" with name="leitura" label="Mostrar" options=leitura_choices selected=leitura all_label="Todas as conversas" %}
+  {% include "partials/_filter_end.html" with count=page.paginator.count noun="conversa(s)" %}
+</form>
 
 <div class="card">
-  <ul class="list-group list-group-flush">
-    {% for thread, unread in threads %}
-    <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2">
-      <div>
-        <a href="{% url 'communication:thread_detail' thread.pk %}" class="fw-semibold text-decoration-none">
-          {{ thread.title }}
-          {% if unread %}<span class="badge text-bg-danger ms-1">{{ unread }} não lida{{ unread|pluralize }}</span>{% endif %}
-        </a>
-        <div class="text-body-secondary small">
-          {% for p in thread.participants.all %}{% if p.pk != user.pk %}{{ p.get_full_name|default:p.username }} · {{ p.role_label }}{% endif %}{% endfor %}
-          {% if thread.student %} · {{ thread.student.full_name }}{% endif %}
-          · {{ thread.updated_at|date:"d/m/Y H:i" }}
-        </div>
+  <ul class="feed">
+    {% for t in threads %}
+    <li class="feed-item{% if t.unread %} is-unread{% endif %}">
+      <span class="avatar avatar-lg" aria-hidden="true">{% with o=t.others.0 %}{{ o.first_name|default:o.username|slice:":1"|upper }}{{ o.last_name|slice:":1"|upper }}{% endwith %}</span>
+      <div class="feed-body">
+        <p class="feed-title">
+          <a href="{% url 'communication:thread_detail' t.thread.pk %}" class="stretched-link text-reset text-decoration-none">{{ t.thread.title }}</a>
+          {% if t.unread %}<span class="badge text-bg-primary ms-1">{{ t.unread }} nova{{ t.unread|pluralize }}</span>{% endif %}
+        </p>
+        <p class="feed-text">
+          {% for o in t.others %}{{ o.get_full_name|default:o.username }} ({{ o.role_label|lower }}){% if not forloop.last %}, {% endif %}{% endfor %}{% if t.thread.student %} · sobre {{ t.thread.student.full_name }}{% endif %}
+        </p>
+        {% if t.last %}<p class="feed-meta">{% if t.last.sender_id == user.pk %}Você: {% endif %}{{ t.last.body|truncatechars:90 }} · {{ t.thread.updated_at|date:"d/m H:i" }}</p>{% endif %}
       </div>
-      <a class="btn btn-sm btn-outline-secondary" href="{% url 'communication:thread_detail' thread.pk %}">Abrir</a>
     </li>
     {% empty %}
-    <li class="list-group-item text-center text-body-secondary py-4">Nenhuma conversa.</li>
+    <li class="empty-state py-5">{% icon "message-circle" %}
+      <strong>{% if filtered %}Nenhuma conversa com estes filtros{% else %}Nenhuma conversa ainda{% endif %}</strong>
+      {% if filtered %}<a href="?">Limpar filtros</a>{% else %}<a href="{% url 'communication:thread_create' %}">Começar uma conversa</a>{% endif %}
+    </li>
     {% endfor %}
   </ul>
 </div>

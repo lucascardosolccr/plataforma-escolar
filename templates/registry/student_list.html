@@ -13,12 +13,9 @@
   {% endif %}
 </div>
 
-<form method="get" class="mb-3">
-  <div class="input-group" style="max-width:26rem">
-    <input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Buscar por nome ou sobrenome" aria-label="Buscar estudante por nome">
-    <button class="btn btn-outline-secondary" type="submit">Buscar</button>
-    {% if q %}<a class="btn btn-outline-secondary" href="{% url 'student_list' %}">Limpar</a>{% endif %}
-  </div>
+<form method="get" class="filter-bar" aria-label="Buscar estudantes">
+  {% include "partials/_filter_search.html" with label="Buscar estudante" placeholder="Nome ou sobrenome" %}
+  {% include "partials/_filter_end.html" with filtered=q count=page.paginator.count noun="estudante(s)" %}
 </form>
 
 <div class="card">

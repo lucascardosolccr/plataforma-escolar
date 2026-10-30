@@ -14,16 +14,18 @@
 {% if not result %}
   <div class="alert alert-info">{{ error }}</div>
 {% else %}
-<div class="d-flex justify-content-between align-items-start mb-3">
+<div class="page-head">
   <div>
-    <h1 class="h4 mb-0">{{ result.title }}</h1>
-    <p class="text-body-secondary small mb-0">
+    <h1>{{ result.title }}</h1>
+    <p>
       {{ user.school.name }} · Período analisado: {{ result.period }} ·
       Gerado em {{ generated_at|date:"d/m/Y H:i" }}
     </p>
     <p class="small text-body-secondary mb-0">{{ result.criteria }}</p>
   </div>
-  <button class="btn btn-primary btn-sm no-print" onclick="window.print()">Imprimir / Salvar PDF</button>
+  <div class="page-actions">
+    <button class="btn btn-primary no-print" data-print>Imprimir / Salvar PDF</button>
+  </div>
 </div>
 
 <table class="table table-bordered align-middle">

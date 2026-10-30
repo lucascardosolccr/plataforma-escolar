@@ -94,15 +94,21 @@ class ContentSecurityPolicyMiddleware:
     famílias e estudantes a terceiros, sem base legal (LGPD), e deixam a
     plataforma quebrada numa rede local sem internet. A política bloqueia
     qualquer origem externa: um CDN reintroduzido por engano falha à vista em
-    vez de voltar em silêncio. ``'unsafe-inline'`` fica por causa dos estilos
-    e dos pequenos manipuladores inline já existentes; ``data:`` cobre os
+    vez de voltar em silêncio.
+
+    Scripts: só arquivos do próprio servidor. Nenhum ``<script>`` embutido nem
+    ``onclick``/``onchange`` nos templates (o teste ``test_no_inline_script``
+    garante); as interações usam atributos ``data-*`` lidos por ``ds.js``.
+    Assim, um texto malicioso que escapasse do escape automático ainda não
+    conseguiria executar código. Estilos ainda aceitam ``'unsafe-inline'``
+    (variáveis CSS por elemento, como no mapa de calor). ``data:`` cobre os
     ícones SVG embutidos no CSS do Bootstrap.
     """
 
     POLICY = "; ".join(
         [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline'",
+            "script-src 'self'",
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data:",
             "font-src 'self'",

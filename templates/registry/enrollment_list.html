@@ -1,35 +1,29 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Matrículas — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<div class="page-head">
   <div>
-    <h1 class="h4 mb-0">Matrículas</h1>
-    <p class="text-body-secondary small mb-0">Vínculos de estudantes com turmas por ano letivo.</p>
+    <h1>Matrículas</h1>
+    <p>Vínculos de estudantes com turmas por ano letivo.</p>
   </div>
-  <a href="{% url 'enrollment_create' %}" class="btn btn-primary">+ Nova matrícula</a>
+  <div class="page-actions">
+    <a href="{% url 'enrollment_create' %}" class="btn btn-primary">{% icon "plus" %}Nova matrícula</a>
+  </div>
 </div>
 
-<form method="get" class="mb-3 d-flex gap-2 flex-wrap">
-  <div class="input-group" style="max-width:300px">
-    <input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Buscar estudante" aria-label="Buscar">
-    <button class="btn btn-outline-secondary" type="submit">Buscar</button>
+<form method="get" class="filter-bar" aria-label="Filtrar matrículas">
+  {% include "partials/_filter_search.html" with label="Estudante" placeholder="Nome ou sobrenome" %}
+  <div class="filter-field">
+    <label for="f-year">Ano letivo</label>
+    <select id="f-year" name="year" class="form-select form-select-sm" data-autosubmit>
+      <option value="">Todos</option>
+      {% for y in years %}<option value="{{ y.pk }}"{% if request.GET.year == y.pk|stringformat:'s' %} selected{% endif %}>{{ y.name }}</option>{% endfor %}
+    </select>
   </div>
-  <select name="year" class="form-select" style="max-width:180px" onchange="this.form.submit()">
-    <option value="">Todos os anos</option>
-    {% for y in years %}
-    <option value="{{ y.pk }}" {% if request.GET.year == y.pk|stringformat:'s' %}selected{% endif %}>{{ y.name }}</option>
-    {% endfor %}
-  </select>
-  <select name="status" class="form-select" style="max-width:180px" onchange="this.form.submit()">
-    <option value="">Todos os status</option>
-    {% for v, label in statuses %}
-    <option value="{{ v }}" {% if request.GET.status == v %}selected{% endif %}>{{ label }}</option>
-    {% endfor %}
-  </select>
-  {% if q or request.GET.year or request.GET.status %}
-  <a class="btn btn-outline-secondary" href="{% url 'enrollment_list' %}">Limpar</a>
-  {% endif %}
+  {% include "partials/_filter_select.html" with name="status" label="Situação" options=statuses selected=request.GET.status %}
+  {% if q or request.GET.year or request.GET.status %}{% include "partials/_filter_end.html" with filtered=True count=page.paginator.count noun="matrícula(s)" %}{% else %}{% include "partials/_filter_end.html" with count=page.paginator.count noun="matrícula(s)" %}{% endif %}
 </form>
 
 <div class="card">
@@ -62,7 +56,7 @@
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="6" class="text-center text-body-secondary py-4">Nenhuma matrícula encontrada.</td></tr>
+        <tr><td colspan="6"><div class="empty-state py-4">{% icon "inbox" %}<strong>Nenhuma matrícula encontrada.</strong></div></td></tr>
         {% endfor %}
       </tbody>
     </table>

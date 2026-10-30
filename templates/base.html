@@ -48,9 +48,20 @@
               </li>
             {% endfor %}
           </ul>
+          {% if forloop.first %}
+          <div data-fav-section hidden>
+            <p class="nav-section" id="nav-sec-fav">Favoritos</p>
+            <ul class="nav-list" data-fav-list aria-labelledby="nav-sec-fav"></ul>
+          </div>
+          {% endif %}
         {% endfor %}
       </nav>
       <div class="sidebar-foot">
+        {% for item in nav.footer %}
+        <a class="nav-item{% if item.active %} is-active{% endif %}" href="{{ item.url }}" title="{{ item.label }}"{% if item.active %} aria-current="page"{% endif %}>
+          {% icon item.icon %}<span class="nav-label">{{ item.label }}</span>
+        </a>
+        {% endfor %}
         <button type="button" class="nav-item" data-shortcuts-open title="Atalhos de teclado">
           {% icon "keyboard" %}<span class="nav-label">Atalhos de teclado</span>
         </button>
@@ -75,6 +86,9 @@
           {% block crumb %}{% endblock %}
         </ol>
       </nav>
+      <button class="btn btn-outline-secondary btn-icon fav-toggle" type="button" data-fav-toggle aria-pressed="false" aria-label="Adicionar aos favoritos" hidden>
+        {% icon "star" %}
+      </button>
       <button class="search-trigger" type="button" data-cmdk-open aria-haspopup="dialog" aria-keyshortcuts="Control+K /">
         {% icon "search" %}<span>Buscar ou ir para…</span><kbd>Ctrl K</kbd>
       </button>
@@ -98,6 +112,7 @@
           </h2></li>
           <li><hr class="dropdown-divider"></li>
           <li><a class="dropdown-item" href="{% url 'password_change' %}">{% icon "key-round" %}Alterar senha</a></li>
+          <li><a class="dropdown-item" href="{% url 'help' %}">{% icon "circle-help" %}Ajuda</a></li>
           <li><button class="dropdown-item" type="button" data-shortcuts-open>{% icon "keyboard" %}Atalhos de teclado</button></li>
           <li><hr class="dropdown-divider"></li>
           <li>
@@ -160,7 +175,7 @@
 {{ nav.palette|json_script:"cmdk-data" }}
 <span hidden id="ds-urls" data-search="{% url 'global_search' %}" data-home="{% url 'home' %}"
       data-calendar="{% url 'school_calendar:calendar_index' %}" data-notifications="{% url 'communication:notification_list' %}"
-      data-sprite="{% static 'icons/sprite.svg' %}"></span>
+      data-sprite="{% static 'icons/sprite.svg' %}" data-user="{{ user.pk }}"></span>
 {% endif %}
 
 <script src="{% static 'vendor/bootstrap.bundle.min.js' %}"></script>

@@ -12,6 +12,11 @@ urlpatterns = [
         name="notification_read",
     ),
     path(
+        "notificacoes/marcar-selecionadas/",
+        views.notification_read_selected,
+        name="notification_read_selected",
+    ),
+    path(
         "notificacoes/marcar-todas/",
         views.notification_read_all,
         name="notification_read_all",

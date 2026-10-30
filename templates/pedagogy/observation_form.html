@@ -19,7 +19,7 @@
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary flex-grow-1">Salvar</button>
             <button type="submit" name="_delete" value="1" class="btn btn-outline-danger"
-                    onclick="return confirm('Excluir esta observação?');">Excluir</button>
+                    data-confirm="Não dá para desfazer." data-confirm-title="Excluir observação?" data-confirm-ok="Excluir" data-confirm-tone="danger">Excluir</button>
           </div>
         {% else %}
           <button type="submit" class="btn btn-primary w-100 mt-2">Registrar</button>

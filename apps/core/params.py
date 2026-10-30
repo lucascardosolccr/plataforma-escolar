@@ -17,3 +17,18 @@ def id_param(request, name, source=None):
     if value.isdigit() and value.isascii() and int(value) > 0:
         return value
     return None
+
+
+def name_q(text, prefix=""):
+    """Filtro de busca por nome: cada palavra precisa aparecer no nome ou no sobrenome.
+
+    ``name_q("ana silva", "student__")`` acha "Ana Maria da Silva". Texto
+    vazio não filtra nada. Limitado a 5 palavras e 60 caracteres, porque o
+    valor vem da URL.
+    """
+    from django.db.models import Q
+
+    q = Q()
+    for term in (text or "")[:60].split()[:5]:
+        q &= Q(**{f"{prefix}first_name__icontains": term}) | Q(**{f"{prefix}last_name__icontains": term})
+    return q

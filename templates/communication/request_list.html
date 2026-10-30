@@ -1,60 +1,66 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Solicitações de atendimento — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<div class="page-head">
   <div>
-    <h1 class="h4 mb-0">Solicitações de atendimento</h1>
-    <p class="text-body-secondary small mb-0">
-      {% if user_role == ROLE_RESPONSAVEL %}
-        Acompanhe o andamento dos seus pedidos (recebida → análise → resposta).
-      {% else %}
-        Solicitações das famílias com status de atendimento.
-      {% endif %}
+    <h1>Solicitações</h1>
+    <p>
+      {% if user_role == ROLE_RESPONSAVEL %}Pedidos à escola, como declarações, reuniões e atualizações, com o andamento de cada um.
+      {% elif can_manage %}Pedidos das famílias. Responda dentro de cada solicitação; a família é avisada.
+      {% else %}Solicitações ligadas aos estudantes das suas turmas.{% endif %}
     </p>
   </div>
   {% if can_create %}
-    <a href="{% url 'communication:request_create' %}" class="btn btn-primary btn-sm">+ Nova solicitação</a>
+    <a href="{% url 'communication:request_create' %}" class="btn btn-primary">{% icon "plus" %}Nova solicitação</a>
   {% endif %}
 </div>
 
-<div class="card mb-3">
-  <div class="card-body py-2">
-    <form method="get" class="row g-2 align-items-center">
-      <div class="col-auto">
-        <label class="col-form-label small text-uppercase text-body-secondary">Situação</label>
-      </div>
-      <div class="col-auto">
-        <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-          <option value="">Todas</option>
-          {% for value, label in status_choices %}
-          <option value="{{ value }}"{% if status == value %} selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-    </form>
-  </div>
-</div>
+<form method="get" class="filter-bar" aria-label="Filtrar solicitações">
+  {% if request.GET.ordem %}<input type="hidden" name="ordem" value="{{ request.GET.ordem }}">{% endif %}
+  {% include "partials/_filter_search.html" with label="Buscar" placeholder="Assunto ou estudante" %}
+  {% include "partials/_filter_select.html" with name="status" label="Situação" options=status_choices selected=status %}
+  {% include "partials/_filter_select.html" with name="categoria" label="Tipo" options=category_choices selected=categoria all_label="Todos" %}
+  {% include "partials/_filter_end.html" with count=page.paginator.count noun="solicitação(ões)" %}
+</form>
 
 <div class="card">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead><tr><th>Data</th><th>Solicitação</th><th>Solicitante</th><th>Estudante</th><th>Situação</th><th class="text-end"></th></tr></thead>
+    <table class="table table-hover align-middle mb-0 table-stack">
+      <thead><tr>
+        {% sort_th sort "titulo" "Solicitação" %}
+        {% if user_role != ROLE_RESPONSAVEL %}<th scope="col">Solicitante</th>{% endif %}
+        <th scope="col">Estudante</th>
+        {% sort_th sort "situacao" "Situação" %}
+        {% sort_th sort "data" "Data" %}
+        <th scope="col" class="text-end"><span class="visually-hidden">Ações</span></th>
+      </tr></thead>
       <tbody>
         {% for r in requests %}
         <tr>
-          <td class="text-nowrap">{{ r.created_at|date:"d/m/Y" }}</td>
           <td>
-            <div class="fw-semibold">{{ r.title }}</div>
+            <a class="fw-semibold text-decoration-none" href="{% url 'communication:request_detail' r.pk %}">{{ r.title }}</a>
             <div class="text-body-secondary small">{{ r.get_category_display }}</div>
           </td>
-          <td>{{ r.requester.get_full_name|default:r.requester.username }}</td>
+          {% if user_role != ROLE_RESPONSAVEL %}<td>{{ r.requester.get_full_name|default:r.requester.username }}</td>{% endif %}
           <td>{{ r.student.full_name|default:"—" }}</td>
-          <td><span class="chip">{{ r.get_status_display }}</span></td>
-          <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{% url 'communication:request_detail' r.pk %}">Ver</a></td>
+          <td>
+            {% if r.status == 'respondida' or r.status == 'aprovada' %}<span class="chip chip-state text-success">{% icon "circle-check" %}{{ r.get_status_display }}</span>
+            {% elif r.status == 'recusada' %}<span class="chip chip-state text-danger">{% icon "ban" %}{{ r.get_status_display }}</span>
+            {% elif r.status == 'em_analise' %}<span class="chip chip-state text-warning">{% icon "clock" %}{{ r.get_status_display }}</span>
+            {% else %}<span class="chip chip-state">{% icon "inbox" %}{{ r.get_status_display }}</span>{% endif %}
+          </td>
+          <td class="text-nowrap">{{ r.created_at|date:"d/m/Y" }}</td>
+          <td class="text-end cell-actions"><a class="btn btn-sm btn-outline-secondary" href="{% url 'communication:request_detail' r.pk %}">Abrir</a></td>
         </tr>
         {% empty %}
-        <tr><td colspan="6" class="text-center text-body-secondary py-4">Nenhuma solicitação.</td></tr>
+        <tr><td colspan="6">
+          <div class="empty-state py-4">{% icon "inbox" %}
+            <strong>{% if filtered %}Nenhuma solicitação com estes filtros{% else %}Nenhuma solicitação{% endif %}</strong>
+            {% if filtered %}<a href="?">Limpar filtros</a>{% elif can_create %}<a href="{% url 'communication:request_create' %}">Fazer uma solicitação</a>{% endif %}
+          </div>
+        </td></tr>
         {% endfor %}
       </tbody>
     </table>

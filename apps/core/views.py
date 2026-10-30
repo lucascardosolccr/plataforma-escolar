@@ -156,6 +156,15 @@ def home(request):
 
     return render(request, "home.html", {"ws": workspace.build(request.user)})
 
+def help_page(request):
+    """Ajuda por perfil: guias passo a passo e perguntas frequentes."""
+    from . import help as help_content
+    from .navigation import all_visible_urls
+
+    return render(request, "core/help.html",
+                  help_content.build(request.user, all_visible_urls(request.user)))
+
+
 SEARCH_LIMIT = 8
 
 

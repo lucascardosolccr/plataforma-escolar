@@ -118,7 +118,8 @@ class GradeBatchForm(forms.Form):
                 initial=initial,
                 localize=False,
                 widget=forms.NumberInput(
-                    attrs={"class": "form-control form-control-sm", "style": "width:90px"}
+                    attrs={"class": "form-control form-control-sm grade-input", "step": "0.01",
+                           "inputmode": "decimal", "aria-label": f"Nota de {s.full_name}"}
                 ),
             )
             self.grades.append((s, field_name))
@@ -479,7 +480,8 @@ class AttendanceBatchForm(forms.Form):
                 label=None,
                 choices=self.STATUS_MAP,
                 initial=initial,
-                widget=forms.Select(attrs={"class": "form-select form-select-sm"}),
+                widget=forms.Select(attrs={"class": "form-select form-select-sm",
+                                           "aria-label": f"Situação de {s.full_name}"}),
             )
             self.rows.append((s, field_name))
 

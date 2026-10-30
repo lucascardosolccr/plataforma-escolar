@@ -3,17 +3,17 @@
 {% block title %}{% if is_student %}Meus trabalhos em grupo{% else %}Trabalhos em grupo{% endif %} — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="mb-3">
-  <h1 class="h4 mb-1">{% if is_student %}Meus trabalhos em grupo{% else %}Trabalhos em grupo{% endif %}</h1>
-  <p class="text-body-secondary small mb-0">
-    {% if is_student %}
+<div class="page-head">
+  <div>
+    <h1>{% if is_student %}Meus trabalhos em grupo{% else %}Trabalhos em grupo{% endif %}</h1>
+    <p>{% if is_student %}
       Trabalhos atribuídos pelos seus professores, com o seu grupo e os colegas
       que participam dele.
     {% else %}
       Trabalhos atribuídos à turma de cada filho, com a composição do grupo de
       que ele participa.
-    {% endif %}
-  </p>
+    {% endif %}</p>
+  </div>
 </div>
 
 {% url 'pedagogy:group_work_list' as list_url %}

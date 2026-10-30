@@ -62,7 +62,10 @@
   var activeIndex = -1;
   var timer = null;
   var lastQuery = "";
-  var RECENT_KEY = "ds-recent-pages";
+  // Por conta: num computador compartilhado da escola, recentes e favoritos
+  // de uma pessoa não aparecem para a próxima que entrar.
+  var USER_SUFFIX = urls.user ? ":" + urls.user : "";
+  var RECENT_KEY = "ds-recent-pages" + USER_SUFFIX;
 
   function normalize(text) {
     return (text || "").toString().normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -97,6 +100,10 @@
       var recent = recentKeys.map(function (k) {
         return pages.filter(function (p) { return p.key === k; })[0];
       }).filter(Boolean);
+      var favPages = (store("ds-favorites" + USER_SUFFIX) || []).map(function (k) {
+        return pages.filter(function (p) { return p.key === k; })[0];
+      }).filter(Boolean);
+      if (favPages.length) groups.push(["Favoritos", favPages]);
       if (recent.length) groups.push(["Recentes", recent.slice(0, 5)]);
       groups.push(["Ações", pages.filter(function (p) { return p.group === "Ações"; })]);
       groups.push(["Ir para", pages.filter(function (p) { return p.group === "Ir para"; })]);
@@ -342,6 +349,205 @@
       if (preset) preset.value = "personalizado";
     });
   });
+
+  /* ---------- Filtros que se aplicam sozinhos (data-autosubmit) ----------
+   * Substitui o antigo onchange="this.form.submit()", que a política de
+   * segurança não permite mais. Sem JavaScript, o botão "Filtrar" do
+   * formulário (escondido por .js-hide) continua funcionando. */
+  document.documentElement.classList.add("js");
+  $$("[data-autosubmit]").forEach(function (field) {
+    field.addEventListener("change", function () {
+      if (field.form) field.form.requestSubmit ? field.form.requestSubmit() : field.form.submit();
+    });
+  });
+
+  // Filtro sem campos vazios no endereço: "?status=publicada" em vez de
+  // "?escopo=&turma=&status=publicada". O campo desabilitado não é enviado.
+  $$("form.filter-bar").forEach(function (form) {
+    form.addEventListener("submit", function () {
+      $$("select, input", form).forEach(function (f) { if (f.name && !f.value) f.disabled = true; });
+    });
+  });
+  window.addEventListener("pageshow", function () {
+    $$("form.filter-bar [disabled]").forEach(function (f) { f.disabled = false; });
+  });
+
+  // Campo somente leitura que seleciona o próprio texto (senha temporária).
+  $$("[data-select-on-focus]").forEach(function (field) {
+    field.addEventListener("focus", function () { field.select(); });
+    field.addEventListener("click", function () { field.select(); });
+  });
+
+  /* ---------- Confirmação (data-confirm="mensagem") ----------
+   * Em <form> ou no botão que envia. Abre um diálogo da plataforma no lugar
+   * do confirm() do navegador: foco preso, Esc cancela, o botão de
+   * confirmar diz o que vai acontecer (data-confirm-ok) e fica vermelho em
+   * ações destrutivas (data-confirm-tone="danger"). */
+  var confirmDialog = null;
+  function buildConfirm() {
+    var d = document.createElement("dialog");
+    d.className = "ds-confirm";
+    d.setAttribute("aria-labelledby", "ds-confirm-title");
+    d.setAttribute("aria-describedby", "ds-confirm-msg");
+    d.innerHTML =
+      '<form method="dialog" class="ds-confirm-body">' +
+      '<h2 id="ds-confirm-title" class="ds-confirm-title"></h2>' +
+      '<p id="ds-confirm-msg" class="ds-confirm-msg"></p>' +
+      '<div class="ds-confirm-actions">' +
+      '<button value="cancel" class="btn btn-outline-secondary" type="submit">Cancelar</button>' +
+      '<button value="ok" class="btn btn-primary" type="submit" data-confirm-ok></button>' +
+      "</div></form>";
+    d.addEventListener("click", function (e) { if (e.target === d) d.close("cancel"); });
+    document.body.appendChild(d);
+    return d;
+  }
+  function askConfirm(source, onOk) {
+    confirmDialog = confirmDialog || buildConfirm();
+    var tone = source.getAttribute("data-confirm-tone");
+    var ok = $("[data-confirm-ok]", confirmDialog);
+    $("#ds-confirm-title", confirmDialog).textContent = source.getAttribute("data-confirm-title") || "Confirmar ação";
+    $("#ds-confirm-msg", confirmDialog).textContent = source.getAttribute("data-confirm");
+    ok.textContent = source.getAttribute("data-confirm-ok") || "Confirmar";
+    ok.className = "btn " + (tone === "danger" ? "btn-danger" : "btn-primary");
+    confirmDialog.returnValue = "";
+    confirmDialog.onclose = function () { if (confirmDialog.returnValue === "ok") onOk(); };
+    confirmDialog.showModal();
+    // Foco no "Cancelar": Enter por engano nunca apaga nada.
+    $("button[value=cancel]", confirmDialog).focus();
+  }
+  document.addEventListener("submit", function (e) {
+    var form = e.target;
+    var btn = e.submitter;
+    var source = btn && btn.hasAttribute("data-confirm") ? btn : (form.hasAttribute("data-confirm") ? form : null);
+    if (!source || form._confirmed) { form._confirmed = false; return; }
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    askConfirm(source, function () {
+      form._confirmed = true;
+      if (form.requestSubmit) form.requestSubmit(btn || undefined); else form.submit();
+    });
+  }, true);
+
+  /* ---------- Tabela que vira lista no celular (.table-stack) ----------
+   * Copia o título de cada coluna para as células que ainda não têm
+   * data-label; o CSS o mostra antes do valor em telas estreitas. */
+  $$("table.table-stack").forEach(function (table) {
+    // Só o texto visível do título: "(ordem decrescente)" e "Ações" ocultos
+    // são para o leitor de tela, não para virar rótulo de cada linha.
+    var labels = $$("thead th", table).map(function (th) {
+      var copy = th.cloneNode(true);
+      $$(".visually-hidden", copy).forEach(function (el) { el.remove(); });
+      return copy.textContent.trim();
+    });
+    $$("tbody tr", table).forEach(function (tr) {
+      Array.prototype.forEach.call(tr.children, function (cell, i) {
+        if (!cell.hasAttribute("data-label") && labels[i] && !cell.hasAttribute("colspan")) cell.setAttribute("data-label", labels[i]);
+      });
+    });
+  });
+
+  /* ---------- Seleção em lote (data-bulk) ----------
+   * Um formulário com caixas name="ids", uma caixa "todas" (data-bulk-all)
+   * e uma barra (data-bulk-bar) que mostra quantos estão marcados e só
+   * habilita as ações com pelo menos um. */
+  $$("[data-bulk]").forEach(function (form) {
+    var boxes = $$("input[type=checkbox][name=ids]", form);
+    var all = $("[data-bulk-all]", form);
+    var bar = $("[data-bulk-bar]", form);
+    var count = $("[data-bulk-count]", form);
+    function sync() {
+      var n = boxes.filter(function (b) { return b.checked; }).length;
+      if (count) count.textContent = n === 1 ? "1 selecionado" : n + " selecionados";
+      if (bar) {
+        bar.classList.toggle("is-active", n > 0);
+        $$("button", bar).forEach(function (b) { b.disabled = n === 0; });
+      }
+      if (all) {
+        all.checked = n > 0 && n === boxes.length;
+        all.indeterminate = n > 0 && n < boxes.length;
+      }
+      boxes.forEach(function (b) { var tr = b.closest("tr"); if (tr) tr.classList.toggle("is-selected", b.checked); });
+    }
+    boxes.forEach(function (b) { b.addEventListener("change", sync); });
+    if (all) all.addEventListener("change", function () { boxes.forEach(function (b) { b.checked = all.checked; }); sync(); });
+    sync();
+  });
+
+  /* ---------- Preencher vários campos de uma vez (data-fill-all) ----------
+   * data-fill-all="seletor" data-fill-value="valor": usado em "marcar todos
+   * como entregues" e "limpar". */
+  $$("[data-fill-all]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var value = btn.getAttribute("data-fill-value") || "";
+      $$(btn.getAttribute("data-fill-all")).forEach(function (field) {
+        field.value = value;
+        field.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    });
+  });
+
+  /* ---------- Enter vai para o próximo campo (data-enter-next) ----------
+   * No lançamento de notas, Enter num campo leva ao do próximo estudante em
+   * vez de enviar o formulário pela metade. No último campo, envia. */
+  $$("[data-enter-next]").forEach(function (scope) {
+    scope.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter" || e.target.tagName !== "INPUT") return;
+      var fields = $$("input:not([type=hidden]):not([disabled])", scope);
+      var i = fields.indexOf(e.target);
+      if (i < 0 || i === fields.length - 1) return;
+      e.preventDefault();
+      fields[i + 1].focus();
+      fields[i + 1].select();
+    });
+  });
+
+  /* ---------- Favoritos ----------
+   * A estrela da barra superior guarda a página atual do menu neste
+   * navegador (não vai para o servidor) e a mostra no topo do menu. */
+  var FAV_KEY = "ds-favorites" + USER_SUFFIX;
+  var favToggle = $("[data-fav-toggle]");
+  var favList = $("[data-fav-list]");
+  var currentPage = activeLink && pages.filter(function (p) { return p.url === activeLink.getAttribute("href"); })[0];
+  function renderFavorites() {
+    var favs = (store(FAV_KEY) || []).map(function (k) {
+      return pages.filter(function (p) { return p.key === k; })[0];
+    }).filter(Boolean);
+    if (favList) {
+      favList.textContent = "";
+      favList.closest("[data-fav-section]").hidden = !favs.length;
+      favs.forEach(function (p) {
+        var a = document.createElement("a");
+        a.className = "nav-item";
+        a.href = p.url;
+        a.title = p.label;
+        a.appendChild(iconSvg(p.icon || "star"));
+        var span = document.createElement("span");
+        span.className = "nav-label";
+        span.textContent = p.label;
+        a.appendChild(span);
+        var li = document.createElement("li");
+        li.appendChild(a);
+        favList.appendChild(li);
+      });
+    }
+    if (favToggle) {
+      var on = currentPage && favs.some(function (p) { return p.key === currentPage.key; });
+      favToggle.setAttribute("aria-pressed", on ? "true" : "false");
+      favToggle.setAttribute("aria-label", on ? "Tirar dos favoritos" : "Adicionar aos favoritos");
+      favToggle.title = favToggle.getAttribute("aria-label");
+    }
+  }
+  if (favToggle) {
+    // Só páginas do menu podem virar favorito (nunca a ficha de um estudante).
+    favToggle.hidden = !currentPage || currentPage.key === "home";
+    favToggle.addEventListener("click", function () {
+      var favs = (store(FAV_KEY) || []).filter(function (k) { return k !== currentPage.key; });
+      if (favToggle.getAttribute("aria-pressed") !== "true") favs.unshift(currentPage.key);
+      store(FAV_KEY, favs.slice(0, 8));
+      renderFavorites();
+    });
+  }
+  renderFavorites();
 
   /* ---------- Envio único de formulário ----------
    * Desabilita o botão DEPOIS que o envio começou (setTimeout): desabilitar

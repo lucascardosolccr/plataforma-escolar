@@ -1,20 +1,22 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Novo vínculo — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-6 col-md-8">
-    <div class="card p-4">
-      <h1 class="h4 mb-1">Criar vínculo validado</h1>
-      <p class="text-body-secondary small mb-4">
-        Vincula um responsável a um estudante com validação imediata da secretaria.
-      </p>
-      <form method="post" novalidate>
-        {% csrf_token %}
-        {% include "partials/_form_fields.html" with f=form %}
-        <button type="submit" class="btn btn-primary w-100 mt-2">Criar e validar vínculo</button>
-      </form>
+{% url 'link_list' as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Vínculos" heading="Criar vínculo validado" %}
+  <p class="form-lead">Liga um responsável a um estudante já validado pela secretaria. O responsável passa a ver notas, frequência e ocorrências.</p>
+  
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    
+    <div class="card-body">
+      {% include "partials/_form_fields.html" with f=form %}
+      <p class="small text-body-secondary mb-0"><span class="required-mark" aria-hidden="true">*</span> campo obrigatório</p>
     </div>
-  </div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Criar e validar vínculo" hint="Confira os documentos antes de criar o vínculo." %}
+  </form>
+  
 </div>
 {% endblock %}

@@ -1,68 +1,67 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Central de notificações — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<div class="page-head">
   <div>
-    <h1 class="h4 mb-0">Central de notificações</h1>
-    <p class="text-body-secondary small mb-0">
-      Avisos internos da plataforma — novas notas, prazos, comunicados, mensagens e solicitações.
-    </p>
+    <h1>Central de notificações</h1>
+    <p>Avisos da plataforma: notas publicadas, prazos, comunicados, mensagens e solicitações.{% if unread_total %} <strong>{{ unread_total }} não lida{{ unread_total|pluralize }}.</strong>{% endif %}</p>
   </div>
+  {% if unread_total %}
   <form method="post" action="{% url 'communication:notification_read_all' %}">
     {% csrf_token %}
-    <button type="submit" class="btn btn-outline-secondary btn-sm">Marcar todas como lidas</button>
+    <button type="submit" class="btn btn-outline-secondary">{% icon "check-check" %}Marcar todas como lidas</button>
   </form>
+  {% endif %}
 </div>
 
-<div class="card mb-3">
-  <div class="card-body py-2">
-    <form method="get" class="row g-2 align-items-center">
-      <div class="col-auto">
-        <label class="col-form-label small text-uppercase text-body-secondary">Tipo</label>
-      </div>
-      <div class="col-auto">
-        <select name="tipo" class="form-select form-select-sm" onchange="this.form.submit()">
-          <option value="">Todos</option>
-          {% for value, label in kind_choices %}
-          <option value="{{ value }}"{% if kind == value %} selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-    </form>
-  </div>
-</div>
+<form method="get" class="filter-bar" aria-label="Filtrar notificações">
+  {% include "partials/_filter_select.html" with name="situacao" label="Situação" options=situacao_choices selected=situacao all_label="Todas" %}
+  {% include "partials/_filter_select.html" with name="tipo" label="Tipo" options=kind_choices selected=kind all_label="Todos" %}
+  {% include "partials/_filter_end.html" with count=page.paginator.count noun="notificação(ões)" %}
+</form>
 
-<div class="card">
-  <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead><tr><th>Data</th><th>Tipo</th><th>Notificação</th><th class="text-end"></th></tr></thead>
-      <tbody>
-        {% for n in notifications %}
-        <tr class="{% if not n.is_read %}table-active fw-semibold{% endif %}">
-          <td class="text-nowrap">{{ n.created_at|date:"d/m/Y H:i" }}</td>
-          <td><span class="chip">{{ n.get_kind_display }}</span></td>
-          <td>
-            <div>{{ n.title }}</div>
-            {% if n.body %}<div class="text-body-secondary small">{{ n.body|truncatechars:140 }}</div>{% endif %}
-          </td>
-          <td class="text-end text-nowrap">
-            <form method="post" action="{% url 'communication:notification_read' n.pk %}">
-              {% csrf_token %}
-              {% if n.url %}
-              <button type="submit" class="btn btn-sm btn-outline-primary">Abrir</button>
-              {% else %}
-              <button type="submit" class="btn btn-sm btn-outline-secondary">Marcar como lida</button>
-              {% endif %}
-            </form>
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="4" class="text-center text-body-secondary py-4">Nenhuma notificação.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<form method="post" action="{% url 'communication:notification_read_selected' %}" class="card" data-bulk>
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  {% if groups %}
+  <div class="bulk-bar" data-bulk-bar>
+    <label class="form-check mb-0 d-flex align-items-center gap-2">
+      <input type="checkbox" class="form-check-input mt-0" data-bulk-all aria-label="Selecionar todas desta página">
+      <span data-bulk-count>0 selecionados</span>
+    </label>
+    <button type="submit" class="btn btn-sm btn-outline-primary">{% icon "check" %}Marcar como lidas</button>
   </div>
-</div>
+  {% endif %}
+  {% for g in groups %}
+    <h2 class="feed-day">{{ g.label }}</h2>
+    <ul class="feed">
+      {% for n in g.items %}
+      <li class="feed-item{% if not n.is_read %} is-unread{% endif %}">
+        <input type="checkbox" class="form-check-input" name="ids" value="{{ n.pk }}" id="n-{{ n.pk }}" aria-label="Selecionar: {{ n.title }}">
+        <span class="feed-icon" aria-hidden="true">{% if n.kind == 'avaliacao' %}{% icon "graduation-cap" %}{% elif n.kind == 'atividade' %}{% icon "notebook-pen" %}{% elif n.kind == 'comunicado' %}{% icon "megaphone" %}{% elif n.kind == 'justificativa' %}{% icon "file-check" %}{% elif n.kind == 'mensagem' %}{% icon "message-circle" %}{% elif n.kind == 'solicitacao' %}{% icon "inbox" %}{% else %}{% icon "calendar-check" %}{% endif %}</span>
+        <div class="feed-body">
+          <p class="feed-title">{% if not n.is_read %}<span class="visually-hidden">Não lida: </span>{% endif %}{{ n.title }}</p>
+          {% if n.body %}<p class="feed-text">{{ n.body|truncatechars:180 }}</p>{% endif %}
+          <p class="feed-meta">{{ n.get_kind_display }} · {{ n.created_at|date:"H:i" }}</p>
+        </div>
+        <div class="feed-actions">
+          {% if n.url %}
+            <button type="submit" formaction="{% url 'communication:notification_read' n.pk %}" class="btn btn-sm btn-outline-primary">Abrir</button>
+          {% elif not n.is_read %}
+            <button type="submit" formaction="{% url 'communication:notification_read' n.pk %}" class="btn btn-sm btn-outline-secondary">Marcar como lida</button>
+          {% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  {% empty %}
+    <div class="empty-state py-5">{% icon "bell" %}
+      <strong>{% if filtered %}Nenhuma notificação com estes filtros{% else %}Nenhuma notificação por enquanto{% endif %}</strong>
+      {% if filtered %}<a href="?">Limpar filtros</a>{% else %}<span>Quando houver nota publicada, prazo ou mensagem, o aviso aparece aqui.</span>{% endif %}
+    </div>
+  {% endfor %}
+</form>
 {% include "partials/_pager.html" %}
 {% endblock %}

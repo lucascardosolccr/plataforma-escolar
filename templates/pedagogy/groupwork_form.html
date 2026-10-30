@@ -1,78 +1,56 @@
-{% extends "partials/form_card.html" %}
+{% extends "base.html" %}
 {% load ui %}
 {% block title %}{% if obj %}Editar trabalho{% else %}Novo trabalho em grupo{% endif %} — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-xl-7 col-lg-9">
-    <div class="card p-4">
-      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <div>
-          <h1 class="h4 mb-0">{% if obj %}Editar trabalho{% else %}Novo trabalho em grupo{% endif %}</h1>
-          <p class="text-body-secondary small mb-0">
-            Somente turmas e disciplinas da sua atribuição. Os grupos são
-            organizados na etapa seguinte.
-          </p>
+<div class="form-page">
+  {% if obj %}{% url 'pedagogy:group_work_detail' obj.pk as back %}{% else %}{% url 'pedagogy:group_work_list' as back %}{% endif %}
+  {% if obj %}
+    {% include "partials/_form_head.html" with back_url=back back_label="Trabalho" heading="Editar trabalho" %}
+  {% else %}
+    {% include "partials/_form_head.html" with back_url=back back_label="Trabalhos em grupo" heading="Novo trabalho em grupo" %}
+  {% endif %}
+  <p class="form-lead">Só aparecem as turmas e disciplinas que você leciona. Os grupos são montados no passo seguinte, à mão ou por sorteio.</p>
+
+  <form method="post" enctype="multipart/form-data" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">
+      {% include "partials/_form_fields.html" with f=form %}
+
+      {% if obj and obj.attachments.all %}
+        <div class="mb-3">
+          <p class="form-label mb-1">Arquivos já enviados</p>
+          <ul class="list-unstyled mb-0 small">
+            {% for att in obj.attachments.all %}
+              <li class="mb-1">{% icon "paperclip" %} <a href="{% url 'pedagogy:group_work_attachment' obj.pk att.pk %}">{{ att.original_name }}</a></li>
+            {% endfor %}
+          </ul>
+          <p class="form-text mb-0 mt-1">Enviar novos arquivos acrescenta à lista; os atuais são mantidos.</p>
         </div>
-        <a href="{% if obj %}{% url 'pedagogy:group_work_detail' obj.pk %}{% else %}{% url 'pedagogy:group_work_list' %}{% endif %}"
-           class="btn btn-outline-secondary btn-sm">Voltar</a>
-      </div>
+      {% endif %}
+      <p class="small text-body-secondary mb-0"><span class="required-mark" aria-hidden="true">*</span> campo obrigatório</p>
+    </div>
 
-      <form method="post" enctype="multipart/form-data" novalidate>
-        {% csrf_token %}
-        {% include "partials/_form_fields.html" with f=form %}
-
-        {% if obj and obj.attachments.all %}
-          <div class="mb-3">
-            <p class="form-label small mb-1">Arquivos já enviados</p>
-            <ul class="list-unstyled mb-0 small">
-              {% for att in obj.attachments.all %}
-                <li class="mb-1">
-                  {% icon "paperclip" %}
-                  <a href="{% url 'pedagogy:group_work_attachment' obj.pk att.pk %}">{{ att.original_name }}</a>
-                </li>
-              {% endfor %}
-            </ul>
-            <p class="text-body-secondary small mb-0 mt-1">
-              Enviar novos arquivos acrescenta à lista; os atuais são mantidos.
-            </p>
-          </div>
-        {% endif %}
-
-        <div class="d-flex flex-wrap gap-2 mt-2">
-          {% if obj %}
-            {% if obj.status == 'rascunho' %}
-              <button type="submit" class="btn btn-outline-secondary">Salvar rascunho</button>
-              <button type="submit" name="_publish" value="1" class="btn btn-primary flex-grow-1">
-                Publicar para a turma
-              </button>
-            {% else %}
-              <button type="submit" class="btn btn-primary flex-grow-1">Salvar alterações</button>
-            {% endif %}
-          {% else %}
-            <button type="submit" class="btn btn-outline-secondary">Salvar como rascunho</button>
-            <button type="submit" name="_publish" value="1" class="btn btn-primary flex-grow-1">
-              Publicar para a turma
-            </button>
-          {% endif %}
-        </div>
-        <p class="text-body-secondary small mb-0 mt-2">
-          Rascunho fica visível só para você. Depois de salvar, você organiza os
-          grupos e escolhe quem fica em cada um.
-        </p>
-      </form>
-
-      {% if obj and obj.status != 'cancelada' %}
-        <hr>
-        <p class="text-body-secondary small mb-2">
-          Precisa tornar este trabalho sem efeito? Use o cancelamento: o
-          trabalho, os grupos e as entregas permanecem no histórico escolar.
-        </p>
-        <a href="{% url 'pedagogy:group_work_cancel' obj.pk %}" class="btn btn-outline-danger btn-sm">
-          Cancelar trabalho
-        </a>
+    <div class="form-actions">
+      <span class="hint">Rascunho fica visível só para você.</span>
+      <a href="{{ back }}" class="btn btn-outline-secondary">Cancelar</a>
+      {% if obj and obj.status != 'rascunho' %}
+        <button type="submit" class="btn btn-primary">Salvar alterações</button>
+      {% else %}
+        <button type="submit" class="btn btn-outline-secondary">Salvar rascunho</button>
+        <button type="submit" name="_publish" value="1" class="btn btn-primary">{% icon "send" %}Publicar para a turma</button>
       {% endif %}
     </div>
-  </div>
+  </form>
+
+  {% if obj and obj.status != 'cancelada' %}
+    <div class="danger-zone mt-4">
+      <div>
+        <strong>Cancelar trabalho</strong>
+        <p class="mb-0">Torna o trabalho sem efeito. O trabalho, os grupos e as entregas continuam no histórico escolar.</p>
+      </div>
+      <a href="{% url 'pedagogy:group_work_cancel' obj.pk %}" class="btn btn-outline-danger btn-sm">Cancelar trabalho</a>
+    </div>
+  {% endif %}
 </div>
 {% endblock %}

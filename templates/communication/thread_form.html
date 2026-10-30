@@ -1,32 +1,22 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Nova mensagem — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-7 col-md-9">
-    <div class="card p-4">
-      <div class="mb-3">
-        <h1 class="h4 mb-0">Nova mensagem</h1>
-        <p class="text-body-secondary small mb-0">
-          {% if user_role == ROLE_RESPONSAVEL %}
-            Escolha um profissional da escola para conversar.
-          {% else %}
-            Escolha um responsável para responder dúvidas e solicitações.
-          {% endif %}
-        </p>
-      </div>
-      <form method="post" novalidate>
-        {% csrf_token %}
-        {% include "partials/_form_fields.html" with f=form %}
-        <button type="submit" class="btn btn-primary w-100 mt-2">Iniciar conversa</button>
-      </form>
+{% url 'communication:thread_list' as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Mensagens" heading="Nova mensagem" %}
+  <p class="form-lead">{% if user_role == ROLE_RESPONSAVEL %}Escolha com quem da escola você quer conversar.{% else %}Escolha o responsável com quem você quer conversar.{% endif %} A outra pessoa recebe um aviso.</p>
+  
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    
+    <div class="card-body">
+      {% include "partials/_form_fields.html" with f=form %}
+      <p class="small text-body-secondary mb-0"><span class="required-mark" aria-hidden="true">*</span> campo obrigatório</p>
     </div>
-  </div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Iniciar conversa" hint="" %}
+  </form>
+  
 </div>
-{% endblock %}
-
-{% block extra_css %}
-<style>
-  form input:not([type=checkbox]), form select, form textarea { width: 100%; }
-</style>
 {% endblock %}

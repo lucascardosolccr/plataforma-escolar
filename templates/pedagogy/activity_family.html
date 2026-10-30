@@ -3,17 +3,17 @@
 {% block title %}Atividades de casa — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="mb-3">
-  <h1 class="h4 mb-1">{% if is_student %}Minhas atividades{% else %}Atividades de casa{% endif %}</h1>
-  <p class="text-body-secondary small mb-0">
-    {% if is_student %}
+<div class="page-head">
+  <div>
+    <h1>{% if is_student %}Minhas atividades{% else %}Atividades de casa{% endif %}</h1>
+    <p>{% if is_student %}
       Tarefas publicadas pelos seus professores para a sua turma. A mesma tarefa
       vale para a turma inteira.
     {% else %}
       Tarefas publicadas pelos professores para a turma de cada filho. As atividades são
       da turma, não individuais — toda a turma recebe a mesma tarefa.
-    {% endif %}
-  </p>
+    {% endif %}</p>
+  </div>
 </div>
 
 {% url 'pedagogy:activity_list' as list_url %}

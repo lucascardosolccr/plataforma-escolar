@@ -68,7 +68,7 @@
         <form method="post" action="{% url 'password_reset_user' target.pk %}">
           {% csrf_token %}
           <button type="submit" class="btn btn-outline-danger btn-sm"
-                  onclick="return confirm('Gerar nova senha temporária para {{ target.get_full_name|default:target.username|escapejs }}?');">
+                  data-confirm="Para {{ target.get_full_name|default:target.username }}. A senha atual deixa de funcionar imediatamente." data-confirm-title="Gerar nova senha temporária?" data-confirm-ok="Gerar senha">
             Redefinir senha
           </button>
         </form>

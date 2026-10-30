@@ -3,14 +3,16 @@
 {% block title %}Organizar grupos — {{ work.title }} — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+<div class="page-head">
   <div>
-    <h1 class="h4 mb-1">Organizar grupos</h1>
-    <p class="text-body-secondary small mb-0">
+    <h1>Organizar grupos</h1>
+    <p>
       {{ work.title }} · {{ work.subject.name }} · Turma {{ work.class_group.name }}
     </p>
   </div>
-  <a href="{% url 'pedagogy:group_work_detail' work.pk %}" class="btn btn-outline-secondary btn-sm">Ver trabalho</a>
+  <div class="page-actions">
+    <a href="{% url 'pedagogy:group_work_detail' work.pk %}" class="btn btn-outline-secondary btn-sm">Ver trabalho</a>
+  </div>
 </div>
 
 {% if read_only %}
@@ -40,6 +42,7 @@
         {% csrf_token %}
         <input type="hidden" name="_acao" value="criar">
         <div class="col-sm-8">
+          <label for="{{ form.name.id_for_label }}" class="visually-hidden">{{ form.name.label }}</label>
           {{ form.name|bs }}
           {% for e in form.name.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
         </div>
@@ -58,7 +61,7 @@
       <h2 class="h6 mb-2">Sortear grupos</h2>
       {% if can_draw %}
       <form method="post" class="row g-2 align-items-start"
-            onsubmit="return confirm('Sortear vai refazer os grupos deste trabalho desde o início. Continuar?');">
+            data-confirm="Os grupos deste trabalho serão refeitos desde o início." data-confirm-title="Sortear os grupos?" data-confirm-ok="Sortear">
         {% csrf_token %}
         <input type="hidden" name="_acao" value="sortear">
         <div class="col-sm-8">
@@ -98,7 +101,7 @@
             <h3 class="h6 mb-0">{{ row.group.name }}</h3>
             {% if not read_only and row.removable %}
             <form method="post" class="m-0"
-                  onsubmit="return confirm('Remover o grupo {{ row.group.name|escapejs }}? Os integrantes ficam sem grupo.');">
+                  data-confirm="Os integrantes ficam sem grupo." data-confirm-title="Remover o grupo {{ row.group.name }}?" data-confirm-ok="Remover" data-confirm-tone="danger">
               {% csrf_token %}
               <input type="hidden" name="_acao" value="remover_grupo">
               <input type="hidden" name="grupo" value="{{ row.group.pk }}">

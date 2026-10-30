@@ -1,0 +1,13 @@
+{% comment %}
+Campo de filtro da .filter-bar. Parâmetros: name, label, options (pares
+valor/rótulo), selected e, opcionalmente, all_label ("Todas" por padrão).
+Aplica sozinho ao mudar (data-autosubmit); sem JavaScript, o botão
+"Filtrar" do formulário faz o mesmo.
+{% endcomment %}
+<div class="filter-field">
+  <label for="f-{{ name }}">{{ label }}</label>
+  <select id="f-{{ name }}" name="{{ name }}" class="form-select form-select-sm" data-autosubmit>
+    <option value="">{{ all_label|default:"Todas" }}</option>
+    {% for value, text in options %}<option value="{{ value }}"{% if value|stringformat:"s" == selected|stringformat:"s" %} selected{% endif %}>{{ text }}</option>{% endfor %}
+  </select>
+</div>

@@ -11,8 +11,8 @@ class SchoolYearForm(forms.ModelForm):
         model = SchoolYear
         fields = ["name", "start_date", "end_date", "is_current"]
         widgets = {
-            "start_date": forms.DateInput(attrs={"type": "date"}),
-            "end_date": forms.DateInput(attrs={"type": "date"}),
+            "start_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+            "end_date": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
         }
         labels = {
             "name": "Nome (ano)",

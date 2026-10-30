@@ -5,12 +5,12 @@ from decimal import Decimal, InvalidOperation
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg, Count, Max, Q
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from apps.academics.models import ClassGroup, SchoolYear, TeacherAssignment
+from apps.academics.models import ClassGroup, SchoolYear, Subject, TeacherAssignment
 from apps.communication.services import (
     announce_publication,
     notify_attendance_limit,
@@ -18,9 +18,9 @@ from apps.communication.services import (
     notify_justification_resolved,
     notify_publication_canceled,
 )
-from apps.core.params import id_param
+from apps.core.params import id_param, name_q
 from apps.core.models import AuditLog, Role, create_audit_log
-from apps.core.pagination import paginate
+from apps.core.pagination import Sort, paginate
 from apps.core.uploads import attachment_content_type
 from apps.registry.models import Enrollment, GuardianLink, Student
 
@@ -226,11 +226,31 @@ def evaluation_list(request):
             acc.enrollment_window_q(acc.family_enrollments(user), "date"),
             status=Evaluation.Status.PUBLISHED,
         )
+    is_teacher = user.role == Role.PROFESSOR.value
+    # Pares turma+disciplina que o professor leciona: só neles aparecem
+    # "Notas", "Editar" e "Publicar". Antes os botões apareciam também nas
+    # avaliações dos colegas da mesma turma e levavam a "acesso negado".
+    managed = set(_teacher_assignments(user).values_list("class_group_id", "subject_id")) if is_teacher else set()
+    classes = ClassGroup.objects.filter(pk__in=qs.values("class_group_id")).order_by("name")
+    subjects = Subject.objects.filter(pk__in=qs.values("subject_id")).order_by("name")
     status = request.GET.get("status")
     if status in ("rascunho", "publicada"):
         qs = qs.filter(status=status)
+    turma = id_param(request, "turma")
+    if turma:
+        qs = qs.filter(class_group_id=turma)
+    disciplina = id_param(request, "disciplina")
+    if disciplina:
+        qs = qs.filter(subject_id=disciplina)
+    escopo = request.GET.get("escopo") if is_teacher else None
+    if escopo == "minhas":
+        qs = qs.filter(_teacher_pairs_q(user))
 
-    page = paginate(request, qs.order_by("-date", "-created_at"))
+    sort = Sort(request, {
+        "data": ("date", "created_at"), "disciplina": "subject__name", "turma": "class_group__name",
+        "titulo": "title", "situacao": "status",
+    }, "-data")
+    page = paginate(request, sort.apply(qs))
     # Média e regra acadêmica em duas consultas para a página inteira. Antes
     # eram duas POR LINHA: com 25 linhas, 50 consultas só para montar a lista.
     medias = dict(
@@ -248,6 +268,7 @@ def evaluation_list(request):
             "eval": ev,
             "avg": medias.get(ev.pk),
             "rule": regras.get(ev.subject_id),
+            "managed": (ev.class_group_id, ev.subject_id) in managed,
         }
         for ev in page
     ]
@@ -259,7 +280,15 @@ def evaluation_list(request):
             "page": page,
             "status": status,
             "student_id": student_id,
-            "can_edit_any": user.role == Role.PROFESSOR.value,
+            "can_edit_any": is_teacher,
+            "sort": sort,
+            "class_options": [(c.pk, c.name) for c in classes],
+            "subject_options": [(x.pk, x.name) for x in subjects],
+            "turma": turma,
+            "disciplina": disciplina,
+            "escopo": escopo,
+            "filtered": bool(status or turma or disciplina or escopo),
+            "clear_url": f"?estudante={student_id}" if student_id else "?",
         },
     )
 
@@ -352,10 +381,27 @@ def evaluation_grade(request, pk):
             return redirect("pedagogy:evaluation_grade", pk=ev.pk)
     else:
         form = GradeBatchForm(evaluation=ev, students=students)
+    # Resumo do que já está salvo (não do que está sendo digitado).
+    rule = AcademicRule.objects.filter(school=user.school, subject=ev.subject).first()
+    passing = rule.passing_grade if rule else Decimal("6.0")
+    saved = {g.student_id: g.value for g in Grade.objects.filter(evaluation=ev, student__in=students)
+             if g.value is not None}
+    values = list(saved.values())
+    rows = [
+        {"student": st, "field": form[name], "saved": saved.get(st.pk),
+         "below": saved.get(st.pk) is not None and saved[st.pk] < passing}
+        for st, name in form.grades
+    ]
     return render(
         request,
         "pedagogy/evaluation_grade.html",
-        {"form": form, "evaluation": ev, "students": students},
+        {
+            "form": form, "evaluation": ev, "students": students, "rows": rows,
+            "passing": passing, "has_rule": rule is not None,
+            "filled": len(values), "total": len(form.grades),
+            "mean": (sum(values) / len(values)) if values else None,
+            "below_count": sum(1 for v in values if v < passing),
+        },
     )
 
 
@@ -754,6 +800,11 @@ def activity_create(request):
     form = ActivityForm(
         request.POST or None, request.FILES or None, user=user, school=user.school
     )
+    # "Nova atividade" a partir de Minhas turmas já chega com a turma escolhida,
+    # desde que seja uma turma do próprio professor.
+    turma = id_param(request, "turma")
+    if request.method != "POST" and turma and form.fields["class_group"].queryset.filter(pk=turma).exists():
+        form.initial["class_group"] = int(turma)
     if request.method == "POST" and form.is_valid():
         publish = bool(request.POST.get("_publish"))
         with transaction.atomic():
@@ -1737,13 +1788,29 @@ def attendance_list(request):
             )
         }
     page = paginate(request, classes.order_by("-school_year__name", "name"))
+    # Situação da chamada por turma, em duas consultas para a página inteira.
+    today = timezone.localdate()
+    page_ids = [c.pk for c in page]
+    last = dict(
+        AttendanceRecord.objects.filter(class_group_id__in=page_ids)
+        .values_list("class_group").annotate(last=Max("date")).values_list("class_group", "last")
+    )
+    done_today = set(
+        AttendanceRecord.objects.filter(class_group_id__in=page_ids, date=today)
+        .values_list("class_group_id", flat=True).distinct()
+    )
+    rows = [{"class": c, "last": last.get(c.pk), "today": c.pk in done_today} for c in page]
     return render(
         request,
         "pedagogy/attendance_list.html",
         {
             "classes": page,
+            "rows": rows,
             "page": page,
             "can_register": user.role == Role.PROFESSOR.value,
+            "is_staff_view": user.role not in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value),
+            "school_day": today.weekday() < 5,
+            "pending_today": sum(1 for r in rows if not r["today"]),
             "current_ids": current_ids,
         },
     )
@@ -1914,7 +1981,12 @@ def occurrence_list(request):
     status = request.GET.get("status")
     if status in dict(Occurrence.Status.choices):
         qs = qs.filter(status=status)
-    page = paginate(request, qs.order_by("-date", "-created_at"))
+    q = request.GET.get("q", "").strip()
+    if q:
+        qs = qs.filter(name_q(q, "student__"))
+    sort = Sort(request, {"data": ("date", "created_at"), "estudante": ("student__first_name", "student__last_name"),
+                          "situacao": "status"}, "-data")
+    page = paginate(request, sort.apply(qs))
     return render(
         request,
         "pedagogy/occurrence_list.html",
@@ -1922,6 +1994,9 @@ def occurrence_list(request):
             "occurrences": page,
             "page": page,
             "status": status,
+            "q": q,
+            "sort": sort,
+            "filtered": bool(status or q),
             "student_id": student_id,
             "can_manage": acc.can_manage_occurrences(user),
             "occurrence_status_choices": Occurrence.Status.choices,
@@ -2190,7 +2265,12 @@ def justification_list(request):
     status = request.GET.get("status")
     if status in dict(AbsenceJustification.Status.choices):
         qs = qs.filter(status=status)
-    page = paginate(request, qs.order_by("-created_at"))
+    q = request.GET.get("q", "").strip()
+    if q:
+        qs = qs.filter(name_q(q, "student__"))
+    sort = Sort(request, {"enviada": "created_at", "estudante": ("student__first_name", "student__last_name"),
+                          "periodo": "start_date", "situacao": "status"}, "-enviada")
+    page = paginate(request, sort.apply(qs))
     return render(
         request,
         "pedagogy/justification_list.html",
@@ -2198,6 +2278,10 @@ def justification_list(request):
             "justifications": page,
             "page": page,
             "status": status,
+            "q": q,
+            "sort": sort,
+            "filtered": bool(status or q),
+            "student_id": student_id,
             "can_manage": acc.can_manage_justifications(user),
             "status_choices": AbsenceJustification.Status.choices,
         },
@@ -2249,7 +2333,8 @@ def justification_resolve(request, pk, decision):
         messages.warning(request, "Esta justificativa já foi analisada.")
         return redirect("pedagogy:justification_list")
     form = JustificationResolutionForm(request.POST)
-    note = form.data.get("note", "")
+    # O parecer vai para a família na notificação: texto limpo e de tamanho limitado.
+    note = (form.data.get("note") or "").strip()[:1000]
     with transaction.atomic():
         just.status = "aprovada" if decision == "aprovar" else "recusada"
         just.note = note
@@ -2305,9 +2390,18 @@ def academic_rule_edit(request, subject_id):
     user = request.user
     acc.require(acc.can_edit_school_config(user))
     subject = get_object_or_404(user.school.subjects.all(), pk=subject_id)
-    rule, _ = AcademicRule.objects.get_or_create(school=user.school, subject=subject)
+    # Sem get_or_create: um envio inválido criava a regra com a fórmula padrão,
+    # e a escola passava a ter uma fórmula que ninguém escolheu.
+    rule = AcademicRule.objects.filter(school=user.school, subject=subject).first() or AcademicRule(
+        school=user.school, subject=subject
+    )
     if request.method == "POST":
-        form = AcademicRuleForm(request.POST, instance=rule, school=user.school)
+        # A disciplina vem da URL. Antes ela também precisava vir no formulário,
+        # e a linha de edição da tela não a enviava: alterar uma regra
+        # existente falhava sempre com "Não foi possível salvar a regra".
+        data = request.POST.copy()
+        data["subject"] = str(subject.pk)
+        form = AcademicRuleForm(data, instance=rule, school=user.school)
         if form.is_valid():
             with transaction.atomic():
                 form.save()

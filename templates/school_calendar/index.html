@@ -21,7 +21,7 @@
   <form class="calendar-filters" method="get">
     <div class="filter-row">
       <label class="filter-label" for="cal-type">Tipo</label>
-      <select id="cal-type" name="type" class="form-select" onchange="this.form.submit()">
+      <select id="cal-type" name="type" class="form-select" data-autosubmit>
         <option value="">Todos</option>
         {% for value, label in kind_choices %}
           <option value="{{ value }}" {% if kind_filter == value %}selected{% endif %}>{{ label }}</option>
@@ -30,7 +30,7 @@
     </div>
     <div class="filter-row">
       <label class="filter-label" for="cal-class">Turma</label>
-      <select id="cal-class" name="class" class="form-select" onchange="this.form.submit()">
+      <select id="cal-class" name="class" class="form-select" data-autosubmit>
         <option value="">Todas</option>
         {% for c in classes %}
           <option value="{{ c.pk }}" {% if class_filter and class_filter.pk == c.pk %}selected{% endif %}>{{ c.name }}</option>
@@ -39,7 +39,7 @@
     </div>
     <div class="filter-row">
       <label class="filter-label" for="cal-subject">Disciplina</label>
-      <select id="cal-subject" name="subject" class="form-select" onchange="this.form.submit()">
+      <select id="cal-subject" name="subject" class="form-select" data-autosubmit>
         <option value="">Todas</option>
         {% for s in subjects %}
           <option value="{{ s.pk }}" {% if subject_filter and subject_filter.pk == s.pk %}selected{% endif %}>{{ s.name }}</option>
@@ -48,7 +48,7 @@
     </div>
     <div class="filter-row">
       <label class="filter-label" for="cal-student">Estudante</label>
-      <select id="cal-student" name="student" class="form-select" onchange="this.form.submit()">
+      <select id="cal-student" name="student" class="form-select" data-autosubmit>
         <option value="">Todos</option>
         {% if students %}
           {% for s in students %}
@@ -59,11 +59,11 @@
     </div>
     <div class="filter-row">
       <label class="filter-label" for="cal-start">De</label>
-      <input type="date" id="cal-start" name="start" class="form-control" value="{{ start|date:'Y-m-d' }}" onchange="this.form.submit()">
+      <input type="date" id="cal-start" name="start" class="form-control" value="{{ start|date:'Y-m-d' }}" data-autosubmit>
     </div>
     <div class="filter-row">
       <label class="filter-label" for="cal-end">Até</label>
-      <input type="date" id="cal-end" name="end" class="form-control" value="{{ end|date:'Y-m-d' }}" onchange="this.form.submit()">
+      <input type="date" id="cal-end" name="end" class="form-control" value="{{ end|date:'Y-m-d' }}" data-autosubmit>
     </div>
     <a class="btn btn-outline-secondary btn-sm ms-2" href="{% url 'school_calendar:calendar_index' %}">Limpar</a>
   </form>

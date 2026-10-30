@@ -1,55 +1,58 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Ocorrências — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<div class="page-head">
   <div>
-    <h1 class="h4 mb-0">Ocorrências</h1>
-    <p class="text-body-secondary small mb-0">
-      {% if user_role == ROLE_RESPONSAVEL %}Apenas ocorrências dos seus filhos.
-      {% elif user_role == ROLE_PROFESSOR %}Apenas estudantes das suas turmas.
-      {% else %}Histórico escolar com atualizações auditadas.{% endif %}
+    <h1>Ocorrências</h1>
+    <p>
+      {% if user_role == ROLE_RESPONSAVEL %}Fatos que a escola registrou sobre os seus filhos e o andamento de cada um.
+      {% elif user_role == ROLE_PROFESSOR %}Estudantes das suas turmas. A família vê cada ocorrência registrada.
+      {% else %}Histórico de ocorrências da escola. Toda mudança de situação fica registrada na auditoria.{% endif %}
     </p>
   </div>
   {% if can_manage %}
-    <a href="{% url 'pedagogy:occurrence_create' %}" class="btn btn-primary">+ Nova ocorrência</a>
+    <a href="{% url 'pedagogy:occurrence_create' %}" class="btn btn-primary">{% icon "plus" %}Registrar ocorrência</a>
   {% endif %}
 </div>
 
-<div class="card mb-3">
-  <div class="card-body py-2">
-    <form method="get" class="row g-2 align-items-center">
-      <div class="col-auto">
-        <label class="col-form-label small text-uppercase text-body-secondary">Situação</label>
-      </div>
-      <div class="col-auto">
-        <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-          <option value="">Todas</option>
-          {% for value, label in occurrence_status_choices %}
-          <option value="{{ value }}"{% if status == value %} selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-    </form>
-  </div>
-</div>
+<form method="get" class="filter-bar" aria-label="Filtrar ocorrências">
+  {% if student_id %}<input type="hidden" name="estudante" value="{{ student_id }}">{% endif %}
+  {% if request.GET.ordem %}<input type="hidden" name="ordem" value="{{ request.GET.ordem }}">{% endif %}
+  {% if not student_id %}{% include "partials/_filter_search.html" with label="Estudante" placeholder="Nome ou sobrenome" %}{% endif %}
+  {% include "partials/_filter_select.html" with name="status" label="Situação" options=occurrence_status_choices selected=status %}
+  {% include "partials/_filter_end.html" with count=page.paginator.count noun="ocorrência(s)" %}
+</form>
 
 <div class="card">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead><tr><th>Data</th><th>Estudante</th><th>Descrição</th><th>Situação</th><th>Registrada por</th><th class="text-end"></th></tr></thead>
+    <table class="table table-hover align-middle mb-0 table-stack">
+      <thead><tr>
+        {% sort_th sort "estudante" "Estudante" %}
+        {% sort_th sort "data" "Data" %}
+        <th scope="col">Descrição</th>
+        {% sort_th sort "situacao" "Situação" %}
+        <th scope="col">Registrada por</th>
+        <th scope="col" class="text-end"><span class="visually-hidden">Ações</span></th>
+      </tr></thead>
       <tbody>
         {% for o in occurrences %}
         <tr>
-          <td>{{ o.date|date:"d/m/Y" }}</td>
-          <td class="fw-semibold">{{ o.student.full_name }}</td>
-          <td class="text-truncate" style="max-width:320px">{{ o.description }}</td>
-          <td><span class="chip">{{ o.get_status_display }}</span></td>
+          <td class="fw-semibold"><a href="{% url 'pedagogy:occurrence_detail' o.pk %}" class="text-decoration-none">{{ o.student.full_name }}</a></td>
+          <td class="text-nowrap">{{ o.date|date:"d/m/Y" }}</td>
+          <td>{{ o.description|truncatechars:140 }}</td>
+          <td><span class="chip chip-state {% if o.status == 'concluida' %}text-success{% elif o.status == 'aberta' %}text-warning{% endif %}">{{ o.get_status_display }}</span></td>
           <td>{{ o.recorded_by.get_full_name|default:o.recorded_by.username|default:"—" }}</td>
-          <td class="text-end"><a href="{% url 'pedagogy:occurrence_detail' o.pk %}" class="btn btn-sm btn-outline-secondary">Ver</a></td>
+          <td class="text-end cell-actions"><a href="{% url 'pedagogy:occurrence_detail' o.pk %}" class="btn btn-sm btn-outline-secondary">Abrir</a></td>
         </tr>
         {% empty %}
-        <tr><td colspan="6" class="text-center text-body-secondary py-4">Nenhuma ocorrência.</td></tr>
+        <tr><td colspan="6">
+          <div class="empty-state py-4">{% icon "flag" %}
+            <strong>{% if filtered %}Nenhuma ocorrência com estes filtros{% else %}Nenhuma ocorrência registrada{% endif %}</strong>
+            {% if filtered %}<a href="?{% if student_id %}estudante={{ student_id }}{% endif %}">Limpar filtros</a>{% endif %}
+          </div>
+        </td></tr>
         {% endfor %}
       </tbody>
     </table>

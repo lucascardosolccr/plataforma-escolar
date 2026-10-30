@@ -3,17 +3,19 @@
 {% block title %}Atividades de casa — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<div class="page-head">
   <div>
-    <h1 class="h4 mb-0">Atividades de casa</h1>
-    <p class="text-body-secondary small mb-0">
+    <h1>Atividades de casa</h1>
+    <p>
       Tarefas publicadas por turma e disciplina. Publicar alcança automaticamente
       todos os estudantes com matrícula ativa na turma.
     </p>
   </div>
-  {% if can_manage %}
-    <a href="{% url 'pedagogy:activity_create' %}" class="btn btn-primary">+ Nova atividade</a>
+  <div class="page-actions">
+    {% if can_manage %}
+    <a href="{% url 'pedagogy:activity_create' %}" class="btn btn-primary">{% icon "plus" %}Nova atividade</a>
   {% endif %}
+  </div>
 </div>
 
 <div class="card mb-3">
@@ -93,7 +95,7 @@
               <a href="{% url 'pedagogy:activity_submissions' r.activity.pk %}" class="btn btn-sm btn-outline-primary">Entregas</a>
               <a href="{% url 'pedagogy:activity_edit' r.activity.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
             {% else %}
-              <a href="{% url 'pedagogy:activity_detail' r.activity.pk %}" class="btn btn-sm btn-outline-secondary">Ver</a>
+              <a href="{% url 'pedagogy:activity_detail' r.activity.pk %}" class="btn btn-sm btn-outline-secondary">Abrir</a>
             {% endif %}
           </td>
         </tr>

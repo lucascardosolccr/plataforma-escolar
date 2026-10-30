@@ -37,11 +37,17 @@ class SchoolYearForm(forms.ModelForm):
         )
         if cleaned.get("name") and dup.exists():
             self.add_error("name", "Já existe um ano letivo com este nome nesta escola.")
-        if cleaned.get("is_current"):
-            SchoolYear.objects.filter(school=self.school, is_current=True).exclude(
-                pk=self.instance.pk
-            ).update(is_current=False)
         return cleaned
+
+    def save(self, commit=True):
+        # Só aqui, depois de validado: no clean(), um formulário recusado já
+        # desmarcava o ano atual e a escola ficava sem ano corrente.
+        year = super().save(commit=commit)
+        if year.is_current:
+            SchoolYear.objects.filter(school=self.school, is_current=True).exclude(
+                pk=year.pk
+            ).update(is_current=False)
+        return year
 
 
 class ClassGroupForm(forms.ModelForm):

@@ -514,7 +514,8 @@
     $$("[data-mark-all]", form).forEach(function (btn) {
       btn.addEventListener("click", function () {
         $$("input[type=radio][value=" + btn.getAttribute("data-mark-all") + "]", form).forEach(function (r) { r.checked = true; });
-        count();
+        // "change" no formulário: atualiza a contagem e conta como alteração.
+        form.dispatchEvent(new Event("change", { bubbles: true }));
       });
     });
     count();
@@ -567,6 +568,32 @@
     });
   }
   renderFavorites();
+
+  /* ---------- Alterações não salvas ----------
+   * Quem lançou 30 notas ou uma chamada e clica num link do menu por engano
+   * perdia tudo sem aviso. Formulário POST alterado e ainda não enviado faz o
+   * navegador perguntar antes de sair. Fora: seleção em lote (data-bulk) e
+   * quem pedir data-no-guard. */
+  var dirtyForms = [];
+  function guarded(form) {
+    return form && form.tagName === "FORM" && form.method.toLowerCase() === "post" &&
+      !form.hasAttribute("data-bulk") && !form.hasAttribute("data-no-guard");
+  }
+  ["input", "change"].forEach(function (type) {
+    document.addEventListener(type, function (e) {
+      var form = e.target.form || (e.target.tagName === "FORM" ? e.target : null);
+      if (guarded(form) && dirtyForms.indexOf(form) < 0) dirtyForms.push(form);
+    });
+  });
+  document.addEventListener("submit", function (e) {
+    if (e.defaultPrevented) return;
+    dirtyForms = dirtyForms.filter(function (f) { return f !== e.target; });
+  });
+  window.addEventListener("beforeunload", function (e) {
+    if (!dirtyForms.length) return;
+    e.preventDefault();
+    e.returnValue = "";  // navegadores mais antigos só perguntam com isto
+  });
 
   /* ---------- Envio único de formulário ----------
    * Desabilita o botão DEPOIS que o envio começou (setTimeout): desabilitar

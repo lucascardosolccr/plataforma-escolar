@@ -324,6 +324,18 @@ class LoginThrottleTests(Round2Base):
         self.client.logout()
         self.assertEqual(self.post_login(user.username, PW, ip="10.0.0.9").status_code, 302)
 
+    def test_new_password_from_school_unlocks_the_account(self):
+        """A família errou 5 vezes, ligou na secretaria e recebeu uma senha
+        nova: tem de conseguir entrar já, não daqui a 15 minutos."""
+        resp_user = self.users[Role.RESPONSAVEL]
+        for _ in range(5):
+            self.post_login(resp_user.username, "errada", ip="10.0.0.5")
+        self.login(self.users[Role.SECRETARIA])
+        page = self.client.post(reverse("password_reset_user", args=[resp_user.pk]))
+        temp = page.context["temp_password"]
+        self.client.logout()
+        self.assertEqual(self.post_login(resp_user.username, temp, ip="10.0.0.5").status_code, 302)
+
     def test_many_failures_from_one_address_lock_that_address(self):
         for i in range(20):
             self.post_login(f"conta{i}", "x", ip="10.0.0.66")

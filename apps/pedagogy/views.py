@@ -2088,7 +2088,7 @@ def occurrence_list(request):
 def occurrence_create(request):
     user = request.user
     acc.require(acc.can_manage_occurrences(user))
-    form = OccurrenceForm(request.POST or None, school=user.school)
+    form = OccurrenceForm(request.POST or None, school=user.school, user=user)
     if request.method == "POST" and form.is_valid():
         student = form.cleaned_data["student"]
         acc.require(acc.can_manage_occurrences(user, student))
@@ -2172,7 +2172,7 @@ def observation_list(request):
 def observation_create(request):
     user = request.user
     acc.require(acc.can_manage_observations(user))
-    form = PedagogicalObservationForm(request.POST or None, school=user.school)
+    form = PedagogicalObservationForm(request.POST or None, school=user.school, user=user)
     if request.method == "POST" and form.is_valid():
         student = form.cleaned_data["student"]
         acc.require(acc.can_manage_observations(user, student=student))
@@ -2259,7 +2259,7 @@ def plan_list(request):
 def plan_create(request):
     user = request.user
     acc.require(acc.can_manage_plans(user))
-    form = InterventionPlanForm(request.POST or None, school=user.school)
+    form = InterventionPlanForm(request.POST or None, school=user.school, user=user)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             plan = form.save(commit=False)

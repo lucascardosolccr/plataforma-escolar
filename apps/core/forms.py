@@ -191,7 +191,19 @@ class ThrottledAuthenticationForm(AuthenticationForm):
 
         since = timezone.now() - timedelta(minutes=self.WINDOW_MINUTES)
         recent = AuditLog.objects.filter(action="login_failed", created_at__gte=since)
-        if recent.filter(target_type="login", target_id=username[:50]).count() >= self.MAX_PER_USERNAME:
+        # Senha nova dada pela escola zera a contagem da conta: quem errou,
+        # pediu ajuda e recebeu outra senha entra na hora, sem esperar.
+        by_name = recent.filter(target_type="login", target_id=username[:50])
+        account = User.objects.filter(username=username).only("pk").first()
+        if account:
+            reset = (
+                AuditLog.objects.filter(target_type="User", target_id=str(account.pk),
+                                        detail__startswith="Redefiniu a senha", created_at__gte=since)
+                .order_by("-created_at").values_list("created_at", flat=True).first()
+            )
+            if reset:
+                by_name = by_name.filter(created_at__gt=reset)
+        if by_name.count() >= self.MAX_PER_USERNAME:
             return True
         ip = self.request.META.get("REMOTE_ADDR") if self.request else None
         return bool(ip) and recent.filter(ip_address=ip).count() >= self.MAX_PER_IP

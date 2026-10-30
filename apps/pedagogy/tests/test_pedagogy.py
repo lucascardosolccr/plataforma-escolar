@@ -1060,7 +1060,10 @@ class OccurrenceTests(PedagogyBase):
             },
         )
         self.assertFalse(Occurrence.objects.filter(student=self.bea).exists())
-        self.assertEqual(resp.status_code, 403)
+        # Fora da turma o estudante nem aparece na lista: o envio forjado é
+        # recusado como escolha inválida (antes chegava à checagem e dava 403).
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("student", resp.context["form"].errors)
 
     def test_coord_creates_and_updates_with_history(self):
         self.login("coord")

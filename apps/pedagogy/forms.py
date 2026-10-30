@@ -24,6 +24,25 @@ from .models import (
 )
 
 
+def _students_for(user, school):
+    """Estudantes que a pessoa pode escolher num registro: o professor só vê
+    quem tem matrícula ativa nas turmas dele (a mesma regra conferida no
+    servidor ao salvar); antes a lista trazia a escola inteira e quem fosse
+    escolhido fora da turma dava erro 403."""
+    from apps.registry.access import students_visible_to
+
+    qs = school.students.all()
+    if user and user.role == Role.PROFESSOR.value:
+        qs = students_visible_to(user) or qs.none()
+    return qs.order_by("first_name", "last_name")
+
+
+def _not_future(value, message):
+    if value and value > timezone.localdate():
+        raise forms.ValidationError(message)
+    return value
+
+
 def _unlocalize(field):
     field.localize = False
     field.widget.is_localized = False
@@ -556,15 +575,18 @@ class OccurrenceForm(forms.ModelForm):
             "status": "Situação",
         }
 
-    def __init__(self, *args, school=None, **kwargs):
+    def __init__(self, *args, school=None, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.school = school
         if school:
-            self.fields["student"].queryset = school.students.all()
+            self.fields["student"].queryset = _students_for(user, school)
         self.fields["status"].required = False
         self.fields["status"].initial = Occurrence.Status.OPEN
         self.fields["date"].required = False
         self.fields["date"].initial = timezone.localdate()
+
+    def clean_date(self):
+        return _not_future(self.cleaned_data.get("date"), "A ocorrência não pode ter data futura.")
 
 
 class OccurrenceUpdateForm(forms.ModelForm):
@@ -593,12 +615,15 @@ class PedagogicalObservationForm(forms.ModelForm):
             "observed_at": "Data",
         }
 
-    def __init__(self, *args, school=None, student=None, **kwargs):
+    def __init__(self, *args, school=None, student=None, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.school = school
         self.student = student
         if school:
-            self.fields["student"].queryset = school.students.all()
+            # Na edição o estudante fica travado e precisa continuar na lista.
+            self.fields["student"].queryset = (
+                school.students.all() if self.instance.pk else _students_for(user, school)
+            )
             self.fields["subject"].queryset = school.subjects.all()
             self.fields["subject"].required = False
         if student:
@@ -607,6 +632,9 @@ class PedagogicalObservationForm(forms.ModelForm):
             self.fields["student"].disabled = True
         self.fields["observed_at"].required = False
         self.fields["observed_at"].initial = timezone.localdate()
+
+    def clean_observed_at(self):
+        return _not_future(self.cleaned_data.get("observed_at"), "A observação não pode ter data futura.")
 
 
 class InterventionPlanForm(forms.ModelForm):
@@ -620,11 +648,11 @@ class InterventionPlanForm(forms.ModelForm):
             "status": "Situação",
         }
 
-    def __init__(self, *args, school=None, **kwargs):
+    def __init__(self, *args, school=None, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.school = school
         if school:
-            self.fields["student"].queryset = school.students.all()
+            self.fields["student"].queryset = _students_for(user, school)
         self.fields["status"].required = False
         self.fields["status"].initial = InterventionPlan.Status.ACTIVE
 

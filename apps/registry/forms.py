@@ -32,6 +32,9 @@ class StudentForm(forms.ModelForm):
         cleaned = super().clean()
         if not cleaned.get("first_name", "").strip():
             self.add_error("first_name", "Informe o nome do estudante.")
+        birth = cleaned.get("birth_date")
+        if birth and birth > timezone.localdate():
+            self.add_error("birth_date", "A data de nascimento não pode ser futura.")
         return cleaned
 
 

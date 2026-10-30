@@ -271,3 +271,11 @@ def photo_exception_revoke(request, pk):
     exc.delete()
     messages.success(request, "Dispensa revogada: a pendência volta a aparecer.")
     return redirect("photo_pending")
+
+
+def pending_center(request):
+    """Central de pendências do usuário (todos os perfis)."""
+    from .pending import for_user
+
+    items = for_user(request.user)
+    return render(request, "core/pending.html", {"items": items, "total": sum(i["count"] for i in items)})

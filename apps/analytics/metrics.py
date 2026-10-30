@@ -277,6 +277,36 @@ _M = [
         "Mostra o que foi observado ao redor do plano.",
         "Associação no tempo, não efeito do plano: outras coisas mudam ao mesmo tempo.",
     ),
+    # ---------------- Cadastro, rotina e impressão ----------------
+    Metric(
+        "photo_coverage", "Estudantes ativos com foto", "Cadastro e rotina",
+        "Quanto do cadastro de estudantes já tem foto de identificação.",
+        "Estudantes ativos com foto ÷ estudantes ativos × 100. Dispensas justificadas são contadas à parte.",
+        "Fichas de estudantes; dispensas de fotografia.",
+        "Sem estudantes ativos, \"—\".",
+        "Pendência cadastral; não mede nada pedagógico.",
+        "A foto é só identificação visual; não há reconhecimento facial.",
+        "observado",
+    ),
+    Metric(
+        "school_days_left", "Dias letivos restantes", "Cadastro e rotina",
+        "Quantos dias de aula ainda há no ano, pelo calendário oficial.",
+        "Dias úteis de hoje ao fim do ano letivo, menos dias sem aula (feriado, recesso, férias, planejamento, "
+        "suspensão), mais dias letivos extras.",
+        "Ano letivo (início e fim); calendário oficial publicado.",
+        "Sem datas do ano ou sem calendário publicado, nada é mostrado (nunca uma conta inventada).",
+        "Muda sozinho quando o calendário muda.",
+        "Depende de o calendário estar completo e correto.",
+    ),
+    Metric(
+        "prints_on_time", "Impressões entregues no prazo", "Cadastro e rotina",
+        "Se a fila de impressão está atendendo os professores a tempo.",
+        "Pedidos entregues cuja impressão foi registrada até a data desejada ÷ pedidos entregues × 100.",
+        "Pedidos de impressão e o histórico de cada pedido.",
+        "Sem pedidos entregues no período, \"—\".",
+        "Ajuda a planejar a impressão; não avalia pessoas.",
+        "Depende de a secretaria registrar cada passo no dia em que acontece.",
+    ),
 ]
 
 METRICS = {m.key: m for m in _M}

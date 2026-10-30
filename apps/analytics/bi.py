@@ -1235,3 +1235,57 @@ def data_quality(school, period):
             ("Entregas no prazo antes de 30/10/2026", "A situação \"com atraso\" não existia; entregas antigas contam como no prazo."),
         ],
     }
+
+
+
+# --------------------------------------------------------------------------- #
+# Cadastro, rotina e impressão (Prompt 14)
+# --------------------------------------------------------------------------- #
+def operational_indicators(school, period):
+    """Indicadores dos módulos de cadastro, fotografia, calendário e impressão.
+
+    Mesmas regras do resto do BI: sem dado, ``None`` ("—"), nunca zero.
+    """
+    from django.db.models import Exists, OuterRef
+
+    from apps.printing.models import PrintEvent, PrintRequest
+    from apps.registry.models import ImportBatch, PhotoException, Student, StudentApplication
+    from apps.school_calendar.services import countdown
+
+    active = Student.objects.filter(school=school, status="ativo")
+    n_active = active.count()
+    exempt = PhotoException.objects.filter(student=OuterRef("pk"))
+    with_photo = active.exclude(photo="").exclude(photo__isnull=True).count()
+    exempted = active.filter(Q(photo="") | Q(photo__isnull=True)).filter(Exists(exempt)).count()
+    prints = PrintRequest.objects.filter(school=school, created_at__date__gte=period.start,
+                                         created_at__date__lte=period.end)
+    delivered = list(prints.filter(status=PrintRequest.Status.DELIVERED))
+    on_time = 0
+    for req in delivered:
+        ev = PrintEvent.objects.filter(request=req, to_status__in=["impressa", "retirada", "entregue"]) \
+            .order_by("created_at").first()
+        if ev and timezone.localtime(ev.created_at).date() <= req.desired_date:
+            on_time += 1
+    reviewed = prints.filter(status__in=["aguardando", "imprimindo", "impressa", "retirada", "entregue",
+                                         "rejeitada", "correcao"]).count()
+    cd = countdown(school)
+    return {
+        "students_active": n_active,
+        "photo_pct": pct(with_photo, n_active),
+        "photo_missing": n_active - with_photo - exempted,
+        "photo_exempt": exempted,
+        "applications_open": StudentApplication.objects.filter(school=school, status="enviado").count(),
+        "applications_period": StudentApplication.objects.filter(
+            school=school, submitted_at__date__gte=period.start, submitted_at__date__lte=period.end).count(),
+        "imports_period": ImportBatch.objects.filter(school=school, status="concluida",
+                                                     created_at__date__gte=period.start,
+                                                     created_at__date__lte=period.end).count(),
+        "prints_total": prints.exclude(status="rascunho").count(),
+        "prints_waiting_review": PrintRequest.objects.filter(school=school, status__in=["enviada", "analise"]).count(),
+        "prints_rejected_pct": pct(prints.filter(status__in=["rejeitada", "correcao"]).count(), reviewed),
+        "prints_on_time_pct": pct(on_time, len(delivered)),
+        "prints_copies": sum(prints.exclude(status__in=["rascunho", "rejeitada", "cancelada"])
+                             .values_list("copies", flat=True)),
+        "school_days_left": cd.get("year_left"),
+        "calendar_reason": cd.get("reason", ""),
+    }

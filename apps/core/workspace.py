@@ -263,6 +263,9 @@ def build(user):
                 school=user.school, status=StudentApplication.Status.SUBMITTED
             ).count()
     data["today_block"] = today_block(user, today)
+    from .pending import for_user as _pending
+
+    data["pending_total"] = sum(i["count"] for i in _pending(user))
     if role != Role.ESTUDANTE.value:
         from .views_photo import has_photo, photo_exempt
 

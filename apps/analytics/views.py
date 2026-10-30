@@ -394,6 +394,7 @@ def institutional_dashboard(request):
     min_attendance = round(100 - r["limit"], 1)
     return render(request, "analytics/institutional_dashboard.html", {
         "report": r,
+        "ops": bi.operational_indicators(school, period),
         "period": period,
         "presets": bi.PRESETS,
         # Chaves mantidas por compatibilidade com telas e testes anteriores.
@@ -841,4 +842,5 @@ def data_quality_dashboard(request):
     period = bi.resolve_period(request.GET, request.user.school)
     return render(request, "analytics/data_quality.html", {
         "q": bi.data_quality(request.user.school, period), "period": period, "presets": bi.PRESETS,
+        "ops": bi.operational_indicators(request.user.school, period),
     })

@@ -75,4 +75,8 @@ class InstitutionalNoDataTests(AnalyticsBase):
         self.login("dir")
         resp = self.client.get(reverse("analytics:institutional_dashboard"))
         self.assertIsNone(resp.context["attendance_rate"])
-        self.assertNotContains(resp, "0,0%")
+        # A seção de cadastro (Prompt 14) pode mostrar 0,0% de fotos, que é um
+        # zero verdadeiro (há estudantes, nenhum com foto); fica fora da conferência.
+        html = resp.content.decode()
+        html = html.split('id="rotina"')[0]
+        self.assertNotIn("0,0%", html)

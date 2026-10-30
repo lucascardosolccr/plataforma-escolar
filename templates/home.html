@@ -30,6 +30,9 @@
 <div class="callout mb-3">{% icon "user-round" %}<div>Sua conta ainda não tem foto de identificação. <a href="{% url 'my_photo' %}">Adicionar foto</a> leva um minuto e ajuda a escola a reconhecer quem é quem.</div></div>
 {% endif %}
 
+{% if ws.pending_total %}
+<a class="callout mb-3 text-decoration-none text-reset" href="{% url 'pending_center' %}">{% icon "list-checks" %}<span><strong>{{ ws.pending_total }} pendência{{ ws.pending_total|pluralize }}</strong> para resolver. Ver a lista.</span></a>
+{% endif %}
 {% include "core/_today.html" with t=ws.today_block %}
 
 {# ================= Responsável ================= #}

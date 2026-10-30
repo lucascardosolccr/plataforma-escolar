@@ -91,3 +91,11 @@ def metric_info(key):
 def cat(value, arg):
     """Concatena como texto (o ``add`` do Django devolve vazio com decimais)."""
     return f"{'' if value is None else value}{'' if arg is None else arg}"
+
+
+@register.filter
+def pct_txt(value, places=1):
+    """Percentual com "%"; ausência de dado vira "—" (sem "%" pendurado)."""
+    if value is None or value == "":
+        return "—"
+    return f"{num(value, places)}%"

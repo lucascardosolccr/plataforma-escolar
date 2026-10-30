@@ -86,5 +86,17 @@
   </div>
   <p class="bi-chart-note mt-2">Metas institucionais não são cadastradas na plataforma, então o alcance de metas não pode ser medido. Ver <a href="{% url 'analytics:methodology' %}">metodologia</a>.</p>
 </section>
+
+<section class="bi-section" id="rotina" aria-labelledby="h-r">
+  <h2 id="h-r">Cadastro, rotina e impressão</h2>
+  <div class="kpi-grid">
+    {% include "analytics/bi/_kpi.html" with label="Estudantes ativos com foto" value=ops.photo_pct|pct_txt icon="user-round" metric="photo_coverage" hint="Dispensas justificadas contam à parte" %}
+    {% include "analytics/bi/_kpi.html" with label="Pré-cadastros a analisar" value=ops.applications_open icon="id-card" %}
+    {% include "analytics/bi/_kpi.html" with label="Impressões aguardando análise" value=ops.prints_waiting_review icon="printer" %}
+    {% include "analytics/bi/_kpi.html" with label="Impressões entregues no prazo" value=ops.prints_on_time_pct|pct_txt icon="clock" metric="prints_on_time" hint="Impressa até a data desejada" %}
+    {% include "analytics/bi/_kpi.html" with label="Cópias pedidas no período" value=ops.prints_copies icon="file-text" %}
+    {% include "analytics/bi/_kpi.html" with label="Dias letivos até o fim do ano" value=ops.school_days_left|num:0 icon="calendar-days" metric="school_days_left" hint=ops.calendar_reason %}
+  </div>
+</section>
 {% endwith %}
 {% endblock %}

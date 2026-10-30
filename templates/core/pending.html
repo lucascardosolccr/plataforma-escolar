@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Pendências — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Pendências</h1>
+    <p>O que falta resolver, reunido de várias telas. Cada item leva direto aonde se resolve.</p>
+  </div>
+</div>
+{% if items %}
+<div class="card">
+  <ul class="feed">
+    {% for i in items %}
+    <li class="feed-item">
+      <span class="pending-count{% if i.tone == 'info' %} is-info{% endif %}" aria-hidden="true">{{ i.count }}</span>
+      <div class="feed-body flex-grow-1">
+        <p class="feed-title"><a href="{{ i.url }}" class="stretched-link text-decoration-none">{{ i.label }}</a> <span class="visually-hidden">: {{ i.count }}</span></p>
+        {% if i.hint %}<p class="feed-meta">{{ i.hint }}</p>{% endif %}
+      </div>
+      {% icon "chevron-right" %}
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% else %}
+<div class="empty-state py-5">{% icon "circle-check" %}<strong>Nada pendente por aqui</strong><span>Quando surgir algo para você resolver, aparece nesta lista.</span></div>
+{% endif %}
+{% endblock %}

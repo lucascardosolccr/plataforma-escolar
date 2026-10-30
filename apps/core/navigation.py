@@ -42,6 +42,8 @@ def _own_student_args(user):
 
 ITEMS = {
     "home": Item("Início", "home", "house", desc="Resumo do dia"),
+    "pending": Item("Pendências", "pending_center", "list-checks", ("pending_center",),
+                    "O que falta resolver, num lugar só"),
     "calendar": Item("Calendário", "school_calendar:calendar_index", "calendar-days",
                      ("school_calendar:",), "Prazos, avaliações e registros por data"),
     "menu": Item("Cardápio", "rotina:menu", "heart-handshake", ("rotina:menu",), "Lanche e refeições da semana"),
@@ -197,7 +199,7 @@ COMMUNICATION_STAFF = ("Comunicação", ["threads_staff", "announcements", "requ
 
 LAYOUT = {
     RESPONSAVEL: [
-        (None, ["home", "calendar", "schedule", "menu"]),
+        (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Acompanhamento", ["children", "fam_activities", "fam_works", "fam_grades", "fam_attendance"]),
         ("Escola", ["threads_family", "announcements", "requests", "notifications"]),
         ("Secretaria", ["fam_applications", "justify", "links"]),
@@ -211,14 +213,14 @@ LAYOUT = {
         ("Escola", ["announcements", "notifications"]),
     ],
     PROFESSOR: [
-        (None, ["home", "calendar", "schedule", "menu"]),
+        (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Sala de aula", ["classrooms", "attendance", "evaluations", "activities", "prints_mine", "works"]),
         ("Acompanhamento", ["occurrences", "observations", "justifications"]),
         COMMUNICATION_STAFF,
         ("Análises", ["teacher_bi", "subject_bi", "reports", "methodology"]),
     ],
     SECRETARIA: [
-        (None, ["home", "calendar", "schedule", "menu"]),
+        (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Secretaria", ["students", "applications", "student_import", "photos", "guardians", "staff_links",
                         "enrollments", "justifications"]),
         ("Acadêmico", ["classes", "subjects", "years", "official_calendar", "assignments", "teacher_perms"]),
@@ -228,7 +230,7 @@ LAYOUT = {
         ("Configuração", ["config", "registration_cfg"]),
     ],
     COORDENACAO: [
-        (None, ["home", "calendar", "schedule", "menu"]),
+        (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Coordenação", ["coord_panel", "prints_queue", "coord_records"]),
         ("Pedagógico", ["students", "evaluations", "activities", "works", "attendance",
                         "occurrences", "observations", "plans", "justifications"]),
@@ -237,7 +239,7 @@ LAYOUT = {
         ("Análises", ["institutional", "subject_bi", "quality", "reports", "methodology"]),
     ],
     DIRECAO: [
-        (None, ["home", "calendar", "schedule", "menu"]),
+        (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Coordenação", ["coord_panel", "prints_queue", "coord_designations"]),
         ("Análises", ["institutional", "subject_bi", "quality", "reports", "methodology"]),
         ("Pedagógico", ["students", "evaluations", "activities", "works", "attendance",
@@ -247,7 +249,7 @@ LAYOUT = {
         ("Configuração", ["registration_cfg", "photos", "notif_rules"]),
     ],
     ADMIN: [
-        (None, ["home", "calendar", "schedule", "menu"]),
+        (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Administração", ["users", "coord_designations", "config", "registration_cfg", "notif_rules"]),
         ("Cadastro", ["students", "applications", "student_import", "photos", "guardians", "staff_links",
                       "enrollments"]),

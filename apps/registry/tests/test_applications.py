@@ -257,3 +257,38 @@ class ChildPhotoTests(AppBase):
         url = reverse("communication:request_create") + f"?categoria=cadastro&estudante={self.child.pk}"
         form = self.client.get(url).context["form"]
         self.assertEqual(form.initial, {"category": "cadastro", "student": self.child.pk})
+
+
+class RetentionAndExportAuditTests(AppBase):
+    def test_purge_removes_files_of_old_refused_applications_only(self):
+        from datetime import timedelta
+
+        from django.core.management import call_command
+        from django.core.files.uploadedfile import SimpleUploadedFile as F
+
+        from apps.registry.models import ApplicationDocument
+
+        old = StudentApplication.objects.create(school=self.school, guardian=self.fam, status="recusado",
+                                                first_name="Velho")
+        ApplicationDocument.objects.create(application=old, kind="certidao", original_name="c.pdf",
+                                           file=F("c.pdf", b"%PDF-1.4"))
+        kept = StudentApplication.objects.create(school=self.school, guardian=self.fam, status="aprovado",
+                                                 first_name="Aprovado")
+        ApplicationDocument.objects.create(application=kept, kind="certidao", original_name="d.pdf",
+                                           file=F("d.pdf", b"%PDF-1.4"))
+        StudentApplication.objects.filter(pk__in=[old.pk, kept.pk]).update(
+            updated_at=timezone.now() - timedelta(days=200))
+        call_command("purgeapplications", "--simular")
+        self.assertEqual(ApplicationDocument.objects.count(), 2)
+        call_command("purgeapplications")
+        self.assertEqual(list(ApplicationDocument.objects.values_list("application_id", flat=True)), [kept.pk])
+        self.assertTrue(StudentApplication.objects.filter(pk=old.pk).exists())  # o pedido fica, sem arquivos
+
+    def test_rejected_rows_download_is_audited(self):
+        from apps.core.models import AuditLog
+        from apps.registry.models import ImportBatch
+
+        batch = ImportBatch.objects.create(school=self.school, filename="x.csv", rows="[]")
+        self.login(self.sec)
+        self.client.get(reverse("student_import_rejected", args=[batch.pk]))
+        self.assertTrue(AuditLog.objects.filter(action="export", target_type="ImportBatch").exists())

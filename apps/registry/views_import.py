@@ -121,6 +121,9 @@ def import_confirm(request, batch_id):
 def import_rejected(request, batch_id):
     _require(request.user)
     batch = get_object_or_404(ImportBatch, pk=batch_id, school=request.user.school)
+    # Traz nomes e nascimentos de crianças: fica registrado como exportação.
+    create_audit_log(user=request.user, action="export", request=request, target=batch,
+                     detail=f"Baixou as linhas com erro da importação {batch.filename}")
     resp = HttpResponse(importer.rejected_xlsx(batch), content_type=XLSX)
     resp["Content-Disposition"] = f'attachment; filename="rejeitados-importacao-{batch.pk}.xlsx"'
     return resp

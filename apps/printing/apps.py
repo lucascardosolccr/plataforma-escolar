@@ -1,0 +1,9 @@
+"""Agendamento e fila de impressão de atividades."""
+
+from django.apps import AppConfig
+
+
+class PrintingConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "apps.printing"
+    verbose_name = "Impressão de atividades"

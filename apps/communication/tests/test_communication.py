@@ -107,6 +107,7 @@ class NotificationEventTests(CommunicationBase):
             {
                 "class_group": self.turma.pk,
                 "subject": self.mat.pk,
+                "class_date": "2026-03-20",
                 "title": "Tarefa de casa",
                 "description": "Resolver os exercícios 1 a 10.",
                 "deadline": "2026-04-10",
@@ -129,6 +130,7 @@ class NotificationEventTests(CommunicationBase):
             {
                 "class_group": self.turma.pk,
                 "subject": self.mat.pk,
+                "class_date": "2026-03-20",
                 "title": "Ainda rascunho",
                 "description": "Texto em elaboração.",
                 "published_date": "2026-03-01",

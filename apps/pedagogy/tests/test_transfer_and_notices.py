@@ -255,6 +255,7 @@ class PublicationNoticeTests(PedagogyBase):
         data = {
             "class_group": self.turma.pk,
             "subject": self.mat.pk,
+            "class_date": "2026-03-20",
             "title": "Leitura dirigida",
             "description": "Ler as páginas 10 a 20.",
             "published_date": published_date.isoformat(),
@@ -308,6 +309,7 @@ class PublicationNoticeTests(PedagogyBase):
             {
                 "class_group": self.turma.pk,
                 "subject": self.mat.pk,
+                "class_date": "2026-03-20",
                 "title": "Rascunho",
                 "description": "Ainda não.",
                 "published_date": self.today.isoformat(),

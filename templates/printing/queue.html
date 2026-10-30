@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Fila de impressão — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Fila de impressão</h1>
+    <p>Pedidos dos professores por data desejada e prioridade. A coordenação analisa; a secretaria imprime e entrega.</p>
+  </div>
+</div>
+<nav aria-label="Etapa" class="d-flex flex-wrap gap-2 mb-3">
+  <a href="?ver=analise" class="summary-pill{% if view == 'analise' %} active{% endif %}">Para análise <span class="summary-count">{{ counts.analise }}</span></a>
+  <a href="?ver=impressao" class="summary-pill{% if view == 'impressao' %} active{% endif %}">Para imprimir e entregar <span class="summary-count">{{ counts.impressao }}</span></a>
+  <a href="?ver=concluidas" class="summary-pill{% if view == 'concluidas' %} active{% endif %}">Entregues <span class="summary-count">{{ counts.concluidas }}</span></a>
+  <a href="?ver=encerradas" class="summary-pill{% if view == 'encerradas' %} active{% endif %}">Correção, recusadas e canceladas <span class="summary-count">{{ counts.encerradas }}</span></a>
+  <a href="?ver=todas" class="summary-pill{% if view == 'todas' %} active{% endif %}">Histórico completo</a>
+</nav>
+<form method="get" class="filter-bar" aria-label="Filtrar">
+  <input type="hidden" name="ver" value="{{ view }}">
+  {% include "partials/_filter_search.html" with label="Buscar" placeholder="Atividade, turma ou professor" %}
+  <div class="filter-field form-check align-self-end mb-2"><input class="form-check-input" type="checkbox" id="f-alta" name="prioridade" value="alta"{% if high %} checked{% endif %} data-autosubmit><label class="form-check-label" for="f-alta">Só prioridade alta</label></div>
+  {% include "partials/_filter_end.html" with filtered=q count=page.paginator.count noun="pedido(s)" %}
+</form>
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 table-stack">
+      <thead><tr><th>Para</th><th>Atividade</th><th>Professor</th><th>Cópias</th><th>Situação</th><th><span class="visually-hidden">Ações</span></th></tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td>{{ r.desired_date|date:"d/m" }}{% if r.desired_date < today and r.status != "entregue" %} <span class="priority-alta">atrasado</span>{% elif r.priority == "alta" %} <span class="priority-alta">alta</span>{% endif %}<span class="d-block small text-body-secondary">aplicação {{ r.application_date|date:"d/m" }}</span></td>
+          <td data-label="Atividade" class="fw-semibold">{{ r.activity.title }}<span class="d-block small text-body-secondary fw-normal">{{ r.activity.class_group.name }} · {{ r.activity.subject.name }}</span></td>
+          <td data-label="Professor">{{ r.requested_by.get_full_name|default:r.requested_by.username }}</td>
+          <td data-label="Cópias">{{ r.copies }}{% if r.color %} · cor{% endif %}{% if r.duplex %} · f/v{% endif %}</td>
+          <td data-label="Situação"><span class="chip chip-state state-{{ r.status }}">{{ r.get_status_display }}</span></td>
+          <td class="text-end cell-actions"><a class="btn btn-sm btn-outline-secondary" href="{% url 'printing:detail' r.pk %}">Abrir</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6"><div class="empty-state py-4">{% icon "printer" %}<strong>Nada nesta etapa</strong></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/_pager.html" %}
+{% endblock %}

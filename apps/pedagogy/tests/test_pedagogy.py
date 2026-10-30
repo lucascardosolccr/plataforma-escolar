@@ -230,6 +230,7 @@ class ActivityTests(PedagogyBase):
         data = {
             "class_group": self.turma.pk,
             "subject": self.mat.pk,
+            "class_date": "2026-03-20",
             "title": "Trabalho de geometria",
             "description": "Resolver os exercícios 1 a 10 do caderno.",
             "published_date": "2026-03-01",
@@ -837,6 +838,7 @@ class ActivityAttachmentTests(PedagogyBase):
             {
                 "class_group": self.turma.pk,
                 "subject": self.mat.pk,
+                "class_date": "2026-03-20",
                 "title": "Com anexo",
                 "description": "Ver o material.",
                 "published_date": "2026-03-01",
@@ -862,6 +864,7 @@ class ActivityAttachmentTests(PedagogyBase):
             {
                 "class_group": self.turma.pk,
                 "subject": self.mat.pk,
+                "class_date": "2026-03-20",
                 "title": "Com executavel",
                 "description": "Tentativa.",
                 "published_date": "2026-03-01",
@@ -880,6 +883,7 @@ class ActivityAttachmentTests(PedagogyBase):
             {
                 "class_group": self.turma.pk,
                 "subject": self.mat.pk,
+                "class_date": "2026-03-20",
                 "title": title,
                 "description": "Tentativa.",
                 "published_date": "2026-03-01",

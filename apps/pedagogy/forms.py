@@ -193,12 +193,15 @@ class ActivityForm(forms.ModelForm):
             "class_group",
             "subject",
             "title",
+            "content",
+            "objective",
             "description",
             "materials",
             "criteria",
             "class_date",
             "published_date",
             "deadline",
+            "internal_notes",
         ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 5}),
@@ -245,6 +248,11 @@ class ActivityForm(forms.ModelForm):
             self.fields["subject"].queryset = school.subjects.filter(
                 pk__in=teacher_subject_ids(user, edit=True)
             )
+        # Data de aplicação obrigatória nas atividades novas (Prompt 14): é ela
+        # que entra no calendário e orienta a fila de impressão.
+        self.fields["class_date"].required = not self.instance.pk
+        self.fields["internal_notes"].help_text = "Só a equipe vê (coordenação, impressão). A família nunca vê."
+        self.fields["internal_notes"].widget = forms.Textarea(attrs={"rows": 2})
         if self.instance.pk and self.instance.status != Activity.Status.DRAFT:
             # Mudar a turma de uma atividade já publicada a tiraria em silêncio
             # da família que a recebeu e a entregaria à outra turma sem aviso.

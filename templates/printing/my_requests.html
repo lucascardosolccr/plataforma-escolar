@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Atividades e impressões — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Atividades e impressões</h1>
+    <p>Peça a impressão das suas atividades. A coordenação analisa e a secretaria imprime; você acompanha cada passo aqui.</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'pedagogy:activity_create' %}">{% icon "plus" %}Nova atividade</a>
+</div>
+
+<div class="row g-3">
+  <div class="col-xl-7">
+    <div class="card">
+      <div class="card-header bg-transparent"><h2 class="h6 mb-0">Meus pedidos de impressão</h2></div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 table-stack">
+          <thead><tr><th>Atividade</th><th>Aplicação</th><th>Cópias</th><th>Situação</th><th><span class="visually-hidden">Ações</span></th></tr></thead>
+          <tbody>
+            {% for r in requests %}
+            <tr>
+              <td class="fw-semibold">{{ r.activity.title }}<span class="d-block small text-body-secondary fw-normal">{{ r.activity.class_group.name }} · {{ r.activity.subject.name }}</span></td>
+              <td data-label="Aplicação">{{ r.application_date|date:"d/m" }}{% if r.priority == "alta" %} <span class="priority-alta">· alta</span>{% endif %}</td>
+              <td data-label="Cópias">{{ r.copies }}</td>
+              <td data-label="Situação"><span class="chip chip-state state-{{ r.status }}">{{ r.get_status_display }}</span></td>
+              <td class="text-end cell-actions"><a class="btn btn-sm btn-outline-secondary" href="{% url 'printing:detail' r.pk %}">Abrir</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5"><div class="empty-state py-4">{% icon "printer" %}<strong>Nenhum pedido ainda</strong><span>Escolha uma atividade ao lado para pedir a impressão.</span></div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-5">
+    <div class="card">
+      <div class="card-header bg-transparent"><h2 class="h6 mb-0">Suas atividades</h2></div>
+      <ul class="feed">
+        {% for a in activities %}
+        <li class="feed-item">
+          <div class="feed-body flex-grow-1"><p class="feed-title"><a href="{% url 'pedagogy:activity_detail' a.pk %}">{{ a.title }}</a></p>
+            <p class="feed-meta">{{ a.class_group.name }} · {{ a.subject.name }} · aplicação {{ a.class_date|date:"d/m"|default:"não informada" }}{% if a.status == "rascunho" %} · rascunho{% endif %}</p></div>
+          <a class="btn btn-sm btn-outline-primary" href="{% url 'printing:create' %}?atividade={{ a.pk }}">{% icon "printer" %}Pedir impressão</a>
+        </li>
+        {% empty %}<li><div class="empty-state py-3"><span>Nenhuma atividade nas suas turmas.</span></div></li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Pedido de impressão — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  {% url 'printing:mine' as back %}
+  {% include "partials/_form_head.html" with back_url=back back_label="Atividades e impressões" heading="Pedido de impressão" subheading=activity.title %}
+  <p class="form-lead">{{ activity.class_group.name }} · {{ activity.subject.name }} · {{ students }} estudante{{ students|pluralize }} ativo{{ students|pluralize }} na turma.</p>
+  {% if req.status == "correcao" and req.decision_note %}<div class="alert alert-warning"><strong>A coordenação pediu correção:</strong> {{ req.decision_note }}</div>{% endif %}
+  <form method="post" enctype="multipart/form-data" class="card form-card" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="atividade" value="{{ activity.pk }}">
+    <div class="card-body">
+      {% include "partials/_form_fields.html" with f=form %}
+      <p class="small text-body-secondary mb-0">Aplicação em até 2 dias vira prioridade alta automaticamente.</p>
+    </div>
+    <div class="form-actions">
+      <a href="{{ back }}" class="btn btn-outline-secondary">Cancelar</a>
+      <button type="submit" name="send" value="0" class="btn btn-outline-secondary">Salvar rascunho</button>
+      <button type="submit" name="send" value="1" class="btn btn-primary">{% icon "send" %}Enviar para a coordenação</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

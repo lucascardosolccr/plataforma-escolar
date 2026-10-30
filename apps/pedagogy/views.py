@@ -836,6 +836,10 @@ def activity_detail(request, pk):
             "today": timezone.localdate(),
             "reach": _enrolled_students(act.class_group).count(),
             "can_manage": acc.can_manage_activities(user, act.class_group, act.subject),
+            # Observações internas: só equipe (nunca família nem estudante).
+            "is_staff_view": user.role not in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value),
+            "print_requests": act.print_requests.order_by("-created_at")[:5]
+            if user.role not in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value) else [],
         },
     )
 

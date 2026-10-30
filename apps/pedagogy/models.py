@@ -186,6 +186,10 @@ class Activity(FamilyVisibility, models.Model):
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, verbose_name="disciplina")
     title = models.CharField("título", max_length=200)
     description = models.TextField("instruções", blank=True)
+    content = models.CharField("conteúdo trabalhado", max_length=200, blank=True)
+    objective = models.CharField("objetivo pedagógico", max_length=300, blank=True)
+    # Só para a equipe (professor, coordenação, impressão): nunca aparece à família.
+    internal_notes = models.TextField("observações internas", blank=True)
     criteria = models.TextField("critérios de avaliação", blank=True)
     materials = models.TextField(
         "materiais necessários e orientações complementares", blank=True
@@ -193,10 +197,10 @@ class Activity(FamilyVisibility, models.Model):
     deadline = models.DateField("data de entrega", null=True, blank=True)
     published_date = models.DateField("data de publicação", default=timezone.localdate)
     class_date = models.DateField(
-        "data da aula de referência",
+        "data de aplicação",
         null=True,
         blank=True,
-        help_text="Aula a que a atividade se refere, quando fizer sentido.",
+        help_text="Dia em que a atividade será aplicada ou trabalhada em aula.",
     )
     status = models.CharField(
         "situação", max_length=10, choices=Status.choices, default=Status.PUBLISHED

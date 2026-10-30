@@ -301,6 +301,37 @@ def _collect_events(user, start, end, class_filter=None, subject_filter=None,
                 "school_id": j.school_id,
             })
 
+    # ---------- Aplicação de atividades em sala (equipe) ----------
+    if (kind_filter is None or kind_filter == "activity") and user.role not in (
+        Role.RESPONSAVEL.value, Role.ESTUDANTE.value
+    ):
+        qs = _scoped(
+            Activity.objects.filter(school=user.school, class_date__isnull=False)
+            .exclude(status=Activity.Status.CANCELED),
+            user, Activity,
+        ).select_related("class_group", "subject")
+        if start:
+            qs = qs.filter(class_date__gte=start)
+        if end:
+            qs = qs.filter(class_date__lte=end)
+        if class_filter:
+            qs = qs.filter(class_group=class_filter)
+        if subject_filter:
+            qs = qs.filter(subject=subject_filter)
+        for act in qs:
+            if not scope.activity_visible(act):
+                continue
+            events.append({
+                "kind": "activity",
+                "kind_label": "Aplicação em aula",
+                "title": act.title,
+                "date": act.class_date,
+                "date_label": "aplicação",
+                "subtitle": f"{act.class_group.name} · {act.subject.name}",
+                "url": reverse("pedagogy:activity_detail", args=[act.pk]),
+                "school_id": act.school_id,
+            })
+
     # ---------- Calendário oficial (feriados, férias, reuniões...) ----------
     if kind_filter is None or kind_filter == "school":
         from .services import events_for_user

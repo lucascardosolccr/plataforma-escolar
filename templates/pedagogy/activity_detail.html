@@ -62,6 +62,12 @@
   <div class="col-lg-8">
     <div class="card h-100">
       <div class="card-body">
+        {% if activity.content or activity.objective %}
+        <dl class="review-list mb-3">
+          {% if activity.content %}<dt>Conteúdo</dt><dd>{{ activity.content }}</dd>{% endif %}
+          {% if activity.objective %}<dt>Objetivo</dt><dd>{{ activity.objective }}</dd>{% endif %}
+        </dl>
+        {% endif %}
         <h2 class="h6 text-body-secondary mb-2">Instruções</h2>
         {% if activity.description %}
           <div class="activity-instructions mb-0">{{ activity.description }}</div>
@@ -80,6 +86,11 @@
           <h2 class="h6 text-body-secondary mb-2">Critérios de avaliação</h2>
           <div class="activity-instructions mb-0">{{ activity.criteria }}</div>
         {% endif %}
+        {% if is_staff_view and activity.internal_notes %}
+          <hr>
+          <h2 class="h6 text-body-secondary mb-2">Observações internas <span class="chip">só equipe</span></h2>
+          <div class="activity-instructions mb-0">{{ activity.internal_notes }}</div>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -87,6 +98,8 @@
   <div class="col-lg-4">
     <div class="card mb-3">
       <div class="card-body">
+        {% if can_manage %}<a class="btn btn-outline-primary btn-sm w-100 mb-3" href="{% url 'printing:create' %}?atividade={{ activity.pk }}">{% load ui %}{% icon "printer" %}Pedir impressão</a>{% endif %}
+        {% for p in print_requests %}<p class="small mb-1"><a href="{% url 'printing:detail' p.pk %}">Impressão: {{ p.get_status_display }}</a> · {{ p.copies }} cópias</p>{% endfor %}
         <h2 class="h6 text-body-secondary mb-3">Datas</h2>
         <dl class="row small mb-0 g-0">
           <dt class="col-6 fw-normal text-body-secondary">Publicação</dt>
@@ -96,7 +109,7 @@
             {% if activity.deadline %}<strong>{{ activity.deadline|date:"d/m/Y" }}</strong>{% else %}—{% endif %}
           </dd>
           {% if activity.class_date %}
-            <dt class="col-6 fw-normal text-body-secondary">Aula de referência</dt>
+            <dt class="col-6 fw-normal text-body-secondary">Aplicação</dt>
             <dd class="col-6 mb-0">{{ activity.class_date|date:"d/m/Y" }}</dd>
           {% endif %}
         </dl>

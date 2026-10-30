@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Impressão: {{ req.activity.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% if user_role == ROLE_PROFESSOR %}{% url 'printing:mine' %}{% else %}{% url 'printing:queue' %}{% endif %}" class="back-link">{% icon "arrow-left" %}{% if user_role == ROLE_PROFESSOR %}Atividades e impressões{% else %}Fila de impressão{% endif %}</a>
+    <h1>{{ req.activity.title }}</h1>
+    <p>{{ req.activity.class_group.name }} · {{ req.activity.subject.name }} · pedido por {{ req.requested_by.get_full_name|default:req.requested_by.username }} · <span class="chip chip-state state-{{ req.status }}">{{ req.get_status_display }}</span></p>
+  </div>
+  {% if can_edit %}<a class="btn btn-outline-secondary" href="{% url 'printing:edit' req.pk %}">{% icon "pencil" %}Editar</a>{% endif %}
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3"><div class="card-body">
+      <dl class="review-list">
+        <dt>Aplicação</dt><dd>{{ req.application_date|date:"l, d/m/Y" }}</dd>
+        <dt>Impressão para</dt><dd>{{ req.desired_date|date:"l, d/m/Y" }}{% if req.priority == "alta" %} <span class="priority-alta">· prioridade alta</span>{% endif %}</dd>
+        <dt>Cópias</dt><dd>{{ req.copies }}{% if req.pages %} × {{ req.pages }} página{{ req.pages|pluralize }}{% endif %}{% if req.total_sheets %} · {{ req.total_sheets }} folha{{ req.total_sheets|pluralize }}{% endif %}</dd>
+        <dt>Formato</dt><dd>{% if req.duplex %}Frente e verso{% else %}Só frente{% endif %} · {% if req.color %}colorida{% else %}preto e branco{% endif %}</dd>
+        <dt>Arquivo</dt><dd>{% if req.file or req.attachment %}<a href="{% url 'printing:file' req.pk %}">{% icon "download" %}{% if req.file %}{{ req.file_name|default:"arquivo" }}{% else %}{{ req.attachment.original_name }}{% endif %}</a>{% else %}—{% endif %}</dd>
+        {% if req.notes %}<dt>Observações</dt><dd>{{ req.notes|linebreaksbr }}</dd>{% endif %}
+        {% if req.decision_note %}<dt>Coordenação</dt><dd>{{ req.decision_note|linebreaksbr }}</dd>{% endif %}
+      </dl>
+      <p class="small mb-0 mt-2"><a href="{% url 'pedagogy:activity_detail' req.activity.pk %}">Abrir a atividade</a></p>
+    </div></div>
+    {% if actions %}
+    <div class="card"><div class="card-body">
+      <h2 class="h6">O que fazer agora</h2>
+      <form method="post" action="{% url 'printing:act' req.pk %}">
+        {% csrf_token %}
+        <label for="note" class="form-label">Justificativa / observação {% if actions|length > 1 %}(obrigatória para pedir correção ou recusar){% endif %}</label>
+        <textarea id="note" name="note" class="form-control mb-2" rows="2" maxlength="1000"></textarea>
+        <div class="d-flex flex-wrap gap-2">
+          {% for key, label, needs_note in actions %}
+          <button type="submit" name="action" value="{{ key }}" class="btn {% if key == 'approve' or key == 'submit' or key == 'deliver' or key == 'start' or key == 'printed' or key == 'ready' %}btn-primary{% elif key == 'reject' or key == 'cancel' %}btn-outline-danger{% else %}btn-outline-secondary{% endif %}"{% if key == "cancel" or key == "reject" %} data-confirm="A decisão fica no histórico do pedido." data-confirm-title="{{ label }}?" data-confirm-ok="{{ label }}" data-confirm-tone="danger"{% endif %}>{{ label }}</button>
+          {% endfor %}
+        </div>
+      </form>
+    </div></div>
+    {% endif %}
+  </div>
+  <div class="col-lg-5">
+    <div class="card"><div class="card-body">
+      <h2 class="h6">Histórico</h2>
+      <ol class="history">
+        <li><time>{{ req.created_at|date:"d/m/Y H:i" }}</time>Pedido criado</li>
+        {% for e in events %}<li><time>{{ e.created_at|date:"d/m/Y H:i" }} · {{ e.actor.get_full_name|default:e.actor.username }}</time>{{ e.to_label }}{% if e.note %}<span class="d-block text-body-secondary">{{ e.note }}</span>{% endif %}</li>{% endfor %}
+      </ol>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

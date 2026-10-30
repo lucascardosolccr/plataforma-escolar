@@ -120,8 +120,30 @@ def line_chart(points, *, y_min=0.0, y_max=None, suffix="", width=520, height=22
     )
 
 
+def _short(text, limit):
+    text = str(text)
+    return text if len(text) <= limit else text[: max(1, limit - 1)] + "…"
+
+
+def _bar_tick(cx, height, item, slot):
+    # Cerca de 6,5 px por caractere na fonte do eixo: o corte acompanha a
+    # largura da faixa de cada barra, para rótulos vizinhos não se sobreporem.
+    limit = max(4, int(slot / 6.5))
+    first = escape(_short(item.get("tick") or item["label"], limit))
+    if not item.get("sub"):
+        return f'<text x="{cx:.1f}" y="{height - 14}" class="chart-tick" text-anchor="middle">{first}</text>'
+    return (
+        f'<text x="{cx:.1f}" y="{height - 22}" class="chart-tick" text-anchor="middle">{first}'
+        f'<tspan x="{cx:.1f}" dy="13">{escape(_short(item["sub"], limit))}</tspan></text>'
+    )
+
+
 def bar_chart(items, *, max_value=None, suffix="", width=520, height=220):
-    """items: lista de {"label", "value", "below" (opcional bool)} — barras verticais."""
+    """items: lista de {"label", "value", "below" (opcional bool)} — barras verticais.
+
+    "tick" e "sub" (opcionais) dão o rótulo curto do eixo em uma ou duas
+    linhas; o rótulo completo fica no <title> e no aria-label.
+    """
     values = [i["value"] for i in items if i.get("value") is not None]
     if not values:
         return _empty()
@@ -158,7 +180,7 @@ def bar_chart(items, *, max_value=None, suffix="", width=520, height=220):
         bars.append(
             barra
             + f'<text x="{cx:.1f}" y="{by - 5:.1f}" class="chart-value" text-anchor="middle">{_fmt(v)}</text>'
-            f'<text x="{cx:.1f}" y="{height - 14}" class="chart-tick" text-anchor="middle">{escape(str(item["label"]))[:14]}</text>'
+            + _bar_tick(cx, height, item, slot)
         )
     grid = (
         _grid_lines(pad_l, pad_t, plot_w, plot_h) +

@@ -225,12 +225,12 @@
   <div class="row g-3">
     <div class="col-lg-5">
       <div class="card mb-3"><div class="card-header">Comparação entre períodos</div>
-        <table class="table mb-0"><thead><tr><th>Indicador</th><th class="text-end">Anterior</th><th class="text-end">Atual</th><th class="text-end">Variação</th></tr></thead>
+        <div class="table-responsive"><table class="table mb-0"><thead><tr><th>Indicador</th><th class="text-end">Anterior</th><th class="text-end">Atual</th><th class="text-end">Variação</th></tr></thead>
           <tbody>
             <tr><td>Média geral</td><td class="text-end">{{ acad.prev_overall|num:2 }}</td><td class="text-end fw-bold">{{ acad.overall|num:2 }}</td><td class="text-end">{{ acad.overall_delta|signed:2 }}</td></tr>
             <tr><td>Frequência (%)</td><td class="text-end">{{ att.prev_percent|num:1 }}</td><td class="text-end fw-bold">{{ att.percent|num:1 }}</td><td class="text-end">{{ att.delta|signed:1 }}</td></tr>
             <tr><td>Taxa de entrega (%)</td><td class="text-end">{{ act.prev_rate|num:1 }}</td><td class="text-end fw-bold">{{ act.delivery_rate|num:1 }}</td><td class="text-end">{{ act.delta|signed:1 }}</td></tr>
-          </tbody></table></div>
+          </tbody></table></div></div>
       <div class="card"><div class="card-header">Matrículas</div>
         <ul class="list-group list-group-flush">{% for e in report.enrollments %}<li class="list-group-item small d-flex justify-content-between gap-2"><span>{{ e.class_group.name }} · {{ e.school_year.name }}</span><span class="text-body-secondary">{{ e.started_on|date:"d/m/Y"|default:"—" }} → {{ e.ended_on|date:"d/m/Y"|default:"atual" }} · {{ e.get_status_display }}</span></li>{% endfor %}</ul></div>
     </div>

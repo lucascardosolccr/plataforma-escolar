@@ -778,7 +778,8 @@ def teacher_dashboard(request):
             "observations": sum(x["observations"] for x in r["rows"]),
         },
         "average_chart": charts.bar_chart([
-            {"label": f"{x['class_group'].name} {x['subject'].name}"[:28], "value": x["average"],
+            {"label": f"{x['class_group'].name} · {x['subject'].name}", "tick": x["class_group"].name,
+             "sub": x["subject"].name, "value": x["average"],
              "url": reverse("analytics:subject_dashboard", args=[x["subject"].pk])
              + f"?turma={x['class_group'].pk}&{period.querystring()}"}
             for x in r["rows"]

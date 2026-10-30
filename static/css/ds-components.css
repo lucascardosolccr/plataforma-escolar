@@ -350,7 +350,9 @@ input[type="file"].form-control { padding: .45rem .6rem; }
 .table > tbody > tr > td, .table > tbody > tr > th { padding: .75rem 1rem; vertical-align: middle; }
 .table > tbody > tr:last-child > * { border-bottom: 0; }
 .card > .table-responsive, .card > .table { border-radius: var(--bs-card-inner-border-radius); }
-.table-responsive { scrollbar-width: thin; }
+/* position: relative mantém dentro da rolagem o texto .visually-hidden (absoluto)
+   dos cabeçalhos; sem isso ele escapa e alarga a página inteira. */
+.table-responsive { scrollbar-width: thin; position: relative; }
 /* Ordenação no cliente (só em tabelas não paginadas: ver ds.js). */
 th[data-sort] { cursor: pointer; user-select: none; }
 th[data-sort] button { all: unset; cursor: pointer; display: inline-flex; gap: .3rem; align-items: center; }

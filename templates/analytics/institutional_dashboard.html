@@ -61,10 +61,10 @@
 <section class="bi-section" id="composicao" aria-labelledby="h-c">
   <h2 id="h-c">Série e turno</h2>
   <div class="row g-3">
-    <div class="col-lg-6"><div class="card h-100"><div class="card-header">Por ano/série</div><table class="table mb-0"><thead><tr><th>Série</th><th class="text-end">Estudantes</th><th class="text-end">Média</th><th class="text-end">Frequência</th></tr></thead>
-      <tbody>{% for g in r.by_grade %}<tr><th scope="row">{{ g.label }}</th><td class="text-end">{{ g.students }}</td>{% if g.small %}<td class="text-end" colspan="2"><span class="chip">grupo pequeno</span></td>{% else %}<td class="text-end">{{ g.average|num:2 }}</td><td class="text-end">{{ g.attendance|num:1 }}%</td>{% endif %}</tr>{% endfor %}</tbody></table></div></div>
-    <div class="col-lg-6"><div class="card h-100"><div class="card-header">Por turno</div><table class="table mb-0"><thead><tr><th>Turno</th><th class="text-end">Estudantes</th><th class="text-end">Média</th><th class="text-end">Frequência</th></tr></thead>
-      <tbody>{% for g in r.by_turn %}<tr><th scope="row">{{ g.label }}</th><td class="text-end">{{ g.students }}</td>{% if g.small %}<td class="text-end" colspan="2"><span class="chip">grupo pequeno</span></td>{% else %}<td class="text-end">{{ g.average|num:2 }}</td><td class="text-end">{{ g.attendance|num:1 }}%</td>{% endif %}</tr>{% endfor %}</tbody></table></div></div>
+    <div class="col-lg-6"><div class="card h-100"><div class="card-header">Por ano/série</div><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Série</th><th class="text-end">Estudantes</th><th class="text-end">Média</th><th class="text-end">Frequência</th></tr></thead>
+      <tbody>{% for g in r.by_grade %}<tr><th scope="row">{{ g.label }}</th><td class="text-end">{{ g.students }}</td>{% if g.small %}<td class="text-end" colspan="2"><span class="chip">grupo pequeno</span></td>{% else %}<td class="text-end">{{ g.average|num:2 }}</td><td class="text-end">{{ g.attendance|num:1 }}{% if g.attendance is not None %}%{% endif %}</td>{% endif %}</tr>{% endfor %}</tbody></table></div></div></div>
+    <div class="col-lg-6"><div class="card h-100"><div class="card-header">Por turno</div><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Turno</th><th class="text-end">Estudantes</th><th class="text-end">Média</th><th class="text-end">Frequência</th></tr></thead>
+      <tbody>{% for g in r.by_turn %}<tr><th scope="row">{{ g.label }}</th><td class="text-end">{{ g.students }}</td>{% if g.small %}<td class="text-end" colspan="2"><span class="chip">grupo pequeno</span></td>{% else %}<td class="text-end">{{ g.average|num:2 }}</td><td class="text-end">{{ g.attendance|num:1 }}{% if g.attendance is not None %}%{% endif %}</td>{% endif %}</tr>{% endfor %}</tbody></table></div></div></div>
   </div>
 </section>
 

@@ -29,7 +29,7 @@
   <caption class="visually-hidden">Indicadores por turma e disciplina</caption>
   <thead><tr><th>Turma</th><th>Disciplina</th><th class="text-end">Estudantes</th><th class="text-end">Média {% metric_info "class_comparison" %}</th><th class="text-end">Abaixo da aprovação</th><th class="text-end">Avaliações</th><th class="text-end">Rascunhos</th><th class="text-end">Atividades</th><th class="text-end">Entrega {% metric_info "delivery_rate" %}</th><th class="text-end">A registrar</th><th>Última chamada</th><th data-nosort><span class="visually-hidden">Ações</span></th></tr></thead>
   <tbody>{% for x in r.rows %}<tr>
-    <th scope="row">{{ x.class_group.name }}</th><td>{{ x.subject.name }}</td>
+    <th scope="row" class="text-nowrap">{{ x.class_group.name }}</th><td>{{ x.subject.name }}</td>
     <td class="text-end">{{ x.students }}</td><td class="text-end fw-bold">{{ x.average|num:2 }}</td>
     <td class="text-end">{{ x.below }}</td><td class="text-end">{{ x.evaluations_published }}</td><td class="text-end">{{ x.evaluations_draft }}</td>
     <td class="text-end">{{ x.activities }}</td><td class="text-end">{{ x.delivery_rate|num:1 }}{% if x.delivery_rate is not None %}%{% endif %}</td>

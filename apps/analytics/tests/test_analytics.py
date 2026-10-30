@@ -436,6 +436,21 @@ class ChartTests(TestCase):
         linha = charts.line_chart([{"label": "mar", "value": 7.5}, {"label": "abr", "value": 8.25}])
         self.assertIn("Gráfico de linha. mar: 7,5; abr: 8,25", linha)
 
+    def test_long_tick_is_cut_before_escaping(self):
+        """O corte antigo vinha depois do escape e podia partir "&amp;" ao meio."""
+        svg = charts.bar_chart([{"label": "Pesquisa & Desenvolvimento", "value": 5}] * 8)
+        ticks = [t for t in svg.split('class="chart-tick"')[3:]]
+        self.assertTrue(all("…" in t.split("</text>")[0] for t in ticks))
+        self.assertNotRegex(svg, r"&(?!amp;|lt;|gt;|quot;|#x27;)")
+        self.assertIn("<title>Pesquisa &amp; Desenvolvimento: 5</title>", svg)
+
+    def test_two_line_tick_keeps_full_label_for_screen_readers(self):
+        svg = charts.bar_chart([{"label": "1º Ano A · Matemática", "tick": "1º Ano A",
+                                 "sub": "Matemática", "value": 7}])
+        self.assertIn('>1º Ano A<tspan', svg)
+        self.assertIn(">Matemática</tspan>", svg)
+        self.assertIn("1º Ano A · Matemática: 7", svg)
+
     def test_decimal_comma_in_labels(self):
         svg = charts.bar_chart([{"label": "Matemática", "value": 7.48}])
         self.assertIn(">7,48<", svg)

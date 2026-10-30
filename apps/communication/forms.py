@@ -9,6 +9,14 @@ from . import access as acc
 from .models import Announcement, ServiceRequest
 
 
+class PersonChoiceField(forms.ModelChoiceField):
+    """Pessoa pelo nome e pela função, não pelo login técnico ("demo.prof1")."""
+
+    def label_from_instance(self, obj):
+        name = obj.get_full_name() or obj.username
+        return f"{name} — {obj.role_label}"
+
+
 class ThreadForm(forms.Form):
     """Nova conversa: responsável escolhe profissional; profissional escolhe
     responsável. As opções respeitam as permissões do usuário."""
@@ -17,10 +25,10 @@ class ThreadForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.user = user
         if user.role == "responsavel":
-            self.fields["recipient"] = forms.ModelChoiceField(
-                label="Profissional",
-                queryset=acc.professional_recipients(user),
-                empty_label=None,
+            self.fields["recipient"] = PersonChoiceField(
+                label="Com quem você quer falar",
+                queryset=acc.professional_recipients(user).order_by("first_name", "last_name"),
+                empty_label="Escolha…",
             )
             children = Student.objects.filter(
                 pk__in=acc._guardian_child_ids(user)
@@ -32,10 +40,10 @@ class ThreadForm(forms.Form):
                 empty_label="— conversa geral —",
             )
         else:
-            self.fields["recipient"] = forms.ModelChoiceField(
+            self.fields["recipient"] = PersonChoiceField(
                 label="Responsável",
-                queryset=acc.guardian_recipients(user),
-                empty_label=None,
+                queryset=acc.guardian_recipients(user).order_by("first_name", "last_name"),
+                empty_label="Escolha…",
             )
             allowed_students = Student.objects.filter(school=user.school)
             if user.role == "professor":

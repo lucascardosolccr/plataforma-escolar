@@ -206,9 +206,16 @@ def evaluation_list(request):
     user = request.user
     acc.require(acc.can_view_evaluations(user))
     qs = Evaluation.objects.filter(school=user.school).select_related("subject", "class_group", "created_by")
+    is_family = user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value)
+    family_ids = {e.student_id for e in acc.family_enrollments(user)} if is_family else set()
+    if user.role == Role.RESPONSAVEL.value:
+        family_ids |= set(acc._approved_child_ids(user))
     student_id = id_param(request, "estudante")
     if student_id:
         student = get_object_or_404(Student, pk=student_id, school=user.school)
+        # Família só filtra pelos próprios filhos (as outras listas já recusavam).
+        if is_family and student.pk not in family_ids:
+            raise PermissionDenied
         # Turmas pelas quais ele passou, no período em que esteve em cada uma.
         qs = qs.filter(
             acc.enrollment_window_q(
@@ -263,11 +270,22 @@ def evaluation_list(request):
         r.subject_id: r
         for r in AcademicRule.objects.filter(school=user.school)
     }
+    # Família e estudante veem a nota do próprio estudante, não a média da
+    # turma: a mesma decisão dos painéis (sem comparação com a turma para quem
+    # não é da equipe; em turma pequena, a média expõe colegas).
+    own_grades = {}
+    if is_family:
+        wanted = {int(student_id)} if student_id else family_ids
+        for g in Grade.objects.filter(evaluation__in=page, student_id__in=wanted).select_related("student"):
+            own_grades.setdefault(g.evaluation_id, []).append(g)
     rows = [
         {
             "eval": ev,
-            "avg": medias.get(ev.pk),
+            "avg": None if is_family else medias.get(ev.pk),
+            "own": own_grades.get(ev.pk, []),
             "rule": regras.get(ev.subject_id),
+            # Sem regra cadastrada vale o mesmo padrão dos painéis (aprovação 6).
+            "passing": regras[ev.subject_id].passing_grade if ev.subject_id in regras else Decimal("6.0"),
             "managed": (ev.class_group_id, ev.subject_id) in managed,
         }
         for ev in page
@@ -281,6 +299,10 @@ def evaluation_list(request):
             "status": status,
             "student_id": student_id,
             "can_edit_any": is_teacher,
+            "is_family": is_family,
+            "many_children": len(family_ids) > 1 and not student_id,
+            "child_options": [(s.pk, s.full_name) for s in Student.objects.filter(pk__in=family_ids).order_by("first_name")]
+            if len(family_ids) > 1 else [],
             "sort": sort,
             "class_options": [(c.pk, c.name) for c in classes],
             "subject_options": [(x.pk, x.name) for x in subjects],

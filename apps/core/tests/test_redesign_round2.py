@@ -369,3 +369,66 @@ class ErrorPagesTests(Round2Base):
 
         html = render_to_string("500.html")
         self.assertIn("Algo deu errado", html)
+
+
+class FamilyGradesListTests(Round2Base):
+    def setUp(self):
+        super().setUp()
+        from decimal import Decimal
+
+        from apps.pedagogy.models import Grade
+
+        self.ev = Evaluation.objects.create(school=self.school, subject=self.mat, class_group=self.turma,
+                                            title="Prova", date=date(2026, 3, 10), created_by=self.prof,
+                                            status=Evaluation.Status.PUBLISHED)
+        Grade.objects.create(school=self.school, evaluation=self.ev, student=self.ana, value=Decimal("4.5"))
+        Grade.objects.create(school=self.school, evaluation=self.ev, student=self.bia, value=Decimal("9.5"))
+
+    def test_family_sees_own_grade_not_class_average(self):
+        self.login(self.users[Role.RESPONSAVEL])
+        resp = self.client.get(reverse("pedagogy:evaluation_list"))
+        row = resp.context["rows"][0]
+        self.assertIsNone(row["avg"])
+        self.assertEqual([g.student for g in row["own"]], [self.ana])
+        self.assertContains(resp, ">4,50<")
+        self.assertNotContains(resp, "7,00")          # média da turma (4,5 e 9,5)
+        self.assertNotContains(resp, "Média da turma")
+
+    def test_staff_still_sees_class_average(self):
+        self.login(self.users[Role.COORDENACAO])
+        row = self.client.get(reverse("pedagogy:evaluation_list")).context["rows"][0]
+        self.assertEqual(float(row["avg"]), 7.0)
+
+    def test_family_cannot_filter_by_someone_elses_child(self):
+        self.login(self.users[Role.RESPONSAVEL])
+        url = reverse("pedagogy:evaluation_list")
+        self.assertEqual(self.client.get(url + f"?estudante={self.bia.pk}").status_code, 403)
+        self.assertEqual(self.client.get(url + f"?estudante={self.ana.pk}").status_code, 200)
+
+
+class HomeTodayTests(Round2Base):
+    def test_teacher_home_shows_todays_attendance_per_class(self):
+        from django.utils import timezone
+
+        from apps.pedagogy.models import AttendanceRecord
+
+        self.login(self.prof)
+        ws = self.client.get(reverse("home")).context["ws"]
+        self.assertEqual(len(ws["classes"]), 1)            # uma linha por turma, não por disciplina
+        self.assertEqual(ws["attendance_pending"], 1)
+        AttendanceRecord.objects.create(school=self.school, class_group=self.turma, student=self.ana,
+                                        date=timezone.localdate(), status="presente", recorded_by=self.prof)
+        resp = self.client.get(reverse("home"))
+        self.assertEqual(resp.context["ws"]["attendance_pending"], 0)
+        if resp.context["ws"]["school_day"]:
+            self.assertContains(resp, "Chamada feita")
+
+    def test_secretaria_home_counts_open_requests(self):
+        from apps.communication.models import ServiceRequest
+
+        ServiceRequest.objects.create(school=self.school, requester=self.users[Role.RESPONSAVEL],
+                                      title="Declaração", category="documento", description="Preciso")
+        self.login(self.users[Role.SECRETARIA])
+        resp = self.client.get(reverse("home"))
+        self.assertEqual(resp.context["ws"]["requests_open"], 1)
+        self.assertContains(resp, "Solicitações em aberto")

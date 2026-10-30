@@ -106,6 +106,24 @@ def build(user):
         for a in atribuicoes:
             a.student_count = alunos.get(a.class_group_id, 0)
         data["assignments"] = atribuicoes
+        # Uma linha por turma (não por turma+disciplina) com a chamada de hoje:
+        # a tarefa diária que mais importa ao professor.
+        from apps.pedagogy.models import AttendanceRecord
+
+        feitas = set(
+            AttendanceRecord.objects.filter(class_group_id__in=turmas, date=today)
+            .values_list("class_group_id", flat=True).distinct()
+        )
+        por_turma = {}
+        for a in atribuicoes:
+            t = por_turma.setdefault(a.class_group_id, {
+                "class_group": a.class_group, "subjects": [], "students": a.student_count,
+                "attendance_today": a.class_group_id in feitas,
+            })
+            t["subjects"].append(a.subject)
+        data["classes"] = list(por_turma.values())
+        data["school_day"] = today.weekday() < 5
+        data["attendance_pending"] = sum(1 for t in data["classes"] if not t["attendance_today"])
         pares = Q(pk__in=[])
         for a in atribuicoes:
             pares |= Q(class_group_id=a.class_group_id, subject_id=a.subject_id)
@@ -138,6 +156,12 @@ def build(user):
                 AbsenceJustification.Status.RECEIVED,
                 AbsenceJustification.Status.UNDER_REVIEW,
             ],
+        ).count()
+        from apps.communication.models import ServiceRequest
+
+        data["requests_open"] = ServiceRequest.objects.filter(
+            school=user.school,
+            status__in=[ServiceRequest.Status.RECEIVED, ServiceRequest.Status.UNDER_REVIEW],
         ).count()
         if role == Role.ADMIN.value:
             data["active_users"] = User.objects.filter(

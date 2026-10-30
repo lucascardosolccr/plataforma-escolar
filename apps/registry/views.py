@@ -1,4 +1,5 @@
 import mimetypes
+import os
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
@@ -341,7 +342,7 @@ def student_photo(request, student_id):
     if not student.photo:
         raise Http404("Foto indisponível.")
     _check_extension(student.photo.name)
-    return FileResponse(student.photo.open("rb"), content_type="image/jpeg")
+    return FileResponse(student.photo.open("rb"), content_type=_photo_type(student.photo.name))
 
 
 def guardian_photo(request, user_id):
@@ -356,7 +357,7 @@ def guardian_photo(request, user_id):
     if not profile.photo:
         raise Http404("Foto indisponível.")
     _check_extension(profile.photo.name)
-    return FileResponse(profile.photo.open("rb"), content_type="image/jpeg")
+    return FileResponse(profile.photo.open("rb"), content_type=_photo_type(profile.photo.name))
 
 
 def _check_extension(name):
@@ -364,6 +365,13 @@ def _check_extension(name):
 
     if os.path.splitext(name)[1].lower() not in ALLOWED_PHOTO_EXTENSIONS:
         raise Http404("Arquivo não permitido.")
+
+
+def _photo_type(name):
+    """Tipo real da foto pela extensão (já validada no envio). Antes toda foto
+    saía como JPEG, inclusive PNG e WebP."""
+    ext = os.path.splitext(name)[1].lower()
+    return {".png": "image/png", ".webp": "image/webp"}.get(ext, "image/jpeg")
 
 
 def guardian_list(request):

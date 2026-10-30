@@ -19,7 +19,8 @@
 </div>
 
 <form method="get" class="filter-bar" aria-label="Filtrar avaliações">
-  {% if student_id %}<input type="hidden" name="estudante" value="{{ student_id }}">{% endif %}
+  {% if child_options %}{% include "partials/_filter_select.html" with name="estudante" label="Filho" options=child_options selected=student_id all_label="Todos" %}
+  {% elif student_id %}<input type="hidden" name="estudante" value="{{ student_id }}">{% endif %}
   {% if request.GET.ordem %}<input type="hidden" name="ordem" value="{{ request.GET.ordem }}">{% endif %}
   {% if can_edit_any %}
   <div class="filter-field">
@@ -55,7 +56,7 @@
         {% sort_th sort "data" "Data" %}
         <th scope="col" class="text-end">Peso</th>
         {% if user_role != ROLE_RESPONSAVEL and user_role != ROLE_ESTUDANTE %}{% sort_th sort "situacao" "Situação" %}{% endif %}
-        <th scope="col" class="text-end">Média da turma</th>
+        <th scope="col" class="text-end">{% if is_family %}Nota{% else %}Média da turma{% endif %}</th>
         {% if can_edit_any %}<th scope="col" class="text-end"><span class="visually-hidden">Ações</span></th>{% endif %}
       </tr></thead>
       <tbody>
@@ -74,8 +75,12 @@
           </td>
           {% endif %}
           <td class="text-end">
-            {% if row.avg is not None %}
-              <span class="fw-semibold {% if row.rule and row.avg >= row.rule.passing_grade %}text-success{% elif row.rule %}text-danger{% endif %}">{{ row.avg|floatformat:2 }}</span>
+            {% if is_family %}
+              {% for g in row.own %}
+                <div><span class="fw-semibold {% if g.value is not None and g.value < row.passing %}text-danger{% endif %}">{{ g.value|floatformat:"-2"|default:"—" }}</span>{% if many_children %} <span class="small text-body-secondary">{{ g.student.first_name }}</span>{% endif %}</div>
+              {% empty %}<span class="text-body-secondary" title="Sem nota lançada">—</span>{% endfor %}
+            {% elif row.avg is not None %}
+              <span class="fw-semibold {% if row.avg >= row.passing %}text-success{% else %}text-danger{% endif %}">{{ row.avg|floatformat:2 }}</span>
             {% else %}<span class="text-body-secondary" title="Nenhuma nota lançada">—</span>{% endif %}
           </td>
           {% if can_edit_any %}

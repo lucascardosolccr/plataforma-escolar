@@ -127,10 +127,10 @@
 {# ================= Professor ================= #}
 {% if user_role == ROLE_PROFESSOR %}
   <div class="kpi-grid mb-4">
-    <div class="kpi">
-      <span class="kpi-label">{% icon "school" %}Turmas e disciplinas</span>
-      <span class="kpi-value">{{ ws.assignments|length }}</span>
-      <a class="stretched-link kpi-hint" href="{% url 'my_classrooms' %}">Minhas turmas</a>
+    <div class="kpi{% if ws.school_day and ws.attendance_pending %} is-attention{% endif %}">
+      <span class="kpi-label">{% icon "calendar-check" %}Chamadas de hoje</span>
+      <span class="kpi-value">{% if ws.school_day %}{{ ws.attendance_pending }}{% else %}—{% endif %}</span>
+      <a class="stretched-link kpi-hint" href="{% url 'pedagogy:attendance_list' %}">{% if not ws.school_day %}Sem aula hoje{% elif ws.attendance_pending %}pendente{{ ws.attendance_pending|pluralize }} de {{ ws.classes|length }} turma{{ ws.classes|length|pluralize }}{% else %}Todas feitas{% endif %}</a>
     </div>
     <div class="kpi">
       <span class="kpi-label">{% icon "calendar-days" %}Entregas nos próximos 7 dias</span>
@@ -152,25 +152,22 @@
     <div class="col-lg-7">
       <section class="card h-100">
         <div class="card-header d-flex justify-content-between align-items-center">Suas turmas <a class="small fw-normal" href="{% url 'my_classrooms' %}">Ver todas</a></div>
-        {% if ws.assignments %}
-        <div class="table-responsive">
-          <table class="table table-hover" data-sortable>
-            <thead><tr><th>Turma</th><th>Disciplina</th><th class="text-end">Estudantes</th><th data-nosort><span class="visually-hidden">Ações</span></th></tr></thead>
-            <tbody>
-              {% for a in ws.assignments %}
-              <tr>
-                <td class="fw-bold">{{ a.class_group.name }}</td>
-                <td>{{ a.subject.name }}</td>
-                <td class="text-end">{{ a.student_count }}</td>
-                <td class="text-end text-nowrap">
-                  <a class="btn btn-sm btn-outline-secondary" href="{% url 'pedagogy:attendance_class' a.class_group.pk %}">Frequência</a>
-                  <a class="btn btn-sm btn-outline-secondary" href="{% url 'analytics:class_dashboard' a.class_group.pk %}">Painel</a>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
+        {% if ws.classes %}
+        <ul class="feed">
+          {% for t in ws.classes %}
+          <li class="feed-item">
+            <div class="feed-body">
+              <p class="feed-title">{{ t.class_group.name }} <span class="small text-body-secondary fw-normal">· {{ t.students }} estudante{{ t.students|pluralize }}</span></p>
+              <p class="feed-meta">{% for s in t.subjects %}{{ s.name }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+            </div>
+            <div class="feed-actions d-flex flex-wrap gap-2 align-items-center">
+              {% if t.attendance_today %}<span class="chip chip-state text-success">{% icon "circle-check" %}Chamada feita</span>
+              {% elif ws.school_day %}<a class="btn btn-sm btn-primary" href="{% url 'pedagogy:attendance_register' t.class_group.pk %}">{% icon "calendar-check" %}Fazer chamada</a>{% endif %}
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'analytics:class_dashboard' t.class_group.pk %}">Painel</a>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
         {% else %}
           <div class="empty-state">{% icon "school" %}<strong>Sem atribuições</strong>A coordenação ou a secretaria vincula você às turmas e disciplinas.</div>
         {% endif %}
@@ -236,6 +233,13 @@
       <span class="kpi-label">{% icon "file-check" %}Justificativas pendentes</span>
       <span class="kpi-value">{{ ws.justifications_pending }}</span>
       <a class="stretched-link kpi-hint" href="{% url 'pedagogy:justification_list' %}">Recebidas ou em análise</a>
+    </div>
+    {% endif %}
+    {% if user_role == ROLE_SECRETARIA or user_role == ROLE_ADMIN %}
+    <div class="kpi{% if ws.requests_open %} is-attention{% endif %}">
+      <span class="kpi-label">{% icon "inbox" %}Solicitações em aberto</span>
+      <span class="kpi-value">{{ ws.requests_open }}</span>
+      <a class="stretched-link kpi-hint" href="{% url 'communication:request_list' %}">Pedidos das famílias a responder</a>
     </div>
     {% endif %}
   </div>

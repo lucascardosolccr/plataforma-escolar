@@ -11,6 +11,7 @@ from datetime import datetime
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
 
@@ -25,7 +26,7 @@ from apps.pedagogy.access import (
 from apps.registry.access import guardian_of
 from apps.registry.models import Enrollment, GuardianLink, Student
 
-from . import charts, reports, services
+from . import bi, charts, reports, services
 from .access import (
     can_view_class_dashboard,
     can_view_institutional_dashboard,
@@ -107,102 +108,136 @@ def _default_student(user):
 # --------------------------------------------------------------------------- #
 # Painel individual do estudante
 # --------------------------------------------------------------------------- #
+def _student_timeline(student, report, *, can_occ, can_plan, can_just):
+    """Trajetória do estudante, só com o que quem consulta pode ver."""
+    events = []
+    for e in report["enrollments"]:
+        if e.started_on:
+            events.append({"date": e.started_on, "kind": "Matrícula",
+                           "text": f"Entrada na turma {e.class_group.name} ({e.school_year.name})"})
+        if e.ended_on:
+            events.append({"date": e.ended_on, "kind": "Matrícula",
+                           "text": f"Saída da turma {e.class_group.name}: {e.get_status_display().lower()}"})
+    for ev in report["academic"]["evaluations"][:15]:
+        events.append({"date": ev["evaluation"].date, "kind": "Avaliação",
+                       "text": f"{ev['evaluation'].subject.name} · {ev['evaluation'].title}: "
+                               f"{str(ev['value']).replace('.', ',')}"})
+    if can_just:
+        for j in student.justifications.all()[:15]:
+            events.append({"date": j.start_date, "kind": "Justificativa",
+                           "text": f"Falta justificada: {j.get_status_display().lower()}"})
+    if can_occ:
+        for o in student.occurrences.all()[:15]:
+            events.append({"date": o.date, "kind": "Ocorrência", "text": o.description[:100]})
+    if can_plan:
+        for pl in student.plans.all()[:15]:
+            events.append({"date": pl.created_at.date(), "kind": "Plano de acompanhamento", "text": pl.title})
+    period = report["period"]
+    events = [e for e in events if period.start <= e["date"] <= period.end]
+    return sorted(events, key=lambda e: e["date"], reverse=True)[:40]
+
+
+def _switchable_students(user, student):
+    """Outros estudantes que esta pessoa pode abrir (para trocar de painel)."""
+    from apps.registry.access import students_visible_to
+
+    qs = students_visible_to(user)
+    if qs is None:
+        return []
+    if user.role != Role.RESPONSAVEL.value:
+        current = Enrollment.objects.filter(student=student, status="ativo").values("class_group_id")
+        qs = qs.filter(enrollments__class_group_id__in=current, enrollments__status="ativo").distinct()
+    return list(qs.order_by("first_name", "last_name")[:200])
+
+
 def student_dashboard(request, student_id):
+    from apps.pedagogy.access import can_view_justifications
+    from apps.registry.access import ADMIN_RECORD_ROLES, can_view_birth_date
+
     student = get_object_or_404(Student.objects.select_related("school"), pk=student_id)
-    if not can_view_student_dashboard(request.user, student):
+    user = request.user
+    if not can_view_student_dashboard(user, student):
         raise PermissionDenied("Você não tem acesso ao painel deste estudante.")
 
-    averages = services.subject_averages(student)
-    evolution = services.grade_evolution(student)
-    distribution = services.grade_distribution(student)
-    attendance = services.attendance_stats(student)
-    attendance_evo = services.attendance_evolution(student)
-    activities = services.activity_stats(student)
-    justifications = services.justification_stats(student)
-    occurrences = services.occurrence_stats(student)
-    plans = services.plan_stats(student)
+    period = bi.resolve_period(request.GET, student.school)
+    is_team = user.role in ADMIN_RECORD_ROLES or user.role == Role.PROFESSOR.value
+    # Ocorrências, observações e planos têm regra própria e não seguem o
+    # acesso ao painel: o estudante vê o próprio progresso, não o registro
+    # disciplinar nem as anotações feitas sobre ele.
+    can_view_occ = can_view_occurrences(user, student)
+    can_view_plan = can_view_plans(user, student)
+    can_view_obs = can_view_observations(user, student)
+    can_just = can_view_justifications(user, student)
 
-    can_view_obs = can_view_observations(request.user, student)
-    # Ocorrências e planos de acompanhamento têm regra própria e não seguem o
-    # acesso ao prontuário. O estudante, em particular, vê o progresso
-    # acadêmico e a frequência dele, mas não o registro disciplinar nem as
-    # anotações feitas sobre ele — requisito da seção 7.5 do prompt de design.
-    can_view_occ = can_view_occurrences(request.user, student)
-    can_view_plan = can_view_plans(request.user, student)
-    skills, strategies = services.consolidated_skills(student)
-    difficulties = services.difficulty_contents(student)
+    report = bi.student_report(
+        student, period, show_class_comparison=is_team, show_observations=can_view_obs
+    )
+    if not can_view_plan:
+        report["interventions"] = []
+    acad = report["academic"]
+    subject_filter = id_param(request, "disciplina")
+    evaluations = [
+        e for e in acad["evaluations"]
+        if not subject_filter or e["evaluation"].subject_id == subject_filter
+    ]
+    base_qs = period.querystring()
+    skills, strategies = services.consolidated_skills(student) if can_view_obs else ([], [])
 
     context = {
         "student": student,
-        "active_class": services.active_class_group(student),
-        "subject_averages": averages,
+        "report": report,
+        "period": period,
+        "presets": bi.PRESETS,
+        "is_team": is_team,
+        "can_view_occ": can_view_occ,
+        "can_view_plan": can_view_plan,
+        "can_view_obs": can_view_obs,
+        "can_view_birth": can_view_birth_date(user),
+        "is_guardian": guardian_of(user, student),
+        "occurrences": services.occurrence_stats(student) if can_view_occ else None,
+        "difficulties": services.difficulty_contents(student) if can_view_obs else [],
+        "skills": skills,
+        "strategies": strategies,
+        # Compatibilidade: lista de médias por disciplina do período.
+        "subject_averages": acad["subjects"],
+        "evaluations": evaluations,
+        "subject_filter": subject_filter,
+        "switch_students": _switchable_students(user, student),
+        "timeline": _student_timeline(student, report, can_occ=can_view_occ,
+                                      can_plan=can_view_plan, can_just=can_just),
+        "sections": [
+            ("visao-geral", "Visão geral"), ("desempenho", "Desempenho"),
+            ("frequencia", "Frequência"), ("atividades", "Atividades"),
+            ("trajetoria", "Trajetória"), ("inteligencia", "Inteligência pedagógica"),
+        ] + ([("qualidade", "Qualidade dos dados")] if is_team else []),
+        "export_links": [
+            {"label": "CSV", "url": reverse("analytics:student_export", args=[student.pk, "csv"]) + "?" + base_qs},
+            {"label": "Excel", "url": reverse("analytics:student_export", args=[student.pk, "xlsx"]) + "?" + base_qs},
+        ],
         "subject_chart": charts.bar_chart(
             [
-                {
-                    "label": a["subject"].name,
-                    "value": a["average"],
-                    "below": a["below"],
-                }
-                for a in averages
+                {"label": s["subject"].name, "value": s["average"], "below": s["below"],
+                 "url": f"?{base_qs}&disciplina={s['subject'].pk}#avaliacoes"}
+                for s in acad["subjects"]
             ],
-            suffix="",
         ),
-        "evolution": evolution[-12:],
         "evolution_chart": charts.line_chart(
-            [
-                {"label": e["date"].strftime("%d/%m"), "value": e["value"]}
-                for e in evolution[-12:]
-            ],
-            suffix=" pontos",
+            [{"label": m["label"], "value": m["value"]} for m in acad["monthly"]],
+            y_min=0, y_max=10,
         ),
-        "distribution_chart": charts.bar_chart(
-            [{"label": d["label"], "value": d["count"]} for d in distribution],
-            suffix=" notas",
-        ),
-        "attendance": attendance,
-        "attendance_gauge": charts.gauge(
-            attendance["percent"],
-            limit=attendance["limit"],
-            label="de presença",
-        ),
+        "distribution_chart": charts.bar_chart(acad["distribution"], suffix=" nota(s)"),
         "attendance_chart": charts.line_chart(
-            [{"label": a["month"], "value": a["percent"]} for a in attendance_evo],
-            y_min=0,
-            y_max=100,
-            suffix="%",
+            [{"label": m["label"], "value": m["percent"]} for m in report["attendance"]["by_month"]],
+            y_min=0, y_max=100, suffix="%",
         ),
-        "activities": activities,
-        "activity_chart": charts.h_bars(
-            [
-                {"label": "Entregues", "value": activities["delivered"]},
-                {"label": "Pendentes", "value": activities["pending"]},
-                {"label": "Atrasadas", "value": activities["late"]},
-            ],
-            suffix=" atividades",
+        "weekday_chart": charts.bar_chart(
+            [{"label": w["label"], "value": w["value"]} for w in report["attendance"]["by_weekday"]],
+            max_value=100, suffix="% de faltas",
         ),
-        "justifications": justifications,
-        "can_view_occ": can_view_occ,
-        "occurrences": occurrences if can_view_occ else None,
-        "occurrence_chart": charts.h_bars(
-            [
-                {"label": "Abertas", "value": occurrences["aberta"]},
-                {"label": "Em acompanhamento", "value": occurrences["em_acompanhamento"]},
-                {"label": "Encaminhadas", "value": occurrences["encaminhada"]},
-                {"label": "Concluídas", "value": occurrences["concluida"]},
-            ]
-        )
-        if can_view_occ
-        else "",
-        "can_view_plan": can_view_plan,
-        "plans": plans if can_view_plan else None,
-        "can_view_obs": can_view_obs,
-        "difficulties": difficulties if can_view_obs else [],
-        "skills": skills if can_view_obs else [],
-        "strategies": strategies if can_view_obs else [],
-        "timeline": services.timeline(student, include_plans=can_view_plan)
-        if can_view_occ
-        else [],
-        "is_guardian": guardian_of(request.user, student),
+        "delivery_chart": charts.line_chart(
+            [{"label": m["label"], "value": m["value"]} for m in report["activities"]["monthly"]],
+            y_min=0, y_max=100, suffix="%",
+        ),
         "generated_at": timezone.now(),
     }
     return render(request, "analytics/student_dashboard.html", context)
@@ -211,41 +246,102 @@ def student_dashboard(request, student_id):
 # --------------------------------------------------------------------------- #
 # Painel por turma
 # --------------------------------------------------------------------------- #
+def _visible_classes(user):
+    from apps.academics.models import TeacherAssignment
+    from apps.registry.access import ADMIN_RECORD_ROLES
+
+    qs = ClassGroup.objects.filter(school=user.school).select_related("school_year")
+    if user.role == Role.PROFESSOR.value:
+        qs = qs.filter(pk__in=TeacherAssignment.objects.filter(teacher=user).values("class_group_id"))
+    elif user.role not in ADMIN_RECORD_ROLES:
+        return ClassGroup.objects.none()
+    return qs.order_by("name")
+
+
+def _int_param(request, name, default, lo, hi):
+    try:
+        return max(lo, min(hi, int(request.GET.get(name, default))))
+    except (TypeError, ValueError):
+        return default
+
+
 def class_dashboard(request, class_group_id):
     class_group = get_object_or_404(
         ClassGroup.objects.select_related("school", "school_year"), pk=class_group_id
     )
     if not can_view_class_dashboard(request.user, class_group):
         raise PermissionDenied("Você não tem acesso ao painel desta turma.")
+    period = bi.resolve_period(request.GET, class_group.school)
+    n_below = _int_param(request, "disciplinas", 1, 1, 10)
+    min_delivery = _int_param(request, "entrega", 60, 0, 100)
+    report = bi.class_report(class_group, period, min_subjects_below=n_below, min_delivery=min_delivery)
+    only_follow = request.GET.get("acompanhamento") == "1"
+    rows = report["follow_up"] if only_follow else report["rows"]
+    qs = period.querystring() + f"&disciplinas={n_below}&entrega={min_delivery}"
+    classes = _visible_classes(request.user)
+    return render(request, "analytics/class_dashboard.html", {
+        "class_group": class_group,
+        "report": report,
+        "rows": rows,
+        "only_follow": only_follow,
+        "period": period,
+        "presets": bi.PRESETS,
+        "qs": qs,
+        "extra_filters": [
+            {"name": "disciplinas", "label": "Acompanhamento: disciplinas abaixo", "selected": n_below,
+             "options": [(i, f"{i} ou mais") for i in range(1, 5)]},
+            {"name": "entrega", "label": "Acompanhamento: entrega abaixo de", "selected": min_delivery,
+             "options": [(v, f"{v}%") for v in (40, 50, 60, 70, 80)]},
+        ],
+        "class_options": [
+            (reverse("analytics:class_dashboard", args=[c.pk]) + "?" + qs, f"{c.name} · {c.school_year.name}", c.pk)
+            for c in classes
+        ],
+        "export_links": [
+            {"label": "CSV", "url": reverse("analytics:class_export", args=[class_group.pk, "csv"]) + "?" + qs},
+            {"label": "Excel", "url": reverse("analytics:class_export", args=[class_group.pk, "xlsx"]) + "?" + qs},
+        ],
+        "subject_chart": charts.bar_chart([
+            {"label": s["subject"].name, "value": s["mean"], "below": s["mean"] is not None and s["mean"] < s["passing"]}
+            for s in report["subject_summary"]
+        ]),
+        "distribution_chart": charts.bar_chart(report["distribution"], suffix=" estudante(s)"),
+        "grade_chart": charts.line_chart(
+            [{"label": m["label"], "value": m["grade"]} for m in report["monthly"]], y_min=0, y_max=10),
+        "attendance_chart": charts.line_chart(
+            [{"label": m["label"], "value": m["attendance"]} for m in report["monthly"]],
+            y_min=0, y_max=100, suffix="%"),
+        "sections": [("visao-geral", "Visão geral"), ("disciplinas", "Disciplinas"), ("evolucao", "Evolução"),
+                     ("avaliacoes", "Avaliações"), ("mapa", "Mapa de acompanhamento")],
+        "generated_at": timezone.now(),
+    })
 
-    averages = services.class_subject_averages(class_group)
-    attendance_percent = services.class_attendance_percent(class_group)
-    students = services.class_students(class_group)
-    attention = services.students_needing_attention(class_group)
 
-    return render(
-        request,
-        "analytics/class_dashboard.html",
-        {
-            "class_group": class_group,
-            "students_count": students.count(),
-            "subject_averages": averages,
-            "subject_chart": charts.bar_chart(
-                [
-                    {
-                        "label": a["subject"].name,
-                        "value": a["average"],
-                        "below": a["below"],
-                    }
-                    for a in averages
-                ]
-            ),
-            "attendance_percent": attendance_percent,
-            "attendance_gauge": charts.gauge(attendance_percent, label="da turma"),
-            "attention": attention,
-            "generated_at": timezone.now(),
-        },
-    )
+def class_export(request, class_group_id, fmt):
+    class_group = get_object_or_404(ClassGroup.objects.select_related("school", "school_year"), pk=class_group_id)
+    if not can_view_class_dashboard(request.user, class_group):
+        raise PermissionDenied
+    period = bi.resolve_period(request.GET, class_group.school)
+    r = bi.class_report(class_group, period,
+                        min_subjects_below=_int_param(request, "disciplinas", 1, 1, 10),
+                        min_delivery=_int_param(request, "entrega", 60, 0, 100))
+    mapa = [["Estudante"] + [s.name for s in r["subjects"]]
+            + ["Média geral", "Frequência (%)", "Taxa de entrega (%)", "Sem registro", "Evolução", "Acompanhamento"]]
+    for row in r["rows"]:
+        mapa.append([row["student"].full_name] + [c["value"] for c in row["cells"]]
+                    + [row["overall"], row["attendance"]["percent"], row["delivery_rate"], row["no_record"],
+                       row["evolution"], "; ".join(row["reasons"])])
+    disciplinas = [["Disciplina", "Média da turma", "Mediana", "Mínimo", "Máximo", "Desvio", "Estudantes", "Abaixo da aprovação"]]
+    for s in r["subject_summary"]:
+        disciplinas.append([s["subject"].name, s["mean"], s["median"], s["min"], s["max"], s["stdev"], s["n"], s["below_count"]])
+    avaliacoes = [["Data", "Disciplina", "Avaliação", "Tipo", "Notas", "Pendentes", "Média", "Mediana", "Mínimo", "Máximo", "Desvio"]]
+    for e in r["evaluations"]:
+        ev = e["evaluation"]
+        avaliacoes.append([ev.date, ev.subject.name, ev.title, ev.get_kind_display(), e["n"], e["missing"],
+                           e["mean"], e["median"], e["min"], e["max"], e["stdev"]])
+    return _bi_export(request, title="Painel da turma", context=f"{class_group.name} ({class_group.school_year})",
+                      period=period, fmt=fmt, target=class_group,
+                      sheets=[("Mapa de acompanhamento", mapa), ("Disciplinas", disciplinas), ("Avaliações", avaliacoes)])
 
 
 # --------------------------------------------------------------------------- #
@@ -441,3 +537,117 @@ def report_csv(request, slug):
     if not result.rows:
         writer.writerow(["(sem registros para os critérios informados)"])
     return response
+
+
+# --------------------------------------------------------------------------- #
+# Exportação dos painéis de BI (CSV e Excel)
+# --------------------------------------------------------------------------- #
+def _bi_export(request, *, title, context, period, sheets, fmt, target=None):
+    """Exporta as tabelas de um painel, com cabeçalho de contexto e auditoria.
+
+    Cada arquivo diz o que é, de quem/qual turma, o período, quando foi gerado
+    e onde está a metodologia — um número solto numa planilha perde o sentido.
+    """
+    from apps.core.models import create_audit_log
+
+    from . import xlsx
+
+    if fmt not in ("csv", "xlsx"):
+        raise PermissionDenied
+    gerado = timezone.localtime().strftime("%d/%m/%Y %H:%M")
+    cabecalho = [
+        [title], [context],
+        [f"Período: {period.start:%d/%m/%Y} a {period.end:%d/%m/%Y} ({period.label})"],
+        [f"Gerado em {gerado} por {request.user.get_full_name() or request.user.username}"],
+        ["Ausência de dado aparece em branco (não é zero). Metodologia: Painéis > Metodologia dos indicadores."],
+    ]
+    nome = slugify(f"{title} {context}")[:80] or "painel"
+    create_audit_log(
+        user=request.user, action="export", request=request, target=target,
+        detail=f"Exportou {title} — {context} ({period.start:%d/%m/%Y}–{period.end:%d/%m/%Y}) em {fmt.upper()}",
+    )
+    if fmt == "xlsx":
+        data = xlsx.build([("Sobre", cabecalho)] + sheets)
+        resp = HttpResponse(
+            data, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        resp["Content-Disposition"] = f'attachment; filename="{nome}.xlsx"'
+        return resp
+    resp = HttpResponse(content_type="text/csv; charset=utf-8")
+    resp["Content-Disposition"] = f'attachment; filename="{nome}.csv"'
+    resp.write("﻿")
+    writer = csv.writer(resp, delimiter=";")
+    for row in cabecalho:
+        writer.writerow(row)
+    for nome_aba, rows in sheets:
+        writer.writerow([])
+        writer.writerow([f"== {nome_aba} =="])
+        for row in rows:
+            writer.writerow([_csv_safe(_csv_value(v)) for v in row])
+    return resp
+
+
+def _csv_value(v):
+    if v is None:
+        return ""
+    if isinstance(v, float):
+        return f"{v}".replace(".", ",")
+    if hasattr(v, "strftime"):
+        return v.strftime("%d/%m/%Y")
+    return v
+
+
+def student_export(request, student_id, fmt):
+    student = get_object_or_404(Student.objects.select_related("school"), pk=student_id)
+    user = request.user
+    if not can_view_student_dashboard(user, student):
+        raise PermissionDenied
+    from apps.registry.access import ADMIN_RECORD_ROLES
+
+    is_team = user.role in ADMIN_RECORD_ROLES or user.role == Role.PROFESSOR.value
+    period = bi.resolve_period(request.GET, student.school)
+    r = bi.student_report(student, period, show_class_comparison=is_team)
+    a, att, act = r["academic"], r["attendance"], r["activities"]
+    resumo = [
+        ["Indicador", "Valor", "Período anterior"],
+        ["Média geral", a["overall"], a["prev_overall"]],
+        ["Frequência (%)", att["percent"], att["prev_percent"]],
+        ["Faltas", att["absent"], None],
+        ["Faltas justificadas", att["justified"], None],
+        ["Taxa de entrega (%)", act["delivery_rate"], act["prev_rate"]],
+        ["Atividades propostas", act["proposed"], None],
+        ["Entregues no prazo", act["on_time"], None],
+        ["Entregues com atraso", act["late"], None],
+        ["Não entregues", act["not_delivered"], None],
+        ["Sem registro (prazo vencido)", act["no_record"], None],
+        ["Tendência das notas", a["trend"]["label"], None],
+    ]
+    disciplinas = [["Disciplina", "Média", "Aprovação", "Variação", "Notas", "Regra", "Abaixo da aprovação"]
+                   + (["Média da turma"] if a["class_comparison"] else [])]
+    for s in a["subjects"]:
+        disciplinas.append([s["subject"].name, s["average"], s["passing"], s["delta"], s["count"],
+                            s["formula_label"], s["below"]] + ([s["class_mean"]] if a["class_comparison"] else []))
+    avaliacoes = [["Data", "Disciplina", "Avaliação", "Tipo", "Peso", "Nota"]]
+    for e in a["evaluations"]:
+        ev = e["evaluation"]
+        avaliacoes.append([ev.date, ev.subject.name, ev.title, ev.get_kind_display(), float(ev.weight), e["value"]])
+    faltas = [["Data", "Justificada"]] + [[x["date"], x["justified"]] for x in att["absences"]]
+    atividades = [["Entrega", "Disciplina", "Atividade", "Situação"]]
+    nomes = {"no_prazo": "Entregue no prazo", "atrasada": "Entregue com atraso", "nao_entregue": "Não entregue",
+             "sem_registro": "Sem registro", "em_aberto": "Em aberto"}
+    for row in act["rows"]:
+        atividades.append([row["activity"].deadline, row["activity"].subject.name, row["activity"].title,
+                           nomes[row["state"]]])
+    return _bi_export(
+        request, title="Painel individual", context=student.full_name, period=period, fmt=fmt,
+        target=student,
+        sheets=[("Resumo", resumo), ("Disciplinas", disciplinas), ("Avaliações", avaliacoes),
+                ("Faltas", faltas), ("Atividades", atividades)],
+    )
+
+
+def methodology(request):
+    from .metrics import GROUPS, INSIGHT_RULES, METRICS
+
+    grupos = [(g, [m for m in METRICS.values() if m.group == g]) for g in GROUPS]
+    return render(request, "analytics/methodology.html", {"groups": grupos, "rules": INSIGHT_RULES})

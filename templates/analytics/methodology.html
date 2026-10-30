@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load static ui %}
+{% block title %}Metodologia dos indicadores — Plataforma Escolar{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/bi.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Painéis de BI</span>
+    <h1>Metodologia dos indicadores</h1>
+    <p>Como cada número dos painéis é calculado, de onde vem, o que fazer quando falta dado e o que ele não diz.</p>
+  </div>
+</div>
+
+<div class="bi-disclaimer">{% icon "info" %}<div>
+  <strong>Observado</strong> é o que alguém registrou (nota, presença, entrega). <strong>Calculado</strong> é derivado por fórmula fixa.
+  <strong>Sugestão</strong> é uma regra pública que aponta algo para avaliação humana. A plataforma não faz previsões nem usa modelos
+  preditivos: não há dados suficientes nem validação para isso, e uma previsão errada sobre uma criança tem custo alto.
+</div></div>
+
+<nav class="bi-subnav" aria-label="Grupos de indicadores"><ul>
+  {% for g, _ in groups %}<li><a href="#g-{{ forloop.counter }}">{{ g }}</a></li>{% endfor %}
+  <li><a href="#regras">Regras das sugestões</a></li>
+</ul></nav>
+
+{% for g, metrics in groups %}
+<section class="bi-section" id="g-{{ forloop.counter }}" aria-labelledby="gh-{{ forloop.counter }}">
+  <h2 id="gh-{{ forloop.counter }}">{{ g }}</h2>
+  <div class="row g-3 bi-method">
+    {% for m in metrics %}
+    <div class="col-lg-6">
+      <article class="card h-100" id="{{ m.key }}">
+        <div class="card-body">
+          <h3 class="h6 d-flex justify-content-between gap-2 mb-1">{{ m.label }} <span class="chip">{{ m.kind }}</span></h3>
+          <p class="mb-1">{{ m.measures }}</p>
+          <dl class="mb-0">
+            <dt>Fórmula</dt><dd>{{ m.formula }}</dd>
+            <dt>Fonte dos dados</dt><dd>{{ m.source }}</dd>
+            <dt>Quando falta dado</dt><dd>{{ m.missing }}</dd>
+            <dt>Como interpretar</dt><dd>{{ m.interpretation }}</dd>
+            <dt>Limitações</dt><dd>{{ m.limitations }}</dd>
+          </dl>
+        </div>
+      </article>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+
+<section class="bi-section" id="regras" aria-labelledby="h-regras">
+  <h2 id="h-regras">Regras das sugestões pedagógicas</h2>
+  <p class="bi-lead">Uma sugestão só aparece quando uma destas regras é atendida pelos dados do período. Nenhuma usa atributos pessoais, e nenhuma é decisão: todas são apresentadas para avaliação do professor.</p>
+  <div class="card"><div class="table-responsive"><table class="table mb-0">
+    <thead><tr><th>Sugestão</th><th>Regra</th></tr></thead>
+    <tbody>{% for nome, regra in rules %}<tr><th scope="row">{{ nome }}</th><td>{{ regra }}</td></tr>{% endfor %}</tbody>
+  </table></div></div>
+</section>
+{% endblock %}

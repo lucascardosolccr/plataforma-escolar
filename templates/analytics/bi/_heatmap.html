@@ -1,0 +1,21 @@
+{% load bi_tags %}{% comment %}
+Mapa de calor disciplina × mês. A intensidade reforça; o número está sempre
+escrito na célula (não depende só de cor). Recebe rows, months, scale.
+{% endcomment %}
+<div class="table-responsive">
+  <table class="table bi-heatmap mb-0">
+    <caption class="visually-hidden">{{ caption }}</caption>
+    <thead><tr><th scope="col">Disciplina</th>{% for m in months %}<th scope="col" class="text-center">{{ m }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <th scope="row">{{ row.subject }}</th>
+        {% for c in row.cells %}
+          <td class="text-center{% if c.value is None %} is-empty{% endif %}" style="--v:{{ c.value|heat:scale }}"
+              {% if c.value is not None %}title="{{ row.subject }} · {{ c.n }} nota(s)"{% endif %}>{{ c.value|num:1 }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

@@ -1,0 +1,40 @@
+{% load ui %}{% comment %}
+Filtros do painel (GET). Recebe: period, presets, extra_filters (lista de
+{name, label, options, selected}), export_links (lista de {label, url, icon}).
+{% endcomment %}
+<form method="get" class="bi-filters" aria-label="Filtros do painel">
+  {% for f in extra_filters %}
+    <div class="bi-filter">
+      <label for="f-{{ f.name }}">{{ f.label }}</label>
+      <select id="f-{{ f.name }}" name="{{ f.name }}" class="form-select form-select-sm">
+        {% if f.empty_label %}<option value="">{{ f.empty_label }}</option>{% endif %}
+        {% for value, text in f.options %}
+          <option value="{{ value }}"{% if f.selected|stringformat:"s" == value|stringformat:"s" %} selected{% endif %}>{{ text }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  {% endfor %}
+  <div class="bi-filter">
+    <label for="f-periodo">Período</label>
+    <select id="f-periodo" name="periodo" class="form-select form-select-sm" data-period-preset>
+      {% for value, text in presets %}<option value="{{ value }}"{% if period.preset == value %} selected{% endif %}>{{ text }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="bi-filter bi-filter-dates">
+    <label for="f-inicio">De</label>
+    <input id="f-inicio" type="date" name="inicio" value="{{ period.start|date:'Y-m-d' }}" class="form-control form-control-sm" data-period-date>
+  </div>
+  <div class="bi-filter bi-filter-dates">
+    <label for="f-fim">Até</label>
+    <input id="f-fim" type="date" name="fim" value="{{ period.end|date:'Y-m-d' }}" class="form-control form-control-sm" data-period-date>
+  </div>
+  {% for hidden in hidden_filters %}<input type="hidden" name="{{ hidden.name }}" value="{{ hidden.value }}">{% endfor %}
+  <div class="bi-filter-actions">
+    <button type="submit" class="btn btn-sm btn-primary">{% icon "filter" %}Aplicar</button>
+    {% for e in export_links %}
+      <a class="btn btn-sm btn-outline-secondary" href="{{ e.url }}">{% icon e.icon|default:"download" %}{{ e.label }}</a>
+    {% endfor %}
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-print>{% icon "printer" %}Imprimir / PDF</button>
+  </div>
+  <p class="bi-period-note">Período analisado: <strong>{{ period.label }}</strong> ({{ period.start|date:"d/m/Y" }} a {{ period.end|date:"d/m/Y" }}) · comparado com {{ period.previous.start|date:"d/m/Y" }} a {{ period.previous.end|date:"d/m/Y" }} · gerado em {% now "d/m/Y H:i" %}</p>
+</form>

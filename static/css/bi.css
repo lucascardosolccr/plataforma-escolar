@@ -1,0 +1,235 @@
+/* =====================================================================
+   Painéis de BI — sobre os tokens de ds-tokens.css.
+   Princípios: começa pela visão geral e aprofunda por seções; cada número
+   tem o "i" com a definição; cor reforça, nunca é a única pista; nada de
+   vermelho cheio marcando estudante (sinal neutro + texto).
+   ===================================================================== */
+
+/* ---------- Cabeçalho do estudante ---------- */
+.bi-profile {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 1rem 1.25rem;
+  align-items: center;
+  padding: 1.25rem;
+  margin-bottom: var(--ds-space-4);
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius-lg);
+  box-shadow: var(--ds-shadow-1);
+}
+.bi-photo {
+  width: 5rem;
+  height: 5rem;
+  border-radius: 1rem;
+  object-fit: cover;
+  background: var(--ds-surface-2);
+  box-shadow: 0 0 0 3px var(--ds-surface), 0 0 0 4px var(--ds-line);
+}
+.bi-photo-initials {
+  display: grid;
+  place-items: center;
+  font-family: var(--ds-font-display);
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--ds-primary);
+  background: var(--ds-primary-soft);
+}
+.bi-profile h1 { margin: 0 0 .25rem; }
+.bi-facts { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; margin: 0; padding: 0; list-style: none; font-size: var(--ds-fs-sm); color: var(--ds-text-muted); }
+.bi-facts strong { color: var(--ds-text); font-weight: 700; }
+@media (max-width: 767.98px) {
+  .bi-profile { grid-template-columns: auto 1fr; }
+  .bi-profile .bi-profile-actions { grid-column: 1 / -1; }
+  .bi-photo { width: 4rem; height: 4rem; }
+}
+
+/* ---------- Filtros ---------- */
+.bi-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: .75rem;
+  padding: .9rem 1rem;
+  margin-bottom: var(--ds-space-4);
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius-md);
+}
+.bi-filter { display: flex; flex-direction: column; gap: .25rem; min-width: 9.5rem; }
+.bi-filter label { font-size: var(--ds-fs-xs); font-weight: 700; color: var(--ds-text-muted); }
+.bi-filter-actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-left: auto; }
+.bi-period-note { flex-basis: 100%; margin: .25rem 0 0; font-size: var(--ds-fs-xs); color: var(--ds-text-muted); max-width: none; }
+
+/* ---------- Navegação por seções ---------- */
+.bi-subnav {
+  position: sticky;
+  top: var(--topbar-h, 3.75rem);
+  z-index: 10;
+  margin: 0 0 var(--ds-space-4);
+  background: color-mix(in srgb, var(--ds-paper) 92%, transparent);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--ds-line);
+}
+.bi-subnav ul { display: flex; gap: .25rem; list-style: none; margin: 0; padding: .4rem 0; overflow-x: auto; scrollbar-width: none; }
+.bi-subnav a {
+  display: inline-block;
+  padding: .4rem .8rem;
+  border-radius: var(--ds-radius-pill);
+  color: var(--ds-text-muted);
+  font-size: var(--ds-fs-sm);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.bi-subnav a:hover { background: var(--ds-surface-2); color: var(--ds-text); }
+.bi-section { scroll-margin-top: calc(var(--topbar-h, 3.75rem) + 3.5rem); margin-bottom: var(--ds-space-6); }
+.bi-section > h2 {
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+  font-family: var(--ds-font-display);
+  font-weight: 600;
+  font-size: var(--ds-fs-xl);
+  margin-bottom: .25rem;
+}
+.bi-section > .bi-lead { color: var(--ds-text-muted); margin-bottom: var(--ds-space-4); }
+
+/* ---------- KPI com variação e "i" ---------- */
+.bi-kpi .kpi-label { justify-content: flex-start; }
+.bi-kpi .metric-info { margin-left: auto; }
+.bi-delta { font-size: var(--ds-fs-xs); font-weight: 700; display: flex; gap: .3rem; align-items: baseline; }
+.bi-delta.is-good { color: var(--ds-success); }
+.bi-delta.is-bad { color: var(--ds-danger); }
+.kpi-value small { font-family: var(--ds-font-text); font-size: var(--ds-fs-sm); font-weight: 600; color: var(--ds-text-muted); }
+
+/* ---------- "i" (definição do indicador) ---------- */
+.metric-info { position: relative; display: inline-block; }
+.metric-info > summary {
+  list-style: none;
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  border: 1px solid var(--ds-line-strong);
+  color: var(--ds-text-muted);
+  font-family: var(--ds-font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: .8rem;
+  cursor: pointer;
+  user-select: none;
+}
+.metric-info > summary::-webkit-details-marker { display: none; }
+.metric-info > summary:hover, .metric-info[open] > summary { background: var(--ds-primary-soft); color: var(--ds-primary); border-color: var(--ds-primary); }
+/* Fechado, o painel não existe (o Chrome ainda o dimensiona e alargava a página). */
+.metric-info:not([open]) > .metric-pop { display: none; }
+.metric-pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + .4rem);
+  z-index: 30;
+  width: min(22rem, 80vw);
+  padding: .9rem 1rem;
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius-md);
+  box-shadow: var(--ds-shadow-3);
+  font-size: var(--ds-fs-sm);
+  font-weight: 400;
+  color: var(--ds-text);
+  text-align: left;
+  white-space: normal;
+}
+.metric-pop p { margin: 0 0 .5rem; }
+.metric-pop-title { font-weight: 800; }
+.metric-kind { font-size: var(--ds-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ds-text-muted); margin-left: .3rem; }
+.metric-pop dl { display: grid; grid-template-columns: 1fr; gap: .1rem; margin: 0 0 .5rem; }
+.metric-pop dt { font-size: var(--ds-fs-xs); font-weight: 700; color: var(--ds-text-muted); margin-top: .35rem; }
+.metric-pop dd { margin: 0; }
+@media (max-width: 575.98px) { .metric-pop { position: fixed; left: 1rem; right: 1rem; top: auto; bottom: 1rem; width: auto; } }
+
+/* ---------- Mapa de calor ---------- */
+.bi-heatmap { --heat-max: 55%; }
+[data-bs-theme="dark"] .bi-heatmap { --heat-max: 45%; }
+.bi-heatmap td {
+  background: color-mix(in srgb, var(--ds-chart-1) calc(var(--v, 0) * var(--heat-max)), var(--ds-surface)) !important;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 3.4rem;
+}
+.bi-heatmap td.is-empty { color: var(--ds-text-muted); font-weight: 400; background: var(--ds-surface) !important; }
+.bi-heatmap th[scope="row"] { white-space: nowrap; font-weight: 600; }
+
+/* ---------- Matriz de acompanhamento ---------- */
+.bi-matrix td, .bi-matrix th { white-space: nowrap; }
+.bi-matrix td.cell-num { text-align: center; font-variant-numeric: tabular-nums; }
+/* Sinal neutro (marcador + texto oculto), não fundo vermelho: a matriz pode
+   ser projetada numa reunião e não deve expor estudantes. */
+.cell-flag { position: relative; font-weight: 800; }
+.cell-flag::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: .25rem;
+  width: 1.4rem;
+  height: 2px;
+  margin-left: -.7rem;
+  background: var(--ds-text);
+  border-radius: 2px;
+}
+.bi-matrix .col-sticky { position: sticky; left: 0; z-index: 2; background: var(--ds-surface); box-shadow: 1px 0 0 var(--ds-line); }
+.bi-matrix thead .col-sticky { background: var(--ds-surface-2); }
+
+/* ---------- Sugestões ---------- */
+.bi-insights { display: grid; grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); gap: var(--ds-space-3); }
+.bi-insight {
+  padding: 1rem 1.1rem;
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-line);
+  border-left: 4px solid var(--ds-line-strong);
+  border-radius: var(--ds-radius-md);
+}
+.bi-insight.is-atencao { border-left-color: var(--ds-mark); }
+.bi-insight.is-evolucao { border-left-color: var(--ds-success); }
+.bi-insight.is-informacao { border-left-color: var(--ds-info); }
+.bi-insight header { margin-bottom: .5rem; }
+.bi-insight-kind { display: flex; align-items: center; gap: .35rem; font-size: var(--ds-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ds-text-muted); margin-bottom: .2rem; }
+.bi-insight dl { margin: 0 0 .4rem; font-size: var(--ds-fs-sm); }
+.bi-insight dt { font-size: var(--ds-fs-xs); font-weight: 700; color: var(--ds-text-muted); margin-top: .4rem; }
+.bi-insight dd { margin: 0; }
+.bi-disclaimer {
+  display: flex;
+  gap: .6rem;
+  padding: .75rem 1rem;
+  margin-bottom: var(--ds-space-4);
+  background: var(--ds-surface-2);
+  border-radius: var(--ds-radius-md);
+  font-size: var(--ds-fs-sm);
+  color: var(--ds-text-muted);
+}
+
+/* ---------- Linha do tempo ---------- */
+.bi-timeline { list-style: none; margin: 0; padding: 0 0 0 1.2rem; border-left: 2px solid var(--ds-line); }
+.bi-timeline li { position: relative; padding: 0 0 .9rem .75rem; }
+.bi-timeline li::before { content: ""; position: absolute; left: -1.62rem; top: .35rem; width: .7rem; height: .7rem; border-radius: 50%; background: var(--ds-surface); border: 2px solid var(--ds-chart-1); }
+.bi-timeline time { font-size: var(--ds-fs-xs); font-weight: 700; color: var(--ds-text-muted); display: block; }
+
+/* ---------- Gráficos: barras clicáveis (detalhamento) ---------- */
+.chart-svg a { cursor: pointer; }
+.chart-svg a:focus-visible .chart-bar, .chart-svg a:hover .chart-bar { opacity: 1; stroke: var(--ds-text); stroke-width: 2; }
+.chart-svg a:focus-visible { outline: none; }
+.bi-chart-card .card-body { padding-top: .75rem; }
+.bi-chart-note { font-size: var(--ds-fs-xs); color: var(--ds-text-muted); margin: .4rem 0 0; }
+
+/* ---------- Metodologia ---------- */
+.bi-method dt { font-size: var(--ds-fs-xs); font-weight: 700; color: var(--ds-text-muted); margin-top: .6rem; }
+.bi-method dd { margin: 0; }
+.bi-method article { scroll-margin-top: calc(var(--topbar-h, 3.75rem) + 1rem); }
+.bi-method article:target { box-shadow: 0 0 0 2px var(--ds-mark); }
+
+@media print {
+  .bi-subnav, .bi-filter-actions, .metric-info { display: none !important; }
+  .bi-section { break-inside: avoid-page; }
+}

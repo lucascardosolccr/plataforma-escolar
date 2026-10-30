@@ -1,0 +1,13 @@
+{% load ui %}
+<article class="bi-insight is-{{ i.kind }}">
+  <header>
+    <span class="bi-insight-kind">{% if i.kind == "atencao" %}{% icon "circle-alert" %}Merece atenção{% elif i.kind == "evolucao" %}{% icon "sparkles" %}Evolução{% else %}{% icon "info" %}Qualidade do dado{% endif %}</span>
+    <h3 class="h6 mb-0">{{ i.title }}</h3>
+  </header>
+  <dl>
+    <dt>Dado observado</dt><dd>{{ i.observed }}</dd>
+    <dt>Regra</dt><dd>{{ i.rule }}</dd>
+    <dt>Sugestão para avaliação do professor</dt><dd>{{ i.suggestion }}</dd>
+  </dl>
+  {% if i.anchor %}<a class="small" href="#{{ i.anchor }}">Ver os dados</a>{% endif %}
+</article>

@@ -145,10 +145,19 @@ def bar_chart(items, *, max_value=None, suffix="", width=520, height=220):
         bx = cx - bar_w / 2
         by = pad_t + plot_h - bar_h
         cls = "chart-bar below" if item.get("below") else "chart-bar"
-        bars.append(
+        barra = (
             f'<rect x="{bx:.1f}" y="{by:.1f}" width="{bar_w:.1f}" height="{bar_h:.1f}" rx="4" class="{cls}">'
             f"<title>{escape(str(item['label']))}: {_fmt(v)}{escape(suffix)}</title></rect>"
-            f'<text x="{cx:.1f}" y="{by - 5:.1f}" class="chart-value" text-anchor="middle">{_fmt(v)}</text>'
+        )
+        if item.get("url"):
+            # Detalhamento: a barra leva aos registros que formam o valor.
+            barra = (
+                f'<a href="{escape(item["url"])}" aria-label="{escape(str(item["label"]))}: '
+                f'{_fmt(v)}{escape(suffix)} — ver registros">{barra}</a>'
+            )
+        bars.append(
+            barra
+            + f'<text x="{cx:.1f}" y="{by - 5:.1f}" class="chart-value" text-anchor="middle">{_fmt(v)}</text>'
             f'<text x="{cx:.1f}" y="{height - 14}" class="chart-tick" text-anchor="middle">{escape(str(item["label"]))[:14]}</text>'
         )
     grid = (

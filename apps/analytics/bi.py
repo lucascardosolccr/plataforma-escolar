@@ -75,6 +75,7 @@ class Period:
 
 PRESETS = [
     ("ano", "Ano letivo atual"),
+    ("tudo", "Todo o histórico"),
     ("90d", "Últimos 90 dias"),
     ("30d", "Últimos 30 dias"),
     ("mes", "Mês atual"),
@@ -118,6 +119,15 @@ def resolve_period(params, school):
         return Period(today - timedelta(days=29), today, preset, "Últimos 30 dias")
     if preset == "90d":
         return Period(today - timedelta(days=89), today, preset, "Últimos 90 dias")
+    if preset == "tudo":
+        from apps.academics.models import SchoolYear
+
+        first = (
+            SchoolYear.objects.filter(school=school, start_date__isnull=False)
+            .order_by("start_date").values_list("start_date", flat=True).first()
+        )
+        start = min(first, today) if first else today.replace(year=today.year - 5)
+        return Period(start, today, preset, "Todo o histórico")
     if preset == "mes":
         start = today.replace(day=1)
         return Period(start, today, preset, f"{MONTHS[today.month - 1]}/{today.year}")
@@ -552,6 +562,13 @@ def student_report(student, period, *, show_class_comparison=False, show_observa
     attention = [s for s in sorted(ranked, key=lambda s: s["margin"]) if s["below"] or (s["delta"] or 0) <= -1][:3]
     months = months_between(period.start, period.end)
     monthly = _monthly_grades(grades)
+    # Mapa de calor só do primeiro ao último mês com nota: num período longo,
+    # colunas vazias empurravam os dados para fora da tela.
+    heat_months = months
+    if monthly:
+        heat_months = months_between(*(
+            date(int(k[:4]), int(k[5:]), 1) for k in (min(monthly), max(monthly))
+        ))
     evaluations = []
     eval_ids = [g.evaluation_id for g in grades]
     class_eval_means = {}
@@ -616,7 +633,7 @@ def student_report(student, period, *, show_class_comparison=False, show_observa
             "n_evaluations": len({g.evaluation_id for g in grades}),
             "monthly": [{"label": month_label(m), "value": monthly.get(m), "month": m} for m in months],
             "distribution": bands([g.value for g in grades]),
-            "heatmap": _heatmap(grades, months), "months": [month_label(m) for m in months],
+            "heatmap": _heatmap(grades, heat_months), "months": [month_label(m) for m in heat_months],
             "evaluations": evaluations, "trend": trd, "recovery": recovery,
             "class_comparison": bool(class_means),
         },

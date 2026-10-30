@@ -1,220 +1,291 @@
 {% extends "base.html" %}
-{% load ui %}
-{% block title %}Painel do estudante — {{ student }}{% endblock %}
+{% load static ui bi_tags %}
+{% block title %}Painel de {{ student.full_name }} — Plataforma Escolar{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/bi.css' %}">{% endblock %}
+{% block crumb %}<li><span aria-current="page">Painel de {{ student.first_name }}</span></li>{% endblock %}
+
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+{% with acad=report.academic att=report.attendance act=report.activities cur=report.current_enrollment %}
+
+{# ================= Identificação ================= #}
+<header class="bi-profile">
+  {% if student.photo %}
+    <img class="bi-photo" src="{% url 'student_photo' student.pk %}" alt="Foto de {{ student.full_name }}" width="80" height="80">
+  {% else %}
+    <div class="bi-photo bi-photo-initials" aria-hidden="true">{{ student.first_name|slice:":1"|upper }}{{ student.last_name|slice:":1"|upper }}</div>
+  {% endif %}
   <div>
-    <h1 class="h4 mb-0">Painel de {{ student }}</h1>
-    <p class="text-body-secondary small mb-0">
-      {% if active_class %}Turma: {{ active_class }}{% endif %}
-      {% if is_guardian %}· Visão da família (apenas notas publicadas){% endif %}
-      · Gerado em {{ generated_at|date:"d/m/Y H:i" }}
-    </p>
-  </div>
-  <div class="d-flex gap-2">
-    <a href="{% url 'analytics:report_detail' 'boletim' %}?student={{ student.pk }}" class="btn btn-outline-primary btn-sm">Boletim</a>
-    <a href="{% url 'student_detail' student.pk %}" class="btn btn-outline-secondary btn-sm">Dossiê</a>
-  </div>
-</div>
-
-<div class="kpi-grid mb-4">
-  {% with abaixo=subject_averages|count_where:"below" %}
-  <div class="kpi{% if abaixo %} is-attention{% endif %}">
-    <span class="kpi-label">{% icon "graduation-cap" %}Disciplinas abaixo da média</span>
-    <span class="kpi-value">{{ abaixo }}<small class="fs-6 text-body-secondary"> de {{ subject_averages|length }}</small></span>
-    <span class="kpi-hint">Média de aprovação de cada disciplina, pela regra da escola</span>
-  </div>
-  {% endwith %}
-  <div class="kpi{% if attendance.near_limit %} is-attention{% endif %}">
-    <span class="kpi-label">{% icon "calendar-check" %}Frequência</span>
-    <span class="kpi-value">{% if attendance.percent is not None %}{{ attendance.percent }}%{% else %}—{% endif %}</span>
-    <span class="kpi-hint">Limite de faltas: {{ attendance.limit }}%{% if attendance.near_limit %} · perto do limite{% endif %}</span>
-  </div>
-  <div class="kpi">
-    <span class="kpi-label">{% icon "notebook-pen" %}Atividades entregues</span>
-    <span class="kpi-value">{% if activities.percent is not None %}{{ activities.percent }}%{% else %}—{% endif %}</span>
-    <span class="kpi-hint">{{ activities.delivered }} de {{ activities.total }} com entrega registrada pelo professor</span>
-  </div>
-  {% if can_view_occ %}
-  <div class="kpi{% if occurrences.aberta %} is-attention{% endif %}">
-    <span class="kpi-label">{% icon "flag" %}Ocorrências</span>
-    <span class="kpi-value">{{ occurrences.total }}</span>
-    <span class="kpi-hint">{{ occurrences.aberta }} em aberto</span>
-  </div>
-  {% endif %}
-</div>
-
-<div class="row g-3 mb-3">
-  <div class="col-lg-6">
-    <div class="card h-100">
-      <div class="card-header bg-transparent fw-semibold">Média por disciplina</div>
-      <div class="card-body">
-        <div class="p-3">
-          {{ subject_chart }}
-        </div>
-        <a class="small" data-bs-toggle="collapse" href="#tab-subjects" role="button">Ver dados que fundamentam</a>
-        <div class="collapse mt-2" id="tab-subjects">
-          <table class="table table-sm mb-0">
-            <thead><tr><th>Disciplina</th><th class="text-end">Média</th><th class="text-end">Avaliações</th><th>Situação</th></tr></thead>
-            <tbody>
-              {% for a in subject_averages %}
-              <tr>
-                <td>{{ a.subject.name }}</td>
-                <td class="text-end">{{ a.average|default:"—" }}</td>
-                <td class="text-end">{{ a.count }}</td>
-                <td>{% if a.below %}<span class="chip text-danger">Abaixo da média</span>{% else %}<span class="chip text-success">Na média</span>{% endif %}</td>
-              </tr>
-              {% empty %}<tr><td colspan="4" class="text-body-secondary">Sem notas publicadas.</td></tr>{% endfor %}
-            </tbody>
-          </table>
-          <p class="small text-body-secondary mb-0 mt-2">Média calculada conforme a fórmula configurada por disciplina (aritmética por padrão), considerando apenas avaliações publicadas.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-lg-6">
-    <div class="card h-100">
-      <div class="card-header bg-transparent fw-semibold">Evolução das notas (últimas avaliações)</div>
-      <div class="card-body p-4">
-        {{ evolution_chart }}
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="row g-3 mb-3">
-  <div class="col-lg-6">
-    <div class="card h-100">
-      <div class="card-header bg-transparent fw-semibold">Frequência</div>
-      <div class="card-body">
-        {{ attendance_gauge }}
-        {{ attendance_chart }}
-        <div class="row text-center small mt-2">
-          <div class="col"><div class="fw-semibold">{{ attendance.present }}</div><div class="text-body-secondary">Presenças</div></div>
-          <div class="col"><div class="fw-semibold">{{ attendance.late }}</div><div class="text-body-secondary">Atrasos</div></div>
-          <div class="col"><div class="fw-semibold">{{ attendance.absent }}</div><div class="text-body-secondary">Faltas</div></div>
-          <div class="col"><div class="fw-semibold">{{ attendance.total }}</div><div class="text-body-secondary">Registros</div></div>
-        </div>
-        {% if attendance.near_limit %}
-        <div class="alert alert-warning small mt-2 mb-0">Atenção: faltas em {{ attendance.absence_percent }}%, no limite configurado ({{ attendance.limit }}%).</div>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-  <div class="col-lg-6">
-    <div class="card h-100">
-      <div class="card-header bg-transparent fw-semibold">Atividades</div>
-      <div class="card-body">
-        {{ activity_chart }}
-        <p class="small text-body-secondary mb-0">Entrega registrada = envio marcado como entregue. Atrasada = prazo vencido sem entrega; pendente = prazo em aberto.</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="row g-3 mb-3">
-  <div class="col-lg-6">
-    <div class="card h-100">
-      <div class="card-header bg-transparent fw-semibold">Distribuição das notas</div>
-      <div class="card-body">{{ distribution_chart }}</div>
-    </div>
-  </div>
-  {% if can_view_occ %}
-  <div class="col-lg-6">
-    <div class="card h-100">
-      <div class="card-header bg-transparent fw-semibold">Ocorrências</div>
-      <div class="card-body">{{ occurrence_chart }}</div>
-    </div>
-  </div>
-  {% endif %}
-</div>
-
-<div class="row g-3 mb-3">
-  <div class="col-lg-6">
-    <div class="card h-100">
-      <div class="card-header bg-transparent fw-semibold">Justificativas de ausência</div>
-      <div class="card-body">
-        <table class="table table-sm mb-0">
-          <tbody>
-            <tr><td>Recebidas</td><td class="text-end">{{ justifications.recebida }}</td></tr>
-            <tr><td>Em análise</td><td class="text-end">{{ justifications.em_analise }}</td></tr>
-            <tr><td>Aprovadas</td><td class="text-end">{{ justifications.aprovada }}</td></tr>
-            <tr><td>Recusadas</td><td class="text-end">{{ justifications.recusada }}</td></tr>
-          </tbody>
-        </table>
-        <p class="small text-body-secondary mb-0 mt-2">Justificativas registram o motivo informado; não alteram o percentual oficial de frequência, que só muda com a decisão da secretaria.</p>
-      </div>
-    </div>
-  </div>
-  {% if can_view_plan %}
-  <div class="col-lg-6">
-    <div class="card h-100">
-      <div class="card-header bg-transparent fw-semibold">Planos de acompanhamento</div>
-      <div class="card-body">
-        <div class="row text-center small">
-          <div class="col"><div class="fs-5 fw-semibold">{{ plans.ativos }}</div><div class="text-body-secondary">Ativos</div></div>
-          <div class="col"><div class="fs-5 fw-semibold">{{ plans.concluidos }}</div><div class="text-body-secondary">Concluídos</div></div>
-          <div class="col"><div class="fs-5 fw-semibold">{{ plans.registros }}</div><div class="text-body-secondary">Registros</div></div>
-        </div>
-        <ul class="list-unstyled small mt-3 mb-0">
-          {% for p in plans.plans %}
-          <li class="border-top py-1 d-flex justify-content-between gap-2">
-            <span>{{ p.title }}</span><span class="chip">{{ p.get_status_display }}</span>
-          </li>
-          {% empty %}<li class="text-body-secondary">Nenhum plano registrado.</li>{% endfor %}
-        </ul>
-      </div>
-    </div>
-  </div>
-  {% endif %}
-</div>
-
-{% if can_view_obs %}
-<div class="card mb-3">
-  <div class="card-header bg-transparent fw-semibold">Dificuldades, habilidades e reforço</div>
-  <div class="card-body">
-    <div class="row g-3">
-      <div class="col-md-4">
-        <h2 class="h6 text-body-secondary text-uppercase">Dificuldades</h2>
-        <ul class="small mb-0">
-          {% for d in difficulties %}<li>{{ d.date|date:"d/m/Y" }} · {{ d.subject }}: {{ d.detail }} <span class="text-body-secondary">({{ d.content }})</span></li>
-          {% empty %}<li class="text-body-secondary">Sem registros.</li>{% endfor %}
-        </ul>
-      </div>
-      <div class="col-md-4">
-        <h2 class="h6 text-body-secondary text-uppercase">Habilidades consolidadas</h2>
-        <ul class="small mb-0">
-          {% for s in skills %}<li>{{ s.date|date:"d/m/Y" }}: {{ s.detail }} <span class="text-body-secondary">({{ s.content }})</span></li>
-          {% empty %}<li class="text-body-secondary">Sem registros.</li>{% endfor %}
-        </ul>
-      </div>
-      <div class="col-md-4">
-        <h2 class="h6 text-body-secondary text-uppercase">Reforço recomendado</h2>
-        <ul class="small mb-0">
-          {% for s in strategies %}<li>{{ s.date|date:"d/m/Y" }}: {{ s.detail }} <span class="text-body-secondary">({{ s.content }})</span></li>
-          {% empty %}<li class="text-body-secondary">Sem registros.</li>{% endfor %}
-        </ul>
-      </div>
-    </div>
-  </div>
-</div>
-{% endif %}
-
-{% if can_view_occ %}
-<div class="card">
-  <div class="card-header bg-transparent fw-semibold">Linha do tempo</div>
-  <div class="card-body">
-    <ul class="list-unstyled mb-0">
-      {% for e in timeline %}
-      <li class="d-flex gap-2 border-bottom py-1 small">
-        <span class="text-body-secondary text-nowrap">{{ e.date|date:"d/m/Y" }}</span>
-        <span class="chip">{{ e.kind }}</span>
-        <span>{{ e.text }}</span>
-      </li>
-      {% empty %}<li class="text-body-secondary small">Sem eventos registrados.</li>{% endfor %}
+    <span class="eyebrow">Painel individual</span>
+    <h1>{{ student.full_name }}</h1>
+    <ul class="bi-facts">
+      {% if cur %}
+        <li>Turma <strong>{{ cur.class_group.name }}</strong></li>
+        {% if cur.class_group.grade %}<li>Ano/série <strong>{{ cur.class_group.grade }}</strong></li>{% endif %}
+        {% if cur.class_group.turn %}<li>Turno <strong>{{ cur.class_group.get_turn_display }}</strong></li>{% endif %}
+        {% if cur.enrollment_number %}<li>Matrícula <strong>{{ cur.enrollment_number }}</strong></li>{% endif %}
+        {% if cur.started_on %}<li>Ingresso <strong>{{ cur.started_on|date:"d/m/Y" }}</strong></li>{% endif %}
+        <li>Situação <strong>{{ cur.get_status_display }}</strong></li>
+      {% else %}
+        <li><strong>Sem matrícula ativa</strong></li>
+      {% endif %}
+      {% if can_view_birth and student.birth_date %}<li>Nascimento <strong>{{ student.birth_date|date:"d/m/Y" }}</strong></li>{% endif %}
     </ul>
   </div>
-</div>
+  <div class="bi-profile-actions d-flex flex-wrap gap-2">
+    {% if switch_students|length > 1 %}
+    <form method="get" class="d-flex gap-1" data-student-switch>
+      <label class="visually-hidden" for="troca">Trocar de estudante</label>
+      <select id="troca" class="form-select form-select-sm" data-autonav>
+        {% for s in switch_students %}
+          <option value="{% url 'analytics:student_dashboard' s.pk %}?{{ period.querystring }}"{% if s.pk == student.pk %} selected{% endif %}>{{ s.full_name }}</option>
+        {% endfor %}
+      </select>
+      <noscript><button class="btn btn-sm btn-outline-secondary">Ir</button></noscript>
+    </form>
+    {% endif %}
+    <a href="{% url 'student_detail' student.pk %}" class="btn btn-sm btn-outline-secondary">{% icon "id-card" %}Ficha</a>
+    <a href="{% url 'analytics:report_detail' 'boletim' %}?student={{ student.pk }}" class="btn btn-sm btn-outline-secondary">{% icon "file-text" %}Boletim</a>
+  </div>
+</header>
+
+{% include "analytics/bi/_filters.html" with presets=presets period=period export_links=export_links %}
+{% include "analytics/bi/_subnav.html" with sections=sections %}
+
+{% if is_guardian %}<div class="bi-disclaimer">{% icon "info" %}<div>Visão da família: só aparecem avaliações já publicadas pelo professor. Os números são do período escolhido acima.</div></div>{% endif %}
+
+{# ================= Visão geral ================= #}
+<section class="bi-section" id="visao-geral" aria-labelledby="h-visao">
+  <h2 id="h-visao">Visão geral</h2>
+  <p class="bi-lead">O resumo do período. Cada número tem o <em>i</em> com a forma de cálculo; as seções abaixo mostram o detalhe.</p>
+  <div class="kpi-grid mb-3">
+    {% with v=acad.overall|num:2 %}{% include "analytics/bi/_kpi.html" with label="Média geral" value=v icon="graduation-cap" metric="overall_average" delta=acad.overall_delta hint="Média das médias por disciplina" %}{% endwith %}
+    {% with v=att.percent|num:1|cat:"%" %}{% include "analytics/bi/_kpi.html" with label="Frequência" value=v icon="calendar-check" metric="attendance_percent" delta=att.delta delta_unit=" p.p." attention=att.limit_level hint="Dias com chamada registrada" %}{% endwith %}
+    {% with v=act.delivery_rate|num:1|cat:"%" %}{% include "analytics/bi/_kpi.html" with label="Taxa de entrega" value=v icon="notebook-pen" metric="delivery_rate" delta=act.delta delta_unit=" p.p." hint="Entre as atividades com registro" %}{% endwith %}
+    {% include "analytics/bi/_kpi.html" with label="Faltas" value=att.absent icon="calendar-days" metric="absences" delta_inverse=True hint=att.justified|cat:" justificada(s)" %}
+    {% include "analytics/bi/_kpi.html" with label="Avaliações no período" value=acad.n_evaluations icon="clipboard-check" metric="evaluation_stats" hint=acad.n_grades|cat:" nota(s) lançada(s)" %}
+    {% include "analytics/bi/_kpi.html" with label="Tendência das notas" value=acad.trend.label icon="chart-line" metric="trend" hint=acad.trend.slope|signed:2|cat:" ponto/mês" %}
+  </div>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card h-100"><div class="card-body">
+        <h3 class="h6">Disciplinas com melhor resultado</h3>
+        {% if acad.best %}<ul class="list-unstyled mb-0 d-grid gap-1">{% for s in acad.best %}<li class="d-flex justify-content-between"><span>{{ s.subject.name }}</span><strong>{{ s.average|num:2 }}</strong></li>{% endfor %}</ul>
+        {% else %}<p class="text-body-secondary small mb-0">Sem notas no período.</p>{% endif %}
+      </div></div>
+    </div>
+    <div class="col-md-6">
+      <div class="card h-100"><div class="card-body">
+        <h3 class="h6">Disciplinas que demandam atenção</h3>
+        {% if acad.attention %}<ul class="list-unstyled mb-0 d-grid gap-1">{% for s in acad.attention %}<li class="d-flex justify-content-between"><span>{{ s.subject.name }}{% if s.below %} <span class="chip chip-state state-a_vencer">abaixo da aprovação</span>{% endif %}</span><strong>{{ s.average|num:2 }}</strong></li>{% endfor %}</ul>
+        {% else %}<p class="text-body-secondary small mb-0">Nenhuma disciplina abaixo da aprovação ou em queda no período.</p>{% endif %}
+      </div></div>
+    </div>
+  </div>
+</section>
+
+{# ================= Desempenho ================= #}
+<section class="bi-section" id="desempenho" aria-labelledby="h-desempenho">
+  <h2 id="h-desempenho">Desempenho acadêmico {% metric_info "subject_average" %}</h2>
+  <p class="bi-lead">Médias pela regra de cada disciplina. Clique numa barra para ver as avaliações que formam a média.</p>
+  <div class="row g-3 mb-3">
+    <div class="col-lg-6"><div class="card h-100 bi-chart-card"><div class="card-header">Média por disciplina</div><div class="card-body">{{ subject_chart }}
+      <div class="chart-legend"><span><i class="l-main"></i>Na média ou acima</span><span><i class="l-alert"></i>Abaixo da aprovação</span></div></div></div></div>
+    <div class="col-lg-6"><div class="card h-100 bi-chart-card"><div class="card-header">Evolução mensal (média das notas do mês)</div><div class="card-body">{{ evolution_chart }}
+      <p class="bi-chart-note">Meses sem avaliação ficam sem ponto (não são zero).</p></div></div></div>
+  </div>
+  <div class="card mb-3">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle" data-sortable>
+        <caption class="visually-hidden">Médias por disciplina no período</caption>
+        <thead><tr><th>Disciplina</th><th class="text-end">Média</th><th class="text-end">Aprovação</th><th class="text-end">Variação</th>{% if acad.class_comparison %}<th class="text-end">Média da turma {% metric_info "class_comparison" %}</th>{% endif %}<th class="text-end">Notas</th><th>Regra</th><th data-nosort>Situação</th></tr></thead>
+        <tbody>
+          {% for s in acad.subjects %}
+          <tr>
+            <th scope="row"><a href="?{{ period.querystring }}&disciplina={{ s.subject.pk }}#avaliacoes">{{ s.subject.name }}</a></th>
+            <td class="text-end fw-bold" data-value="{{ s.average|default_if_none:'' }}">{{ s.average|num:2 }}</td>
+            <td class="text-end">{{ s.passing|num:1 }}</td>
+            <td class="text-end" data-value="{{ s.delta|default_if_none:'' }}">{{ s.delta|signed:2 }}</td>
+            {% if acad.class_comparison %}<td class="text-end">{{ s.class_mean|num:2 }}</td>{% endif %}
+            <td class="text-end">{{ s.count }}</td>
+            <td class="small text-body-secondary">{{ s.formula_label }}</td>
+            <td>{% if s.below %}<span class="chip chip-state state-a_vencer">Abaixo da aprovação</span>{% else %}<span class="chip chip-state state-pendente">Na média</span>{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8"><div class="empty-state py-4">{% icon "graduation-cap" %}<strong>Sem notas publicadas no período</strong>Escolha outro período nos filtros acima.</div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="row g-3 mb-3">
+    <div class="col-lg-5"><div class="card h-100 bi-chart-card"><div class="card-header">Distribuição das notas {% metric_info "grade_distribution" %}</div><div class="card-body">{{ distribution_chart }}</div></div></div>
+    <div class="col-lg-7"><div class="card h-100"><div class="card-header">Mapa de calor: disciplina × mês</div><div class="card-body p-0">
+      {% if acad.heatmap %}{% include "analytics/bi/_heatmap.html" with rows=acad.heatmap months=acad.months scale=10 caption="Média das notas por disciplina e mês" %}
+      {% else %}<div class="empty-state py-4">{% icon "layers" %}Sem notas no período.</div>{% endif %}
+    </div></div></div>
+  </div>
+  <div class="card" id="avaliacoes">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <span>Histórico de avaliações {% metric_info "evaluation_stats" %}</span>
+      {% if subject_filter %}<a class="small fw-normal" href="?{{ period.querystring }}#avaliacoes">Mostrar todas as disciplinas</a>{% endif %}
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle" data-sortable>
+        <thead><tr><th>Data</th><th>Disciplina</th><th>Avaliação</th><th>Tipo</th><th class="text-end">Peso</th><th class="text-end">Nota</th>{% if acad.class_comparison %}<th class="text-end">Média da turma</th>{% endif %}</tr></thead>
+        <tbody>
+          {% for e in evaluations %}
+          <tr>
+            <td data-value="{{ e.evaluation.date|date:'Ymd' }}">{{ e.evaluation.date|date:"d/m/Y" }}</td>
+            <td>{{ e.evaluation.subject.name }}</td>
+            <td>{{ e.evaluation.title }}</td>
+            <td class="small">{{ e.evaluation.get_kind_display }}</td>
+            <td class="text-end">{{ e.evaluation.weight|num:1 }}</td>
+            <td class="text-end fw-bold">{{ e.value|num:2 }}</td>
+            {% if acad.class_comparison %}<td class="text-end">{{ e.class_mean|num:2 }}</td>{% endif %}
+          </tr>
+          {% empty %}<tr><td colspan="7" class="text-center text-body-secondary py-3">Nenhuma avaliação no filtro escolhido.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% if acad.recovery %}
+  <div class="card mt-3"><div class="card-header">Recuperação {% metric_info "recovery" %}</div>
+    <ul class="list-group list-group-flush">{% for r in acad.recovery %}
+      <li class="list-group-item d-flex justify-content-between flex-wrap gap-2"><span>{{ r.evaluation.subject.name }} · {{ r.evaluation.title }} ({{ r.evaluation.date|date:"d/m" }})</span>
+        <span>antes {{ r.before|num:2 }} → recuperação <strong>{{ r.value|num:2 }}</strong> {% if r.reached %}<span class="chip chip-state state-pendente">atingiu a aprovação</span>{% else %}<span class="chip chip-state state-a_vencer">abaixo da aprovação</span>{% endif %}</span></li>
+    {% endfor %}</ul></div>
+  {% endif %}
+</section>
+
+{# ================= Frequência ================= #}
+<section class="bi-section" id="frequencia" aria-labelledby="h-frequencia">
+  <h2 id="h-frequencia">Frequência e assiduidade {% metric_info "attendance_percent" %}</h2>
+  <p class="bi-lead">A chamada é diária, por turma. O mínimo legal para aprovação é 75% das horas letivas (LDB, art. 24, VI); o limite de faltas configurado pela escola é {{ att.limit|num:1 }}%.</p>
+  {% if att.limit_level %}
+    <div class="alert alert-warning" role="status">{% icon "triangle-alert" %}<div><strong>{% if att.limit_level == "acima" %}Faltas acima do limite da escola{% else %}Faltas perto do limite da escola{% endif %}.</strong> {{ att.absent }} falta(s) em {{ att.total }} dia(s) com chamada ({{ att.absence_percent|num:1 }}%). A frequência oficial é consolidada pela secretaria ao fim do período. {% metric_info "absence_limit" %}</div></div>
+  {% endif %}
+  <div class="kpi-grid mb-3">
+    {% include "analytics/bi/_kpi.html" with label="Dias com chamada" value=att.total metric="attendance_percent" hint="Base do percentual" %}
+    {% include "analytics/bi/_kpi.html" with label="Presenças" value=att.present hint=att.late|cat:" atraso(s), contados como presença" %}
+    {% include "analytics/bi/_kpi.html" with label="Faltas justificadas" value=att.justified metric="justified_absences" hint="Justificar não altera a frequência oficial" %}
+    {% include "analytics/bi/_kpi.html" with label="Faltas não justificadas" value=att.unjustified metric="absences" %}
+    {% include "analytics/bi/_kpi.html" with label="Maior sequência de faltas" value=att.streak.length metric="absence_streak" hint="dias de chamada seguidos" %}
+  </div>
+  <div class="row g-3">
+    <div class="col-lg-6"><div class="card h-100 bi-chart-card"><div class="card-header">Frequência por mês</div><div class="card-body">{{ attendance_chart }}</div></div></div>
+    <div class="col-lg-6"><div class="card h-100 bi-chart-card"><div class="card-header">Faltas por dia da semana {% metric_info "attendance_weekday" %}</div><div class="card-body">
+      {% if att.by_weekday %}{{ weekday_chart }}{% else %}<div class="empty-state py-4">{% icon "calendar-days" %}Exibido com ao menos 10 registros no período.</div>{% endif %}</div></div></div>
+  </div>
+  <details class="card mt-3">
+    <summary class="card-header" style="cursor:pointer">Histórico de ausências ({{ att.absences|length }})</summary>
+    <ul class="list-group list-group-flush">
+      {% for a in att.absences %}<li class="list-group-item d-flex justify-content-between"><span>{{ a.date|date:"l, d/m/Y" }}</span>{% if a.justified %}<span class="chip chip-state state-pendente">Justificada</span>{% else %}<span class="chip">Não justificada</span>{% endif %}</li>
+      {% empty %}<li class="list-group-item text-body-secondary">Nenhuma falta no período.</li>{% endfor %}
+    </ul>
+  </details>
+</section>
+
+{# ================= Atividades ================= #}
+<section class="bi-section" id="atividades" aria-labelledby="h-atividades">
+  <h2 id="h-atividades">Atividades e entregas {% metric_info "activities_proposed" %}</h2>
+  <p class="bi-lead">"Sem registro" significa que o professor ainda não lançou a entrega — não é o mesmo que "não entregue".</p>
+  <div class="kpi-grid mb-3">
+    {% include "analytics/bi/_kpi.html" with label="Propostas" value=act.proposed metric="activities_proposed" %}
+    {% include "analytics/bi/_kpi.html" with label="Entregues no prazo" value=act.on_time metric="on_time_rate" hint=act.on_time_rate|num:1|cat:"% das entregas" %}
+    {% include "analytics/bi/_kpi.html" with label="Entregues com atraso" value=act.late metric="on_time_rate" %}
+    {% include "analytics/bi/_kpi.html" with label="Não entregues" value=act.not_delivered metric="delivery_rate" %}
+    {% with c=act.coverage|num:1 %}{% include "analytics/bi/_kpi.html" with label="Sem registro (prazo vencido)" value=act.no_record metric="record_coverage" hint="Cobertura de registro: "|cat:c|cat:"%" %}{% endwith %}
+    {% include "analytics/bi/_kpi.html" with label="Em aberto" value=act.open hint="Prazo ainda não venceu" %}
+  </div>
+  <div class="row g-3 mb-3">
+    <div class="col-lg-6"><div class="card h-100 bi-chart-card"><div class="card-header">Taxa de entrega por mês {% metric_info "delivery_rate" %}</div><div class="card-body">{{ delivery_chart }}</div></div></div>
+    <div class="col-lg-6"><div class="card h-100"><div class="card-header">Entregas por disciplina</div>
+      <div class="table-responsive"><table class="table table-sm align-middle mb-0" data-sortable>
+        <thead><tr><th>Disciplina</th><th class="text-end">Propostas</th><th class="text-end">Entregues</th><th class="text-end">Taxa</th><th class="text-end">Sem registro</th></tr></thead>
+        <tbody>{% for r in act.by_subject %}<tr><td>{{ r.subject }}</td><td class="text-end">{{ r.total }}</td><td class="text-end">{{ r.delivered }}/{{ r.registered }}</td><td class="text-end fw-bold">{{ r.rate|num:1 }}{% if r.rate is not None %}%{% endif %}</td><td class="text-end">{{ r.no_record }}</td></tr>
+        {% empty %}<tr><td colspan="5" class="text-center text-body-secondary py-3">Nenhuma atividade no período.</td></tr>{% endfor %}</tbody>
+      </table></div></div></div>
+  </div>
+  <div class="row g-3">
+    <div class="col-lg-6"><div class="card h-100"><div class="card-header">Trabalhos em grupo {% metric_info "group_participation" %}</div><div class="card-body">
+      <p class="mb-2"><strong>{{ act.groups.count }}</strong> participação(ões) · entregas registradas: {{ act.groups.delivered }} no prazo, {{ act.groups.late }} com atraso, {{ act.groups.not_delivered }} não entregue(s).</p>
+      <ul class="small mb-0">{% for w in act.groups.works %}<li><a href="{% url 'pedagogy:group_work_detail' w.work.pk %}">{{ w.work.title }}</a> · {{ w.work.subject.name }} · {{ w.group.name }}</li>{% empty %}<li class="text-body-secondary">Nenhum trabalho em grupo no período.</li>{% endfor %}</ul>
+    </div></div></div>
+    <div class="col-lg-6"><div class="card h-100"><div class="card-header">Devolutivas do professor</div>
+      <ul class="list-group list-group-flush">{% for f in act.feedback %}<li class="list-group-item small"><a href="{% url 'pedagogy:activity_detail' f.activity.pk %}">{{ f.activity.title }}</a><div class="text-body-secondary">{{ f.comment }}</div></li>
+      {% empty %}<li class="list-group-item text-body-secondary small">Nenhuma devolutiva registrada no período.</li>{% endfor %}</ul>
+    </div></div>
+  </div>
+</section>
+
+{# ================= Trajetória ================= #}
+<section class="bi-section" id="trajetoria" aria-labelledby="h-trajetoria">
+  <h2 id="h-trajetoria">Trajetória</h2>
+  <p class="bi-lead">Este período comparado ao anterior ({{ report.previous.label }}) e a linha do tempo dos acontecimentos.</p>
+  <div class="row g-3">
+    <div class="col-lg-5">
+      <div class="card mb-3"><div class="card-header">Comparação entre períodos</div>
+        <table class="table mb-0"><thead><tr><th>Indicador</th><th class="text-end">Anterior</th><th class="text-end">Atual</th><th class="text-end">Variação</th></tr></thead>
+          <tbody>
+            <tr><td>Média geral</td><td class="text-end">{{ acad.prev_overall|num:2 }}</td><td class="text-end fw-bold">{{ acad.overall|num:2 }}</td><td class="text-end">{{ acad.overall_delta|signed:2 }}</td></tr>
+            <tr><td>Frequência (%)</td><td class="text-end">{{ att.prev_percent|num:1 }}</td><td class="text-end fw-bold">{{ att.percent|num:1 }}</td><td class="text-end">{{ att.delta|signed:1 }}</td></tr>
+            <tr><td>Taxa de entrega (%)</td><td class="text-end">{{ act.prev_rate|num:1 }}</td><td class="text-end fw-bold">{{ act.delivery_rate|num:1 }}</td><td class="text-end">{{ act.delta|signed:1 }}</td></tr>
+          </tbody></table></div>
+      <div class="card"><div class="card-header">Matrículas</div>
+        <ul class="list-group list-group-flush">{% for e in report.enrollments %}<li class="list-group-item small d-flex justify-content-between gap-2"><span>{{ e.class_group.name }} · {{ e.school_year.name }}</span><span class="text-body-secondary">{{ e.started_on|date:"d/m/Y"|default:"—" }} → {{ e.ended_on|date:"d/m/Y"|default:"atual" }} · {{ e.get_status_display }}</span></li>{% endfor %}</ul></div>
+    </div>
+    <div class="col-lg-7"><div class="card h-100"><div class="card-header">Linha do tempo do período</div><div class="card-body">
+      {% if timeline %}<ol class="bi-timeline">{% for ev in timeline %}<li><time datetime="{{ ev.date|date:'Y-m-d' }}">{{ ev.date|date:"d/m/Y" }} · {{ ev.kind }}</time>{{ ev.text }}</li>{% endfor %}</ol>
+      {% else %}<p class="text-body-secondary mb-0">Nada registrado no período.</p>{% endif %}
+    </div></div></div>
+  </div>
+</section>
+
+{# ================= Inteligência pedagógica ================= #}
+<section class="bi-section" id="inteligencia" aria-labelledby="h-inteligencia">
+  <h2 id="h-inteligencia">Inteligência pedagógica {% metric_info "insights" %}</h2>
+  <div class="bi-disclaimer">{% icon "info" %}<div>Cada item mostra o <strong>dado observado</strong>, a <strong>regra</strong> que o destacou e uma <strong>sugestão para avaliação do professor</strong>. Não são diagnósticos, não indicam causa e não substituem o olhar pedagógico. <a href="{% url 'analytics:methodology' %}#regras">Ver todas as regras</a>.</div></div>
+  {% if report.insights %}
+    <div class="bi-insights mb-3">{% for i in report.insights %}{% include "analytics/bi/_insight.html" with i=i %}{% endfor %}</div>
+  {% else %}
+    <div class="card mb-3"><div class="empty-state py-4">{% icon "circle-check" %}<strong>Nenhuma regra disparou no período</strong>Os dados disponíveis não indicam ponto de atenção pelas regras definidas.</div></div>
+  {% endif %}
+  {% if can_view_plan %}
+  <div class="card mb-3"><div class="card-header">Planos de acompanhamento: antes e depois {% metric_info "intervention_effect" %}</div>
+    <div class="table-responsive"><table class="table align-middle mb-0">
+      <thead><tr><th>Plano</th><th>Início</th><th class="text-end">Média 60 dias antes</th><th class="text-end">Média 60 dias depois</th><th class="text-end">Frequência antes → depois</th></tr></thead>
+      <tbody>{% for i in report.interventions %}<tr>
+        <td><a href="{% url 'pedagogy:plan_detail' i.plan.pk %}">{{ i.plan.title }}</a> <span class="chip">{{ i.plan.get_status_display }}</span></td>
+        <td>{{ i.plan.created_at|date:"d/m/Y" }}</td>
+        <td class="text-end">{{ i.grade_before|num:2 }} <span class="text-body-secondary small">({{ i.n_before }})</span></td>
+        <td class="text-end">{{ i.grade_after|num:2 }} <span class="text-body-secondary small">({{ i.n_after }}){% if not i.after_complete %} · em curso{% endif %}</span></td>
+        <td class="text-end">{{ i.att_before|num:1 }} → {{ i.att_after|num:1 }}</td>
+      </tr>{% empty %}<tr><td colspan="5" class="text-center text-body-secondary py-3">Nenhum plano de acompanhamento.</td></tr>{% endfor %}</tbody>
+    </table></div>
+    <p class="bi-chart-note px-3 pb-2">Associação no tempo, não efeito do plano. Entre parênteses, a quantidade de notas de cada lado.</p>
+  </div>
+  {% endif %}
+  {% if can_view_obs and difficulties %}
+  <div class="card"><div class="card-header">Dificuldades registradas em observações pedagógicas</div>
+    <ul class="list-group list-group-flush">{% for d in difficulties|slice:":8" %}<li class="list-group-item small"><strong>{{ d.subject }}</strong> · {{ d.content }} · {{ d.date|date:"d/m/Y" }}<div class="text-body-secondary">{{ d.detail }}</div></li>{% endfor %}</ul></div>
+  {% endif %}
+</section>
+
+{# ================= Qualidade dos dados (equipe) ================= #}
+{% if is_team %}
+<section class="bi-section" id="qualidade" aria-labelledby="h-qualidade">
+  <h2 id="h-qualidade">Qualidade dos dados deste painel</h2>
+  <p class="bi-lead">Lacunas de registro que afetam a leitura dos números acima.</p>
+  <div class="kpi-grid mb-3">
+    {% include "analytics/bi/_kpi.html" with label="Avaliações sem nota lançada" value=report.quality.evaluations_without_grade|length hint="Publicadas para a turma no período" %}
+    {% include "analytics/bi/_kpi.html" with label="Dias de chamada sem registro do estudante" value=report.quality.attendance_days_missing hint="A turma teve chamada; o estudante não" %}
+    {% include "analytics/bi/_kpi.html" with label="Atividades sem registro de entrega" value=report.quality.activities_without_record metric="record_coverage" %}
+  </div>
+  {% if report.quality.evaluations_without_grade %}
+  <ul class="small">{% for e in report.quality.evaluations_without_grade %}<li>{{ e.date|date:"d/m/Y" }} · {{ e.subject.name }} · {{ e.title }}</li>{% endfor %}</ul>
+  {% endif %}
+</section>
 {% endif %}
 
+{% endwith %}
 {% endblock %}

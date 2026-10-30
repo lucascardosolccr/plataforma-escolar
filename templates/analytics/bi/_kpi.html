@@ -1,0 +1,19 @@
+{% load ui bi_tags %}{% comment %}
+Indicador. Parâmetros: label, value (já formatado), hint, metric (chave em
+analytics.metrics), delta (número), delta_unit, delta_inverse (queda é boa),
+href (detalhamento), attention, icon.
+{% endcomment %}
+<div class="kpi bi-kpi{% if attention %} is-attention{% endif %}">
+  <div class="kpi-label">
+    {% if icon %}{% icon icon %}{% endif %}<span>{{ label }}</span>
+    {% if metric %}{% metric_info metric %}{% endif %}
+  </div>
+  <div class="kpi-value">{{ value }}</div>
+  {% if delta is not None and delta != "" %}
+    <div class="bi-delta {% if delta > 0 %}{% if delta_inverse %}is-bad{% else %}is-good{% endif %}{% elif delta < 0 %}{% if delta_inverse %}is-good{% else %}is-bad{% endif %}{% endif %}">
+      <span aria-hidden="true">{% if delta > 0 %}▲{% elif delta < 0 %}▼{% else %}■{% endif %}</span>
+      {{ delta|signed:1 }}{{ delta_unit }} <span class="text-body-secondary">vs. período anterior</span>
+    </div>
+  {% endif %}
+  {% if hint %}<div class="kpi-hint">{% if href %}<a href="{{ href }}">{{ hint }}</a>{% else %}{{ hint }}{% endif %}</div>{% endif %}
+</div>

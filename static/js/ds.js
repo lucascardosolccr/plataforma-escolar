@@ -328,6 +328,21 @@
     update();
   });
 
+  /* ---------- Painéis de BI ---------- */
+  // Seletor que navega (trocar de estudante, turma ou disciplina).
+  $$("select[data-autonav]").forEach(function (sel) {
+    sel.addEventListener("change", function () { if (sel.value) window.location.href = sel.value; });
+  });
+  // Imprimir / salvar em PDF pelo navegador.
+  $$("[data-print]").forEach(function (b) { b.addEventListener("click", function () { window.print(); }); });
+  // Mexer numa data torna o período "personalizado".
+  $$("[data-period-date]").forEach(function (input) {
+    input.addEventListener("change", function () {
+      var preset = input.form && input.form.querySelector("[data-period-preset]");
+      if (preset) preset.value = "personalizado";
+    });
+  });
+
   /* ---------- Envio único de formulário ----------
    * Desabilita o botão DEPOIS que o envio começou (setTimeout): desabilitar
    * no próprio evento tiraria o nome do botão dos dados enviados, e o

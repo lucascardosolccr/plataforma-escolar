@@ -160,6 +160,12 @@ GUIDES = [
         ("O painel da coordenação mostra quais turmas e disciplinas estão sem plano nesta semana.",
          "coordination:panel"),
     ]),
+    ("Reaproveitar uma atividade", "history", (PROFESSOR,), [
+        ("Em Atividades de casa, abra Minhas atividades anteriores (de qualquer turma ou ano).",
+         "pedagogy:activity_bank"),
+        ("Clique em Reutilizar, escolha a turma atual e a data de aplicação.", None),
+        ("Sai um rascunho com o texto e os anexos: revise e publique.", None),
+    ]),
     ("Pedir a impressão de uma atividade", "printer", (PROFESSOR,), [
         ("Em Atividades e impressões, escolha a atividade e “Pedir impressão”.", "printing:mine"),
         ("Confira a data de aplicação, a data desejada e as cópias (sugeridas pela turma).", None),

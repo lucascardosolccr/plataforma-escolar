@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Reutilizar atividade — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  <div class="page-head">
+    <div>
+      <a href="{% url 'pedagogy:activity_bank' %}" class="back-link">{% icon "arrow-left" %}Minhas atividades anteriores</a>
+      <h1>Reutilizar “{{ src.title }}”</h1>
+      <p>Cria um rascunho com o mesmo texto{% if src.attachments.exists %} e os anexos{% endif %}. Nada é publicado até você revisar e publicar.</p>
+    </div>
+  </div>
+  <div class="card form-card"><div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include "partials/_form_fields.html" with f=form %}
+      <button type="submit" class="btn btn-primary w-100 mt-2">Criar rascunho</button>
+    </form>
+  </div></div>
+</div>
+{% endblock %}

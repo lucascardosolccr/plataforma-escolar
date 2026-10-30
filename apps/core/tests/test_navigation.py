@@ -5,6 +5,9 @@ como cada perfil, cada link do menu lateral e cada ação rápida: um item que
 respondesse 403 (link para tela sem permissão) ou 500 falha aqui.
 """
 
+import re
+
+from django import forms
 from django.test import TestCase
 from django.urls import reverse
 
@@ -120,3 +123,49 @@ class ActiveAndBreadcrumbTests(NavigationBase):
         self.login(Role.PROFESSOR.value)
         nav = self.client.get(reverse("pedagogy:attendance_list")).context["nav"]
         self.assertEqual(nav["active"]["key"], "attendance")
+
+
+class EveryFormFieldIsRenderedTests(NavigationBase):
+    """Todo campo de formulário precisa aparecer no HTML.
+
+    Num ModelForm, o campo que o template esquece não é só invisível: ao
+    salvar, ele é gravado em branco. Foi o que aconteceu com conteúdo,
+    objetivo e observações internas da atividade (Prompt 14). Abre as telas do
+    menu de cada perfil e as de criação e edição ligadas a elas.
+    """
+
+    FORM_PAGE = re.compile(r"/(nova|novo|editar|registrar|preferencias|regras)/")
+
+    def missing_fields(self, resp):
+        html = resp.content.decode()
+        out = []
+        for ctx in resp.context or []:
+            for key, value in ctx.flatten().items():
+                if not isinstance(value, forms.BaseForm):
+                    continue
+                for name, field in value.fields.items():
+                    if isinstance(field.widget, forms.HiddenInput) or field.disabled:
+                        continue
+                    if f'name="{value.add_prefix(name)}"' not in html:
+                        out.append(f"{type(value).__name__}.{name}")
+        return sorted(set(out))
+
+    def test_all_fields_present_in_menu_and_form_pages(self):
+        for role in Role:
+            with self.subTest(perfil=role.value):
+                self.login(role.value)
+                pages = list(navigation.all_visible_urls(self.users[role.value]))
+                seen = set()
+                while pages:
+                    url = pages.pop()
+                    if url in seen:
+                        continue
+                    seen.add(url)
+                    resp = self.client.get(url)
+                    if resp.status_code != 200 or "html" not in resp.get("Content-Type", ""):
+                        continue
+                    self.assertEqual(self.missing_fields(resp), [], f"{role.value}: {url}")
+                    for href in re.findall(r'href="(/[^"?#]*)"', resp.content.decode()):
+                        if self.FORM_PAGE.search(href) and href not in seen:
+                            pages.append(href)
+                self.client.logout()

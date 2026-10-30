@@ -13,6 +13,7 @@
   </div>
   <div class="page-actions">
     {% if can_manage %}
+    <a href="{% url 'pedagogy:activity_bank' %}" class="btn btn-outline-secondary">{% icon "history" %}Minhas atividades anteriores</a>
     <a href="{% url 'pedagogy:activity_create' %}" class="btn btn-primary">{% icon "plus" %}Nova atividade</a>
   {% endif %}
   </div>

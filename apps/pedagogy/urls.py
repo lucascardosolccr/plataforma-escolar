@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_planning
+from . import views, views_planning, views_reuse
 
 app_name = "pedagogy"
 
@@ -12,6 +12,8 @@ urlpatterns = [
     path("avaliacoes/<int:pk>/publicar/", views.evaluation_publish, name="evaluation_publish"),
     path("atividades/", views.activity_list, name="activity_list"),
     path("atividades/nova/", views.activity_create, name="activity_create"),
+    path("atividades/anteriores/", views_reuse.activity_bank, name="activity_bank"),
+    path("atividades/<int:pk>/reutilizar/", views_reuse.activity_reuse, name="activity_reuse"),
     path("atividades/<int:pk>/", views.activity_detail, name="activity_detail"),
     path("atividades/<int:pk>/editar/", views.activity_edit, name="activity_edit"),
     path("atividades/<int:pk>/cancelar/", views.activity_cancel, name="activity_cancel"),

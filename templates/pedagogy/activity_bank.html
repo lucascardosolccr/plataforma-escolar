@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Minhas atividades anteriores — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'pedagogy:activity_list' %}" class="back-link">{% icon "arrow-left" %}Atividades de casa</a>
+    <h1>Minhas atividades anteriores</h1>
+    <p>Tudo o que você já preparou, de qualquer turma ou ano. Reutilize para criar um rascunho numa turma atual, com o texto e os anexos.</p>
+  </div>
+</div>
+
+{% if not has_pairs %}<div class="callout mb-3">{% icon "info" %}<div>Você não tem turma com disciplina atribuída no momento. A reutilização fica disponível quando houver.</div></div>{% endif %}
+
+<form method="get" class="filter-bar" aria-label="Buscar atividades anteriores">
+  {% include "partials/_filter_search.html" with label="Buscar" placeholder="Título, conteúdo ou instruções" %}
+  <div class="filter-field">
+    <label for="f-disc">Disciplina</label>
+    <select id="f-disc" name="disciplina" class="form-select" data-autosubmit>
+      <option value="">Todas</option>
+      {% for s in subjects %}<option value="{{ s.pk }}"{% if subject_id == s.pk|stringformat:"s" %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
+    </select>
+  </div>
+  {% if q or subject_id %}{% include "partials/_filter_end.html" with filtered=True count=page.paginator.count noun="atividade(s)" %}{% else %}{% include "partials/_filter_end.html" with count=page.paginator.count noun="atividade(s)" %}{% endif %}
+</form>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 table-stack">
+      <thead><tr><th>Atividade</th><th>Onde foi usada</th><th>Anexos</th><th><span class="visually-hidden">Ações</span></th></tr></thead>
+      <tbody>
+        {% for a in acts %}
+        <tr>
+          <td class="fw-semibold">{{ a.title }}<span class="d-block small text-body-secondary fw-normal">{{ a.subject.name }} · {{ a.get_work_mode_display }}{% if a.content %} · {{ a.content|truncatechars:60 }}{% endif %}</span></td>
+          <td data-label="Onde foi usada">{{ a.class_group.name }} · {{ a.class_group.school_year.name }}<span class="d-block small text-body-secondary">{{ a.published_date|date:"d/m/Y" }} · {{ a.get_status_display }}</span></td>
+          <td data-label="Anexos">{{ a.attachment_count }}</td>
+          <td class="text-end cell-actions">{% if has_pairs %}<a class="btn btn-sm btn-outline-primary" href="{% url 'pedagogy:activity_reuse' a.pk %}">Reutilizar</a>{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4"><div class="empty-state py-4">{% icon "history" %}<strong>Nenhuma atividade encontrada</strong></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/_pager.html" %}
+{% endblock %}

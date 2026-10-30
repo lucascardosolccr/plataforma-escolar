@@ -32,7 +32,8 @@ EVENTS = {
     "atividade_atribuida": ("Nova atividade de casa", K.ACTIVITY, True),
     "atividade_corrigida": ("Atividade corrigida (nota ou comentário)", K.ACTIVITY, True),
     "entrega_registrada": ("Entrega registrada ou marcada como não entregue", K.ACTIVITY, True),
-    "prazo_proximo": ("Lembrete de prazo: atividade não entregue vencendo hoje ou amanhã", K.ACTIVITY, True),
+    "prazo_proximo": ("Lembrete de prazo: atividade ou trabalho em grupo não entregue vencendo hoje ou amanhã",
+                      K.ACTIVITY, True),
     "falta_registrada": ("Falta registrada", K.ATTENDANCE, True),
     "falta_corrigida": ("Falta corrigida para presença", K.ATTENDANCE, True),
     "limite_faltas": ("Faltas perto do limite", K.ATTENDANCE, True),
@@ -84,7 +85,8 @@ def student_url(name, student, **extra):
 
 
 def send_deadline_reminders(today=None):
-    """Lembra a família da atividade ainda não entregue que vence hoje ou amanhã.
+    """Lembra a família da atividade (ou trabalho em grupo) ainda não entregue
+    que vence hoje ou amanhã.
 
     Um lembrete por estudante e atividade (``dedupe_key``): quem foi lembrado
     na véspera não recebe outro no dia. Não há agendador: o
@@ -120,5 +122,38 @@ def send_deadline_reminders(today=None):
                 body=f"{enr.student} — {act.subject}, entrega até {act.deadline:%d/%m/%Y}. "
                      "Se já entregou, desconsidere: o professor ainda vai registrar.",
                 url=url, dedupe_key=f"prazo:{act.pk}:{enr.student_id}",
+            )
+    return total + _group_work_reminders(today, tomorrow, enabled)
+
+
+def _group_work_reminders(today, tomorrow, enabled):
+    """Trabalhos em grupo: lembra cada integrante atual cujo grupo (ou ele, na
+    entrega individual) ainda não tem entrega registrada."""
+    from apps.pedagogy.models import GroupWork, GroupWorkDelivery, WorkGroupMember
+
+    delivered_states = (GroupWorkDelivery.Status.DELIVERED, GroupWorkDelivery.Status.LATE)
+    works = (GroupWork.objects.filter(GroupWork.family_visible_q(today=today), status=GroupWork.Status.PUBLISHED,
+                                      deadline__in=[today, tomorrow])
+             .select_related("school", "subject"))
+    total = 0
+    for work in works:
+        if work.school_id not in enabled:
+            enabled[work.school_id] = event_enabled(work.school, "prazo_proximo")
+        if not enabled[work.school_id]:
+            continue
+        done = GroupWorkDelivery.objects.filter(group_work=work, status__in=delivered_states)
+        done_groups = set(done.filter(student__isnull=True).values_list("group_id", flat=True))
+        done_students = set(done.filter(student__isnull=False).values_list("student_id", flat=True))
+        when = "hoje" if work.deadline == today else "amanhã"
+        url = reverse("pedagogy:group_work_detail", args=[work.pk])
+        for m in (WorkGroupMember.objects.filter(group__group_work=work, removed_at__isnull=True)
+                  .select_related("student__school", "student__user")):
+            if m.group_id in done_groups or m.student_id in done_students:
+                continue
+            total += notify_family(
+                m.student, "prazo_proximo", f"Prazo {when}: {work.title} (trabalho em grupo)",
+                body=f"{m.student} — {work.subject}, entrega até {work.deadline:%d/%m/%Y}. "
+                     "Se o grupo já entregou, desconsidere: o professor ainda vai registrar.",
+                url=url, dedupe_key=f"prazo-trabalho:{work.pk}:{m.student_id}",
             )
     return total

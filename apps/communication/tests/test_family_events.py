@@ -231,3 +231,30 @@ class DeadlineReminderTests(FamBase):
         Notification.objects.all().delete()
         self.client.get(reverse("home"))  # mesmo dia: não roda de novo
         self.assertFalse(self.reminders().exists())
+
+    def test_group_work_reminds_members_of_groups_without_delivery(self):
+        from apps.communication.family_events import send_deadline_reminders
+        from apps.pedagogy.models import GroupWork, GroupWorkDelivery, WorkGroup, WorkGroupMember
+
+        today = timezone.localdate()
+        work = GroupWork.objects.create(school=self.school, class_group=self.cg, subject=self.mat, title="Maquete",
+                                        description="d", deadline=today + timedelta(days=1),
+                                        published_date=today - timedelta(days=5), status="publicada",
+                                        notified_at=timezone.now())
+        g1 = WorkGroup.objects.create(group_work=work, name="G1")
+        g2 = WorkGroup.objects.create(group_work=work, name="G2")
+        WorkGroupMember.objects.create(group=g1, student=self.ana)
+        WorkGroupMember.objects.create(group=g2, student=self.bia)
+        GroupWorkDelivery.objects.create(group_work=work, group=g2, status="entregue")
+        send_deadline_reminders(today)
+        send_deadline_reminders(today + timedelta(days=1))
+        n = self.fam_notes().get(dedupe_key__startswith="prazo-trabalho:")
+        self.assertEqual((n.title, n.student), ("Prazo amanhã: Maquete (trabalho em grupo)", self.ana))
+        self.assertFalse(self.fam_notes(self.outra).exists())  # o grupo da Bia já entregou
+        # Quem saiu do grupo não é lembrado.
+        Notification.objects.all().delete()
+        WorkGroupMember.objects.filter(student=self.ana).update(removed_at=timezone.now())
+        work.deadline = today
+        work.save()
+        send_deadline_reminders(today)
+        self.assertFalse(Notification.objects.exists())

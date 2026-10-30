@@ -145,6 +145,7 @@
     <div class="d-flex flex-wrap gap-2">
       <a href="{% url 'pedagogy:activity_submissions' activity.pk %}" class="btn btn-sm btn-outline-primary">Acompanhar entregas</a>
       <a href="{% url 'pedagogy:activity_edit' activity.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
+      <a href="{% url 'pedagogy:activity_reuse' activity.pk %}" class="btn btn-sm btn-outline-secondary">Reutilizar</a>
       {% if activity.status != 'cancelada' %}
         <a href="{% url 'pedagogy:activity_cancel' activity.pk %}" class="btn btn-sm btn-outline-danger">Cancelar atividade</a>
       {% endif %}

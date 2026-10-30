@@ -303,6 +303,23 @@ def _collect_events(user, start, end, class_filter=None, subject_filter=None,
                 "school_id": j.school_id,
             })
 
+    # ---------- Calendário oficial (feriados, férias, reuniões...) ----------
+    if kind_filter is None or kind_filter == "school":
+        from .services import events_for_user
+
+        for ev in events_for_user(user, start or today, end or today + dt.timedelta(days=365)):
+            when = ev.start.strftime("%d/%m") + (f" a {ev.end:%d/%m}" if ev.end and ev.end != ev.start else "")
+            events.append({
+                "kind": "school",
+                "kind_label": ev.get_kind_display(),
+                "title": ev.title,
+                "date": max(ev.start, start) if start else ev.start,
+                "date_label": when + (" · sem aula" if ev.no_classes else ""),
+                "subtitle": ev.description or ("Só a equipe" if ev.audience == "equipe" else "Calendário escolar"),
+                "url": "",
+                "school_id": ev.school_id,
+            })
+
     # Filtro por período (um intervalo como o de uma justificativa conta se
     # encostar no período, não só se começar dentro dele).
     if start or end:
@@ -313,6 +330,7 @@ def _collect_events(user, start, end, class_filter=None, subject_filter=None,
 
 
 KIND_CHOICES = [
+    ("school", "Calendário escolar"),
     ("activity", "Atividade de casa"),
     ("group_work", "Trabalho em grupo"),
     ("evaluation", "Avaliação"),
@@ -325,8 +343,20 @@ def calendar_index(request):
     if not access.can_view_calendar(request.user):
         raise PermissionDenied
 
+    view_mode = request.GET.get("ver", "agenda")
     start = _parse_date(request.GET.get("start"))
     end = _parse_date(request.GET.get("end"))
+    month_ref = None
+    if view_mode == "mes":
+        month_ref = _parse_date((request.GET.get("mes") or "") + "-01") or timezone.localdate().replace(day=1)
+        start = month_ref.replace(day=1)
+        end = (start + dt.timedelta(days=32)).replace(day=1) - dt.timedelta(days=1)
+    elif view_mode == "semana":
+        ref = _parse_date(request.GET.get("semana")) or timezone.localdate()
+        start = ref - dt.timedelta(days=ref.weekday())
+        end = start + dt.timedelta(days=6)
+    else:
+        view_mode = "agenda"
     default_window = start is None and end is None
     if default_window:
         hoje = timezone.localdate()
@@ -397,6 +427,16 @@ def calendar_index(request):
     for e in events:
         by_date.setdefault(e["date"], []).append(e)
     days = [{"date": day, "events": by_date[day]} for day in sorted(by_date)]
+    month = None
+    if view_mode == "mes":
+        from .views_official import month_grid
+
+        month = month_grid(request.user, month_ref, [e for e in events if e["kind"] != "school"])
+    elif view_mode == "semana":
+        days = [{"date": start + dt.timedelta(days=i), "events": by_date.get(start + dt.timedelta(days=i), [])}
+                for i in range(7)]
+    from .services import countdown
+    from .views_official import can_manage_calendar
 
     return render(
         request,
@@ -416,5 +456,11 @@ def calendar_index(request):
             "kind_filter": kind_filter,
             "kind_choices": KIND_CHOICES,
             "today": timezone.localdate(),
+            "view_mode": view_mode,
+            "month": month,
+            "week_prev": (start - dt.timedelta(days=7)).isoformat() if view_mode == "semana" else "",
+            "week_next": (start + dt.timedelta(days=7)).isoformat() if view_mode == "semana" else "",
+            "summary": countdown(request.user.school),
+            "can_manage_calendar": can_manage_calendar(request.user),
         },
     )

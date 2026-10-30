@@ -1,0 +1,28 @@
+{% load ui %}{% comment %}Cartões de contagem regressiva de dias letivos. Recebe ``s`` (services.countdown).{% endcomment %}
+{% if s.reason %}
+<div class="callout">{% icon "info" %}<div>{{ s.reason }} Por isso não mostramos contagem de dias letivos: ela só sai do calendário oficial.</div></div>
+{% else %}
+<div class="today-grid">
+  {% for p in s.periods %}
+  <div class="kpi"><div class="countdown">
+    <span class="countdown-value">{{ p.left }}</span>
+    <span class="countdown-label">dia{{ p.left|pluralize }} letivo{{ p.left|pluralize }} até o fim do {{ p.period.name }} ({{ p.end|date:"d/m" }})</span>
+  </div></div>
+  {% endfor %}
+  <div class="kpi"><div class="countdown">
+    <span class="countdown-value">{{ s.year_left }}</span>
+    <span class="countdown-label">dia{{ s.year_left|pluralize }} letivo{{ s.year_left|pluralize }} até o encerramento do ano ({{ s.year_end|date:"d/m/Y" }})</span>
+  </div></div>
+  {% if s.vacation %}
+  <div class="kpi"><div class="countdown">
+    {% if s.vacation.ongoing %}
+    <span class="countdown-value">{% icon "sun" %}</span>
+    <span class="countdown-label"><strong>{{ s.vacation.event.title }}</strong> até {{ s.vacation.event.last_day|date:"d/m" }}.{% if s.vacation.return %} Retorno às aulas: {{ s.vacation.return|date:"l, d/m" }}.{% endif %}</span>
+    {% else %}
+    <span class="countdown-value">{{ s.vacation.days_until }}</span>
+    <span class="countdown-label">dia{{ s.vacation.days_until|pluralize }} até {{ s.vacation.event.title|lower }} ({{ s.vacation.event.start|date:"d/m" }} a {{ s.vacation.event.last_day|date:"d/m" }}){% if s.vacation.return %}. Retorno: {{ s.vacation.return|date:"d/m" }}{% endif %}</span>
+    {% endif %}
+  </div></div>
+  {% endif %}
+</div>
+{% endif %}

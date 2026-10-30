@@ -1,4 +1,4 @@
-"""Calendário escolar unificado — custo zero, sem novo modelo de dados."""
+"""Calendário escolar: datas dos módulos e calendário oficial da escola."""
 
 from django.apps import AppConfig
 

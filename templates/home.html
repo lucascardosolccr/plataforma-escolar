@@ -30,6 +30,8 @@
 <div class="callout mb-3">{% icon "user-round" %}<div>Sua conta ainda não tem foto de identificação. <a href="{% url 'my_photo' %}">Adicionar foto</a> leva um minuto e ajuda a escola a reconhecer quem é quem.</div></div>
 {% endif %}
 
+{% include "core/_today.html" with t=ws.today_block %}
+
 {# ================= Responsável ================= #}
 {% if user_role == ROLE_RESPONSAVEL %}
   {% if ws.pending_links %}

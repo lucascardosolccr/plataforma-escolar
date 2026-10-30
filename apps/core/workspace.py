@@ -101,6 +101,27 @@ def _children_summary(rows, children):
     return resumo
 
 
+def today_block(user, today):
+    """Rotina do dia (aulas, cardápio, calendário), igual para a tela inicial
+    de todos os perfis; as aulas só para quem tem turma (estudante, família,
+    professor)."""
+    from apps.rotina.services import menu_for, schedule_for
+    from apps.school_calendar.services import countdown
+
+    cd = countdown(user.school, today)
+    block = {"day": today, "now": timezone.localtime().time(), "menu": menu_for(user.school, today),
+             "countdown": cd, "schedule": None, "no_class_reason": ""}
+    if user.role in (Role.ESTUDANTE.value, Role.RESPONSAVEL.value, Role.PROFESSOR.value):
+        block["schedule"] = schedule_for(user, today)
+        if cd.get("published") and not cd.get("is_school_day", True):
+            from apps.school_calendar.services import events_for_user
+
+            off = [e for e in events_for_user(user, today, today) if e.no_classes]
+            block["no_class_reason"] = (f"Sem aula hoje: {off[0].title}." if off
+                                        else "Hoje não é dia letivo pelo calendário da escola.")
+    return block
+
+
 def build(user):
     from apps.registry.models import GuardianLink, Student
 
@@ -239,6 +260,7 @@ def build(user):
             data["applications_pending"] = StudentApplication.objects.filter(
                 school=user.school, status=StudentApplication.Status.SUBMITTED
             ).count()
+    data["today_block"] = today_block(user, today)
     if role != Role.ESTUDANTE.value:
         from .views_photo import has_photo, photo_exempt
 

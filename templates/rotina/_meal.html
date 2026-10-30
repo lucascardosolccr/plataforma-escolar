@@ -1,0 +1,14 @@
+{% load ui %}<div class="menu-meal">
+  <h3>{{ m.get_meal_display }}{% if m.changed %} <span class="menu-change">· alterado</span>{% endif %}</h3>
+  <p class="mb-1">{{ m.description|linebreaksbr }}</p>
+  {% if m.changed and m.change_note %}<p class="small mb-1"><span class="menu-change">Mudou:</span> {{ m.change_note }}</p>{% endif %}
+  {% if m.substitution %}<p class="small mb-1"><strong>Substituição:</strong> {{ m.substitution }}</p>{% endif %}
+  {% if m.notes %}<p class="small text-body-secondary mb-1">{{ m.notes }}</p>{% endif %}
+  {% if m.show_nutrition and m.ingredients or m.show_nutrition and m.allergens %}
+  <details class="small"><summary>Ingredientes e alergênicos</summary>
+    {% if m.ingredients %}<p class="mb-1">{{ m.ingredients|linebreaksbr }}</p>{% endif %}
+    {% if m.allergens %}<p class="mb-1"><strong>Contém:</strong> {{ m.allergens }}</p>{% endif %}
+    <p class="text-body-secondary mb-0">Validado por {{ m.validated_by }}.</p>
+  </details>
+  {% endif %}
+</div>

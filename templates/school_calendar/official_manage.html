@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Calendário oficial — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'school_calendar:calendar_index' %}" class="back-link">{% icon "arrow-left" %}Calendário</a>
+    <h1>Calendário escolar oficial</h1>
+    <p>Bimestres, férias, feriados, recessos e reuniões. A contagem de dias letivos sai daqui, recalculada a cada mudança.</p>
+  </div>
+  <form method="get" class="d-flex gap-2 align-items-end">
+    <div><label for="f-ano" class="form-label small mb-0">Ano letivo</label>
+      <select id="f-ano" name="ano" class="form-select" data-autosubmit>{% for y in years %}<option value="{{ y.pk }}"{% if y.pk == year.pk %} selected{% endif %}>{{ y }}{% if y.is_current %} (atual){% endif %}</option>{% endfor %}</select></div>
+  </form>
+</div>
+
+{% if not year %}
+<div class="callout">{% icon "info" %}<div>Cadastre um ano letivo antes, em <a href="{% url 'school_year_list' %}">Anos letivos</a>.</div></div>
+{% else %}
+<div class="card mb-3">
+  <div class="card-body d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+      <h2 class="h6 mb-1">Ano letivo {{ year }}: {% if year.start_date and year.end_date %}{{ year.start_date|date:"d/m/Y" }} a {{ year.end_date|date:"d/m/Y" }}{% else %}<span class="text-danger">sem datas de início e término</span>{% endif %}</h2>
+      <p class="small text-body-secondary mb-0">{% if total_days is not None %}{{ total_days }} dias letivos pelo calendário cadastrado (dias úteis, menos os dias sem aula, mais os dias letivos extras).{% else %}Cadastre início e término em <a href="{% url 'school_year_edit' year.pk %}">Anos letivos</a> para contar os dias letivos.{% endif %}</p>
+    </div>
+    <form method="post" action="{% url 'school_calendar:official_publish' year.pk %}">
+      {% csrf_token %}
+      {% if published %}
+      <span class="chip chip-state state-aprovado me-2">Publicado em {{ published.published_at|date:"d/m/Y" }}</span>
+      <button class="btn btn-outline-secondary btn-sm" name="action" value="unpublish" type="submit">Voltar para rascunho</button>
+      {% else %}
+      <span class="chip chip-state state-previa me-2">Rascunho: contagem oculta</span>
+      <button class="btn btn-primary btn-sm" name="action" value="publish" type="submit" data-confirm="A contagem de dias letivos passa a aparecer para toda a comunidade." data-confirm-title="Publicar o calendário oficial?" data-confirm-ok="Publicar">Publicar calendário</button>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    <form method="post" class="card mb-3" novalidate>
+      {% csrf_token %}<input type="hidden" name="form" value="period">
+      <div class="card-body"><h2 class="h6">Novo período (bimestre, trimestre, semestre)</h2>{% include "partials/_form_fields.html" with f=period_form %}</div>
+      <div class="form-actions"><button class="btn btn-outline-primary" type="submit">{% icon "plus" %}Incluir período</button></div>
+    </form>
+    <form method="post" class="card" novalidate>
+      {% csrf_token %}<input type="hidden" name="form" value="event">
+      <div class="card-body"><h2 class="h6">Novo evento</h2>
+        {% include "partials/_form_fields.html" with f=event_form %}
+        <p class="small text-body-secondary mb-0">Feriado, recesso, férias, planejamento e suspensão são sempre dias sem aula. “Dia letivo extra” conta um sábado como letivo.</p>
+      </div>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">{% icon "plus" %}Incluir evento</button></div>
+    </form>
+  </div>
+  <div class="col-lg-7">
+    <div class="card mb-3">
+      <div class="card-header bg-transparent"><h2 class="h6 mb-0">Períodos</h2></div>
+      <ul class="feed">
+        {% for p in periods %}
+        <li class="feed-item"><div class="feed-body flex-grow-1"><p class="feed-title">{{ p.name }} <span class="chip">{{ p.get_kind_display }}</span></p><p class="feed-meta">{{ p.start|date:"d/m/Y" }} a {{ p.end|date:"d/m/Y" }}{% if p.days is not None %} · {{ p.days }} dias letivos{% endif %}</p></div>
+          <form method="post" action="{% url 'school_calendar:official_delete' 'periodo' p.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit" data-confirm="O período sai do calendário." data-confirm-title="Retirar período?" data-confirm-ok="Retirar" data-confirm-tone="danger">Retirar</button></form></li>
+        {% empty %}<li><div class="empty-state py-3"><span>Nenhum período cadastrado.</span></div></li>{% endfor %}
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-header bg-transparent"><h2 class="h6 mb-0">Eventos</h2></div>
+      <ul class="feed">
+        {% for e in events %}
+        <li class="feed-item"><div class="feed-body flex-grow-1"><p class="feed-title">{{ e.title }} <span class="chip{% if e.no_classes %} chip-state state-erro{% endif %}">{{ e.get_kind_display }}{% if e.no_classes %} · sem aula{% endif %}</span>{% if e.audience == "equipe" %} <span class="chip">só equipe</span>{% endif %}</p><p class="feed-meta">{{ e.start|date:"d/m/Y" }}{% if e.end and e.end != e.start %} a {{ e.end|date:"d/m/Y" }}{% endif %}{% if e.description %} · {{ e.description }}{% endif %}</p></div>
+          <form method="post" action="{% url 'school_calendar:official_delete' 'evento' e.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit" data-confirm="O evento sai do calendário e a contagem é refeita." data-confirm-title="Retirar evento?" data-confirm-ok="Retirar" data-confirm-tone="danger">Retirar</button></form></li>
+        {% empty %}<li><div class="empty-state py-3"><span>Nenhum evento cadastrado.</span></div></li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

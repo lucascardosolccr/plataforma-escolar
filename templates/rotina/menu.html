@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Cardápio escolar — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Cardápio escolar</h1>
+    <p>O que a escola serve no lanche e nas refeições. Ingredientes e alergênicos aparecem só quando validados por um profissional.</p>
+  </div>
+  {% if can_manage %}
+  <div class="d-flex flex-wrap gap-2">
+    {% if mode == "semana" %}
+    <form method="post" action="{% url 'rotina:menu_copy_week' %}">{% csrf_token %}<input type="hidden" name="semana" value="{{ monday|date:'Y-m-d' }}"><button class="btn btn-outline-secondary" type="submit">Copiar semana anterior</button></form>
+    {% endif %}
+    <a class="btn btn-primary" href="{% url 'rotina:menu_edit' %}?data={{ today|date:'Y-m-d' }}">{% icon "pencil" %}Editar cardápio</a>
+  </div>
+  {% endif %}
+</div>
+
+<nav aria-label="Visualização" class="d-flex flex-wrap gap-2 mb-3">
+  <a href="?ver=semana" class="summary-pill{% if mode == 'semana' %} active{% endif %}"{% if mode == 'semana' %} aria-current="true"{% endif %}>Semana</a>
+  <a href="?ver=semana&amp;semana={{ tomorrow|date:'Y-m-d' }}" class="summary-pill">Amanhã</a>
+  <a href="?ver=mes" class="summary-pill{% if mode == 'mes' %} active{% endif %}"{% if mode == 'mes' %} aria-current="true"{% endif %}>Mês</a>
+  <a href="?ver=historico" class="summary-pill{% if mode == 'historico' %} active{% endif %}"{% if mode == 'historico' %} aria-current="true"{% endif %}>Histórico</a>
+</nav>
+
+{% if mode == "semana" %}
+<div class="d-flex align-items-center gap-2 mb-3">
+  <a class="btn btn-sm btn-outline-secondary" href="?ver=semana&amp;semana={{ prev }}" aria-label="Semana anterior">{% icon "arrow-left" %}</a>
+  <strong>Semana de {{ monday|date:"d/m" }}</strong>
+  <a class="btn btn-sm btn-outline-secondary" href="?ver=semana&amp;semana={{ next }}" aria-label="Próxima semana">{% icon "arrow-right" %}</a>
+</div>
+<div class="week-menu">
+  {% for d in week %}
+  <section class="card{% if d.date == today %} is-today{% endif %}" aria-label="{{ d.date|date:'l, d/m' }}">
+    <div class="card-body">
+      <h2 class="h6 mb-2">{{ d.date|date:"l" }} <span class="text-body-secondary fw-normal">{{ d.date|date:"d/m" }}</span>{% if d.date == today %} <span class="chip">Hoje</span>{% endif %}</h2>
+      {% for m in d.meals %}{% include "rotina/_meal.html" %}{% empty %}<p class="small text-body-secondary mb-0">Cardápio não cadastrado.</p>{% endfor %}
+      {% if can_manage %}<a class="small" href="{% url 'rotina:menu_edit' %}?data={{ d.date|date:'Y-m-d' }}">Editar este dia</a>{% endif %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+{% elif mode == "mes" %}
+<div class="d-flex align-items-center gap-2 mb-3">
+  <a class="btn btn-sm btn-outline-secondary" href="?ver=mes&amp;mes={{ prev }}" aria-label="Mês anterior">{% icon "arrow-left" %}</a>
+  <strong>{{ month|date:"F \d\e Y" }}</strong>
+  <a class="btn btn-sm btn-outline-secondary" href="?ver=mes&amp;mes={{ next }}" aria-label="Próximo mês">{% icon "arrow-right" %}</a>
+</div>
+<div class="card"><div class="table-responsive">
+  <table class="table mb-0 table-stack">
+    <thead><tr><th>Segunda</th><th>Terça</th><th>Quarta</th><th>Quinta</th><th>Sexta</th></tr></thead>
+    <tbody>
+      {% for week in weeks %}<tr>
+        {% for d in week %}<td data-label="{{ d.date|date:'l d/m' }}" class="small{% if not d.in_month %} text-body-secondary{% endif %}">
+          <strong>{{ d.date|date:"d" }}</strong>
+          {% for m in d.meals %}<div><span class="text-body-secondary">{{ m.get_meal_display }}:</span> {{ m.description|truncatechars:60 }}{% if m.changed %} <span class="menu-change">alterado</span>{% endif %}</div>{% endfor %}
+        </td>{% endfor %}
+      </tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% else %}
+<div class="card">
+  <ul class="feed">
+    {% for d in history %}
+    <li class="feed-item d-block">
+      <p class="feed-title">{{ d.date|date:"l, d/m/Y" }}</p>
+      {% for m in d.meals %}<p class="feed-meta mb-0">{{ m.get_meal_display }}: {{ m.description }}{% if m.changed %} · <span class="menu-change">alterado: {{ m.change_note }}</span>{% endif %}</p>{% endfor %}
+    </li>
+    {% empty %}
+    <li><div class="empty-state py-4">{% icon "history" %}<strong>Nenhum cardápio anterior registrado</strong></div></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+{% endblock %}

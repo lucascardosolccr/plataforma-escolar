@@ -1,0 +1,45 @@
+{% load ui %}{% comment %}Hoje na escola: rotina do dia, cardápio e contagem do calendário. Recebe ``t``.{% endcomment %}
+<section class="mb-4" aria-labelledby="h-hoje">
+  <h2 id="h-hoje" class="h5 mb-3">Hoje na escola</h2>
+  <div class="today-grid">
+    {% if t.schedule is not None %}
+    <div class="card"><div class="card-body">
+      <h3 class="h6 d-flex align-items-center gap-2">{% icon "clock" %}Aulas de {{ t.day|date:"l" }}</h3>
+      {% if t.no_class_reason %}<p class="small mb-0">{{ t.no_class_reason }}</p>
+      {% else %}
+      {% for b in t.schedule %}
+        {% if t.schedule|length > 1 %}<p class="small fw-semibold mb-1 mt-2">{{ b.title }}</p>{% endif %}
+        {% if b.slots %}
+        <ul class="timeline">
+          {% for s in b.slots %}<li{% if s.start_time <= t.now and t.now < s.end_time %} class="is-now"{% endif %}>
+            <span class="time">{{ s.start_time|time:"H:i" }}</span>
+            <span><strong>{{ s.subject.name }}</strong>{% if s.class_group and not b.class_group %} · {{ s.class_group.name }}{% endif %}
+              {% if s.teacher and b.class_group %}<span class="d-block small text-body-secondary">{{ s.teacher.get_full_name|default:s.teacher.username }}</span>{% endif %}
+              {% for it in s.items %}<span class="d-block small">{{ it }}</span>{% endfor %}</span>
+          </li>{% endfor %}
+        </ul>
+        {% elif b.has_schedule %}<p class="small text-body-secondary mb-0">Sem aulas no quadro de horários hoje.</p>
+        {% else %}<p class="small text-body-secondary mb-0">Quadro de horários ainda não cadastrado pela escola.</p>{% endif %}
+      {% empty %}<p class="small text-body-secondary mb-0">Sem turma vinculada.</p>{% endfor %}
+      {% endif %}
+      <a class="small" href="{% url 'rotina:schedule_index' %}">Ver a semana</a>
+    </div></div>
+    {% endif %}
+    <div class="card"><div class="card-body">
+      <h3 class="h6 d-flex align-items-center gap-2">{% icon "heart-handshake" %}Cardápio de hoje</h3>
+      {% for m in t.menu %}{% include "rotina/_meal.html" %}{% empty %}<p class="small text-body-secondary">Cardápio de hoje não cadastrado.</p>{% endfor %}
+      <a class="small" href="{% url 'rotina:menu' %}">Amanhã, semana e mês</a>
+    </div></div>
+    <div class="card"><div class="card-body">
+      <h3 class="h6 d-flex align-items-center gap-2">{% icon "calendar-days" %}Calendário</h3>
+      {% if t.countdown.reason %}<p class="small text-body-secondary mb-2">{{ t.countdown.reason }}</p>
+      {% else %}
+      {% for p in t.countdown.periods|slice:":1" %}<p class="mb-1"><span class="countdown-value">{{ p.left }}</span> <span class="countdown-label">dias letivos até o fim do {{ p.period.name }}</span></p>{% endfor %}
+      <p class="small mb-1">Faltam <strong>{{ t.countdown.year_left }}</strong> dias letivos para o encerramento do ano ({{ t.countdown.year_end|date:"d/m" }}).</p>
+      {% if t.countdown.vacation %}<p class="small mb-1">{% if t.countdown.vacation.ongoing %}Em {{ t.countdown.vacation.event.title|lower }}{% else %}{{ t.countdown.vacation.event.title }} em {{ t.countdown.vacation.days_until }} dia{{ t.countdown.vacation.days_until|pluralize }} ({{ t.countdown.vacation.event.start|date:"d/m" }}){% endif %}{% if t.countdown.vacation.return %} · retorno {{ t.countdown.vacation.return|date:"d/m" }}{% endif %}.</p>{% endif %}
+      {% for e in t.countdown.next_events|slice:":2" %}<p class="small text-body-secondary mb-0">{{ e.start|date:"d/m" }} · {{ e.title }}</p>{% endfor %}
+      {% endif %}
+      <a class="small" href="{% url 'school_calendar:calendar_index' %}?ver=mes">Ver o calendário</a>
+    </div></div>
+  </div>
+</section>

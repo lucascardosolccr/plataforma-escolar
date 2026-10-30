@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Meus horários — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Meus horários</h1>
+    <p>Suas aulas na semana, pelas atribuições e pelo quadro de horários das turmas.</p>
+  </div>
+</div>
+<div class="card"><div class="card-body">
+  {% if rows %}
+  <div class="table-responsive">
+    <table class="schedule-grid">
+      <thead><tr><th scope="col">Horário</th>{% for d in days %}<th scope="col">{{ d }}{% if forloop.counter0 == today_wd %} · hoje{% endif %}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr><th scope="row">{{ r.start|time:"H:i" }}–{{ r.end|time:"H:i" }}</th>
+          {% for cell in r.cells %}<td class="{% if not cell %}is-empty{% endif %}">{% for s in cell %}<strong>{{ s.class_group.name }}</strong><span class="d-block small text-body-secondary">{{ s.subject.name }}</span>{% endfor %}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state py-4">{% icon "clock" %}<strong>Nenhuma aula no quadro de horários</strong><span>A secretaria ou a coordenação cadastra os horários das turmas.</span></div>
+  {% endif %}
+</div></div>
+{% endblock %}

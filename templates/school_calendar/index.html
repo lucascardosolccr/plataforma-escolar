@@ -1,6 +1,6 @@
 {# Calendário escolar — lista de eventos por data #}
 {% extends "base.html" %}
-{% load static %}
+{% load static ui %}
 
 {% block title %}Calendário escolar{% endblock %}
 
@@ -13,12 +13,22 @@
   <div class="calendar-header">
     <h1 class="calendar-title">Calendário escolar</h1>
     <p class="calendar-subtitle">
-      Atividades de casa, avaliações, trabalhos em grupo, ocorrências e
-      justificativas dentro do seu escopo de acesso.
+      Calendário oficial da escola (feriados, férias, reuniões) e as datas de
+      atividades, avaliações e trabalhos dentro do seu escopo de acesso.
     </p>
+    {% if can_manage_calendar %}<a class="btn btn-outline-secondary btn-sm mt-2" href="{% url 'school_calendar:official' %}">{% icon "settings" %}Cadastrar calendário oficial</a>{% endif %}
   </div>
 
+  {% include "school_calendar/_countdown.html" with s=summary %}
+
+  <nav aria-label="Visualização" class="d-flex flex-wrap gap-2 my-3">
+    <a href="?ver=agenda" class="summary-pill{% if view_mode == 'agenda' %} active{% endif %}"{% if view_mode == 'agenda' %} aria-current="true"{% endif %}>Agenda</a>
+    <a href="?ver=semana" class="summary-pill{% if view_mode == 'semana' %} active{% endif %}"{% if view_mode == 'semana' %} aria-current="true"{% endif %}>Semana</a>
+    <a href="?ver=mes" class="summary-pill{% if view_mode == 'mes' %} active{% endif %}"{% if view_mode == 'mes' %} aria-current="true"{% endif %}>Mês</a>
+  </nav>
+
   <form class="calendar-filters" method="get">
+    <input type="hidden" name="ver" value="{{ view_mode }}">
     <div class="filter-row">
       <label class="filter-label" for="cal-type">Tipo</label>
       <select id="cal-type" name="type" class="form-select" data-autosubmit>
@@ -57,6 +67,7 @@
         {% endif %}
       </select>
     </div>
+    {% if view_mode == "agenda" %}
     <div class="filter-row">
       <label class="filter-label" for="cal-start">De</label>
       <input type="date" id="cal-start" name="start" class="form-control" value="{{ start|date:'Y-m-d' }}" data-autosubmit>
@@ -65,6 +76,7 @@
       <label class="filter-label" for="cal-end">Até</label>
       <input type="date" id="cal-end" name="end" class="form-control" value="{{ end|date:'Y-m-d' }}" data-autosubmit>
     </div>
+    {% endif %}
     <a class="btn btn-outline-secondary btn-sm ms-2" href="{% url 'school_calendar:calendar_index' %}">Limpar</a>
   </form>
 
@@ -77,7 +89,34 @@
     {% endif %}
   </p>
 
-  {% if days %}
+  {% if view_mode == "mes" %}
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <a class="btn btn-sm btn-outline-secondary" href="?ver=mes&amp;mes={{ month.prev }}" aria-label="Mês anterior">{% icon "arrow-left" %}</a>
+      <strong>{{ month.month|date:"F \d\e Y" }}</strong>
+      <a class="btn btn-sm btn-outline-secondary" href="?ver=mes&amp;mes={{ month.next }}" aria-label="Próximo mês">{% icon "arrow-right" %}</a>
+    </div>
+    <div class="table-responsive">
+      <table class="month-grid">
+        <thead><tr><th>Seg</th><th>Ter</th><th>Qua</th><th>Qui</th><th>Sex</th><th>Sáb</th><th>Dom</th></tr></thead>
+        <tbody>
+          {% for week in month.weeks %}<tr>
+            {% for d in week %}<td class="{% if not d.in_month %}is-out{% endif %}{% if d.weekend %} is-weekend{% endif %}{% if d.date == today %} is-today{% endif %}">
+              <span class="month-day">{{ d.date|date:"j" }}</span>
+              {% for e in d.events %}<span class="month-event kind-{{ e.kind }}{% if e.off %} is-off{% endif %}" title="{{ e.label }}">{% if e.url %}<a href="{{ e.url }}">{{ e.title }}</a>{% else %}{{ e.title }}{% endif %}</span>{% endfor %}
+            </td>{% endfor %}
+          </tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="small text-body-secondary mt-2">Faixa vermelha: dia sem aula pelo calendário oficial.</p>
+  {% elif days %}
+    {% if view_mode == "semana" %}
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <a class="btn btn-sm btn-outline-secondary" href="?ver=semana&amp;semana={{ week_prev }}" aria-label="Semana anterior">{% icon "arrow-left" %}</a>
+      <strong>Semana de {{ start|date:"d/m" }} a {{ end|date:"d/m" }}</strong>
+      <a class="btn btn-sm btn-outline-secondary" href="?ver=semana&amp;semana={{ week_next }}" aria-label="Próxima semana">{% icon "arrow-right" %}</a>
+    </div>
+    {% endif %}
     <div class="calendar-days">
       {% for day in days %}
         <div class="calendar-day">
@@ -89,16 +128,17 @@
           <ul class="calendar-day-events">
             {% for event in day.events %}
               <li class="calendar-event {{ event.kind }}">
-                <a href="{{ event.url }}" class="stretched-link text-decoration-none">
+                {% if event.url %}<a href="{{ event.url }}" class="stretched-link text-decoration-none">{% else %}<div>{% endif %}
                   <span class="event-chip {{ event.kind }}">{{ event.kind_label }}</span>
                   <strong>{{ event.title }}</strong>
                   <span class="event-date">{{ event.date_label }} · {{ event.date|date:"d/m/Y" }}</span>
                   <span class="event-subtitle">{{ event.subtitle }}</span>
                   {% if event.state %}<span class="event-state chip-{{ event.state }}">{{ event.state_label }}</span>{% endif %}
-                </a>
+                {% if event.url %}</a>{% else %}</div>{% endif %}
               </li>
             {% endfor %}
           </ul>
+          {% if not day.events %}<p class="small text-body-secondary mb-0 px-2">Nada neste dia.</p>{% endif %}
         </div>
       {% endfor %}
     </div>

@@ -202,6 +202,9 @@ a:hover { color: var(--ds-primary-hover); }
   transition: border-color var(--ds-dur-fast), box-shadow var(--ds-dur-fast);
 }
 .form-control-sm, .form-select-sm { min-height: 2.25rem; padding: .35rem .65rem; font-size: var(--ds-fs-sm); }
+/* O atalho de padding acima apagava o espaço da seta do select: texto longo passava por baixo dela. */
+.form-select { padding-right: 2.25rem; }
+.form-select-sm { padding-right: 2rem; }
 .form-control::placeholder { color: var(--ds-text-muted); opacity: .8; }
 .form-control:hover, .form-select:hover { border-color: var(--ds-text-muted); }
 .form-control:focus, .form-select:focus {

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Horários — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Quadro de horários</h1>
+    <p>Escolha a turma.</p>
+  </div>
+</div>
+<div class="card">
+  <ul class="feed">
+    {% for c in classes %}
+    <li class="feed-item"><div class="feed-body flex-grow-1"><p class="feed-title">{{ c.name }}</p><p class="feed-meta">{{ c.school_year }}{% if c.grade %} · {{ c.grade }}{% endif %}</p></div>
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'rotina:schedule_class' c.pk %}">Abrir</a></li>
+    {% empty %}
+    <li><div class="empty-state py-4">{% icon "clock" %}<strong>Nenhuma turma</strong></div></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

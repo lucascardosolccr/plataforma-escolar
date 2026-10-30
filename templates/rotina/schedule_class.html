@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Horário de {{ cg.name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'rotina:schedule_index' %}" class="back-link">{% icon "arrow-left" %}Horários</a>
+    <h1>Quadro de horários · {{ cg.name }}</h1>
+    <p>{{ cg.school_year }}{% if cg.grade %} · {{ cg.grade }}{% endif %} · {{ cg.get_turn_display }}</p>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    {% if rows %}
+    <div class="table-responsive">
+      <table class="schedule-grid">
+        <thead><tr><th scope="col">Horário</th>{% for d in days %}<th scope="col"{% if forloop.counter0 == today_wd %} aria-current="date"{% endif %}>{{ d }}{% if forloop.counter0 == today_wd %} · hoje{% endif %}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <th scope="row">{{ r.start|time:"H:i" }}–{{ r.end|time:"H:i" }}</th>
+            {% for cell in r.cells %}
+            <td class="{% if not cell %}is-empty{% endif %}">
+              {% for s in cell %}<strong>{{ s.subject.name }}</strong><span class="d-block small text-body-secondary">{{ s.teacher.get_full_name|default:s.teacher.username|default:"" }}{% if s.room %} · {{ s.room }}{% endif %}</span>{% endfor %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state py-4">{% icon "clock" %}<strong>Quadro de horários ainda não cadastrado</strong>{% if can_manage %}<span>Inclua as aulas abaixo.</span>{% else %}<span>A escola ainda não cadastrou os horários desta turma.</span>{% endif %}</div>
+    {% endif %}
+  </div>
+</div>
+
+{% if can_manage %}
+<div class="row g-3">
+  <div class="col-lg-6">
+    <form method="post" class="card" novalidate>
+      {% csrf_token %}
+      <div class="card-body">
+        <h2 class="h6">Incluir aula</h2>
+        {% include "partials/_form_fields.html" with f=form %}
+      </div>
+      <div class="form-actions"><button type="submit" class="btn btn-primary">{% icon "plus" %}Incluir</button></div>
+    </form>
+  </div>
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header bg-transparent"><h2 class="h6 mb-0">Aulas cadastradas</h2></div>
+      <ul class="feed">
+        {% for s in slots %}
+        <li class="feed-item">
+          <div class="feed-body flex-grow-1"><p class="feed-title">{{ s.get_weekday_display }} · {{ s.start_time|time:"H:i" }}–{{ s.end_time|time:"H:i" }}</p><p class="feed-meta">{{ s.subject.name }}{% if s.teacher %} · {{ s.teacher.get_full_name|default:s.teacher.username }}{% endif %}</p></div>
+          <form method="post" action="{% url 'rotina:schedule_delete' s.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit" data-confirm="A aula sai do quadro desta turma." data-confirm-title="Retirar aula?" data-confirm-ok="Retirar" data-confirm-tone="danger">Retirar</button></form>
+        </li>
+        {% empty %}<li><div class="empty-state py-3"><span>Nenhuma aula.</span></div></li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

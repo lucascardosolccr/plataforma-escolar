@@ -141,6 +141,20 @@ def _teacher_assignments(user):
     )
 
 
+def _teacher_pairs_q(user):
+    """Filtro "turma + disciplina que este professor leciona".
+
+    É a mesma regra de ``access.can_view_activity`` e ``can_view_group_work``:
+    a lista do professor não mostra o que ele não conseguiria abrir.
+    """
+    q = Q(pk__in=[])
+    for class_id, subject_id in _teacher_assignments(user).values_list(
+        "class_group_id", "subject_id"
+    ):
+        q |= Q(class_group_id=class_id, subject_id=subject_id)
+    return q
+
+
 def _parse_grade(value):
     """Nota digitada na tela de entregas. Aceita vírgula decimal.
 
@@ -603,7 +617,7 @@ def activity_list(request):
             acc.reach_q(acc.enrollments_by_student([student.pk]).get(student.pk, []))
         )
     if user.role == Role.PROFESSOR.value:
-        qs = qs.filter(class_group_id__in=_teacher_assignments(user).values("class_group_id"))
+        qs = qs.filter(_teacher_pairs_q(user))
 
     status = request.GET.get("status")
     if status in dict(Activity.Status.choices):
@@ -1121,9 +1135,7 @@ def group_work_list(request):
         "subject", "class_group", "created_by"
     )
     if user.role == Role.PROFESSOR.value:
-        qs = qs.filter(
-            class_group_id__in=_teacher_assignments(user).values("class_group_id")
-        )
+        qs = qs.filter(_teacher_pairs_q(user))
     status = request.GET.get("status")
     if status in dict(GroupWork.Status.choices):
         qs = qs.filter(status=status)

@@ -147,3 +147,61 @@ class FamilyGroupWorkFilterTests(GroupWorkBase):
         resumo = {s["key"]: s["count"] for s in resp.context["summary"]}
         self.assertEqual(resumo, {"nova": 1, "a_vencer": 1})
         self.assertEqual(work.status, GroupWork.Status.PUBLISHED)
+
+
+class TeacherListLinksTests(PedagogyBase):
+    """Todo link da lista do professor abre para ele.
+
+    O acesso do professor a uma atividade passou a exigir o par turma +
+    disciplina. A lista precisa seguir a mesma regra: mostrar a atividade de
+    outra disciplina da mesma turma levava a um "Ver" que respondia 403.
+    """
+
+    def test_every_activity_in_teacher_list_opens(self):
+        from apps.academics.models import TeacherAssignment
+
+        # prof2 também leciona Português na turma da Ana (prof leciona Matemática).
+        TeacherAssignment.objects.create(
+            school=self.school, school_year=self.year, teacher=self.prof2,
+            class_group=self.turma, subject=self.port,
+        )
+        Activity.objects.create(
+            school=self.school, class_group=self.turma, subject=self.port,
+            title="Redação de Português", created_by=self.prof2,
+        )
+        Activity.objects.create(
+            school=self.school, class_group=self.turma, subject=self.mat,
+            title="Lista de frações", created_by=self.prof,
+        )
+        self.login("prof")
+        resp = self.client.get(reverse("pedagogy:activity_list"))
+        titulos = [r["activity"].title for r in resp.context["rows"]]
+        self.assertIn("Lista de frações", titulos)
+        for r in resp.context["rows"]:
+            with self.subTest(atividade=r["activity"].title):
+                detalhe = self.client.get(
+                    reverse("pedagogy:activity_detail", args=[r["activity"].pk])
+                )
+                self.assertEqual(detalhe.status_code, 200)
+
+    def test_student_record_links_open_for_teacher(self):
+        """Na ficha do estudante, o professor só vê o que consegue abrir."""
+        from apps.academics.models import TeacherAssignment
+
+        TeacherAssignment.objects.create(
+            school=self.school, school_year=self.year, teacher=self.prof2,
+            class_group=self.turma, subject=self.port,
+        )
+        outra = Activity.objects.create(
+            school=self.school, class_group=self.turma, subject=self.port,
+            title="Redação de Português", created_by=self.prof2,
+        )
+        Activity.objects.create(
+            school=self.school, class_group=self.turma, subject=self.mat,
+            title="Lista de frações", created_by=self.prof,
+        )
+        self.login("prof")
+        resp = self.client.get(reverse("student_detail", args=[self.ana.pk]))
+        titulos = [r["activity"].title for r in resp.context["activity_rows"]]
+        self.assertEqual(titulos, ["Lista de frações"])
+        self.assertNotContains(resp, reverse("pedagogy:activity_detail", args=[outra.pk]))

@@ -18,8 +18,7 @@
         {% if l.student.photo %}
         <img src="{% url 'student_photo' l.student.pk %}" alt="" class="rounded-circle" width="56" height="56" style="object-fit:cover">
         {% else %}
-        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
-             style="width:56px;height:56px;background:linear-gradient(135deg,var(--brand-1),var(--brand-2))">
+        <div class="avatar avatar-xl" aria-hidden="true" style="--avatar-size:56px">
           {{ l.student.first_name|first }}{{ l.student.last_name|first }}
         </div>
         {% endif %}

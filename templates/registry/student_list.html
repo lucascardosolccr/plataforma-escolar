@@ -27,6 +27,7 @@
       <thead>
         <tr>
           <th>Estudante</th>
+          <th>Turma atual</th>
           <th>Situação</th>
           <th class="text-end">Ações</th>
         </tr>
@@ -37,6 +38,7 @@
           <td class="fw-semibold">
             <a href="{% url 'student_detail' s.pk %}" class="text-decoration-none">{{ s.full_name }}</a>
           </td>
+          <td data-label="Turma atual">{{ s.current_class|default:"—" }}</td>
           <td data-label="Situação"><span class="chip">{{ s.get_status_display }}</span></td>
           <td class="text-end cell-actions">
             <a class="btn btn-sm btn-outline-secondary" href="{% url 'student_detail' s.pk %}">Abrir</a>
@@ -44,7 +46,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="3">
+          <td colspan="4">
             <div class="empty-state py-4">{% icon "id-card" %}<strong>{% if q %}Ninguém encontrado para “{{ q }}”{% else %}Nenhum estudante cadastrado{% endif %}</strong>{% if q %}<a href="{% url 'student_list' %}">Ver todos</a>{% endif %}</div>
           </td>
         </tr>

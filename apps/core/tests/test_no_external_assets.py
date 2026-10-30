@@ -44,6 +44,23 @@ class NoExternalAssetsTests(TestCase):
                     culpados.append(f"{path.relative_to(TEMPLATES_DIR)}:{n}")
         self.assertEqual(culpados, [])
 
+    def test_css_variables_used_in_templates_are_defined(self):
+        """Variável CSS usada num template precisa existir no design system.
+
+        Avatares usavam var(--brand-1) do app.css removido e ficaram com as
+        iniciais brancas sobre fundo vazio, sem nenhum erro aparente."""
+        definidas = set()
+        for css in STATIC_DIR.glob("css/*.css"):
+            definidas |= set(re.findall(r"(--[a-z0-9-]+)\s*:", css.read_text(encoding="utf-8-sig")))
+        faltando = []
+        for path in TEMPLATES_DIR.rglob("*.html"):
+            texto = path.read_text(encoding="utf-8")
+            definidas_aqui = set(re.findall(r"(--[a-z0-9-]+)\s*:", texto))
+            for nome in re.findall(r"var\((--(?:ds|brand|avatar|kind)[a-z0-9-]*)", texto):
+                if nome not in definidas and nome not in definidas_aqui:
+                    faltando.append(f"{path.relative_to(TEMPLATES_DIR)}: {nome}")
+        self.assertEqual(faltando, [])
+
     def test_own_css_and_js_reference_no_external_host(self):
         culpados = []
         for path in list(STATIC_DIR.glob("css/*.css")) + list(STATIC_DIR.glob("js/*.js")):

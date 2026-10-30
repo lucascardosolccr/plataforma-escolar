@@ -58,7 +58,17 @@ def student_list(request):
         raise PermissionDenied
 
     qs, q = _resolver_student_list(request, qs)
-    page = paginate(request, qs.select_related("school"))
+    # Turma atual numa subconsulta: distingue homônimos na lista sem uma
+    # consulta por estudante.
+    from django.db.models import OuterRef, Subquery
+
+    turma_atual = Enrollment.objects.filter(
+        student=OuterRef("pk"), status="ativo"
+    ).order_by("-started_on").values("class_group__name")[:1]
+    page = paginate(
+        request,
+        qs.select_related("school").annotate(current_class=Subquery(turma_atual)),
+    )
     return render(
         request,
         "registry/student_list.html",
@@ -132,13 +142,35 @@ def student_detail(request, student_id):
 
     from apps.pedagogy.views import student_activity_rows, student_group_work_rows
 
+    activity_rows = student_activity_rows(student)
+    group_work_rows = student_group_work_rows(student)
+    if request.user.role == Role.PROFESSOR.value:
+        # O professor abre só atividades e trabalhos das disciplinas que
+        # leciona (pedagogy.access); a ficha mostra o mesmo recorte, senão os
+        # itens das outras disciplinas levariam a "acesso negado".
+        from apps.academics.models import TeacherAssignment
+
+        pares = set(
+            TeacherAssignment.objects.filter(teacher=request.user).values_list(
+                "class_group_id", "subject_id"
+            )
+        )
+        activity_rows = [
+            r for r in activity_rows
+            if (r["activity"].class_group_id, r["activity"].subject_id) in pares
+        ]
+        group_work_rows = [
+            r for r in group_work_rows
+            if (r["work"].class_group_id, r["work"].subject_id) in pares
+        ]
+
     return render(
         request,
         "registry/student_detail.html",
         {
             "student": student,
-            "activity_rows": student_activity_rows(student),
-            "group_work_rows": student_group_work_rows(student),
+            "activity_rows": activity_rows,
+            "group_work_rows": group_work_rows,
             # A composição do grupo é informação necessária, mas só a equipe
             # pode navegar dela para a ficha dos colegas.
             "can_open_colleagues": can_manage_registry(request.user)

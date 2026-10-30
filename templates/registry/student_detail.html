@@ -8,8 +8,7 @@
     <img src="{% url 'student_photo' student.pk %}" alt="Foto de {{ student.full_name }}"
          class="rounded-circle shadow-sm" width="64" height="64" style="object-fit:cover">
     {% else %}
-    <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
-         style="width:64px;height:64px;background:linear-gradient(135deg,var(--brand-1),var(--brand-2))">
+    <div class="avatar avatar-xl" aria-hidden="true" style="--avatar-size:64px">
       {{ student.first_name|first }}{{ student.last_name|first }}
     </div>
     {% endif %}

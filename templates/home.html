@@ -1,181 +1,284 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Início — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="mb-4">
-  <h1 class="home-title fw-bold mb-1">
-    Olá, <span class="hero-gradient">{{ user.first_name|default:user.username }}</span>
-  </h1>
-  <p class="text-body-secondary mb-0">
-    {% if user.school %}{{ user.school.name }} · {% endif %}{{ user_role_label }}
-  </p>
-</div>
-
-
-<div class="row g-3 mb-4">
-  <div class="col-6 col-lg-3">
-    <div class="card stat-card h-100"><div class="card-body">
-      <div class="text-body-secondary small text-uppercase">Perfil</div>
-      <div class="fs-5 fw-semibold">{{ user_role_label }}</div>
-    </div></div>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{{ ws.today|date:"l, d \d\e F" }}</span>
+    <h1>Olá, {{ user.first_name|default:user.username }}</h1>
+    <p>{{ user_role_label }}{% if user.school %} · {{ user.school.name }}{% endif %}</p>
   </div>
-  <div class="col-6 col-lg-3">
-    <div class="card stat-card h-100"><div class="card-body">
-      <div class="text-body-secondary small text-uppercase">Escola</div>
-      <div class="fs-5 fw-semibold">{{ user.school.name|default:"—" }}</div>
-    </div></div>
-  </div>
-  {% if user_count is not None %}
-  <div class="col-6 col-lg-3">
-    <div class="card stat-card h-100"><div class="card-body">
-      <div class="text-body-secondary small text-uppercase">Usuários ativos</div>
-      <div class="fs-3 fw-bold">{{ user_count }}</div>
-    </div></div>
-  </div>
-  {% elif student_count is not None %}
-  <div class="col-6 col-lg-3">
-    <div class="card stat-card h-100"><div class="card-body">
-      <div class="text-body-secondary small text-uppercase">Estudantes</div>
-      <div class="fs-3 fw-bold">{{ student_count }}</div>
-    </div></div>
-  </div>
-  {% elif child_count is not None %}
-  <div class="col-6 col-lg-3">
-    <div class="card stat-card h-100"><div class="card-body">
-      <div class="text-body-secondary small text-uppercase">Filhos vinculados</div>
-      <div class="fs-3 fw-bold">{{ child_count }}</div>
-    </div></div>
-  </div>
-  {% elif assignment_count is not None %}
-  <div class="col-6 col-lg-3">
-    <div class="card stat-card h-100"><div class="card-body">
-      <div class="text-body-secondary small text-uppercase">Atribuições</div>
-      <div class="fs-3 fw-bold">{{ assignment_count }}</div>
-    </div></div>
-  </div>
-  {% else %}
-  <div class="col-6 col-lg-3">
-    <div class="card stat-card h-100"><div class="card-body">
-      <div class="text-body-secondary small text-uppercase">Acesso</div>
-      <div class="fs-5 fw-semibold">{% now "d/m/Y H:i" %}</div>
-    </div></div>
-  </div>
-  {% endif %}
-  {% if pending_links is not None %}
-  <div class="col-6 col-lg-3">
-    <div class="card stat-card h-100"><div class="card-body">
-      <div class="text-body-secondary small text-uppercase">Vínculos pendentes</div>
-      <div class="fs-3 fw-bold {% if pending_links %}text-warning{% endif %}">{{ pending_links }}</div>
-    </div></div>
-  </div>
-  {% endif %}
-  {% if pending_activities is not None %}
-  <div class="col-6 col-lg-3">
-    <div class="card stat-card h-100"><div class="card-body">
-      <div class="text-body-secondary small text-uppercase">Atividades em aberto</div>
-      <div class="fs-3 fw-bold {% if pending_activities %}text-warning{% endif %}">{{ pending_activities }}</div>
-      <div class="small text-body-secondary">a vencer ou pendentes</div>
-    </div></div>
-  </div>
-  {% endif %}
-</div>
-
-<h2 class="h5 fw-bold mb-3 mt-4">Ações rápidas</h2>
-<div class="row g-3">
-  {% if user_role == ROLE_ADMIN %}
-    {% include "partials/home_card.html" with url_name='user_list' title="Gestão de usuários" desc="Criar contas profissionais e auditar operações." %}
-    {% include "partials/home_card.html" with url_name='student_list' title="Estudantes" desc="Prontuários e cadastro." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:evaluation_list' title="Avaliações e notas" desc="Acompanhamento geral." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:attendance_list' title="Frequência" desc="Registros por turma." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:occurrence_list' title="Ocorrências" desc="Histórico disciplinar." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:justification_list' title="Justificativas" desc="Analisadas pela secretaria." %}
-    {% include "partials/home_card.html" with url_name='analytics:institutional_dashboard' title="Painel institucional" desc="Indicadores consolidados de toda a escola." %}
-    {% include "partials/home_card.html" with url_name='analytics:secretaria_panel' title="Painel da secretaria" desc="Vínculos, matrículas e pendências." %}
-    {% include "partials/home_card.html" with url_name='analytics:report_hub' title="Relatórios" desc="Gráficos, exportação em CSV e impressão/PDF." %}
-  {% elif user_role == ROLE_SECRETARIA %}
-    {% include "partials/home_card.html" with url_name='student_list' title="Estudantes" desc="Cadastro e prontuários." %}
-    {% include "partials/home_card.html" with url_name='link_list' title="Vínculos pendentes" desc="Validar solicitações de responsáveis." %}
-    {% include "partials/home_card.html" with url_name='enrollment_list' title="Matrículas" desc="Estudante × turma × ano letivo." %}
-    {% include "partials/home_card.html" with url_name='class_group_list' title="Turmas" desc="Organização por ano letivo." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:justification_list' title="Justificativas de falta" desc="Aprovar ou recusar — não alteram a frequência oficial." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:config_edit' title="Regras e limites" desc="Fórmulas de média e limite de faltas." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:attendance_list' title="Frequência" desc="Acompanhamento por turma." %}
-    {% include "partials/home_card.html" with url_name='analytics:secretaria_panel' title="Painel da secretaria" desc="Vínculos, matrículas e pendências." %}
-    {% include "partials/home_card.html" with url_name='analytics:report_hub' title="Relatórios" desc="Exportar em CSV e imprimir/PDF." %}
-  {% elif user_role == ROLE_COORDENACAO %}
-    {% include "partials/home_card.html" with url_name='student_list' title="Estudantes" desc="Acompanhamento pedagógico." %}
-    {% include "partials/home_card.html" with url_name='subject_list' title="Disciplinas" desc="Componentes curriculares." %}
-    {% include "partials/home_card.html" with url_name='assignment_list' title="Atribuições" desc="Professor × turma × disciplina." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:plan_create' title="Plano de acompanhamento" desc="Novo plano individual." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:observation_create' title="Observação pedagógica" desc="Registrar acompanhamento." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:occurrence_create' title="Ocorrência" desc="Registrar na escola inteira." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:evaluation_list' title="Avaliações e notas" desc="Acompanhamento." %}
-    {% include "partials/home_card.html" with url_name='analytics:institutional_dashboard' title="Painel institucional" desc="Indicadores consolidados de toda a escola." %}
-    {% include "partials/home_card.html" with url_name='analytics:report_hub' title="Relatórios" desc="Exportar em CSV e imprimir/PDF." %}
-    {% include "partials/home_card.html" with url_name='class_group_list' title="Turmas" desc="Organização e enturmação." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:activity_list' title="Atividades de casa" desc="Supervisão das tarefas escolares." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:group_work_list' title="Trabalhos em grupo" desc="Acompanhamento dos projetos coletivos." %}
-  
-  {% elif user_role == ROLE_DIRECAO %}
-    {% include "partials/home_card.html" with url_name='student_list' title="Estudantes" desc="Visão institucional." %}
-    {% include "partials/home_card.html" with url_name='school_year_list' title="Anos letivos" desc="Períodos letivos." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:evaluation_list' title="Avaliações e notas" desc="Acompanhamento geral." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:occurrence_list' title="Ocorrências" desc="Visão institucional." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:observation_list' title="Observações" desc="Visão pedagógica." %}
-    {% include "partials/home_card.html" with url_name='analytics:institutional_dashboard' title="Painel institucional" desc="Indicadores consolidados de toda a escola." %}
-    {% include "partials/home_card.html" with url_name='analytics:report_hub' title="Relatórios" desc="Gráficos, exportação em CSV e impressão/PDF." %}
-    {% include "partials/home_card.html" with url_name='class_group_list' title="Turmas" desc="Organização por ano letivo." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:activity_list' title="Atividades de casa" desc="Acompanhamento das tarefas publicadas." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:group_work_list' title="Trabalhos em grupo" desc="Supervisão dos trabalhos da escola." %}
-    {% include "partials/home_card.html" with url_name='communication:announcement_list' title="Comunicados" desc="Avisos e comunicados da escola." %}
-  
-  {% elif user_role == ROLE_PROFESSOR %}
-    {% include "partials/home_card.html" with url_name='my_classrooms' title="Minhas turmas" desc="Estudantes das suas atribuições." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:evaluation_create' title="Nova avaliação" desc="Criar e publicar para a família." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:activity_create' title="Nova atividade" desc="Lançar tarefas e controlar entregas." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:attendance_list' title="Frequência" desc="Registrar presenças e faltas." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:occurrence_create' title="Ocorrência" desc="Registrar ocorrências da sua turma." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:observation_create' title="Observação pedagógica" desc="Registrar acompanhamento." %}
-    {% include "partials/home_card.html" with url_name='communication:thread_create' title="Mensagem à família" desc="Responder dúvidas e solicitações." %}
-    {% include "partials/home_card.html" with url_name='analytics:report_hub' title="Relatórios" desc="Dificuldades, atividades e indicadores das suas turmas." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:group_work_list' title="Trabalhos em grupo" desc="Criar e gerenciar trabalhos em grupo e integrantes." %}
-  
-  {% elif user_role == ROLE_RESPONSAVEL %}
-    {% include "partials/home_card.html" with url_name='my_children' title="Meus filhos" desc="Acompanhe cada estudante." %}
-    {% include "partials/home_card.html" with url_name='link_request' title="Solicitar vínculo" desc="Vincular um novo estudante." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:evaluation_list' title="Notas e avaliações" desc="Veja somente avaliações publicadas." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:activity_list' title="Atividades de casa" desc="Tarefas das turmas dos seus filhos." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:group_work_list' title="Trabalhos em grupo" desc="O grupo de cada filho e os colegas que participam dele." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:justification_create' title="Justificar falta" desc="Enviar justificativa — analisada pela secretaria." %}
-    {% include "partials/home_card.html" with url_name='communication:thread_create' title="Mensagens" desc="Conversar com professores e setores da escola." %}
-    {% include "partials/home_card.html" with url_name='communication:announcement_list' title="Comunicados" desc="Avisos da escola e das turmas dos filhos." %}
-    {% include "partials/home_card.html" with url_name='communication:request_create' title="Solicitação" desc="Pedidos de atendimento com acompanhamento do status." %}
-    {% include "partials/home_card.html" with url_name='analytics:report_hub' title="Relatórios" desc="Boletim, evolução e frequência dos seus filhos." %}
-  {% elif user_role == ROLE_ESTUDANTE %}
-    {% include "partials/home_card.html" with url_name='pedagogy:activity_list' title="Minhas atividades" desc="Tarefas publicadas para a sua turma, com os prazos." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:group_work_list' title="Trabalhos em grupo" desc="Seu grupo e os colegas que participam dele." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:evaluation_list' title="Minhas notas" desc="Somente avaliações já publicadas pelo professor." %}
-    {% include "partials/home_card.html" with url_name='pedagogy:attendance_list' title="Minha frequência" desc="Presenças, atrasos e faltas registradas." %}
-    {% if own_student %}
-      <div class="col-md-6 col-lg-4">
-        <div class="card card-hover h-100"><div class="card-body">
-          <h3 class="h6 mb-1">
-            <a href="{% url 'analytics:student_dashboard' own_student.pk %}" class="stretched-link text-decoration-none">
-              Meu progresso
-            </a>
-          </h3>
-          <p class="text-body-secondary small mb-0">
-            Médias por disciplina, evolução das notas e frequência.
-          </p>
-        </div></div>
-      </div>
+  {% if nav.actions %}
+  <div class="d-flex flex-wrap gap-2">
+    {% for a in nav.actions|slice:":3" %}
+      <a class="btn {% if forloop.first %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{{ a.url }}">{% icon a.icon %}{{ a.label }}</a>
+    {% endfor %}
+    {% if nav.actions|length > 3 %}
+    <div class="dropdown">
+      <button class="btn btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">Mais ações {% icon "chevron-down" %}</button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        {% for a in nav.actions|slice:"3:" %}<li><a class="dropdown-item" href="{{ a.url }}">{% icon a.icon %}{{ a.label }}</a></li>{% endfor %}
+      </ul>
+    </div>
     {% endif %}
+  </div>
   {% endif %}
-  {% include "partials/home_card.html" with url_name='password_change' title="Alterar senha" desc="Mantenha sua conta segura." %}
 </div>
 
-<div class="alert alert-info mt-4 d-flex align-items-center gap-2" role="alert">
-  <span>📬</span>
-  <span>A central de comunicação (mensagens, comunicados e solicitações) e os painéis/relatórios exportáveis funcionam 100% dentro da plataforma, sem serviços pagos.</span>
+{# ================= Responsável ================= #}
+{% if user_role == ROLE_RESPONSAVEL %}
+  {% if ws.pending_links %}
+    <div class="alert alert-info" role="status">{% icon "clock" %}<div>Você tem {{ ws.pending_links }} pedido{{ ws.pending_links|pluralize }} de vínculo aguardando a secretaria. <a href="{% url 'link_list' %}">Acompanhar</a></div></div>
+  {% endif %}
+  {% if ws.children %}
+    <h2 class="h5 mb-3">Seus filhos</h2>
+    <div class="row g-3 mb-4">
+      {% for c in ws.children %}
+      <div class="col-12 col-xl-6">
+        <section class="card h-100" aria-labelledby="child-{{ c.student.pk }}">
+          <div class="card-body">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+              <div class="d-flex align-items-center gap-3">
+                <span class="avatar avatar-lg" aria-hidden="true">{{ c.student.first_name|slice:":1"|upper }}{{ c.student.last_name|slice:":1"|upper }}</span>
+                <div>
+                  <h3 class="h6 mb-0" id="child-{{ c.student.pk }}">{{ c.student.full_name }}</h3>
+                  <a class="small" href="{% url 'student_detail' c.student.pk %}">Ver ficha completa</a>
+                </div>
+              </div>
+              <div class="d-flex gap-1 flex-wrap">
+                {% if c.new_count %}<span class="badge-new">{{ c.new_count }} nova{{ c.new_count|pluralize }}</span>{% endif %}
+                {% if c.due_soon %}<span class="chip chip-state state-a_vencer">{{ c.due_soon }} a vencer</span>{% endif %}
+              </div>
+            </div>
+            {% if c.next %}
+              <p class="small fw-bold text-body-secondary mb-2">Próximas entregas</p>
+              <ul class="list-unstyled mb-3 d-grid gap-2">
+                {% for r in c.next %}
+                <li class="d-flex align-items-center justify-content-between gap-2">
+                  <a href="{% url 'pedagogy:activity_detail' r.activity.pk %}" class="text-truncate">{{ r.activity.title }}</a>
+                  <span class="small text-body-secondary text-nowrap">{{ r.activity.subject.name }} · {% if r.activity.deadline %}{{ r.activity.deadline|date:"d/m" }}{% else %}sem prazo{% endif %}</span>
+                </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p class="text-body-secondary small mb-3">{% icon "circle-check" %} Nenhuma atividade em aberto agora.</p>
+            {% endif %}
+            <div class="d-flex flex-wrap gap-2">
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'pedagogy:activity_list' %}?estudante={{ c.student.pk }}">Atividades ({{ c.open_count }} em aberto)</a>
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'analytics:student_dashboard' c.student.pk %}">{% icon "chart-line" %}Desempenho</a>
+            </div>
+          </div>
+        </section>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card mb-4"><div class="empty-state">
+      {% icon "users" %}
+      <strong>Nenhum estudante vinculado ainda</strong>
+      <p class="mx-auto">Peça o vínculo com seu filho ou filha. A secretaria confere e aprova; depois disso as tarefas, notas e a frequência aparecem aqui.</p>
+      <a class="btn btn-primary" href="{% url 'link_request' %}">{% icon "user-check" %}Solicitar vínculo</a>
+    </div></div>
+  {% endif %}
+{% endif %}
+
+{# ================= Estudante ================= #}
+{% if user_role == ROLE_ESTUDANTE %}
+  {% if ws.own %}
+    <div class="kpi-grid mb-4">
+      <div class="kpi{% if ws.own.due_soon %} is-attention{% endif %}">
+        <span class="kpi-label">{% icon "clock" %}A vencer (até 2 dias)</span>
+        <span class="kpi-value">{{ ws.own.due_soon }}</span>
+        <a class="stretched-link kpi-hint" href="{% url 'pedagogy:activity_list' %}?situacao=a_vencer">Ver tarefas</a>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">{% icon "notebook-pen" %}Em aberto</span>
+        <span class="kpi-value">{{ ws.own.open_count }}</span>
+        <a class="stretched-link kpi-hint" href="{% url 'pedagogy:activity_list' %}">Todas as atividades</a>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">{% icon "sparkles" %}Novas</span>
+        <span class="kpi-value">{{ ws.own.new_count }}</span>
+        <a class="stretched-link kpi-hint" href="{% url 'pedagogy:activity_list' %}?situacao=nova">Publicadas nos últimos dias</a>
+      </div>
+    </div>
+    <section class="card mb-4">
+      <div class="card-header">Próximas entregas</div>
+      {% if ws.own.next %}
+        <ul class="list-group list-group-flush">
+          {% for r in ws.own.next %}
+          <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+            <a href="{% url 'pedagogy:activity_detail' r.activity.pk %}">{{ r.activity.title }}</a>
+            <span class="d-flex gap-2 align-items-center small text-body-secondary">{{ r.activity.subject.name }}
+              <span class="chip chip-state state-{{ r.state }}">{% if r.activity.deadline %}{{ r.activity.deadline|date:"d/m" }}{% else %}{{ r.state_label }}{% endif %}</span></span>
+          </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty-state">{% icon "circle-check" %}<strong>Tudo em dia</strong>Quando um professor publicar uma tarefa para a sua turma, ela aparece aqui.</div>
+      {% endif %}
+    </section>
+  {% else %}
+    <div class="alert alert-warning">{% icon "triangle-alert" %}<div>Sua conta ainda não está ligada a uma ficha de estudante. Procure a secretaria.</div></div>
+  {% endif %}
+{% endif %}
+
+{# ================= Professor ================= #}
+{% if user_role == ROLE_PROFESSOR %}
+  <div class="kpi-grid mb-4">
+    <div class="kpi">
+      <span class="kpi-label">{% icon "school" %}Turmas e disciplinas</span>
+      <span class="kpi-value">{{ ws.assignments|length }}</span>
+      <a class="stretched-link kpi-hint" href="{% url 'my_classrooms' %}">Minhas turmas</a>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">{% icon "calendar-days" %}Entregas nos próximos 7 dias</span>
+      <span class="kpi-value">{{ ws.due_this_week|length }}</span>
+      <span class="kpi-hint">Atividades publicadas nas suas turmas</span>
+    </div>
+    <div class="kpi{% if ws.draft_evaluations %} is-attention{% endif %}">
+      <span class="kpi-label">{% icon "graduation-cap" %}Avaliações em rascunho</span>
+      <span class="kpi-value">{{ ws.draft_evaluations }}</span>
+      <a class="stretched-link kpi-hint" href="{% url 'pedagogy:evaluation_list' %}?status=rascunho">A família só vê depois de publicar</a>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">{% icon "pencil" %}Atividades em rascunho</span>
+      <span class="kpi-value">{{ ws.draft_activities }}</span>
+      <a class="stretched-link kpi-hint" href="{% url 'pedagogy:activity_list' %}?status=rascunho">Revisar e publicar</a>
+    </div>
+  </div>
+  <div class="row g-3 mb-4">
+    <div class="col-lg-7">
+      <section class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">Suas turmas <a class="small fw-normal" href="{% url 'my_classrooms' %}">Ver todas</a></div>
+        {% if ws.assignments %}
+        <div class="table-responsive">
+          <table class="table table-hover" data-sortable>
+            <thead><tr><th>Turma</th><th>Disciplina</th><th class="text-end">Estudantes</th><th data-nosort><span class="visually-hidden">Ações</span></th></tr></thead>
+            <tbody>
+              {% for a in ws.assignments %}
+              <tr>
+                <td class="fw-bold">{{ a.class_group.name }}</td>
+                <td>{{ a.subject.name }}</td>
+                <td class="text-end">{{ a.student_count }}</td>
+                <td class="text-end text-nowrap">
+                  <a class="btn btn-sm btn-outline-secondary" href="{% url 'pedagogy:attendance_class' a.class_group.pk %}">Frequência</a>
+                  <a class="btn btn-sm btn-outline-secondary" href="{% url 'analytics:class_dashboard' a.class_group.pk %}">Painel</a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <div class="empty-state">{% icon "school" %}<strong>Sem atribuições</strong>A coordenação ou a secretaria vincula você às turmas e disciplinas.</div>
+        {% endif %}
+      </section>
+    </div>
+    <div class="col-lg-5">
+      <section class="card h-100">
+        <div class="card-header">Entregas desta semana</div>
+        {% if ws.due_this_week %}
+          <ul class="list-group list-group-flush">
+            {% for act in ws.due_this_week %}
+            <li class="list-group-item">
+              <div class="d-flex justify-content-between gap-2">
+                <a href="{% url 'pedagogy:activity_detail' act.pk %}" class="fw-bold text-truncate">{{ act.title }}</a>
+                <span class="chip text-nowrap">{{ act.deadline|date:"D d/m" }}</span>
+              </div>
+              <div class="small text-body-secondary">{{ act.class_group.name }} · {{ act.subject.name }} · <a href="{% url 'pedagogy:activity_submissions' act.pk %}">registrar entregas</a></div>
+            </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="empty-state">{% icon "calendar-check" %}<strong>Nenhuma entrega nos próximos 7 dias</strong><a href="{% url 'pedagogy:activity_create' %}">Publicar uma atividade</a></div>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+{% endif %}
+
+{# ================= Gestão: secretaria, coordenação, direção, administração ================= #}
+{% if ws.indicators %}
+  <div class="kpi-grid mb-4">
+    <div class="kpi">
+      <span class="kpi-label">{% icon "id-card" %}Estudantes ativos</span>
+      <span class="kpi-value">{{ ws.indicators.students }}</span>
+      <a class="stretched-link kpi-hint" href="{% url 'student_list' %}">de {{ ws.students_total }} cadastrados</a>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">{% icon "calendar-check" %}Frequência geral</span>
+      <span class="kpi-value">{% if ws.indicators.attendance_percent is not None %}{{ ws.indicators.attendance_percent|floatformat:1 }}%{% else %}—{% endif %}</span>
+      <span class="kpi-hint">Presenças e atrasos sobre todos os registros</span>
+    </div>
+    {% if user_role == ROLE_SECRETARIA or user_role == ROLE_ADMIN %}
+    <div class="kpi{% if ws.indicators.links_pending %} is-attention{% endif %}">
+      <span class="kpi-label">{% icon "link" %}Vínculos para validar</span>
+      <span class="kpi-value">{{ ws.indicators.links_pending }}</span>
+      <a class="stretched-link kpi-hint" href="{% url 'link_list' %}">Pedidos das famílias</a>
+    </div>
+    {% else %}
+    <div class="kpi{% if ws.indicators.occurrences_open %} is-attention{% endif %}">
+      <span class="kpi-label">{% icon "flag" %}Ocorrências em aberto</span>
+      <span class="kpi-value">{{ ws.indicators.occurrences_open }}</span>
+      <a class="stretched-link kpi-hint" href="{% url 'pedagogy:occurrence_list' %}">Abertas ou em acompanhamento</a>
+    </div>
+    {% endif %}
+    {% if user_role == ROLE_ADMIN %}
+    <div class="kpi">
+      <span class="kpi-label">{% icon "shield" %}Contas ativas</span>
+      <span class="kpi-value">{{ ws.active_users }}</span>
+      <a class="stretched-link kpi-hint" href="{% url 'user_list' %}">Gerenciar usuários</a>
+    </div>
+    {% else %}
+    <div class="kpi{% if ws.justifications_pending %} is-attention{% endif %}">
+      <span class="kpi-label">{% icon "file-check" %}Justificativas pendentes</span>
+      <span class="kpi-value">{{ ws.justifications_pending }}</span>
+      <a class="stretched-link kpi-hint" href="{% url 'pedagogy:justification_list' %}">Recebidas ou em análise</a>
+    </div>
+    {% endif %}
+  </div>
+{% endif %}
+
+{# ================= Comunicados recentes ================= #}
+{% if ws.announcements %}
+<section class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">Comunicados recentes <a class="small fw-normal" href="{% url 'communication:announcement_list' %}">Ver todos</a></div>
+  <ul class="list-group list-group-flush">
+    {% for a in ws.announcements %}
+    <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+      <span class="d-flex align-items-center gap-2 text-truncate">
+        {% if a.unread %}<span class="badge-new">Não lido</span>{% endif %}
+        <a href="{% url 'communication:announcement_detail' a.pk %}" class="text-truncate">{{ a.title }}</a>
+      </span>
+      <span class="small text-body-secondary text-nowrap">{% if a.class_group %}{{ a.class_group.name }} · {% endif %}{{ a.created_at|date:"d/m" }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{# ================= Acesso rápido: as seções do menu numa visão só ================= #}
+<h2 class="h5 mb-3">Acesso rápido</h2>
+<div class="row g-3">
+  {% for section in nav.sections %}{% if section.title %}
+  <div class="col-md-6 col-xl-4">
+    <section class="card h-100">
+      <div class="card-header section-label">{{ section.title }}</div>
+      <ul class="list-group list-group-flush">
+        {% for item in section.items %}
+        <li class="list-group-item list-group-item-action position-relative d-flex align-items-center gap-3">
+          <span class="text-body-secondary">{% icon item.icon %}</span>
+          <span class="d-flex flex-column">
+            <a class="stretched-link text-body fw-bold text-decoration-none" href="{{ item.url }}">{{ item.label }}</a>
+            {% if item.desc %}<span class="small text-body-secondary">{{ item.desc }}</span>{% endif %}
+          </span>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+  {% endif %}{% endfor %}
 </div>
 {% endblock %}

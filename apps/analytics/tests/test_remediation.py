@@ -46,9 +46,33 @@ class CsvSafetyTests(AnalyticsBase):
 
 class InstitutionalDashboardTests(AnalyticsBase):
     def test_dashboard_cards_receive_the_indicators(self):
+        from apps.pedagogy.models import AttendanceRecord
+
+        # Um presente e um ausente: frequência calculada de 50%.
+        AttendanceRecord.objects.create(
+            school=self.school, class_group=self.turma, student=self.ana,
+            date=date(2026, 3, 2), status=AttendanceRecord.Status.PRESENT,
+        )
+        AttendanceRecord.objects.create(
+            school=self.school, class_group=self.turma, student=self.ana,
+            date=date(2026, 3, 3), status=AttendanceRecord.Status.ABSENT,
+        )
         self.login("dir")
         resp = self.client.get(reverse("analytics:institutional_dashboard"))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.context["total_students"], 2)
         self.assertEqual(resp.context["class_groups_count"], 2)
-        self.assertIsInstance(resp.context["attendance_rate"], float)
+        self.assertEqual(resp.context["attendance_rate"], 50.0)
+
+
+class InstitutionalNoDataTests(AnalyticsBase):
+    def test_school_without_attendance_shows_no_data_not_zero(self):
+        """Sem registro de frequência é "sem dado", não 0% (que pareceria uma
+        escola inteira faltando)."""
+        from apps.pedagogy.models import AttendanceRecord
+
+        AttendanceRecord.objects.filter(school=self.school).delete()
+        self.login("dir")
+        resp = self.client.get(reverse("analytics:institutional_dashboard"))
+        self.assertIsNone(resp.context["attendance_rate"])
+        self.assertNotContains(resp, "0,0%")

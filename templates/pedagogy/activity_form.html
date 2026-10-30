@@ -1,77 +1,123 @@
-{% extends "partials/form_card.html" %}
+{% extends "base.html" %}
+{% load ui %}
 {% block title %}{% if obj %}Editar atividade{% else %}Nova atividade de casa{% endif %} — Plataforma Escolar{% endblock %}
+{% block crumb %}<li><span aria-current="page">{% if obj %}Editar{% else %}Nova{% endif %}</span></li>{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-xl-7 col-lg-9">
-    <div class="card p-4">
-      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <div>
-          <h1 class="h4 mb-0">{% if obj %}Editar atividade{% else %}Nova atividade de casa{% endif %}</h1>
-          <p class="text-body-secondary small mb-0">
-            Somente turmas e disciplinas da sua atribuição. A atividade vale para a
-            turma inteira — não é preciso lançar aluno por aluno.
-          </p>
-        </div>
-        <a href="{% if obj %}{% url 'pedagogy:activity_detail' obj.pk %}{% else %}{% url 'pedagogy:activity_list' %}{% endif %}"
-           class="btn btn-outline-secondary btn-sm">Voltar</a>
-      </div>
+<div class="form-page-wide">
+  <div class="page-head">
+    <div>
+      <a href="{% if obj %}{% url 'pedagogy:activity_detail' obj.pk %}{% else %}{% url 'pedagogy:activity_list' %}{% endif %}" class="back-link">{% icon "arrow-left" %}Voltar</a>
+      <h1>{% if obj %}Editar atividade{% else %}Nova atividade de casa{% endif %}</h1>
+      <p>Uma atividade vale para a turma inteira — não é preciso lançar aluno por aluno. Somente turmas e disciplinas da sua atribuição.</p>
+    </div>
+  </div>
 
-      <form method="post" enctype="multipart/form-data" novalidate>
+  <div class="row g-4">
+    <div class="col-xl-8">
+      <form method="post" enctype="multipart/form-data" novalidate class="card form-card" id="activity-form">
         {% csrf_token %}
-        {% include "partials/_form_fields.html" with f=form %}
+        <div class="card-body">
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger" role="alert"><div>{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div></div>
+          {% endif %}
+          {% if form.errors %}<p class="visually-hidden" role="alert">O formulário tem campos a corrigir.</p>{% endif %}
 
-        {% if obj and obj.attachments.all %}
-          <div class="mb-3">
-            <p class="form-label small mb-1">Anexos já enviados</p>
-            <ul class="list-unstyled mb-0 small">
-              {% for att in obj.attachments.all %}
-                <li class="mb-1">
-                  <span aria-hidden="true">📎</span>
-                  <a href="{% url 'pedagogy:activity_attachment' obj.pk att.pk %}">{{ att.original_name }}</a>
-                </li>
-              {% endfor %}
-            </ul>
-            <p class="text-body-secondary small mb-0 mt-1">
-              Enviar novos arquivos acrescenta à lista; os atuais são mantidos.
-            </p>
-          </div>
-        {% endif %}
+          <fieldset class="form-section">
+            <legend><span class="step" aria-hidden="true">1</span>Para quem</legend>
+            <div class="row g-3">
+              {% include "partials/_field.html" with field=form.class_group %}
+              {% include "partials/_field.html" with field=form.subject %}
+            </div>
+          </fieldset>
 
-        <div class="d-flex flex-wrap gap-2 mt-2">
+          <fieldset class="form-section">
+            <legend><span class="step" aria-hidden="true">2</span>O que fazer</legend>
+            <div class="row g-3">
+              {% include "partials/_field.html" with field=form.title col="col-12" %}
+              {% include "partials/_field.html" with field=form.description %}
+              {% include "partials/_field.html" with field=form.materials %}
+              {% include "partials/_field.html" with field=form.criteria %}
+            </div>
+          </fieldset>
+
+          <fieldset class="form-section">
+            <legend><span class="step" aria-hidden="true">3</span>Quando<small>Só o título e a turma são obrigatórios</small></legend>
+            <div class="row g-3">
+              {% include "partials/_field.html" with field=form.published_date col="col-md-4" %}
+              {% include "partials/_field.html" with field=form.deadline col="col-md-4" %}
+              {% include "partials/_field.html" with field=form.class_date col="col-md-4" %}
+            </div>
+          </fieldset>
+
+          <fieldset class="form-section mb-0">
+            <legend><span class="step" aria-hidden="true">4</span>Anexos de apoio<small>Opcional</small></legend>
+            <div class="row g-3">
+              {% include "partials/_field.html" with field=form.attachments %}
+            </div>
+            {% if obj and obj.attachments.all %}
+              <p class="form-label mt-3 mb-1">Anexos já enviados</p>
+              <ul class="list-unstyled mb-0 small d-grid gap-1">
+                {% for att in obj.attachments.all %}
+                  <li>{% icon "paperclip" %} <a href="{% url 'pedagogy:activity_attachment' obj.pk att.pk %}">{{ att.original_name }}</a></li>
+                {% endfor %}
+              </ul>
+              <p class="form-text">Enviar novos arquivos acrescenta à lista; os atuais são mantidos.</p>
+            {% endif %}
+          </fieldset>
+          {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+        </div>
+
+        <div class="form-actions">
+          <span class="hint">Rascunho fica visível só para você. A família vê a atividade a partir da data de publicação.</span>
           {% if obj %}
             {% if obj.status == 'rascunho' %}
               <button type="submit" class="btn btn-outline-secondary">Salvar rascunho</button>
-              <button type="submit" name="_publish" value="1" class="btn btn-primary flex-grow-1">
-                Publicar para a turma
-              </button>
+              <button type="submit" name="_publish" value="1" class="btn btn-primary">{% icon "check" %}Publicar para a turma</button>
             {% else %}
-              <button type="submit" class="btn btn-primary flex-grow-1">Salvar alterações</button>
+              <button type="submit" class="btn btn-primary">{% icon "check" %}Salvar alterações</button>
             {% endif %}
           {% else %}
             <button type="submit" class="btn btn-outline-secondary">Salvar como rascunho</button>
-            <button type="submit" name="_publish" value="1" class="btn btn-primary flex-grow-1">
-              Publicar para a turma
-            </button>
+            <button type="submit" name="_publish" value="1" class="btn btn-primary">{% icon "check" %}Publicar para a turma</button>
           {% endif %}
         </div>
-        <p class="text-body-secondary small mb-0 mt-2">
-          Rascunho fica visível só para você. A família passa a ver a atividade a
-          partir da data de publicação informada.
-        </p>
       </form>
 
       {% if obj and obj.status != 'cancelada' %}
-        <hr>
-        <p class="text-body-secondary small mb-2">
-          Precisa tornar esta atividade sem efeito? Use o cancelamento: o registro
-          permanece no histórico escolar e nas entregas já lançadas.
-        </p>
-        <a href="{% url 'pedagogy:activity_cancel' obj.pk %}" class="btn btn-outline-danger btn-sm">
-          Cancelar atividade
-        </a>
+        <div class="card mt-3">
+          <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <p class="text-body-secondary small mb-0">Precisa tornar esta atividade sem efeito? O cancelamento mantém o registro no histórico e as entregas já lançadas.</p>
+            <a href="{% url 'pedagogy:activity_cancel' obj.pk %}" class="btn btn-outline-danger btn-sm">Cancelar atividade</a>
+          </div>
+        </div>
       {% endif %}
     </div>
+
+    <aside class="col-xl-4" aria-labelledby="preview-title">
+      <div class="preview-panel">
+        <p class="preview-tag" id="preview-title">{% icon "eye" %}Como a família vai ver</p>
+        <div class="preview-card">
+          <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+            <span class="chip">Nome do estudante</span>
+            <span class="badge-new">Nova</span>
+          </div>
+          <h2 class="h6 mb-1" data-preview="id_title" data-preview-placeholder="Título da atividade">{% if obj %}{{ obj.title }}{% endif %}</h2>
+          <p class="small text-body-secondary mb-2">
+            <span data-preview="id_subject" data-preview-placeholder="Disciplina">{% if obj %}{{ obj.subject.name }}{% endif %}</span> ·
+            Publicada para a turma <span data-preview="id_class_group" data-preview-placeholder="—">{% if obj %}{{ obj.class_group.name }}{% endif %}</span>
+          </p>
+          <dl class="row small mb-2 g-0">
+            <dt class="col-5 fw-normal text-body-secondary">Publicada em</dt>
+            <dd class="col-7 mb-0" data-preview="id_published_date" data-preview-format="date" data-preview-placeholder="—">{% if obj %}{{ obj.published_date|date:"d/m/Y" }}{% endif %}</dd>
+            <dt class="col-5 fw-normal text-body-secondary">Entrega até</dt>
+            <dd class="col-7 mb-0 fw-bold" data-preview="id_deadline" data-preview-format="date" data-preview-placeholder="sem prazo definido">{% if obj and obj.deadline %}{{ obj.deadline|date:"d/m/Y" }}{% endif %}</dd>
+          </dl>
+          <div class="small activity-instructions border-top pt-2" data-preview="id_description" data-preview-placeholder="As instruções aparecem aqui.">{% if obj %}{{ obj.description }}{% endif %}</div>
+        </div>
+        <p class="form-text mt-2">A prévia acompanha o que você digita. Depois de salvar, a tela da atividade mostra exatamente o que a família recebe.</p>
+      </div>
+    </aside>
   </div>
 </div>
 {% endblock %}

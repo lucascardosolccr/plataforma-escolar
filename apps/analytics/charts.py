@@ -19,11 +19,35 @@ def _fmt(value):
     if value is None:
         return "—"
     if isinstance(value, float):
-        return f"{value:g}"
+        # Vírgula decimal, como nas tabelas da mesma tela ("93,9%", não "93.9").
+        return f"{value:g}".replace(".", ",")
     return str(value)
 
 
-def line_chart(points, *, y_min=0.0, y_max=None, suffix="", width=640, height=220):
+def _summary(kind, items, suffix):
+    """Nome acessível do gráfico: o tipo e os valores, na ordem exibida.
+
+    O leitor de tela anuncia o que a imagem mostra em vez de "imagem".
+    """
+    partes = [
+        f"{i['label']}: {_fmt(i.get('value'))}{suffix if i.get('value') is not None else ''}"
+        for i in items
+    ]
+    return escape(f"{kind}. " + "; ".join(partes))
+
+
+def _grid_lines(pad_l, pad_t, plot_w, plot_h, steps=4):
+    """Linhas de grade horizontais discretas (25%, 50%, 75%)."""
+    out = []
+    for k in range(1, steps):
+        y = pad_t + plot_h * k / steps
+        out.append(
+            f'<line x1="{pad_l}" y1="{y:.1f}" x2="{pad_l + plot_w}" y2="{y:.1f}" class="chart-grid"/>'
+        )
+    return "".join(out)
+
+
+def line_chart(points, *, y_min=0.0, y_max=None, suffix="", width=520, height=220):
     """points: lista de {"label": str, "value": number}.
 
     Gráfico de linhas para evolução (notas, frequência…)."""
@@ -65,6 +89,7 @@ def line_chart(points, *, y_min=0.0, y_max=None, suffix="", width=640, height=22
     )
 
     grid = (
+        _grid_lines(pad_l, pad_t, plot_w, plot_h) +
         f'<line x1="{pad_l}" y1="{pad_t}" x2="{pad_l}" y2="{pad_t + plot_h}" class="chart-axis"/>'
         f'<line x1="{pad_l}" y1="{pad_t + plot_h}" x2="{pad_l + plot_w}" y2="{pad_t + plot_h}" class="chart-axis"/>'
         f'<text x="{pad_l - 6}" y="{pad_t + 4}" class="chart-tick" text-anchor="end">{_fmt(round(y_max, 1))}</text>'
@@ -80,12 +105,22 @@ def line_chart(points, *, y_min=0.0, y_max=None, suffix="", width=640, height=22
             f'<text x="{x(0):.1f}" y="{height - 12}" class="chart-tick" text-anchor="start">{escape(str(points[0]["label"]))}</text>'
             f'<text x="{x(n - 1):.1f}" y="{height - 12}" class="chart-tick" text-anchor="end">{escape(str(points[-1]["label"]))}</text>'
         )
+    area = ""
+    if len(coords) > 1:
+        base = pad_t + plot_h
+        first_x, last_x = coords[0].split(",")[0], coords[-1].split(",")[0]
+        area = (
+            f'<polygon points="{first_x},{base:.1f} {" ".join(coords)} {last_x},{base:.1f}" '
+            f'class="chart-area"/>'
+        )
+    nome = _summary("Gráfico de linha", points, suffix)
     return mark_safe(
-        f'<svg viewBox="0 0 {width} {height}" class="chart-svg" role="img">{grid}{poly}{"".join(circles)}{labels}</svg>'
+        f'<svg viewBox="0 0 {width} {height}" class="chart-svg" role="img" aria-label="{nome}">'
+        f"{grid}{area}{poly}{''.join(circles)}{labels}</svg>"
     )
 
 
-def bar_chart(items, *, max_value=None, suffix="", width=640, height=220):
+def bar_chart(items, *, max_value=None, suffix="", width=520, height=220):
     """items: lista de {"label", "value", "below" (opcional bool)} — barras verticais."""
     values = [i["value"] for i in items if i.get("value") is not None]
     if not values:
@@ -113,16 +148,19 @@ def bar_chart(items, *, max_value=None, suffix="", width=640, height=220):
         bars.append(
             f'<rect x="{bx:.1f}" y="{by:.1f}" width="{bar_w:.1f}" height="{bar_h:.1f}" rx="4" class="{cls}">'
             f"<title>{escape(str(item['label']))}: {_fmt(v)}{escape(suffix)}</title></rect>"
-            f'<text x="{cx:.1f}" y="{by - 4:.1f}" class="chart-tick" text-anchor="middle">{_fmt(v)}</text>'
+            f'<text x="{cx:.1f}" y="{by - 5:.1f}" class="chart-value" text-anchor="middle">{_fmt(v)}</text>'
             f'<text x="{cx:.1f}" y="{height - 14}" class="chart-tick" text-anchor="middle">{escape(str(item["label"]))[:14]}</text>'
         )
     grid = (
+        _grid_lines(pad_l, pad_t, plot_w, plot_h) +
         f'<line x1="{pad_l}" y1="{pad_t + plot_h}" x2="{pad_l + plot_w}" y2="{pad_t + plot_h}" class="chart-axis"/>'
         f'<text x="{pad_l - 6}" y="{pad_t + 4}" class="chart-tick" text-anchor="end">{_fmt(round(max_value, 1))}</text>'
         f'<text x="{pad_l - 6}" y="{pad_t + plot_h}" class="chart-tick" text-anchor="end">0</text>'
     )
+    nome = _summary("Gráfico de barras", items, suffix)
     return mark_safe(
-        f'<svg viewBox="0 0 {width} {height}" class="chart-svg" role="img">{grid}{"".join(bars)}</svg>'
+        f'<svg viewBox="0 0 {width} {height}" class="chart-svg" role="img" aria-label="{nome}">'
+        f'{grid}{"".join(bars)}</svg>'
     )
 
 

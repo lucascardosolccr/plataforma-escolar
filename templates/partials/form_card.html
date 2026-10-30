@@ -1,29 +1,26 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}{{ heading }} — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-6 col-md-8">
-    <div class="card p-4">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-          <h1 class="h4 mb-0">{{ heading }}</h1>
-          {% if subheading %}<p class="text-body-secondary small mb-0">{{ subheading }}</p>{% endif %}
-        </div>
-        {% if back_url %}<a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm">Voltar</a>{% endif %}
-      </div>
-      <form method="post" novalidate {% if multipart %}enctype="multipart/form-data"{% endif %}>
-        {% csrf_token %}
-        {% include "partials/_form_fields.html" with f=form %}
-        <button type="submit" class="btn btn-primary w-100 mt-2">{{ submit_label|default:"Salvar" }}</button>
-      </form>
+<div class="form-page">
+  <div class="page-head">
+    <div>
+      {% if back_url %}<a href="{{ back_url }}" class="back-link">{% icon "arrow-left" %}Voltar</a>{% endif %}
+      <h1>{{ heading }}</h1>
+      {% if subheading %}<p>{{ subheading }}</p>{% endif %}
     </div>
   </div>
+  <form method="post" novalidate {% if multipart %}enctype="multipart/form-data"{% endif %} class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">
+      {% include "partials/_form_fields.html" with f=form %}
+      <p class="small text-body-secondary mb-0"><span class="required-mark" aria-hidden="true">*</span> campo obrigatório</p>
+    </div>
+    <div class="form-actions">
+      {% if back_url %}<a href="{{ back_url }}" class="btn btn-outline-secondary">Cancelar</a>{% endif %}
+      <button type="submit" class="btn btn-primary">{{ submit_label|default:"Salvar" }}</button>
+    </div>
+  </form>
 </div>
-{% endblock %}
-
-{% block extra_css %}
-<style>
-form input:not([type=checkbox]), form select, form textarea { width: 100%; }
-</style>
 {% endblock %}

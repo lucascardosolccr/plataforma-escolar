@@ -40,11 +40,31 @@ def bs(field):
     if field.errors:
         classes = f"{classes} is-invalid"
     attrs = {"class": classes}
-    # Liga a mensagem de erro ao campo para leitores de tela.
+    # Liga erro e ajuda ao campo para leitores de tela: ao focar o campo, a
+    # pessoa ouve também a orientação e o que está errado.
+    descritos = []
     if field.errors:
         attrs["aria-invalid"] = "true"
-        attrs["aria-describedby"] = f"{field.auto_id}_erro"
+        descritos.append(f"{field.auto_id}_erro")
+    if field.help_text:
+        descritos.append(f"{field.auto_id}_ajuda")
+    if descritos:
+        attrs["aria-describedby"] = " ".join(descritos)
     return field.as_widget(attrs=attrs)
+
+
+@register.filter
+def is_wide(field):
+    """Campo que ocupa a linha inteira na grade do formulário (texto longo,
+    arquivo, múltipla escolha). Os curtos ficam lado a lado em telas largas."""
+    if not hasattr(field, "field"):
+        return True
+    widget = field.field.widget
+    return isinstance(
+        widget,
+        (forms.Textarea, forms.FileInput, forms.CheckboxSelectMultiple,
+         forms.SelectMultiple, forms.RadioSelect),
+    )
 
 
 @register.filter

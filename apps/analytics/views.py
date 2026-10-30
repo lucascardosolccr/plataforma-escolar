@@ -256,6 +256,8 @@ def institutional_dashboard(request):
         raise PermissionDenied("Painel restrito à coordenação e direção.")
     data = services.institutional_indicators(request.user.school)
     classes = services.class_overview(request.user.school)
+    limite = services.school_max_absences(request.user.school)
+    min_attendance = 100 - float(limite) if limite is not None else None
     return render(
         request,
         "analytics/institutional_dashboard.html",
@@ -267,12 +269,20 @@ def institutional_dashboard(request):
                 school=request.user.school, status="ativo"
             ).count(),
             "class_groups_count": data["class_groups"],
-            "attendance_rate": data["attendance_percent"] or 0.0,
+            # Sem registro de frequência é "sem dado" (—), nunca 0%: zero
+            # pareceria uma turma inteira faltando.
+            "attendance_rate": data["attendance_percent"],
+            "min_attendance": min_attendance,
             "class_chart": charts.bar_chart(
                 [
                     {
                         "label": c["class_group"].name,
-                        "value": c["attendance"] or 0,
+                        "value": c["attendance"],
+                        "below": (
+                            c["attendance"] is not None
+                            and min_attendance is not None
+                            and c["attendance"] < min_attendance
+                        ),
                     }
                     for c in classes
                 ],

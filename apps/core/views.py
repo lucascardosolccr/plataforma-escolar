@@ -151,38 +151,75 @@ def signup(request):
 
 
 def home(request):
-    context = {}
+    """Tela "Hoje": o que pede ação para este perfil (ver core.workspace)."""
+    from . import workspace
+
+    return render(request, "home.html", {"ws": workspace.build(request.user)})
+
+SEARCH_LIMIT = 8
+
+
+def global_search(request):
+    """Busca de registros para a paleta Ctrl+K (estudantes e turmas).
+
+    Usa exatamente as regras de acesso das telas de destino: estudantes por
+    ``students_visible_to`` (a mesma da lista de estudantes) e turmas pelo
+    painel da turma. Nada que a pessoa não possa abrir aparece no resultado.
+    Páginas e ações não passam por aqui: já vêm no HTML, filtradas por perfil.
+    """
+    from django.db.models import Q
+    from django.http import JsonResponse
+    from django.urls import reverse
+
+    from apps.academics.models import ClassGroup, TeacherAssignment
+    from apps.registry.access import ADMIN_RECORD_ROLES, students_visible_to
+
     user = request.user
-    if user.is_authenticated:
-        if user.role == Role.ADMIN.value:
-            context["user_count"] = User.objects.filter(
-                school=user.school, is_active=True
-            ).count()
-        elif user.role == Role.SECRETARIA.value:
-            from apps.registry.models import GuardianLink, Student
-
-            context["student_count"] = Student.objects.filter(school=user.school).count()
-            context["pending_links"] = GuardianLink.objects.filter(
-                school=user.school, status="pendente"
-            ).count()
-        elif user.role == Role.RESPONSAVEL.value:
-            from apps.registry.models import GuardianLink
-
-            context["child_count"] = GuardianLink.objects.filter(
-                guardian=user, status="aprovado"
-            ).count()
-        elif user.role == Role.PROFESSOR.value:
-            from apps.academics.models import TeacherAssignment
-
-            context["assignment_count"] = TeacherAssignment.objects.filter(
-                teacher=user
-            ).count()
-        elif user.role == Role.ESTUDANTE.value:
-            from apps.pedagogy.views import _student_own_rows
-
-            rows, _ = _student_own_rows(user)
-            context["own_student"] = getattr(user, "student_record", None)
-            context["pending_activities"] = sum(
-                1 for r in rows if r["state"] in ("a_vencer", "pendente")
+    q = " ".join(request.GET.get("q", "").split())[:60]
+    results = []
+    if len(q) >= 2:
+        students = students_visible_to(user)
+        if students is not None:
+            filtro = Q()
+            for termo in q.split():
+                filtro &= Q(first_name__icontains=termo) | Q(last_name__icontains=termo)
+            encontrados = list(
+                students.filter(filtro).order_by("first_name", "last_name")[:SEARCH_LIMIT]
             )
-    return render(request, "home.html", context)
+            # A turma atual distingue homônimos (três "Alice Almeida" numa
+            # escola não podem aparecer iguais no resultado).
+            from apps.registry.models import Enrollment
+
+            turma_atual = dict(
+                Enrollment.objects.filter(
+                    student__in=encontrados, status="ativo"
+                ).values_list("student_id", "class_group__name")
+            )
+            for st in encontrados:
+                turma = turma_atual.get(st.pk)
+                results.append({
+                    "group": "Estudantes",
+                    "label": st.full_name,
+                    "url": reverse("student_detail", args=[st.pk]),
+                    "icon": "user-round",
+                    "hint": f"Turma {turma}" if turma else "Sem matrícula ativa",
+                })
+        turmas = None
+        if user.role in ADMIN_RECORD_ROLES:
+            turmas = ClassGroup.objects.filter(school=user.school)
+        elif user.role == Role.PROFESSOR.value:
+            turmas = ClassGroup.objects.filter(
+                pk__in=TeacherAssignment.objects.filter(teacher=user).values("class_group_id")
+            )
+        if turmas is not None:
+            for cg in turmas.filter(name__icontains=q).select_related("school_year").order_by(
+                "name"
+            )[:SEARCH_LIMIT]:
+                results.append({
+                    "group": "Turmas",
+                    "label": cg.name,
+                    "url": reverse("analytics:class_dashboard", args=[cg.pk]),
+                    "icon": "layers",
+                    "hint": f"Painel da turma · {cg.school_year.name}",
+                })
+    return JsonResponse({"results": results})

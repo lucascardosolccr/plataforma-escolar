@@ -1,10 +1,6 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Painel do estudante — {{ student }}{% endblock %}
-{% block extra_css %}
-<style>
-  .chart-container { position: relative; height: 320px; width: 100%; }
-</style>
-{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <div>
@@ -21,38 +17,29 @@
   </div>
 </div>
 
-<div class="row g-3 mb-3">
-  <div class="col-6 col-lg-3">
-    <div class="card h-100"><div class="card-body">
-      <div class="text-body-secondary small text-uppercase">Média geral por disciplina</div>
-      <div class="fs-4 fw-semibold">{{ subject_averages|length }} disciplina(s)</div>
-    </div></div>
+<div class="kpi-grid mb-4">
+  {% with abaixo=subject_averages|count_where:"below" %}
+  <div class="kpi{% if abaixo %} is-attention{% endif %}">
+    <span class="kpi-label">{% icon "graduation-cap" %}Disciplinas abaixo da média</span>
+    <span class="kpi-value">{{ abaixo }}<small class="fs-6 text-body-secondary"> de {{ subject_averages|length }}</small></span>
+    <span class="kpi-hint">Média de aprovação de cada disciplina, pela regra da escola</span>
   </div>
-  <div class="col-6 col-lg-3">
-    <div class="card h-100"><div class="card-body">
-      <div class="text-body-secondary small text-uppercase">Frequência</div>
-      <div class="fs-4 fw-semibold {% if attendance.near_limit %}text-danger{% endif %}">
-        {% if attendance.percent is not None %}{{ attendance.percent }}%{% else %}—{% endif %}
-      </div>
-      <div class="small text-body-secondary">Limite de faltas: {{ attendance.limit }}%</div>
-    </div></div>
+  {% endwith %}
+  <div class="kpi{% if attendance.near_limit %} is-attention{% endif %}">
+    <span class="kpi-label">{% icon "calendar-check" %}Frequência</span>
+    <span class="kpi-value">{% if attendance.percent is not None %}{{ attendance.percent }}%{% else %}—{% endif %}</span>
+    <span class="kpi-hint">Limite de faltas: {{ attendance.limit }}%{% if attendance.near_limit %} · perto do limite{% endif %}</span>
   </div>
-  <div class="col-6 col-lg-3">
-    <div class="card h-100"><div class="card-body">
-      <div class="text-body-secondary small text-uppercase">Atividades entregues</div>
-      <div class="fs-4 fw-semibold">
-        {% if activities.percent is not None %}{{ activities.percent }}%{% else %}—{% endif %}
-      </div>
-      <div class="small text-body-secondary">{{ activities.delivered }}/{{ activities.total }}</div>
-    </div></div>
+  <div class="kpi">
+    <span class="kpi-label">{% icon "notebook-pen" %}Atividades entregues</span>
+    <span class="kpi-value">{% if activities.percent is not None %}{{ activities.percent }}%{% else %}—{% endif %}</span>
+    <span class="kpi-hint">{{ activities.delivered }} de {{ activities.total }} com entrega registrada pelo professor</span>
   </div>
   {% if can_view_occ %}
-  <div class="col-6 col-lg-3">
-    <div class="card h-100"><div class="card-body">
-      <div class="text-body-secondary small text-uppercase">Ocorrências abertas</div>
-      <div class="fs-4 fw-semibold">{{ occurrences.total }}</div>
-      <div class="small text-body-secondary">{{ occurrences.aberta }} aberta(s)</div>
-    </div></div>
+  <div class="kpi{% if occurrences.aberta %} is-attention{% endif %}">
+    <span class="kpi-label">{% icon "flag" %}Ocorrências</span>
+    <span class="kpi-value">{{ occurrences.total }}</span>
+    <span class="kpi-hint">{{ occurrences.aberta }} em aberto</span>
   </div>
   {% endif %}
 </div>

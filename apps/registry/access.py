@@ -65,6 +65,33 @@ def is_own_record(user, student):
     return own is not None and own.pk == student.pk
 
 
+def students_visible_to(user):
+    """Estudantes que este usuário pode abrir, ou None se não pode ver nenhum.
+
+    Regra única usada pela lista de estudantes e pela busca global: o
+    responsável vê os filhos com vínculo aprovado; o professor, quem tem
+    matrícula ativa numa turma em que leciona; a equipe de cadastro, a escola.
+    """
+    from .models import Student
+
+    if not user.is_authenticated:
+        return None
+    if user.role == Role.RESPONSAVEL.value:
+        ids = GuardianLink.objects.filter(guardian=user, status="aprovado").values_list(
+            "student_id", flat=True
+        )
+        return Student.objects.filter(pk__in=ids)
+    if user.role == Role.PROFESSOR.value:
+        return Student.objects.filter(
+            school=user.school,
+            enrollments__status="ativo",
+            enrollments__class_group__teacher_assignments__teacher=user,
+        ).distinct()
+    if can_manage_registry(user):
+        return Student.objects.filter(school=user.school)
+    return None
+
+
 def can_view_student(user, student):
     if not user.is_authenticated:
         return False

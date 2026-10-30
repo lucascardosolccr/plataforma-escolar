@@ -310,7 +310,9 @@ class StudentCannotSeeTests(StudentAccountBase):
         self.assertNotContains(resp, "Conversa em sala")
         self.assertNotContains(resp, "Troca letras")
         self.assertNotContains(resp, "Plano de reforço")
-        self.assertNotContains(resp, "Ocorrências abertas")
+        # Indicador de ocorrências (rótulo do componente KPI desde o redesign).
+        self.assertNotContains(resp, "Ocorrências</span>")
+        self.assertNotContains(resp, "em aberto</span>")
 
     def test_own_record_hides_secretary_notes(self):
         self.ana.notes = "Anotação interna da secretaria"

@@ -28,6 +28,7 @@ from .access import (
     guardian_of,
     is_own_record,
     require_student_access,
+    students_visible_to,
     teacher_of_student,
 )
 from .forms import (
@@ -52,20 +53,8 @@ def _resolver_student_list(request, qs):
 
 def student_list(request):
     user = request.user
-    if user.role == Role.RESPONSAVEL.value:
-        ids = GuardianLink.objects.filter(guardian=user, status="aprovado").values_list(
-            "student_id", flat=True
-        )
-        qs = Student.objects.filter(pk__in=ids)
-    elif user.role == Role.PROFESSOR.value:
-        qs = Student.objects.filter(
-            school=user.school,
-            enrollments__status="ativo",
-            enrollments__class_group__teacher_assignments__teacher=user,
-        ).distinct()
-    elif can_manage_registry(user):
-        qs = Student.objects.filter(school=user.school)
-    else:
+    qs = students_visible_to(user)
+    if qs is None:
         raise PermissionDenied
 
     qs, q = _resolver_student_list(request, qs)

@@ -426,6 +426,21 @@ class ChartTests(TestCase):
         self.assertIn("&lt;b&gt;x&lt;/b&gt;", svg)
         self.assertNotIn("<b>x</b>", svg)
 
+    def test_svg_has_accessible_name_with_values(self):
+        """Sem nome, o leitor de tela anunciava só "imagem"."""
+        svg = charts.bar_chart(
+            [{"label": "1º Ano A", "value": 92.0}, {"label": "1º Ano B", "value": 93.9}],
+            suffix="%",
+        )
+        self.assertIn('aria-label="Gráfico de barras. 1º Ano A: 92%; 1º Ano B: 93,9%"', svg)
+        linha = charts.line_chart([{"label": "mar", "value": 7.5}, {"label": "abr", "value": 8.25}])
+        self.assertIn("Gráfico de linha. mar: 7,5; abr: 8,25", linha)
+
+    def test_decimal_comma_in_labels(self):
+        svg = charts.bar_chart([{"label": "Matemática", "value": 7.48}])
+        self.assertIn(">7,48<", svg)
+        self.assertNotIn(">7.48<", svg)
+
     def test_gauge_marks_danger(self):
         html = charts.gauge(70, limit=25)
         self.assertIn("danger", html)

@@ -1,36 +1,18 @@
-{% load static %}
-<!doctype html>
-<html lang="pt-br" data-bs-theme="{{ theme }}">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cadastro de responsável — Plataforma Escolar</title>
-  <link rel="stylesheet" href="{% static 'vendor/bootstrap.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}">
-</head>
-<body class="auth-shell">
-  <div class="p-3">
-    <div class="card p-4 shadow auth-card-wide mx-auto">
-      <div class="text-center mb-4">
-        <span class="brand-mark mb-2">📚</span>
-        <h1 class="h4 mb-1 fw-bold">Cadastro de responsável</h1>
-        <p class="text-body-secondary mb-0 small">
-          Este cadastro cria apenas contas de responsável. Após entrar, solicite o vínculo
-          com seu filho(a); a secretaria fará a validação.
-        </p>
-      </div>
-
-      <form method="post" novalidate>
-        {% csrf_token %}
-        {% include "partials/_form_fields.html" with f=form %}
-        <button type="submit" class="btn btn-primary w-100">Criar conta</button>
-      </form>
-
-      <div class="text-center mt-3 small">
-        <a href="{% url 'login' %}">Já tenho conta — entrar</a>
-      </div>
-    </div>
-  </div>
-  <script src="{% static 'js/theme.js' %}"></script>
-</body>
-</html>
+{% extends "auth_base.html" %}
+{% block title %}Cadastro de responsável — Plataforma Escolar{% endblock %}
+{% block auth %}
+<div class="auth-card-wide">
+  <span class="eyebrow">Passo 1 de 2</span>
+  <h1 class="mb-1">Cadastro de responsável</h1>
+  <p class="text-body-secondary mb-4">
+    Este cadastro cria apenas contas de responsável. Depois de entrar, peça o vínculo
+    com seu filho ou filha (passo 2); a secretaria confere e aprova.
+  </p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include "partials/_form_fields.html" with f=form %}
+    <button type="submit" class="btn btn-primary btn-lg w-100 mt-2">Criar conta</button>
+  </form>
+  <p class="text-center mt-3 small"><a href="{% url 'login' %}">Já tenho conta — entrar</a></p>
+</div>
+{% endblock %}

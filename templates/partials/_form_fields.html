@@ -1,36 +1,9 @@
-{% load form_extras %}
 {% if f.non_field_errors %}
 <div class="alert alert-danger" role="alert">
-  {% for error in f.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+  <div>{% for error in f.non_field_errors %}<div>{{ error }}</div>{% endfor %}</div>
 </div>
 {% endif %}
-{% for field in f %}
-  {% if field.is_hidden %}
-    {{ field }}
-  {% elif field|is_checkbox %}
-    <div class="mb-3 form-check">
-      {{ field|bs }}
-      <label for="{{ field.id_for_label }}" class="form-check-label">{{ field.label }}</label>
-      {% if field.errors %}
-        <div id="{{ field.auto_id }}_erro" class="text-danger small mt-1">
-          {% for error in field.errors %}<div>{{ error }}</div>{% endfor %}
-        </div>
-      {% endif %}
-      {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-    </div>
-  {% else %}
-    <div class="mb-3">
-      <label for="{{ field.id_for_label }}" class="form-label">
-        {{ field.label }}
-        {% if field.field.required %}<span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden">(obrigatório)</span>{% endif %}
-      </label>
-      {{ field|bs }}
-      {% if field.errors %}
-        <div id="{{ field.auto_id }}_erro" class="text-danger small mt-1">
-          {% for error in field.errors %}<div>{{ error }}</div>{% endfor %}
-        </div>
-      {% endif %}
-      {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-    </div>
-  {% endif %}
-{% endfor %}
+{% if f.errors %}<p class="visually-hidden" role="alert">O formulário tem campos a corrigir.</p>{% endif %}
+<div class="row g-3 mb-3 form-grid">
+  {% for field in f %}{% include "partials/_field.html" with field=field %}{% endfor %}
+</div>

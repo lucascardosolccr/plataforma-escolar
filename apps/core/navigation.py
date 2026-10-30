@@ -1,0 +1,301 @@
+"""Navegação da plataforma: um único lugar define o que cada perfil vê.
+
+A barra lateral, a busca global (Ctrl+K), a trilha de navegação e os atalhos
+da tela inicial saem daqui. Antes, o menu era um template de 150 linhas com
+``{% if %}`` por perfil, repetido em parte na home — e itens divergiam (o
+estudante perdia "Meu painel" fora da tela inicial).
+
+Mostrar um item NÃO é permissão: cada view continua conferindo o acesso no
+servidor. O teste ``test_navigation`` garante o caminho inverso — todo item
+mostrado a um perfil abre (HTTP 200) para esse perfil.
+"""
+
+from dataclasses import dataclass
+
+from django.urls import NoReverseMatch, reverse
+
+from .models import Role
+
+ADMIN = Role.ADMIN.value
+DIRECAO = Role.DIRECAO.value
+COORDENACAO = Role.COORDENACAO.value
+SECRETARIA = Role.SECRETARIA.value
+PROFESSOR = Role.PROFESSOR.value
+RESPONSAVEL = Role.RESPONSAVEL.value
+ESTUDANTE = Role.ESTUDANTE.value
+
+
+@dataclass(frozen=True)
+class Item:
+    label: str
+    url_name: str
+    icon: str
+    # Prefixos de view_name que marcam o item como ativo (telas filhas).
+    match: tuple = ()
+    desc: str = ""
+
+
+def _own_student_args(user):
+    student = getattr(user, "student_record", None)
+    return [student.pk] if student is not None else None
+
+
+ITEMS = {
+    "home": Item("Início", "home", "house", desc="Resumo do dia"),
+    "calendar": Item("Calendário", "school_calendar:calendar_index", "calendar-days",
+                     ("school_calendar:",), "Prazos, avaliações e registros por data"),
+    # Família
+    "children": Item("Meus filhos", "my_children", "users",
+                     ("my_children", "student_detail", "analytics:student_dashboard"),
+                     "Ficha de cada estudante vinculado"),
+    "fam_activities": Item("Atividades de casa", "pedagogy:activity_list", "notebook-pen",
+                           ("pedagogy:activity_",), "Tarefas das turmas dos seus filhos"),
+    "fam_works": Item("Trabalhos em grupo", "pedagogy:group_work_list", "users-round",
+                      ("pedagogy:group_work_",), "O grupo de cada filho"),
+    "fam_grades": Item("Notas", "pedagogy:evaluation_list", "graduation-cap",
+                       ("pedagogy:evaluation_",), "Avaliações publicadas"),
+    "fam_attendance": Item("Frequência", "pedagogy:attendance_list", "calendar-check",
+                           ("pedagogy:attendance_",), "Presenças, atrasos e faltas"),
+    "justify": Item("Justificar falta", "pedagogy:justification_create", "file-check",
+                    ("pedagogy:justification_create",), "Enviar à secretaria"),
+    "links": Item("Vínculos", "link_list", "link", ("link_",), "Estudantes vinculados à conta"),
+    "link_request": Item("Solicitar vínculo", "link_request", "user-check", (),
+                         "Pedir acesso a um estudante"),
+    # Estudante
+    "my_dashboard": Item("Meu painel", "analytics:student_dashboard", "chart-line",
+                         ("analytics:student_dashboard",), "Médias, evolução e frequência"),
+    "my_activities": Item("Minhas atividades", "pedagogy:activity_list", "notebook-pen",
+                          ("pedagogy:activity_",), "Tarefas da sua turma"),
+    "my_works": Item("Trabalhos em grupo", "pedagogy:group_work_list", "users-round",
+                     ("pedagogy:group_work_",), "Seu grupo e colegas"),
+    "my_grades": Item("Minhas notas", "pedagogy:evaluation_list", "graduation-cap",
+                      ("pedagogy:evaluation_",), "Avaliações publicadas"),
+    "my_attendance": Item("Minha frequência", "pedagogy:attendance_list", "calendar-check",
+                          ("pedagogy:attendance_",), "Presenças e faltas"),
+    # Sala de aula / pedagógico
+    "classrooms": Item("Minhas turmas", "my_classrooms", "school",
+                       ("my_classrooms", "student_detail", "analytics:student_dashboard",
+                        "analytics:class_dashboard"),
+                       "Estudantes das suas atribuições"),
+    "evaluations": Item("Avaliações e notas", "pedagogy:evaluation_list", "graduation-cap",
+                        ("pedagogy:evaluation_",), "Criar, lançar e publicar"),
+    "activities": Item("Atividades de casa", "pedagogy:activity_list", "notebook-pen",
+                       ("pedagogy:activity_",), "Tarefas por turma e entregas"),
+    "works": Item("Trabalhos em grupo", "pedagogy:group_work_list", "users-round",
+                  ("pedagogy:group_work_",), "Grupos, integrantes e entregas"),
+    "attendance": Item("Frequência", "pedagogy:attendance_list", "calendar-check",
+                       ("pedagogy:attendance_",), "Registro diário por turma"),
+    "occurrences": Item("Ocorrências", "pedagogy:occurrence_list", "flag",
+                        ("pedagogy:occurrence_",), "Registros disciplinares"),
+    "observations": Item("Observações", "pedagogy:observation_list", "eye",
+                         ("pedagogy:observation_",), "Acompanhamento pedagógico"),
+    "plans": Item("Planos de acompanhamento", "pedagogy:plan_list", "heart-handshake",
+                  ("pedagogy:plan_",), "Intervenções individuais"),
+    "justifications": Item("Justificativas", "pedagogy:justification_list", "file-check",
+                           ("pedagogy:justification_",), "Faltas justificadas"),
+    # Cadastro e acadêmico
+    "students": Item("Estudantes", "student_list", "id-card",
+                     ("student_", "analytics:student_dashboard"), "Fichas e prontuários"),
+    "guardians": Item("Responsáveis", "guardian_list", "users", ("guardian_",),
+                      "Famílias cadastradas"),
+    "staff_links": Item("Vínculos", "link_list", "link", ("link_",),
+                        "Validar pedidos das famílias"),
+    "enrollments": Item("Matrículas", "enrollment_list", "clipboard-list", ("enrollment_",),
+                        "Estudante, turma e ano letivo"),
+    "classes": Item("Turmas", "class_group_list", "layers", ("class_group_",),
+                    "Organização por ano letivo"),
+    "subjects": Item("Disciplinas", "subject_list", "book-open", ("subject_",),
+                     "Componentes curriculares"),
+    "years": Item("Anos letivos", "school_year_list", "calendar-days", ("school_year_",),
+                  "Períodos letivos"),
+    "assignments": Item("Atribuições", "assignment_list", "user-cog", ("assignment_",),
+                        "Professor, turma e disciplina"),
+    "config": Item("Regras e limites", "pedagogy:config_edit", "sliders-horizontal",
+                   ("pedagogy:config_", "pedagogy:academic_rule_"), "Médias e limite de faltas"),
+    "users": Item("Usuários", "user_list", "shield", ("user_",), "Contas e auditoria"),
+    # Comunicação
+    "notifications": Item("Notificações", "communication:notification_list", "bell",
+                          ("communication:notification_",), "Avisos da plataforma"),
+    "threads_staff": Item("Mensagens com famílias", "communication:thread_list", "message-circle",
+                          ("communication:thread_",), "Conversas por estudante"),
+    "threads_family": Item("Mensagens com a escola", "communication:thread_list", "message-circle",
+                           ("communication:thread_",), "Professores e setores"),
+    "announcements": Item("Comunicados", "communication:announcement_list", "megaphone",
+                          ("communication:announcement_",), "Avisos da escola e das turmas"),
+    "requests": Item("Solicitações", "communication:request_list", "inbox",
+                     ("communication:request_",), "Pedidos de atendimento"),
+    # Análises
+    "institutional": Item("Painel institucional", "analytics:institutional_dashboard",
+                          "layout-dashboard", ("analytics:institutional_dashboard", "analytics:class_dashboard"),
+                          "Indicadores da escola"),
+    "secretaria_panel": Item("Painel da secretaria", "analytics:secretaria_panel",
+                             "layout-dashboard", ("analytics:secretaria_panel",),
+                             "Vínculos, matrículas e pendências"),
+    "reports": Item("Relatórios", "analytics:report_hub", "file-text",
+                    ("analytics:report_",), "Exportar CSV e imprimir"),
+}
+
+# Ações rápidas: aparecem na busca global e no topo da tela inicial.
+ACTIONS = {
+    "new_activity": Item("Nova atividade de casa", "pedagogy:activity_create", "plus"),
+    "new_evaluation": Item("Nova avaliação", "pedagogy:evaluation_create", "plus"),
+    "new_work": Item("Novo trabalho em grupo", "pedagogy:group_work_create", "plus"),
+    "new_occurrence": Item("Registrar ocorrência", "pedagogy:occurrence_create", "plus"),
+    "new_observation": Item("Registrar observação", "pedagogy:observation_create", "plus"),
+    "new_plan": Item("Novo plano de acompanhamento", "pedagogy:plan_create", "plus"),
+    "new_student": Item("Cadastrar estudante", "student_create", "plus"),
+    "new_enrollment": Item("Nova matrícula", "enrollment_create", "plus"),
+    "new_user": Item("Criar conta profissional", "user_create", "plus"),
+    "new_thread": Item("Nova mensagem", "communication:thread_create", "message-circle"),
+    "new_request": Item("Nova solicitação", "communication:request_create", "inbox"),
+    "justify": ITEMS["justify"],
+    "link_request": ITEMS["link_request"],
+}
+
+COMMUNICATION_STAFF = ("Comunicação", ["threads_staff", "announcements", "requests", "notifications"])
+
+LAYOUT = {
+    RESPONSAVEL: [
+        (None, ["home", "calendar"]),
+        ("Acompanhamento", ["children", "fam_activities", "fam_works", "fam_grades", "fam_attendance"]),
+        ("Escola", ["threads_family", "announcements", "requests", "notifications"]),
+        ("Secretaria", ["justify", "links"]),
+        ("Análises", ["reports"]),
+    ],
+    ESTUDANTE: [
+        (None, ["home", "calendar", "my_dashboard"]),
+        ("Meus estudos", ["my_activities", "my_works", "my_grades", "my_attendance"]),
+    ],
+    PROFESSOR: [
+        (None, ["home", "calendar"]),
+        ("Sala de aula", ["classrooms", "attendance", "evaluations", "activities", "works"]),
+        ("Acompanhamento", ["occurrences", "observations", "justifications"]),
+        COMMUNICATION_STAFF,
+        ("Análises", ["reports"]),
+    ],
+    SECRETARIA: [
+        (None, ["home", "calendar"]),
+        ("Secretaria", ["students", "guardians", "staff_links", "enrollments", "justifications"]),
+        ("Acadêmico", ["classes", "subjects", "years", "assignments"]),
+        ("Pedagógico", ["evaluations", "activities", "works", "attendance", "occurrences"]),
+        COMMUNICATION_STAFF,
+        ("Análises", ["secretaria_panel", "reports"]),
+        ("Configuração", ["config"]),
+    ],
+    COORDENACAO: [
+        (None, ["home", "calendar"]),
+        ("Pedagógico", ["students", "evaluations", "activities", "works", "attendance",
+                        "occurrences", "observations", "plans", "justifications"]),
+        ("Acadêmico", ["classes", "subjects", "years", "assignments"]),
+        COMMUNICATION_STAFF,
+        ("Análises", ["institutional", "reports"]),
+    ],
+    DIRECAO: [
+        (None, ["home", "calendar"]),
+        ("Análises", ["institutional", "reports"]),
+        ("Pedagógico", ["students", "evaluations", "activities", "works", "attendance",
+                        "occurrences", "observations", "plans", "justifications"]),
+        ("Acadêmico", ["classes", "subjects", "years"]),
+        COMMUNICATION_STAFF,
+    ],
+    ADMIN: [
+        (None, ["home", "calendar"]),
+        ("Administração", ["users", "config"]),
+        ("Cadastro", ["students", "guardians", "staff_links", "enrollments"]),
+        ("Acadêmico", ["classes", "subjects", "years", "assignments"]),
+        ("Pedagógico", ["evaluations", "activities", "works", "attendance", "occurrences",
+                        "justifications"]),
+        COMMUNICATION_STAFF,
+        ("Análises", ["institutional", "secretaria_panel", "reports"]),
+    ],
+}
+
+ROLE_ACTIONS = {
+    RESPONSAVEL: ["new_thread", "justify", "new_request", "link_request"],
+    ESTUDANTE: [],
+    PROFESSOR: ["new_activity", "new_evaluation", "new_work", "new_occurrence",
+                "new_observation", "new_thread"],
+    SECRETARIA: ["new_student", "new_enrollment", "new_thread"],
+    COORDENACAO: ["new_plan", "new_observation", "new_occurrence", "new_thread"],
+    DIRECAO: ["new_occurrence", "new_thread"],
+    ADMIN: ["new_user", "new_student", "new_enrollment"],
+}
+
+
+def _resolve(item, user):
+    args = None
+    if item.url_name == "analytics:student_dashboard":
+        args = _own_student_args(user)
+        if args is None:
+            return None
+    try:
+        return reverse(item.url_name, args=args)
+    except NoReverseMatch:  # rota removida: some do menu em vez de quebrar a página
+        return None
+
+
+def _is_active(item, view_name):
+    if not view_name:
+        return False
+    if view_name == item.url_name:
+        return True
+    return any(view_name.startswith(prefix) for prefix in item.match)
+
+
+def build(user, view_name=None):
+    """Seções, ações e trilha de navegação do usuário para esta requisição."""
+    sections, flat = [], []
+    active = None
+    for title, keys in LAYOUT.get(user.role, [(None, ["home", "calendar"])]):
+        items = []
+        for key in keys:
+            item = ITEMS[key]
+            url = _resolve(item, user)
+            if url is None:
+                continue
+            entry = {
+                "key": key, "label": item.label, "url": url, "icon": item.icon,
+                "desc": item.desc, "section": title or "", "active": False,
+            }
+            # O item mais específico vence: "Início" só é ativo na própria home.
+            if active is None and _is_active(item, view_name):
+                entry["active"] = True
+                active = entry
+            items.append(entry)
+            flat.append(entry)
+        if items:
+            sections.append({"title": title, "items": items})
+
+    actions = []
+    for key in ROLE_ACTIONS.get(user.role, []):
+        item = ACTIONS[key]
+        url = _resolve(item, user)
+        if url is not None:
+            actions.append({"key": key, "label": item.label, "url": url, "icon": item.icon})
+
+    crumbs = []
+    if active is not None and active["key"] != "home":
+        if active["section"]:
+            crumbs.append({"label": active["section"], "url": None})
+        crumbs.append({
+            "label": active["label"],
+            "url": None if view_name == ITEMS[active["key"]].url_name else active["url"],
+        })
+    # Dados da busca global: só o que este perfil já vê no menu.
+    palette = [
+        {"label": i["label"], "url": i["url"], "icon": i["icon"],
+         "group": "Ir para", "hint": i["section"] or i["desc"], "key": i["key"]}
+        for i in flat
+    ] + [
+        {"label": a["label"], "url": a["url"], "icon": a["icon"], "group": "Ações",
+         "hint": "", "key": a["key"]}
+        for a in actions
+    ]
+    return {"sections": sections, "flat": flat, "actions": actions, "crumbs": crumbs,
+            "active": active, "palette": palette}
+
+
+def all_visible_urls(user):
+    """Todas as URLs que o menu e as ações mostram a este usuário (para testes)."""
+    nav = build(user)
+    return [i["url"] for i in nav["flat"]] + [a["url"] for a in nav["actions"]]

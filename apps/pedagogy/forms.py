@@ -104,6 +104,14 @@ class GradeBatchForm(forms.Form):
             for g in Grade.objects.filter(evaluation=evaluation).select_related("student")
         }
         self.grades = []
+        from decimal import Decimal
+
+        from .models import AcademicRule
+
+        rule = AcademicRule.objects.filter(subject=evaluation.subject).first() if evaluation else None
+        passing = rule.passing_grade if rule else Decimal("6.0")
+        # Escala 0–10 quando a aprovação é até 10: "85" no lugar de 8,5 é recusado.
+        self.max_grade = 10 if passing <= 10 else 100
         for s in self.students:
             grade = existing.get(s.id)
             field_name = f"grade_{s.id}"
@@ -114,7 +122,7 @@ class GradeBatchForm(forms.Form):
                 max_digits=4,
                 decimal_places=2,
                 min_value=0,
-                max_value=100,
+                max_value=self.max_grade,
                 initial=initial,
                 localize=False,
                 widget=forms.NumberInput(

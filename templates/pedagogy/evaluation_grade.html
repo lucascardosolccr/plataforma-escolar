@@ -26,7 +26,7 @@
 </div>
 
 {% if form.errors %}
-<div class="alert alert-danger" role="alert">Algumas notas não foram aceitas. Corrija os campos marcados: a nota vai de 0 a 100, com até duas casas decimais.</div>
+<div class="alert alert-danger" role="alert">Algumas notas não foram aceitas. Corrija os campos marcados: a nota vai de 0 a {{ form.max_grade }}, com até duas casas decimais.</div>
 {% endif %}
 
 <form method="post" novalidate class="card">
@@ -36,7 +36,7 @@
       <thead><tr>
         <th scope="col" class="text-end cell-num">Nº</th>
         <th scope="col">Estudante</th>
-        <th scope="col">Nota <span class="fw-normal text-body-secondary">(0 a 100)</span></th>
+        <th scope="col">Nota <span class="fw-normal text-body-secondary">(0 a {{ form.max_grade }})</span></th>
         <th scope="col">Situação</th>
       </tr></thead>
       <tbody>

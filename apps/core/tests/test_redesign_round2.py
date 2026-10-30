@@ -510,3 +510,59 @@ class StudentHomeTests(Round2Base):
         ws = self.client.get(reverse("home")).context["ws"]
         self.assertEqual([(g.evaluation.title, g.value) for g in ws["recent_grades"]], [("P1", Decimal("8"))])
         self.assertEqual(ws["attendance"]["absent"], 1)
+
+
+class GradeEntrySafetyTests(Round2Base):
+    """Nota digitada errado não apaga a anterior nem passa da escala."""
+
+    def setUp(self):
+        super().setUp()
+        from decimal import Decimal
+
+        from apps.pedagogy.models import Activity, Submission
+
+        self.act = Activity.objects.create(
+            school=self.school, class_group=self.turma, subject=self.mat, title="Lista 1",
+            description="Fazer", status=Activity.Status.PUBLISHED, created_by=self.prof,
+            published_date=date(2026, 3, 1), deadline=date(2026, 3, 5),
+        )
+        Submission.objects.create(school=self.school, activity=self.act, student=self.ana,
+                                  status="entregue", grade=Decimal("8.50"))
+
+    def test_invalid_grade_keeps_previous_and_warns(self):
+        from apps.pedagogy.models import Submission
+
+        self.login(self.prof)
+        resp = self.client.post(reverse("pedagogy:activity_submissions", args=[self.act.pk]),
+                                {f"status_{self.ana.pk}": "entregue", f"nota_{self.ana.pk}": "8,5a"}, follow=True)
+        self.assertEqual(Submission.objects.get(student=self.ana).grade, 8.5)
+        self.assertContains(resp, "Nota não aceita para Ana")
+
+    def test_grade_above_scale_is_refused(self):
+        from apps.pedagogy.models import Submission
+
+        self.login(self.prof)
+        self.client.post(reverse("pedagogy:activity_submissions", args=[self.act.pk]),
+                         {f"status_{self.ana.pk}": "entregue", f"nota_{self.ana.pk}": "85"})
+        self.assertEqual(Submission.objects.get(student=self.ana).grade, 8.5)   # 85 recusado na escala 0–10
+
+    def test_blank_grade_clears_on_purpose(self):
+        from apps.pedagogy.models import Submission
+
+        self.login(self.prof)
+        self.client.post(reverse("pedagogy:activity_submissions", args=[self.act.pk]),
+                         {f"status_{self.ana.pk}": "entregue", f"nota_{self.ana.pk}": ""})
+        self.assertIsNone(Submission.objects.get(student=self.ana).grade)
+
+    def test_evaluation_grade_scale_follows_rule(self):
+        from apps.pedagogy.models import AcademicRule, Grade
+
+        ev = Evaluation.objects.create(school=self.school, subject=self.mat, class_group=self.turma, title="P1",
+                                       date=date(2026, 3, 10), created_by=self.prof)
+        self.login(self.prof)
+        url = reverse("pedagogy:evaluation_grade", args=[ev.pk])
+        self.client.post(url, {f"grade_{self.ana.pk}": "85"})
+        self.assertFalse(Grade.objects.filter(evaluation=ev).exists())
+        AcademicRule.objects.create(school=self.school, subject=self.mat, formula="aritmetica", passing_grade=60)
+        self.client.post(url, {f"grade_{self.ana.pk}": "85"})
+        self.assertEqual(Grade.objects.get(evaluation=ev).value, 85)

@@ -156,6 +156,27 @@ def _teacher_pairs_q(user):
     return q
 
 
+def _grade_max(school, subject):
+    """Maior nota aceita na disciplina: 10 quando a aprovação é até 10 (escala
+    0–10, o padrão sem regra), senão 100. Pega o "85" digitado no lugar de 8,5."""
+    rule = AcademicRule.objects.filter(school=school, subject=subject).first()
+    passing = rule.passing_grade if rule else Decimal("6.0")
+    return Decimal("10") if passing <= 10 else Decimal("100")
+
+
+def _read_grade(raw, max_value):
+    """(nota, válida). Em branco = (None, True): o professor limpou a nota.
+    Inválida ou fora da escala = (None, False): quem chama mantém a nota que
+    já existia e avisa, em vez de apagá-la em silêncio."""
+    raw = (raw or "").strip()
+    if not raw:
+        return None, True
+    value = _parse_grade(raw)
+    if value is None or value > max_value:
+        return None, False
+    return value, True
+
+
 def _parse_grade(value):
     """Nota digitada na tela de entregas. Aceita vírgula decimal.
 
@@ -974,6 +995,8 @@ def activity_submissions(request, pk):
         )
         return redirect("pedagogy:activity_submissions", pk=act.pk)
     if request.method == "POST":
+        max_grade = _grade_max(user.school, act.subject)
+        invalid = []
         with transaction.atomic():
             count = 0
             for st in students:
@@ -983,7 +1006,10 @@ def activity_submissions(request, pk):
                 # enviado e salvar marcava a turma inteira como entregue.
                 if status not in dict(Submission.Status.choices):
                     continue
-                grade = _parse_grade(request.POST.get(f"nota_{st.pk}", ""))
+                grade, ok = _read_grade(request.POST.get(f"nota_{st.pk}", ""), max_grade)
+                if not ok:
+                    invalid.append(st.first_name)
+                    grade = existing[st.pk].grade if st.pk in existing else None
                 sub, created = Submission.objects.update_or_create(
                     school=user.school, activity=act, student=st,
                     defaults={
@@ -1001,6 +1027,12 @@ def activity_submissions(request, pk):
                 )
                 count += 1
             messages.success(request, f"{count} entrega(s) registrada(s).")
+        if invalid:
+            messages.warning(
+                request,
+                f"Nota não aceita para {', '.join(invalid)}: use um número de 0 a {max_grade:g}, "
+                "com vírgula para decimais. A nota anterior foi mantida.",
+            )
         return redirect("pedagogy:activity_submissions", pk=act.pk)
     return render(
         request,
@@ -1699,6 +1731,9 @@ def group_work_deliveries(request, pk):
         return redirect("pedagogy:group_work_deliveries", pk=work.pk)
 
     if request.method == "POST":
+        max_grade = _grade_max(user.school, work.subject)
+        invalid = []
+        anteriores = {(d.group_id, d.student_id): d.grade for d in work.deliveries.all()}
         with transaction.atomic():
             n = 0
             for g in grupos:
@@ -1709,15 +1744,17 @@ def group_work_deliveries(request, pk):
                     status = request.POST.get(f"status_{chave}", "")
                     if status not in dict(GroupWorkDelivery.Status.choices):
                         continue
+                    nota, ok = _read_grade(request.POST.get(f"nota_{chave}", ""), max_grade)
+                    if not ok:
+                        invalid.append(alvo.first_name if alvo else g.name)
+                        nota = anteriores.get((g.pk, alvo.pk if alvo else None))
                     GroupWorkDelivery.objects.update_or_create(
                         group_work=work,
                         group=g,
                         student=alvo,
                         defaults={
                             "status": status,
-                            "grade": _parse_grade(
-                                request.POST.get(f"nota_{chave}", "")
-                            ),
+                            "grade": nota,
                             "comment": request.POST.get(f"obs_{chave}", "").strip()[
                                 :500
                             ],
@@ -1730,6 +1767,12 @@ def group_work_deliveries(request, pk):
                     n += 1
             _log(request, "update", work, f"Registrou {n} entrega(s) de {work.title}")
         messages.success(request, f"{n} registro(s) de entrega salvos.")
+        if invalid:
+            messages.warning(
+                request,
+                f"Nota não aceita para {', '.join(invalid)}: use um número de 0 a {max_grade:g}, "
+                "com vírgula para decimais. A nota anterior foi mantida.",
+            )
         return redirect("pedagogy:group_work_deliveries", pk=work.pk)
 
     existentes = {

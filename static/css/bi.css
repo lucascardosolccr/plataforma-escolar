@@ -159,6 +159,17 @@
   font-variant-numeric: tabular-nums;
   min-width: 3.4rem;
 }
+.bi-heatmap td.heat-0 { --v: 0; }
+.bi-heatmap td.heat-1 { --v: 0.1; }
+.bi-heatmap td.heat-2 { --v: 0.2; }
+.bi-heatmap td.heat-3 { --v: 0.3; }
+.bi-heatmap td.heat-4 { --v: 0.4; }
+.bi-heatmap td.heat-5 { --v: 0.5; }
+.bi-heatmap td.heat-6 { --v: 0.6; }
+.bi-heatmap td.heat-7 { --v: 0.7; }
+.bi-heatmap td.heat-8 { --v: 0.8; }
+.bi-heatmap td.heat-9 { --v: 0.9; }
+.bi-heatmap td.heat-10 { --v: 1; }
 .bi-heatmap td.is-empty { color: var(--ds-text-muted); font-weight: 400; background: var(--ds-surface) !important; }
 .bi-heatmap th[scope="row"] { white-space: nowrap; font-weight: 600; }
 

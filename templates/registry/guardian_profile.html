@@ -7,9 +7,9 @@
     <div class="card p-4">
       <div class="d-flex align-items-center gap-3 mb-3">
         {% if form.instance.photo %}
-        <img src="{% url 'guardian_photo' target.pk %}" alt="" class="rounded-circle shadow-sm" width="64" height="64" style="object-fit:cover">
+        <img src="{% url 'guardian_photo' target.pk %}" alt="" class="record-photo" width="64" height="64">
         {% else %}
-        <div class="avatar avatar-xl" aria-hidden="true" style="--avatar-size:64px">
+        <div class="avatar avatar-xl" aria-hidden="true">
           {{ target.first_name|first }}{{ target.last_name|first }}
         </div>
         {% endif %}

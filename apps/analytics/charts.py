@@ -210,7 +210,10 @@ def h_bars(items, *, max_value=None, suffix=""):
         rows.append(
             f'<div class="chart-hbar">'
             f'<div class="chart-hbar-label">{escape(str(item["label"]))}</div>'
-            f'<div class="chart-hbar-track"><div class="{cls}" style="width:{pct:.1f}%"></div></div>'
+            # SVG com largura em atributo: a CSP não aceita style="" embutido.
+            f'<svg class="chart-hbar-track" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">'
+            f'<rect class="chart-hbar-bg" width="100" height="10"/>'
+            f'<rect class="{cls}" width="{pct:.1f}" height="10"/></svg>'
             f'<div class="chart-hbar-value">{_fmt(v)}{escape(suffix)}</div>'
             f"</div>"
         )
@@ -226,12 +229,16 @@ def gauge(percent, *, limit=None, label=""):
     marker = ""
     if limit is not None:
         pos = max(0.0, min(100.0, 100 - float(limit)))
-        marker = f'<div class="chart-gauge-marker" style="left:{pos:.1f}%" title="Limite de faltas ({_fmt(limit)}%)"></div>'
+        marker = (
+            f'<line class="chart-gauge-marker" x1="{pos:.1f}" x2="{pos:.1f}" y1="0" y2="10">'
+            f"<title>Limite de faltas ({_fmt(limit)}%)</title></line>"
+        )
     return mark_safe(
         f'<div class="chart-gauge-wrap">'
-        f'<div class="chart-gauge">'
-        f'<div class="chart-gauge-fill{" danger" if danger else ""}" style="width:{pct:.1f}%"></div>'
-        f"{marker}</div>"
+        f'<svg class="chart-gauge" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">'
+        f'<rect class="chart-gauge-bg" width="100" height="10"/>'
+        f'<rect class="chart-gauge-fill{" danger" if danger else ""}" width="{pct:.1f}" height="10"/>'
+        f"{marker}</svg>"
         f'<div class="chart-gauge-value">{_fmt(pct)}% {escape(label)}</div>'
         f"</div>"
     )

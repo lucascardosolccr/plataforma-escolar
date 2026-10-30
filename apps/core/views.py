@@ -9,7 +9,7 @@ from django.views.decorators.http import require_POST
 from .access import role_required
 from .forms import ProfessionalUserForm, PublicSignupForm
 from .models import AuditLog, Role, School, User, create_audit_log
-from .pagination import paginate
+from .pagination import Sort, paginate
 from .passwords import can_reset_password, reset_password
 
 
@@ -23,11 +23,19 @@ def user_list(request):
         qs = qs.filter(
             first_name__icontains=search
         ) | qs.filter(last_name__icontains=search) | qs.filter(username__icontains=search)
-    page = paginate(request, qs.order_by("username"))
+    perfil = request.GET.get("perfil")
+    if perfil in Role.values:
+        qs = qs.filter(role=perfil)
+    sort = Sort(request, {"usuario": "username", "nome": ("first_name", "last_name"), "perfil": ("role", "username"),
+                          "status": ("is_active", "username")}, "usuario")
+    page = paginate(request, sort.apply(qs))
     return render(
         request,
         "core/user_list.html",
-        {"users": page, "page": page, "search": search},
+        {"users": page, "page": page, "search": search, "sort": sort, "perfil": perfil,
+         "role_choices": Role.choices, "filtered": bool(search or perfil),
+         # Com escola definida, todas as linhas teriam o mesmo nome: a coluna sai.
+         "show_school": not request.user.school_id},
     )
 
 

@@ -1,10 +1,11 @@
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.core.models import Role, create_audit_log
-from apps.core.pagination import paginate
+from apps.core.pagination import Sort, paginate
 from apps.registry.models import Student
 
 from .access import can_manage_academics, can_view_academics
@@ -33,13 +34,16 @@ def class_group_list(request):
     q = request.GET.get("q", "").strip()
     if q:
         qs = qs.filter(name__icontains=q)
-    page = paginate(request, qs.order_by("name"))
+    sort = Sort(request, {"turma": "name", "serie": ("grade", "name"), "turno": ("turn", "name"),
+                          "ano": ("school_year__name", "name")}, "turma")
+    page = paginate(request, sort.apply(qs))
     return render(
         request,
         "academics/classgroup_list.html",
         {
             "class_groups": page,
             "page": page,
+            "sort": sort,
             "q": q,
             "can_manage": can_manage_academics(request.user),
         },
@@ -91,13 +95,15 @@ def subject_list(request):
     q = request.GET.get("q", "").strip()
     if q:
         qs = qs.filter(name__icontains=q)
-    page = paginate(request, qs.order_by("name"))
+    sort = Sort(request, {"disciplina": "name", "codigo": ("code", "name")}, "disciplina")
+    page = paginate(request, sort.apply(qs))
     return render(
         request,
         "academics/subject_list.html",
         {
             "subjects": page,
             "page": page,
+            "sort": sort,
             "q": q,
             "can_manage": can_manage_academics(request.user),
         },
@@ -200,11 +206,21 @@ def assignment_list(request):
     qs = TeacherAssignment.objects.filter(school=request.user.school).select_related(
         "teacher", "class_group", "subject", "school_year"
     )
-    page = paginate(request, qs.order_by("class_group__name", "subject__name"))
+    q = request.GET.get("q", "").strip()[:60]
+    if q:
+        qs = qs.filter(
+            Q(teacher__first_name__icontains=q) | Q(teacher__last_name__icontains=q)
+            | Q(class_group__name__icontains=q) | Q(subject__name__icontains=q)
+        )
+    sort = Sort(request, {
+        "turma": ("class_group__name", "subject__name"), "professor": ("teacher__first_name", "teacher__last_name"),
+        "disciplina": ("subject__name", "class_group__name"), "ano": ("school_year__name", "class_group__name"),
+    }, "turma")
+    page = paginate(request, sort.apply(qs))
     return render(
         request,
         "academics/assignment_list.html",
-        {"assignments": page, "page": page},
+        {"assignments": page, "page": page, "sort": sort, "q": q},
     )
 
 

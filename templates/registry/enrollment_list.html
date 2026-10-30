@@ -29,7 +29,7 @@
 <div class="card">
   <div class="table-responsive">
     <table class="table table-hover align-middle mb-0 table-stack">
-      <thead><tr><th>Estudante</th><th>Turma</th><th>Ano letivo</th><th>Nº matrícula</th><th>Status</th><th class="text-end">Ações</th></tr></thead>
+      <thead><tr>{% sort_th sort "estudante" "Estudante" %}{% sort_th sort "turma" "Turma" %}{% sort_th sort "ano" "Ano letivo" %}<th scope="col">Nº matrícula</th>{% sort_th sort "situacao" "Situação" %}<th scope="col" class="text-end"><span class="visually-hidden">Ações</span></th></tr></thead>
       <tbody>
         {% for e in enrollments %}
         <tr>

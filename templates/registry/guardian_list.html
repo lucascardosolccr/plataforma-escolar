@@ -18,7 +18,7 @@
 <div class="card">
   <div class="table-responsive">
     <table class="table table-hover align-middle mb-0 table-stack">
-      <thead><tr><th>Nome</th><th>Usuário</th><th>E-mail</th><th class="text-end">Ações</th></tr></thead>
+      <thead><tr>{% sort_th sort "nome" "Nome" %}{% sort_th sort "usuario" "Usuário" %}<th scope="col">E-mail</th><th scope="col" class="text-end"><span class="visually-hidden">Ações</span></th></tr></thead>
       <tbody>
         {% for g in guardians %}
         <tr>

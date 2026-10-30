@@ -11,7 +11,7 @@ escrito na célula (não depende só de cor). Recebe rows, months, scale.
       <tr>
         <th scope="row">{{ row.subject }}</th>
         {% for c in row.cells %}
-          <td class="text-center{% if c.value is None %} is-empty{% endif %}" style="--v:{{ c.value|heat:scale }}"
+          <td class="text-center heat-{{ c.value|heat_level:scale }}{% if c.value is None %} is-empty{% endif %}"
               {% if c.value is not None %}title="{{ row.subject }} · {{ c.n }} nota(s)"{% endif %}>{{ c.value|num:1 }}</td>
         {% endfor %}
       </tr>

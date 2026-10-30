@@ -177,7 +177,7 @@
       {% if att.by_weekday %}{{ weekday_chart }}{% else %}<div class="empty-state py-4">{% icon "calendar-days" %}Exibido com ao menos 10 registros no período.</div>{% endif %}</div></div></div>
   </div>
   <details class="card mt-3">
-    <summary class="card-header" style="cursor:pointer">Histórico de ausências ({{ att.absences|length }})</summary>
+    <summary class="card-header cursor-pointer">Histórico de ausências ({{ att.absences|length }})</summary>
     <ul class="list-group list-group-flush">
       {% for a in att.absences %}<li class="list-group-item d-flex justify-content-between"><span>{{ a.date|date:"l, d/m/Y" }}</span>{% if a.justified %}<span class="chip chip-state state-pendente">Justificada</span>{% else %}<span class="chip">Não justificada</span>{% endif %}</li>
       {% empty %}<li class="list-group-item text-body-secondary">Nenhuma falta no período.</li>{% endfor %}

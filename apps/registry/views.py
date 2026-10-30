@@ -13,7 +13,7 @@ from django.views.decorators.http import require_POST
 
 from apps.core.params import id_param
 from apps.core.models import AuditLog, Role, User, create_audit_log
-from apps.core.pagination import paginate
+from apps.core.pagination import Sort, paginate
 from apps.core.uploads import ALLOWED_PHOTO_EXTENSIONS
 
 from apps.academics.models import SchoolYear
@@ -373,11 +373,12 @@ def guardian_list(request):
     q = request.GET.get("q", "").strip()
     if q:
         qs = qs.filter(first_name__icontains=q) | qs.filter(username__icontains=q)
-    page = paginate(request, qs.order_by("first_name"))
+    sort = Sort(request, {"nome": ("first_name", "last_name"), "usuario": "username"}, "nome")
+    page = paginate(request, sort.apply(qs))
     return render(
         request,
         "registry/guardian_list.html",
-        {"guardians": page, "page": page, "q": q},
+        {"guardians": page, "page": page, "q": q, "sort": sort},
     )
 
 
@@ -450,13 +451,18 @@ def link_list(request):
     status = request.GET.get("status", "")
     if status in ("pendente", "aprovado", "rejeitado"):
         links = links.filter(status=status)
-    page = paginate(request, links.order_by("-created_at"))
+    sort = Sort(request, {
+        "data": "created_at", "responsavel": ("guardian__first_name", "guardian__last_name"),
+        "estudante": ("student__first_name", "student__last_name"), "situacao": ("status", "created_at"),
+    }, "-data")
+    page = paginate(request, sort.apply(links))
     return render(
         request,
         "registry/link_list.html",
         {
             "links": page,
             "page": page,
+            "sort": sort,
             "status": status,
             "can_manage": can_manage_guardian_links(user),
         },
@@ -588,19 +594,28 @@ def enrollment_list(request):
         qs = qs.filter(status=status)
     # Ordem estável e com as matrículas do mesmo estudante lado a lado: depois
     # de uma transferência, a antiga e a nova aparecem juntas.
-    page = paginate(
-        request,
-        qs.order_by(
-            "-school_year__name", "student__first_name", "student__last_name",
-            "student_id", "registered_at",
-        ),
-    )
+    # Padrão: matrículas do mesmo estudante lado a lado (depois de uma
+    # transferência, a antiga e a nova aparecem juntas).
+    sort = Sort(request, {
+        "padrao": ("school_year__name", "student__first_name", "student__last_name", "student_id", "registered_at"),
+        "estudante": ("student__first_name", "student__last_name", "registered_at"),
+        "turma": ("class_group__name", "student__first_name"),
+        "ano": ("school_year__name", "student__first_name"),
+        "situacao": ("status", "student__first_name"),
+    }, "-padrao")
+    if sort.key == "padrao":
+        qs = qs.order_by("-school_year__name", "student__first_name", "student__last_name",
+                         "student_id", "registered_at")
+    else:
+        qs = sort.apply(qs)
+    page = paginate(request, qs)
     return render(
         request,
         "registry/enrollment_list.html",
         {
             "enrollments": page,
             "page": page,
+            "sort": sort,
             "q": q,
             "years": SchoolYear.objects.filter(school=request.user.school),
             "statuses": Enrollment.STATUS_CHOICES,

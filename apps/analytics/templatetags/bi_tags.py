@@ -48,6 +48,12 @@ def heat(value, scale=10):
 
 
 @register.filter
+def heat_level(value, scale=10):
+    """Faixa 0–10 do mapa de calor, usada como classe (heat-0 … heat-10)."""
+    return int(round(heat(value, scale) * 10))
+
+
+@register.filter
 def get(mapping, key):
     try:
         return mapping.get(key)

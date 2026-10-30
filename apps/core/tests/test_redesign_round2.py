@@ -39,6 +39,29 @@ class NoInlineScriptTests(SimpleTestCase):
                 self.assertIsNone(handler.search(html))
                 self.assertIsNone(inline.search(html))
 
+    def test_templates_have_no_inline_style(self):
+        for path in TEMPLATES.rglob("*.html"):
+            html = path.read_text(encoding="utf-8")
+            with self.subTest(template=str(path.relative_to(TEMPLATES))):
+                self.assertNotRegex(html, r"\sstyle\s*=")
+                self.assertNotRegex(html, r"<style[\s>]")
+
+    def test_charts_have_no_inline_style(self):
+        from apps.analytics import charts
+
+        html = (charts.h_bars([{"label": "A", "value": 3}, {"label": "B", "value": 1, "below": True}])
+                + charts.gauge(80, limit=25)
+                + charts.bar_chart([{"label": "A", "value": 2}])
+                + charts.line_chart([{"label": "a", "value": 1}, {"label": "b", "value": 2}]))
+        self.assertNotIn("style=", html)
+        self.assertIn('width="75.0"', charts.h_bars([{"label": "A", "value": 4}, {"label": "B", "value": 3}]))
+
+    def test_csp_forbids_inline_style(self):
+        from apps.core.middleware import ContentSecurityPolicyMiddleware
+
+        style = [d for d in ContentSecurityPolicyMiddleware.POLICY.split("; ") if d.startswith("style-src")][0]
+        self.assertEqual(style, "style-src 'self'")
+
     def test_csp_forbids_inline_script(self):
         from apps.core.middleware import ContentSecurityPolicyMiddleware
 
@@ -237,3 +260,28 @@ class DateFieldsRoundTripTests(Round2Base):
                     if isinstance(widget, djforms.DateInput) and widget.input_type == "date":
                         with self.subTest(form=form_class.__name__, field=name):
                             self.assertEqual(widget.format, "%Y-%m-%d")
+
+
+class MoreServerSortTests(Round2Base):
+    def test_guardian_list_sorts_by_name_both_ways(self):
+        for first in ("Carla", "Beto"):
+            User.objects.create_user(username=first.lower(), password=PW, role=Role.RESPONSAVEL,
+                                     school=self.school, first_name=first)
+        self.login(self.users[Role.SECRETARIA])
+        url = reverse("guardian_list")
+        names = [g.first_name for g in self.client.get(url + "?ordem=nome").context["guardians"]]
+        self.assertEqual(names, sorted(names))
+        names_desc = [g.first_name for g in self.client.get(url + "?ordem=-nome").context["guardians"]]
+        self.assertEqual(names_desc, sorted(names, reverse=True))
+
+    def test_assignment_search_and_invented_order(self):
+        self.login(self.users[Role.SECRETARIA])
+        resp = self.client.get(reverse("assignment_list") + "?q=geografia&ordem=xyz")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual([a.subject for a in resp.context["assignments"]], [self.geo])
+
+    def test_user_list_role_filter_and_no_school_column(self):
+        self.login(self.users[Role.ADMIN])
+        resp = self.client.get(reverse("user_list") + "?perfil=professor&ordem=-usuario")
+        self.assertEqual([u.username for u in resp.context["users"]], ["professor", "colega"])
+        self.assertNotContains(resp, '<th scope="col">Escola</th>')

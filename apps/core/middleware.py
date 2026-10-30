@@ -100,16 +100,17 @@ class ContentSecurityPolicyMiddleware:
     ``onclick``/``onchange`` nos templates (o teste ``test_no_inline_script``
     garante); as interações usam atributos ``data-*`` lidos por ``ds.js``.
     Assim, um texto malicioso que escapasse do escape automático ainda não
-    conseguiria executar código. Estilos ainda aceitam ``'unsafe-inline'``
-    (variáveis CSS por elemento, como no mapa de calor). ``data:`` cobre os
-    ícones SVG embutidos no CSS do Bootstrap.
+    conseguiria executar código. Estilos idem: nenhum ``style=""`` nem
+    ``<style>`` (larguras de gráfico vão como atributo de SVG, intensidade do
+    mapa de calor como classe). ``data:`` cobre os ícones SVG embutidos no CSS
+    do Bootstrap.
     """
 
     POLICY = "; ".join(
         [
             "default-src 'self'",
             "script-src 'self'",
-            "style-src 'self' 'unsafe-inline'",
+            "style-src 'self'",
             "img-src 'self' data:",
             "font-src 'self'",
             "connect-src 'self'",

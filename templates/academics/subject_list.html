@@ -13,10 +13,16 @@
   </div>
 </div>
 
+<form method="get" class="filter-bar" aria-label="Buscar disciplinas">
+  {% if request.GET.ordem %}<input type="hidden" name="ordem" value="{{ request.GET.ordem }}">{% endif %}
+  {% include "partials/_filter_search.html" with label="Buscar" placeholder="Nome da disciplina" %}
+  {% include "partials/_filter_end.html" with filtered=q count=page.paginator.count noun="disciplina(s)" %}
+</form>
+
 <div class="card">
   <div class="table-responsive">
     <table class="table table-hover align-middle mb-0 table-stack">
-      <thead><tr><th>Disciplina</th><th>Código</th>{% if can_manage %}<th class="text-end">Ações</th>{% endif %}</tr></thead>
+      <thead><tr>{% sort_th sort "disciplina" "Disciplina" %}{% sort_th sort "codigo" "Código" %}{% if can_manage %}<th scope="col" class="text-end"><span class="visually-hidden">Ações</span></th>{% endif %}</tr></thead>
       <tbody>
         {% for s in subjects %}
         <tr>

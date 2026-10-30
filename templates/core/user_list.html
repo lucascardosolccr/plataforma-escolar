@@ -15,7 +15,8 @@
 
 <form method="get" class="filter-bar" aria-label="Buscar usuários">
   {% include "partials/_filter_search.html" with label="Buscar" placeholder="Nome ou usuário" q=search %}
-  {% include "partials/_filter_end.html" with filtered=search count=page.paginator.count noun="conta(s)" %}
+  {% include "partials/_filter_select.html" with name="perfil" label="Perfil" options=role_choices selected=perfil all_label="Todos" %}
+  {% include "partials/_filter_end.html" with count=page.paginator.count noun="conta(s)" %}
 </form>
 
 <div class="card">
@@ -23,13 +24,13 @@
     <table class="table table-hover align-middle mb-0 table-stack">
       <thead>
         <tr>
-          <th>Usuário</th>
-          <th>Nome</th>
-          <th>E-mail</th>
-          <th>Perfil</th>
-          <th>Escola</th>
-          <th>Status</th>
-          <th class="text-end">Ações</th>
+          {% sort_th sort "usuario" "Usuário" %}
+          {% sort_th sort "nome" "Nome" %}
+          <th scope="col">E-mail</th>
+          {% sort_th sort "perfil" "Perfil" %}
+          {% if show_school %}<th scope="col">Escola</th>{% endif %}
+          {% sort_th sort "status" "Situação" %}
+          <th scope="col" class="text-end"><span class="visually-hidden">Ações</span></th>
         </tr>
       </thead>
       <tbody>
@@ -39,9 +40,9 @@
           <td>{{ u.first_name }} {{ u.last_name }}</td>
           <td>{{ u.email|default:"—" }}</td>
           <td><span class="chip"><span class="role-dot" aria-hidden="true"></span>{{ u.role_label }}</span></td>
-          <td>{{ u.school.name|default:"—" }}</td>
+          {% if show_school %}<td>{{ u.school.name|default:"—" }}</td>{% endif %}
           <td>
-            {% if u.is_active %}<span class="text-success">Ativo</span>{% else %}<span class="text-danger">Inativo</span>{% endif %}
+            {% if u.is_active %}<span class="chip chip-state text-success">{% icon "circle-check" %}Ativa</span>{% else %}<span class="chip chip-state text-danger">{% icon "ban" %}Inativa</span>{% endif %}
           </td>
           <td class="text-end cell-actions"><a class="btn btn-sm btn-outline-secondary" href="{% url 'user_detail' u.pk %}">Detalhes</a></td>
         </tr>

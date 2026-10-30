@@ -13,10 +13,16 @@
   </div>
 </div>
 
+<form method="get" class="filter-bar" aria-label="Buscar atribuições">
+  {% if request.GET.ordem %}<input type="hidden" name="ordem" value="{{ request.GET.ordem }}">{% endif %}
+  {% include "partials/_filter_search.html" with label="Buscar" placeholder="Professor, turma ou disciplina" %}
+  {% include "partials/_filter_end.html" with filtered=q count=page.paginator.count noun="atribuição(ões)" %}
+</form>
+
 <div class="card">
   <div class="table-responsive">
     <table class="table table-hover align-middle mb-0 table-stack">
-      <thead><tr><th>Professor</th><th>Disciplina</th><th>Turma</th><th>Ano letivo</th><th class="text-end">Ações</th></tr></thead>
+      <thead><tr>{% sort_th sort "professor" "Professor" %}{% sort_th sort "disciplina" "Disciplina" %}{% sort_th sort "turma" "Turma" %}{% sort_th sort "ano" "Ano letivo" %}<th scope="col" class="text-end"><span class="visually-hidden">Ações</span></th></tr></thead>
       <tbody>
         {% for a in assignments %}
         <tr>

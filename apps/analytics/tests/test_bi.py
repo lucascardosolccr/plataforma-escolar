@@ -1,0 +1,329 @@
+"""Cálculos dos painéis de BI conferidos com valores feitos à mão.
+
+O Prompt 13 (§15) exige que os cálculos sejam confrontados com consultas de
+referência. Cada teste monta poucos registros, calcula o resultado esperado
+"no papel" e compara com o motor (``bi.py``).
+"""
+
+from datetime import date, timedelta
+from decimal import Decimal
+
+from django.db import connection
+from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
+
+from apps.academics.models import ClassGroup, SchoolYear, Subject, TeacherAssignment
+from apps.core.models import Role, School, User
+from apps.pedagogy.models import (
+    AbsenceJustification,
+    AcademicRule,
+    Activity,
+    AttendanceRecord,
+    Evaluation,
+    Grade,
+    InterventionPlan,
+    SchoolConfig,
+    Submission,
+)
+from apps.registry.models import Enrollment, Student
+
+from .. import bi
+
+PW = "senha-forte-1"
+# Período fixo para os testes não dependerem do dia em que rodam.
+P = bi.Period(date(2026, 3, 1), date(2026, 6, 30), "personalizado", "teste")
+
+
+class BIBase(TestCase):
+    def setUp(self):
+        self.school = School.objects.create(name="Escola", code="e")
+        self.year = SchoolYear.objects.create(
+            school=self.school, name="2026", start_date=date(2026, 2, 1),
+            end_date=date(2026, 12, 15), is_current=True,
+        )
+        self.turma = ClassGroup.objects.create(school=self.school, school_year=self.year, name="5º A")
+        self.mat = Subject.objects.create(school=self.school, name="Matemática")
+        self.por = Subject.objects.create(school=self.school, name="Português")
+        self.prof = User.objects.create_user(username="prof", password=PW, role=Role.PROFESSOR, school=self.school)
+        TeacherAssignment.objects.create(school=self.school, school_year=self.year, teacher=self.prof,
+                                         class_group=self.turma, subject=self.mat)
+        SchoolConfig.objects.create(school=self.school, max_absences_percent=Decimal("25"))
+        self.alunos = []
+        for nome in ("Ana", "Bia", "Caio", "Davi", "Eva", "Fábio"):
+            s = Student.objects.create(school=self.school, first_name=nome)
+            Enrollment.objects.create(school=self.school, student=s, class_group=self.turma,
+                                      school_year=self.year, started_on=date(2026, 2, 1))
+            self.alunos.append(s)
+        self.ana = self.alunos[0]
+
+    def evaluation(self, subject, d, weight="1", title=None, kind=""):
+        return Evaluation.objects.create(
+            school=self.school, subject=subject, class_group=self.turma, title=title or f"Prova {d}",
+            weight=Decimal(weight), date=d, status=Evaluation.Status.PUBLISHED, created_by=self.prof, kind=kind,
+        )
+
+    def grade(self, ev, student, value):
+        return Grade.objects.create(school=self.school, evaluation=ev, student=student,
+                                    value=None if value is None else Decimal(str(value)))
+
+    def attend(self, student, d, status):
+        AttendanceRecord.objects.create(school=self.school, class_group=self.turma, student=student,
+                                        date=d, status=status)
+
+
+class AcademicTests(BIBase):
+    def test_weighted_subject_average_and_overall(self):
+        AcademicRule.objects.create(school=self.school, subject=self.mat,
+                                    formula=AcademicRule.Formula.WEIGHTED, passing_grade=Decimal("6"))
+        e1 = self.evaluation(self.mat, date(2026, 3, 10), weight="1")
+        e2 = self.evaluation(self.mat, date(2026, 4, 10), weight="3")
+        e3 = self.evaluation(self.por, date(2026, 4, 12))
+        self.grade(e1, self.ana, 4)
+        self.grade(e2, self.ana, 8)   # ponderada: (4*1 + 8*3) / 4 = 7,0
+        self.grade(e3, self.ana, 5)   # aritmética: 5,0 (abaixo de 6)
+        r = bi.student_report(self.ana, P)
+        subj = {s["subject"].name: s for s in r["academic"]["subjects"]}
+        self.assertEqual(subj["Matemática"]["average"], 7.0)
+        self.assertEqual(subj["Português"]["average"], 5.0)
+        self.assertTrue(subj["Português"]["below"])
+        self.assertEqual(r["academic"]["overall"], 6.0)   # (7 + 5) / 2
+        self.assertEqual(r["academic"]["n_grades"], 3)
+
+    def test_blank_grade_is_not_zero(self):
+        e = self.evaluation(self.mat, date(2026, 3, 10))
+        self.grade(e, self.ana, None)
+        r = bi.student_report(self.ana, P)
+        self.assertIsNone(r["academic"]["overall"])
+        self.assertEqual(r["academic"]["subjects"], [])
+
+    def test_draft_and_out_of_period_do_not_count(self):
+        dentro = self.evaluation(self.mat, date(2026, 3, 10))
+        fora = self.evaluation(self.mat, date(2026, 8, 10))
+        rasc = self.evaluation(self.mat, date(2026, 3, 11))
+        rasc.status = Evaluation.Status.DRAFT
+        rasc.save()
+        self.grade(dentro, self.ana, 8)
+        self.grade(fora, self.ana, 2)
+        self.grade(rasc, self.ana, 2)
+        r = bi.student_report(self.ana, P)
+        self.assertEqual(r["academic"]["overall"], 8.0)
+
+    def test_delta_against_previous_period(self):
+        prev = P.previous()
+        self.assertEqual(prev.end, date(2026, 2, 28))
+        self.assertEqual(prev.days, P.days)
+        for d, v in ((prev.end - timedelta(days=5), 4), (prev.end - timedelta(days=3), 4)):
+            self.grade(self.evaluation(self.mat, d), self.ana, v)
+        for d, v in ((date(2026, 3, 5), 7), (date(2026, 3, 9), 7)):
+            self.grade(self.evaluation(self.mat, d), self.ana, v)
+        r = bi.student_report(self.ana, P)
+        mat = r["academic"]["subjects"][0]
+        self.assertEqual(mat["delta"], 3.0)
+        titulos = [i["title"] for i in r["insights"]]
+        self.assertIn("Matemática: melhora em relação ao período anterior", titulos)
+
+    def test_trend_requires_enough_points(self):
+        self.assertEqual(bi.trend([(date(2026, 3, 1), 5)])["direction"], "insuficiente")
+        pts = [(date(2026, 3, 1), 4), (date(2026, 4, 1), 5), (date(2026, 5, 1), 6), (date(2026, 6, 1), 7)]
+        t = bi.trend(pts)
+        self.assertEqual(t["direction"], "alta")
+        self.assertAlmostEqual(t["slope"], 0.99, delta=0.05)  # ~1 ponto por mês
+
+    def test_describe_reference_values(self):
+        d = bi.describe([2, 4, 4, 4, 5, 5, 7, 9])
+        self.assertEqual((d["mean"], d["median"], d["stdev"], d["min"], d["max"]), (5.0, 4.5, 2.0, 2.0, 9.0))
+        self.assertIsNone(bi.describe([5, 6])["stdev"])  # menos de 3 valores
+
+    def test_class_mean_is_mean_of_student_means_even_with_best_rule(self):
+        """Com "melhor nota", a média da turma não pode virar a maior nota da turma."""
+        AcademicRule.objects.create(school=self.school, subject=self.mat,
+                                    formula=AcademicRule.Formula.BEST, passing_grade=Decimal("6"))
+        e1 = self.evaluation(self.mat, date(2026, 3, 10))
+        e2 = self.evaluation(self.mat, date(2026, 4, 10))
+        notas = [(3, 5), (6, 4), (7, 7), (2, 9), (5, 5), (8, 6)]  # melhores: 5,6,7,9,5,8
+        for s, (a, b) in zip(self.alunos, notas):
+            self.grade(e1, s, a)
+            self.grade(e2, s, b)
+        r = bi.class_report(self.turma, P)
+        mat = r["subject_summary"][0]
+        self.assertEqual(mat["mean"], round((5 + 6 + 7 + 9 + 5 + 8) / 6, 2))  # 6,67, não 9
+        self.assertEqual(mat["below_count"], 2)  # 5 e 5
+
+    def test_class_comparison_hidden_for_small_group(self):
+        e = self.evaluation(self.mat, date(2026, 3, 10))
+        for s in self.alunos[:3]:   # só 3 estudantes com nota
+            self.grade(e, s, 7)
+        r = bi.student_report(self.ana, P, show_class_comparison=True)
+        self.assertIsNone(r["academic"]["subjects"][0]["class_mean"])
+        for s in self.alunos[3:]:
+            self.grade(e, s, 5)
+        r = bi.student_report(self.ana, P, show_class_comparison=True)
+        self.assertEqual(r["academic"]["subjects"][0]["class_mean"], 6.0)  # (3×7 + 3×5) / 6
+
+    def test_recovery_marked_evaluation(self):
+        self.grade(self.evaluation(self.mat, date(2026, 3, 10)), self.ana, 4)
+        self.grade(self.evaluation(self.mat, date(2026, 3, 20), kind=Evaluation.Kind.RECOVERY), self.ana, 7)
+        rec = bi.student_report(self.ana, P)["academic"]["recovery"]
+        self.assertEqual(len(rec), 1)
+        self.assertEqual((rec[0]["before"], rec[0]["value"], rec[0]["reached"]), (4.0, 7.0, True))
+
+
+class AttendanceTests(BIBase):
+    def test_counts_percent_justified_streak(self):
+        dias = [date(2026, 3, 2) + timedelta(days=i) for i in range(10)]  # 2 a 11/03
+        status = ["presente", "atraso", "falta", "falta", "falta", "presente", "presente",
+                  "presente", "falta", "presente"]
+        for d, s in zip(dias, status):
+            self.attend(self.ana, d, s)
+        AbsenceJustification.objects.create(
+            school=self.school, student=self.ana, class_group=self.turma,
+            start_date=date(2026, 3, 4), end_date=date(2026, 3, 5), reason="médico",
+            status=AbsenceJustification.Status.APPROVED,
+        )
+        AbsenceJustification.objects.create(  # recusada não conta
+            school=self.school, student=self.ana, class_group=self.turma,
+            start_date=date(2026, 3, 10), end_date=date(2026, 3, 10), reason="x",
+            status=AbsenceJustification.Status.REFUSED,
+        )
+        a = bi.student_report(self.ana, P)["attendance"]
+        self.assertEqual((a["total"], a["present"], a["late"], a["absent"]), (10, 5, 1, 4))
+        self.assertEqual(a["percent"], 60.0)          # (5 + 1) / 10
+        self.assertEqual(a["absence_percent"], 40.0)
+        self.assertEqual(a["limit_level"], "acima")   # 40% ≥ 25%
+        self.assertEqual((a["justified"], a["unjustified"]), (2, 2))
+        self.assertEqual(a["streak"]["length"], 3)
+        self.assertEqual(a["streak"]["start"], date(2026, 3, 4))
+        self.assertEqual(len(a["by_weekday"]), 7)     # 10 registros: exibido
+
+    def test_no_records_is_none_not_zero(self):
+        a = bi.student_report(self.ana, P)["attendance"]
+        self.assertIsNone(a["percent"])
+        self.assertIsNone(a["limit_level"])
+        self.assertEqual(a["by_weekday"], [])
+
+    def test_near_limit_level(self):
+        # 21 registros, 5 faltas = 23,8%: ≥ 80% de 25 (20) e < 25 → "perto"
+        for i in range(21):
+            self.attend(self.ana, date(2026, 3, 2) + timedelta(days=i), "falta" if i < 5 else "presente")
+        self.assertEqual(bi.student_report(self.ana, P)["attendance"]["limit_level"], "perto")
+
+
+class ActivityTests(BIBase):
+    def act(self, deadline, title):
+        return Activity.objects.create(
+            school=self.school, class_group=self.turma, subject=self.mat, title=title,
+            created_by=self.prof, published_date=date(2026, 3, 1), deadline=deadline,
+            status=Activity.Status.PUBLISHED,
+        )
+
+    def test_five_states_and_rates(self):
+        S = Submission.Status
+        passado = date(2026, 3, 20)
+        estados = [S.DELIVERED, S.DELIVERED, S.LATE, S.NOT_DELIVERED]
+        for i, st in enumerate(estados):
+            a = self.act(passado, f"A{i}")
+            Submission.objects.create(school=self.school, activity=a, student=self.ana, status=st)
+        self.act(passado, "Sem registro")
+        futuro = date.today() + timedelta(days=30)
+        p = bi.Period(date(2026, 3, 1), futuro, "personalizado", "x")
+        self.act(futuro, "Em aberto")
+        cancelada = self.act(passado, "Cancelada")
+        cancelada.status = Activity.Status.CANCELED
+        cancelada.save()
+        a = bi.student_report(self.ana, p)["activities"]
+        self.assertEqual(a["proposed"], 6)  # cancelada fora
+        self.assertEqual((a["on_time"], a["late"], a["not_delivered"], a["no_record"], a["open"]), (2, 1, 1, 1, 1))
+        self.assertEqual(a["delivery_rate"], 75.0)   # 3 entregues / 4 registradas
+        self.assertEqual(a["coverage"], 80.0)        # 4 registradas / 5 vencidas
+        self.assertEqual(a["on_time_rate"], 66.7)    # 2 no prazo / 3 entregues
+
+    def test_activity_before_student_joined_does_not_reach_him(self):
+        tarde = Student.objects.create(school=self.school, first_name="Gil")
+        Enrollment.objects.create(school=self.school, student=tarde, class_group=self.turma,
+                                  school_year=self.year, started_on=date(2026, 5, 1))
+        self.act(date(2026, 3, 20), "Antes da entrada")
+        self.assertEqual(bi.student_report(tarde, P)["activities"]["proposed"], 0)
+
+
+class ClassMatrixTests(BIBase):
+    def test_follow_up_criteria_and_evolution(self):
+        e1 = self.evaluation(self.mat, date(2026, 3, 10))   # 1ª metade
+        e2 = self.evaluation(self.mat, date(2026, 6, 10))   # 2ª metade
+        for s in self.alunos:
+            self.grade(e1, s, 7)
+            self.grade(e2, s, 7)
+        Grade.objects.filter(evaluation=e1, student=self.ana).update(value=3)
+        Grade.objects.filter(evaluation=e2, student=self.ana).update(value=5)  # média 4 (abaixo); evolução +2
+        r = bi.class_report(self.turma, P)
+        ana = next(x for x in r["rows"] if x["student"] == self.ana)
+        self.assertEqual(ana["overall"], 4.0)
+        self.assertEqual(ana["evolution"], 2.0)
+        self.assertEqual(len(r["follow_up"]), 1)
+        self.assertEqual(r["evolved"], 1)
+        self.assertEqual(r["active"], 6)
+        r2 = bi.class_report(self.turma, P, min_subjects_below=2)  # critério ajustado
+        self.assertEqual(len(r2["follow_up"]), 0)
+
+    def test_evaluation_missing_grades(self):
+        e = self.evaluation(self.mat, date(2026, 3, 10))
+        for s in self.alunos[:4]:
+            self.grade(e, s, 6)
+        row = bi.class_report(self.turma, P)["evaluations"][0]
+        self.assertEqual((row["n"], row["missing"]), (4, 2))
+
+    def test_query_budget_does_not_grow_with_students(self):
+        e = self.evaluation(self.mat, date(2026, 3, 10))
+        for s in self.alunos:
+            self.grade(e, s, 6)
+            self.attend(s, date(2026, 3, 10), "presente")
+        with CaptureQueriesContext(connection) as poucos:
+            bi.class_report(self.turma, P)
+        for i in range(20):
+            s = Student.objects.create(school=self.school, first_name=f"X{i}")
+            Enrollment.objects.create(school=self.school, student=s, class_group=self.turma, school_year=self.year)
+            self.grade(e, s, 5)
+            self.attend(s, date(2026, 3, 10), "falta")
+        with CaptureQueriesContext(connection) as muitos:
+            bi.class_report(self.turma, P)
+        self.assertEqual(len(poucos), len(muitos))
+
+
+class InstitutionalAndQualityTests(BIBase):
+    def test_small_groups_are_hidden_in_comparisons(self):
+        pequena = ClassGroup.objects.create(school=self.school, school_year=self.year, name="Reforço")
+        s = Student.objects.create(school=self.school, first_name="Só")
+        Enrollment.objects.create(school=self.school, student=s, class_group=pequena, school_year=self.year)
+        r = bi.institutional_report(self.school, P)
+        row = next(c for c in r["classes"] if c["class_group"] == pequena)
+        self.assertTrue(row["small"])
+        self.assertIsNone(row["average"])
+        self.assertIsNone(row["attendance"])
+
+    def test_quality_detects_missing_grades_and_partial_attendance(self):
+        e = self.evaluation(self.mat, date(2026, 3, 10))
+        self.grade(e, self.ana, 7)
+        self.attend(self.ana, date(2026, 3, 10), "presente")  # 1 de 6 na chamada
+        q = bi.data_quality(self.school, P)
+        self.assertEqual(q["missing_grades"][0]["missing"], 5)
+        self.assertEqual(q["partial_days"][0]["missing"], 5)
+        self.assertGreaterEqual(q["without_guardian"].count(), 6)
+
+    def test_intervention_before_after(self):
+        plano = InterventionPlan.objects.create(school=self.school, student=self.ana, title="Reforço")
+        pivot = plano.created_at.date()
+        for dias, v in ((-30, 4), (-20, 5)):
+            self.grade(self.evaluation(self.mat, pivot + timedelta(days=dias)), self.ana, v)
+        r = bi._interventions(self.ana, date.today())
+        self.assertEqual(r[0]["grade_before"], 4.5)
+        self.assertIsNone(r[0]["grade_after"])   # sem 2 notas depois: não compara
+        self.assertIsNone(r[0]["delta"])
+
+
+class PeriodTests(BIBase):
+    def test_presets_and_invalid_custom(self):
+        self.assertEqual(bi.resolve_period({}, self.school).start, date(2026, 2, 1))
+        p = bi.resolve_period({"periodo": "personalizado", "inicio": "2026-05-01", "fim": "2026-04-01"}, self.school)
+        self.assertEqual(p.preset, "ano")   # invertido: volta ao padrão
+        p = bi.resolve_period({"periodo": "personalizado", "inicio": "2026-04-01", "fim": "2026-04-30"}, self.school)
+        self.assertEqual((p.start, p.end, p.days), (date(2026, 4, 1), date(2026, 4, 30), 30))
+        self.assertEqual(bi.resolve_period({"periodo": "30d"}, self.school).days, 30)

@@ -406,34 +406,52 @@ def class_students(class_group):
 
 
 def class_subject_averages(class_group, start=None, end=None):
-    """Média da turma por disciplina (notas publicadas)."""
+    """Média da turma por disciplina: média das médias individuais.
+
+    Cada estudante ativo tem a média calculada pela regra da disciplina; a da
+    turma é a média aritmética dessas médias. Antes a regra era aplicada a
+    todas as notas da turma misturadas — com "melhor nota", a média da turma
+    virava a maior nota de qualquer estudante; com "soma", a soma da turma.
+    """
     rules = rules_by_subject(class_group.school)
-    grouped = defaultdict(list)
+    ids = list(
+        Enrollment.objects.filter(class_group=class_group, status="ativo").values_list(
+            "student_id", flat=True
+        )
+    )
     grades = Grade.objects.filter(
         evaluation__class_group=class_group,
         evaluation__status=PUBLISHED,
         value__isnull=False,
+        student_id__in=ids,
     ).select_related("evaluation__subject")
     if start is not None:
         grades = grades.filter(evaluation__date__gte=start)
     if end is not None:
         grades = grades.filter(evaluation__date__lte=end)
+    per_student = defaultdict(list)
     for grade in grades:
-        grouped[grade.evaluation.subject].append(
-            (grade.value, grade.evaluation.weight or Decimal("1"))
-        )
+        per_student[grade.student_id].append(grade)
+    acc = defaultdict(list)
+    counts = defaultdict(int)
+    subjects = {}
+    for student_grades in per_student.values():
+        for row in _averages_from_grades(student_grades, rules):
+            subjects[row["subject"].pk] = row
+            counts[row["subject"].pk] += row["count"]
+            if row["average"] is not None:
+                acc[row["subject"].pk].append(row["average"])
     result = []
-    for subject, vw in grouped.items():
-        rule = rules.get(subject.pk)
-        formula = rule.formula if rule else AcademicRule.Formula.ARITHMETIC
-        passing = rule.passing_grade if rule else Decimal("6.0")
-        average = _apply_formula(vw, formula)
+    for pk, row in subjects.items():
+        values = acc.get(pk, [])
+        average = sum(values) / Decimal(len(values)) if values else None
+        passing = Decimal(str(row["passing"]))
         result.append(
             {
-                "subject": subject,
+                "subject": row["subject"],
                 "average": _round(average),
-                "passing": float(passing),
-                "count": len(vw),
+                "passing": row["passing"],
+                "count": counts[pk],
                 "below": average is not None and average < passing,
             }
         )

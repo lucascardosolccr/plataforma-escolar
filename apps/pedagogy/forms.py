@@ -33,12 +33,13 @@ def _unlocalize(field):
 class EvaluationForm(forms.ModelForm):
     class Meta:
         model = Evaluation
-        fields = ["class_group", "subject", "title", "description", "weight", "date"]
+        fields = ["class_group", "subject", "title", "kind", "description", "weight", "date"]
         widgets = {"date": forms.DateInput(format=r"%Y-%m-%d", attrs={"type": "date"})}
         labels = {
             "class_group": "Turma",
             "subject": "Disciplina",
             "title": "Título",
+            "kind": "Tipo de avaliação",
             "description": "Descrição",
             "weight": "Peso",
             "date": "Data",

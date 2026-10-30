@@ -299,7 +299,7 @@ def _r_atividades_pendentes(user, params):
         delivered_pairs = set(
             Submission.objects.filter(
                 activity_id__in=act_ids,
-                status=Submission.Status.DELIVERED,
+                status__in=Submission.DELIVERED_STATUSES,
             ).values_list("activity_id", "student_id")
         )
         students_by_class = {}

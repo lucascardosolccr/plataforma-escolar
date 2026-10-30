@@ -40,6 +40,8 @@
             <p class="small mb-2">
               {% if r.submission.status == 'entregue' %}
                 <span class="text-success fw-semibold">✓ Entrega registrada pelo professor</span>
+              {% elif r.submission.status == 'atrasado' %}
+                <span class="text-warning fw-semibold">✓ Entregue com atraso (registrado pelo professor)</span>
               {% else %}
                 <span class="text-danger fw-semibold">✗ Registrada como não entregue</span>
               {% endif %}

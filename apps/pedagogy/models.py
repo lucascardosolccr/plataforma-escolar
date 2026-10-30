@@ -96,8 +96,20 @@ class Evaluation(models.Model):
     class_group = models.ForeignKey(
         ClassGroup, on_delete=models.PROTECT, verbose_name="turma"
     )
+    class Kind(models.TextChoices):
+        UNSPECIFIED = "", "Não informado"
+        DIAGNOSTIC = "diagnostica", "Diagnóstica"
+        FORMATIVE = "formativa", "Formativa"
+        SUMMATIVE = "somativa", "Somativa"
+        RECOVERY = "recuperacao", "Recuperação"
+
     title = models.CharField("título", max_length=200)
     description = models.TextField("descrição", blank=True)
+    # Opcional: as avaliações antigas ficam "não informado" em vez de ganhar
+    # um tipo inventado. Permite comparar instrumentos e ver a recuperação.
+    kind = models.CharField(
+        "tipo de avaliação", max_length=12, choices=Kind.choices, blank=True, default=""
+    )
     weight = models.DecimalField("peso", max_digits=4, decimal_places=2, default=1.0)
     date = models.DateField("data", default=timezone.localdate)
     status = models.CharField(
@@ -277,7 +289,13 @@ class Submission(models.Model):
 
     class Status(models.TextChoices):
         DELIVERED = "entregue", "Entregue"
+        # Entregue depois do prazo. Antes só havia entregue/não entregue e o
+        # painel não conseguia separar "no prazo" de "com atraso".
+        LATE = "atrasado", "Entregue com atraso"
         NOT_DELIVERED = "nao_entregue", "Não entregue"
+
+    # Situações que contam como entrega feita (no prazo ou não).
+    DELIVERED_STATUSES = (Status.DELIVERED, Status.LATE)
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, verbose_name="escola")
     activity = models.ForeignKey(

@@ -6,9 +6,9 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <a href="{% url 'pedagogy:attendance_list' %}" class="back-link">{% icon "arrow-left" %}Voltar</a>
+    <a href="{% url 'pedagogy:attendance_list' %}" class="back-link">{% icon "arrow-left" %}Frequência</a>
     <h1>Frequência — {{ class_group.name }}</h1>
-    <p>Limite de faltas desta escola: <strong>{{ max_absences }}%</strong></p>
+    <p>Limite de faltas desta escola: <strong>{{ max_absences }}%</strong>.{% if can_register %} Clique numa data para abrir a chamada daquele dia.{% endif %} P = presenças, A = atrasos, F = faltas.</p>
   </div>
   <div class="page-actions">
     <div class="d-flex gap-2">
@@ -18,7 +18,7 @@
       <span class="chip">Mostrando apenas a sua frequência</span>
     {% endif %}
     {% if can_register %}
-      <a href="{% url 'pedagogy:attendance_register' class_group.pk %}" class="btn btn-primary">{% icon "plus" %}Registrar novo dia</a>
+      <a href="{% url 'pedagogy:attendance_register' class_group.pk %}" class="btn btn-primary">{% icon "calendar-check" %}Fazer chamada de hoje</a>
     {% endif %}
   </div>
   </div>
@@ -29,18 +29,18 @@
     <table class="table table-hover align-middle mb-0">
       <thead>
         <tr>
-          <th>Estudante</th>
-          <th class="text-center text-success" title="Presente">P</th>
-          <th class="text-center text-warning" title="Atraso">A</th>
-          <th class="text-center text-danger" title="Falta">F</th>
-          <th class="text-end">Faltas</th>
-          {% for d in dates %}<th class="text-center small" title="{{ d|date:'d/m/Y' }}">{{ d|date:"d/m" }}</th>{% endfor %}
+          <th scope="col">Estudante</th>
+          <th scope="col" class="text-center text-success"><abbr title="Presenças">P</abbr></th>
+          <th scope="col" class="text-center text-warning"><abbr title="Atrasos">A</abbr></th>
+          <th scope="col" class="text-center text-danger"><abbr title="Faltas">F</abbr></th>
+          <th scope="col" class="text-end">% de faltas</th>
+          {% for d in dates %}<th scope="col" class="text-center small">{% if can_register %}<a href="{% url 'pedagogy:attendance_register' class_group.pk %}?data={{ d|date:'Y-m-d' }}" title="Abrir a chamada de {{ d|date:'d/m/Y' }}">{{ d|date:"d/m" }}</a>{% else %}<span title="{{ d|date:'d/m/Y' }}">{{ d|date:"d/m" }}</span>{% endif %}</th>{% endfor %}
         </tr>
       </thead>
       <tbody>
         {% for st in students %}
         <tr>
-          <td class="fw-semibold">
+          <td class="fw-semibold text-nowrap">
             {{ st.full_name }}
             {% if st.left_class %}<span class="chip ms-1">saiu da turma{% if st.left_on %} em {{ st.left_on|date:"d/m/Y" }}{% endif %}</span>{% endif %}
           </td>
@@ -50,13 +50,14 @@
           <td class="text-center text-warning">{{ s.atraso }}</td>
           <td class="text-center text-danger">{{ s.falta }}</td>
           <td class="text-end">
-            {% if s.falta %}<span class="chip text-danger fw-semibold">{{ s.falta }}</span>{% else %}<span class="text-body-secondary">0</span>{% endif %}
+            {% if s.over %}<span class="chip chip-state text-danger" title="Acima do limite de {{ max_absences }}%">{% icon "triangle-alert" %}{{ s.pct|floatformat:1 }}%</span>
+            {% elif s.pct is not None %}{{ s.pct|floatformat:1 }}%{% else %}<span class="text-body-secondary">—</span>{% endif %}
           </td>
           {% else %}
           <td class="text-center">0</td>
           <td class="text-center">0</td>
           <td class="text-center">0</td>
-          <td class="text-end text-body-secondary">0</td>
+          <td class="text-end text-body-secondary">—</td>
           {% endif %}
           {% endwith %}
           {% for d in dates %}

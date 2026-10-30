@@ -1,48 +1,79 @@
 {% extends "base.html" %}
 {% load ui %}
-{% load pedagogy_extras form_extras %}
-{% block title %}Registrar frequência — {{ class_group.name }} — Plataforma Escolar{% endblock %}
+{% block title %}Chamada — {{ class_group.name }} — Plataforma Escolar{% endblock %}
 
 {% block content %}
+<a href="{% url 'pedagogy:attendance_list' %}" class="back-link">{% icon "arrow-left" %}Frequência</a>
 <div class="page-head">
   <div>
-    <a href="{% url 'pedagogy:attendance_list' %}" class="back-link">{% icon "arrow-left" %}Voltar</a>
-    <h1>Registrar frequência</h1>
-    <p>{{ class_group.name }} · {{ class_group.school_year.name }}</p>
+    <span class="eyebrow">Chamada</span>
+    <h1>{{ class_group.name }}</h1>
+    <p>{{ class_group.school_year.name }} · {{ rows|length }} estudante{{ rows|length|pluralize }} com matrícula ativa</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'pedagogy:attendance_class' class_group.pk %}" class="btn btn-outline-secondary">{% icon "calendar-days" %}Mapa da turma</a>
   </div>
 </div>
 
-<form method="post" novalidate>
-  {% csrf_token %}
-  <div class="card mb-3">
-    <div class="card-body py-2 row align-items-center">
-      <div class="col-auto">
-        <label for="id_date" class="form-label mb-0">{{ form.date.label }}</label>
-      </div>
-      <div class="col-auto">{{ form.date|bs }}</div>
-      {% for error in form.date.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
-    </div>
+{% comment %}
+O dia é escolhido aqui (GET) e só depois a chamada é marcada: assim a tela
+sempre mostra o que já está salvo para o dia que será gravado.
+{% endcomment %}
+<form method="get" class="filter-bar" aria-label="Escolher o dia da chamada">
+  <div class="filter-field">
+    <label for="f-data">Dia da chamada</label>
+    <input type="date" id="f-data" name="data" value="{{ tdate|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" class="form-control form-control-sm" data-autosubmit>
   </div>
+  <button type="submit" class="btn btn-sm btn-outline-secondary js-hide">Abrir este dia</button>
+  {% if tdate != today %}<a href="?" class="btn btn-sm btn-link">Voltar para hoje</a>{% endif %}
+  <span class="filter-count" role="status">
+    {% if already %}{% icon "circle-check" %} Chamada de {{ tdate|date:"d/m/Y" }} já registrada: você está corrigindo.
+    {% else %}Ainda não há chamada em {{ tdate|date:"d/m/Y" }}.{% endif %}
+  </span>
+</form>
 
-  <div class="card">
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead><tr><th>Estudante</th><th>Situação</th></tr></thead>
-        <tbody>
-          {% for student, field_name in form.rows %}
-          <tr>
-            <td class="fw-semibold">{{ student.full_name }}</td>
-            <td>{{ form|getitem:field_name|bs }}</td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="2" class="text-center text-body-secondary py-4">Nenhum estudante matriculado.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+{% if form.errors %}
+<div class="alert alert-danger" role="alert">
+  {% for error in form.date.errors %}{{ error }} {% endfor %}{% if not form.date.errors %}Confira as situações marcadas.{% endif %}
+</div>
+{% endif %}
+
+<form method="post" novalidate class="card" data-attendance>
+  {% csrf_token %}
+  <input type="hidden" name="date" value="{{ tdate|date:'Y-m-d' }}">
+  {% if rows %}
+  <div class="bulk-bar">
+    <span class="attendance-summary" aria-live="polite">
+      Presentes: <strong data-count="presente">—</strong> ·
+      Atrasos: <strong data-count="atraso">—</strong> ·
+      Faltas: <strong data-count="falta">—</strong>
+    </span>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-mark-all="presente">{% icon "check-check" %}Todos presentes</button>
   </div>
-  {% if form.rows %}
-  <button type="submit" class="btn btn-primary mt-3">Salvar frequência</button>
+  {% endif %}
+  <ul class="attendance-list">
+    {% for row in rows %}
+    <li class="attendance-row">
+      <fieldset>
+        <legend class="visually-hidden">Situação de {{ row.student.full_name }}</legend>
+        <span class="attendance-name" aria-hidden="true"><span class="text-body-secondary">{{ forloop.counter }}.</span> {{ row.student.full_name }}</span>
+        <div class="seg">
+          {% for value, label in status_choices %}
+          <input type="radio" class="seg-input" name="{{ row.field.html_name }}" id="{{ row.field.html_name }}-{{ value }}" value="{{ value }}"{% if row.field.value == value %} checked{% endif %}>
+          <label for="{{ row.field.html_name }}-{{ value }}" class="seg-btn seg-{{ value }}">{{ label }}</label>
+          {% endfor %}
+        </div>
+      </fieldset>
+    </li>
+    {% empty %}
+    <li class="empty-state py-4">{% icon "users" %}<strong>Nenhum estudante com matrícula ativa nesta turma</strong></li>
+    {% endfor %}
+  </ul>
+  {% if rows %}
+  <div class="form-actions">
+    <span class="hint">Todos começam como presentes. Marque só faltas e atrasos.</span>
+    <button type="submit" class="btn btn-primary">{% if already %}Salvar correção{% else %}Salvar chamada{% endif %}</button>
+  </div>
   {% endif %}
 </form>
 {% endblock %}

@@ -1344,3 +1344,22 @@ class CrossSchoolTests(PedagogyBase):
             self.client.get(reverse("pedagogy:evaluation_grade", args=[ev.pk])).status_code,
             404,  # get_object_or_404 com filtro school não encontra
         )
+
+class AttendanceDayTests(PedagogyBase):
+    """A tela de chamada sempre grava o dia que está mostrando."""
+
+    def test_register_shows_saved_day_and_keeps_date_out_of_the_form(self):
+        AttendanceRecord.objects.create(
+            school=self.school, class_group=self.turma, student=self.ana,
+            date="2026-03-10", status="falta", recorded_by=self.prof,
+        )
+        self.login("prof")
+        resp = self.client.get(reverse("pedagogy:attendance_register", args=[self.turma.pk]) + "?data=2026-03-10")
+        html = resp.content.decode()
+        # A falta salva aparece marcada para aquele dia...
+        self.assertRegex(html, r'name="status_%d"[^>]*value="falta" checked' % self.ana.pk)
+        # ...e o dia vai oculto no formulário que grava: não dá para trocar a
+        # data sem recarregar os registros dela.
+        self.assertIn('<input type="hidden" name="date" value="2026-03-10">', html)
+        self.assertNotRegex(html, r'<input[^>]*type="date"[^>]*name="date"')
+        self.assertContains(resp, "já registrada")

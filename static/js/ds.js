@@ -501,6 +501,25 @@
     });
   });
 
+  /* ---------- Chamada (data-attendance) ----------
+   * Contagem ao vivo de presentes, atrasos e faltas e "Todos presentes". */
+  $$("[data-attendance]").forEach(function (form) {
+    function count() {
+      ["presente", "atraso", "falta"].forEach(function (v) {
+        var el = $("[data-count=" + v + "]", form);
+        if (el) el.textContent = $$("input[type=radio][value=" + v + "]:checked", form).length;
+      });
+    }
+    form.addEventListener("change", count);
+    $$("[data-mark-all]", form).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        $$("input[type=radio][value=" + btn.getAttribute("data-mark-all") + "]", form).forEach(function (r) { r.checked = true; });
+        count();
+      });
+    });
+    count();
+  });
+
   /* ---------- Favoritos ----------
    * A estrela da barra superior guarda a página atual do menu neste
    * navegador (não vai para o servidor) e a mostra no topo do menu. */

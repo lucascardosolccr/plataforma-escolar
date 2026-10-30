@@ -881,3 +881,20 @@ th[aria-sort] .th-sort .ds-icon { opacity: 1; color: var(--ds-primary); }
   .no-print { display: none !important; }
   main { padding: 0 !important; }
 }
+
+/* ---------- Chamada: um toque por estudante ---------- */
+.attendance-list { list-style: none; margin: 0; padding: 0; }
+.attendance-row { border-top: 1px solid var(--ds-line); }
+.attendance-row:first-child { border-top: 0; }
+.attendance-row fieldset { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; padding: .6rem 1rem; margin: 0; border: 0; }
+.attendance-name { font-size: var(--ds-fs-md); font-weight: 600; }
+.attendance-summary { font-size: var(--ds-fs-sm); margin-right: auto; }
+.seg { display: inline-flex; border: 1px solid var(--ds-line-strong); border-radius: var(--ds-radius-pill); padding: 2px; background: var(--ds-surface); }
+.seg-input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.seg-btn { margin: 0; padding: .4rem .95rem; min-height: 2.25rem; display: inline-flex; align-items: center; border-radius: var(--ds-radius-pill); font-size: var(--ds-fs-sm); font-weight: 600; color: var(--ds-text-muted); cursor: pointer; transition: background var(--ds-dur-fast) var(--ds-ease), color var(--ds-dur-fast) var(--ds-ease); }
+.seg-btn:hover { color: var(--ds-text); background: var(--ds-surface-2); }
+.seg-input:focus-visible + .seg-btn { outline: 2px solid var(--ds-focus); outline-offset: 1px; }
+.seg-input:checked + .seg-presente { background: var(--ds-success-bg); color: var(--ds-success); }
+.seg-input:checked + .seg-atraso { background: var(--ds-warning-bg); color: var(--ds-warning); }
+.seg-input:checked + .seg-falta { background: var(--ds-danger); color: #fff; }
+@media (max-width: 575.98px) { .seg { width: 100%; } .seg-btn { flex: 1; justify-content: center; } }

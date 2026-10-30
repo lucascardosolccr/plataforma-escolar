@@ -1867,6 +1867,13 @@ def attendance_class(request, class_group_id):
     for r in records:
         summary.setdefault(r.student_id, {"presente": 0, "atraso": 0, "falta": 0})
         summary[r.student_id][r.status] += 1
+    # Percentual de faltas sobre os dias com registro, comparado ao limite da
+    # escola (a coluna antiga repetia a contagem de faltas da coluna F).
+    max_abs = _max_absences(user.school)
+    for s in summary.values():
+        total = s["presente"] + s["atraso"] + s["falta"]
+        s["pct"] = (s["falta"] * 100 / total) if total else None
+        s["over"] = s["pct"] is not None and s["pct"] >= float(max_abs)
     return render(
         request,
         "pedagogy/attendance_class.html",
@@ -1887,11 +1894,15 @@ def attendance_register(request, class_group_id):
     class_group = get_object_or_404(ClassGroup, pk=class_group_id, school=user.school)
     acc.require(acc.can_register_attendance(user, class_group))
     students = _enrolled_students(class_group)
-    raw_date = request.GET.get("data") or request.POST.get("data")
+    # A data vem da URL (?data=) e chega ao POST como campo oculto: o dia que
+    # aparece na tela é sempre o dia que será salvo. Antes a data era um campo
+    # editável no próprio formulário; trocá-la não recarregava os registros
+    # daquele dia, e salvar sobrescrevia as faltas dele com o que estava na tela.
+    raw_date = request.GET.get("data") or request.POST.get("date")
     try:
-        tdate = date.fromisoformat(raw_date) if raw_date else date.today()
+        tdate = date.fromisoformat(raw_date) if raw_date else timezone.localdate()
     except ValueError:
-        tdate = date.today()
+        tdate = timezone.localdate()
     if request.method == "POST":
         form = AttendanceBatchForm(
             request.POST, class_group=class_group, students=students, date=tdate
@@ -1914,7 +1925,7 @@ def attendance_register(request, class_group_id):
                         f"Frequência {student} em {tdate}: {status}",
                     )
             _flag_attendance_limits(class_group, tdate)
-            messages.success(request, f"Frequência de {tdate} registrada.")
+            messages.success(request, f"Frequência de {tdate:%d/%m/%Y} registrada.")
             return redirect("pedagogy:attendance_class", class_group_id=class_group.pk)
     else:
         form = AttendanceBatchForm(
@@ -1923,10 +1934,14 @@ def attendance_register(request, class_group_id):
             students=students,
             date=tdate,
         )
+    already = AttendanceRecord.objects.filter(class_group=class_group, date=tdate).exists()
+    rows = [{"student": st, "field": form[name]} for st, name in form.rows]
     return render(
         request,
         "pedagogy/attendance_register.html",
-        {"form": form, "class_group": class_group, "students": students},
+        {"form": form, "class_group": class_group, "students": students, "rows": rows,
+         "tdate": tdate, "today": timezone.localdate(), "already": already,
+         "status_choices": AttendanceBatchForm.STATUS_MAP},
     )
 
 

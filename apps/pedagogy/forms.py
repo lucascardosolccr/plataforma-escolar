@@ -455,7 +455,7 @@ class AttendanceBatchForm(forms.Form):
     """Registro de frequência em lote: um campo por estudante, com default 'presente'."""
 
     STATUS_MAP = [("presente", "Presente"), ("atraso", "Atraso"), ("falta", "Falta")]
-    date = forms.DateField(widget=forms.DateInput(format=r"%Y-%m-%d", attrs={"type": "date"}))
+    date = forms.DateField(label="Data da chamada", widget=forms.HiddenInput)
 
     def __init__(self, *args, class_group=None, students=None, date=None, **kwargs):
         super().__init__(*args, **kwargs)

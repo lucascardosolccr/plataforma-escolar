@@ -107,10 +107,82 @@ GUIDES = [
     ("Conferir se os dados estão completos", "check", GESTAO + (SECRETARIA, ADMIN), [
         ("Qualidade dos dados lista chamadas, notas e entregas que faltam lançar.", "analytics:data_quality"),
     ]),
+    # Prompt 14
+    ("Ver o que falta resolver", "list-checks", (PROFESSOR, SECRETARIA, COORDENACAO, DIRECAO, ADMIN, RESPONSAVEL), [
+        ("Pendências junta, de várias telas, o que está esperando por você.", "pending_center"),
+        ("Cada item leva direto à tela onde se resolve.", None),
+    ]),
+    ("Importar estudantes por planilha", "file-text", (SECRETARIA, ADMIN), [
+        ("Baixe o modelo em Importar estudantes e preencha a aba “Alunos”.", "student_import"),
+        ("Envie o arquivo e confira a prévia: cada linha diz se é novo, já cadastrado ou tem erro.", None),
+        ("Escolha “só novos” ou “atualizar” (atualizar pede confirmação) e importe.", None),
+        ("Baixe as linhas com erro, corrija e envie de novo: quem já entrou não duplica.", None),
+        ("Fotos: envie em lote com o código do aluno no nome do arquivo.", "student_photo_batch"),
+    ]),
+    ("Analisar pré-cadastros das famílias", "id-card", (SECRETARIA, ADMIN), [
+        ("Abra Pré-cadastros e escolha um pedido enviado.", "application_review_list"),
+        ("Aprove (cria a ficha e o vínculo), peça correção ou recuse, sempre com mensagem.", None),
+        ("Matrícula só se você escolher a turma; dá para matricular depois.", None),
+        ("O que a família pode fazer é definido em Cadastro pelas famílias.", "registration_settings"),
+    ]),
+    ("Cobrar fotos pendentes", "user-round", (SECRETARIA, DIRECAO, ADMIN), [
+        ("Fotografias lista quem ainda não tem foto, por turma.", "photo_pending"),
+        ("Marque os estudantes e use “Cobrar as famílias”: elas recebem um aviso.", None),
+        ("Dispensa com justificativa é registrada pela direção ou administração.", None),
+    ]),
+    ("Cadastrar o calendário oficial", "calendar-check", (SECRETARIA, DIRECAO, ADMIN), [
+        ("Confira início e fim do ano letivo.", "school_year_list"),
+        ("Em Calendário oficial, inclua bimestres, feriados, recessos e férias.", "school_calendar:official"),
+        ("Publique: só então a contagem de dias letivos aparece para todos.", None),
+    ]),
+    ("Publicar o cardápio e os horários", "heart-handshake", (SECRETARIA, DIRECAO, ADMIN), [
+        ("Em Cardápio, edite o dia ou copie a semana anterior.", "rotina:menu"),
+        ("Ingredientes e alergênicos só aparecem com o nome de quem validou.", None),
+        ("Horários: escolha a turma e inclua as aulas; conflitos são avisados.", "rotina:schedule_index"),
+    ]),
+    ("Pedir a impressão de uma atividade", "printer", (PROFESSOR,), [
+        ("Em Atividades e impressões, escolha a atividade e “Pedir impressão”.", "printing:mine"),
+        ("Confira a data de aplicação, a data desejada e as cópias (sugeridas pela turma).", None),
+        ("Envie: a coordenação analisa e você acompanha cada passo e o histórico.", None),
+    ]),
+    ("Analisar pedidos de impressão", "printer", (COORDENACAO, DIRECAO), [
+        ("A Fila de impressão mostra os pedidos das suas turmas por data.", "printing:queue"),
+        ("Aprove, peça correção ou recuse; correção e recusa pedem justificativa.", None),
+    ]),
+    ("Imprimir e entregar", "printer", (SECRETARIA, ADMIN), [
+        ("Em Fila de impressão, “Para imprimir e entregar”.", "printing:queue"),
+        ("Registre cada passo: em impressão, impressa, disponível, entregue. O professor é avisado.", None),
+    ]),
+    ("Acompanhar como coordenação", "layout-dashboard", (COORDENACAO,), [
+        ("O Painel da coordenação mostra só as turmas da sua designação.", "coordination:panel"),
+        ("Registre orientações e reuniões em Registros da coordenação.", "coordination:records"),
+    ]),
+    ("Designar a coordenação e dar acesso extra a professores", "user-cog", (DIRECAO, ADMIN), [
+        ("Em Designação da coordenação, escolha turmas, disciplinas ou professores.", "coordination:designations"),
+        ("Professor vê só as disciplinas dele; acesso extra, com prazo, em Permissões de professores.",
+         "teacher_permissions"),
+        ("Avisos automáticos: escolha quais registros avisam a família.", "communication:notification_rules"),
+    ]),
+    ("Pré-cadastrar um filho", "id-card", (RESPONSAVEL,), [
+        ("Quando a escola abre o cadastro, aparece Pré-cadastro no menu.", "family_applications"),
+        ("Preencha em etapas; dá para salvar e continuar depois.", None),
+        ("A secretaria confere e avisa você aqui na plataforma.", None),
+    ]),
+    ("Escolher que avisos receber", "bell", (RESPONSAVEL, PROFESSOR, ESTUDANTE), [
+        ("Em Notificações, abra Preferências e desmarque o que não quer receber.",
+         "communication:notification_preferences"),
+        ("Avisos de ocorrência e de vínculo sempre chegam.", None),
+    ]),
 ]
 
 # Perguntas comuns a todos os perfis: (pergunta, resposta, perfis)
 FAQ = [
+    ("Por que só vejo algumas disciplinas?",
+     "Cada professor vê as disciplinas atribuídas a ele. Acesso a outra disciplina é concedido pela direção, secretaria ou administração, com prazo.",
+     (PROFESSOR,)),
+    ("A foto é obrigatória? Ela é usada para reconhecimento facial?",
+     "A foto é uma pendência cadastral, mas nunca bloqueia nada. Serve só para identificação visual: a plataforma não faz reconhecimento facial nem biometria, e a foto é gravada sem a localização do celular.",
+     TODOS),
     ("Como encontro uma tela ou um estudante rapidamente?",
      "Aperte Ctrl+K (ou /) e digite. A busca mostra páginas, ações e, para a equipe, estudantes e turmas.", TODOS),
     ("Posso deixar uma página mais à mão?",
@@ -139,7 +211,7 @@ FAQ = [
     ("Por que uma nota não aparece?",
      "O professor ainda não publicou a avaliação. Enquanto está em rascunho, só ele vê.", (RESPONSAVEL, ESTUDANTE)),
     ("A família vê o que eu escrevo na observação pedagógica?",
-     "Sim: os responsáveis com vínculo aprovado veem as observações do próprio filho. Secretaria, administração e o estudante não veem. Escreva de forma objetiva e respeitosa.", (PROFESSOR, COORDENACAO, DIRECAO)),
+     "Só se você marcar “compartilhar com a família” (vem marcado). Desmarcado, é registro interno da equipe: a família não vê nem é avisada. Secretaria, administração e o estudante nunca veem. Escreva de forma objetiva e respeitosa.", (PROFESSOR, COORDENACAO, DIRECAO)),
     ("Por que o painel mostra “—” e não 0?",
      "“—” quer dizer que não há registro no período, por exemplo, uma chamada que não foi lançada. Zero seria uma afirmação falsa.",
      GESTAO + (PROFESSOR, SECRETARIA, ADMIN)),

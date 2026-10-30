@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Atividades de casa — Plataforma Escolar{% endblock %}
 
 {% block content %}
@@ -61,7 +62,7 @@
 
 <div class="card">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
+    <table class="table table-hover align-middle mb-0 table-stack">
       <thead>
         <tr>
           <th>Título</th>
@@ -79,15 +80,15 @@
           <td class="fw-semibold">
             <a href="{% url 'pedagogy:activity_detail' r.activity.pk %}">{{ r.activity.title }}</a>
             {% if r.activity.attachment_count %}
-              <span class="chip ms-1" title="{{ r.activity.attachment_count }} anexo(s)">📎 {{ r.activity.attachment_count }}</span>
+              <span class="chip ms-1" title="{{ r.activity.attachment_count }} anexo(s)">{% icon "paperclip" %}{{ r.activity.attachment_count }}<span class="visually-hidden"> anexo(s)</span></span>
             {% endif %}
           </td>
-          <td>{{ r.activity.subject.name }}</td>
-          <td>{{ r.activity.class_group.name }}</td>
-          <td><span class="chip chip-state state-{{ r.state }}">{{ r.state_label }}</span></td>
-          <td>{{ r.activity.published_date|date:"d/m/Y" }}</td>
-          <td>{{ r.activity.deadline|date:"d/m/Y"|default:"—" }}</td>
-          <td class="text-end">
+          <td data-label="Disciplina">{{ r.activity.subject.name }}</td>
+          <td data-label="Turma" class="text-nowrap">{{ r.activity.class_group.name }}</td>
+          <td data-label="Situação"><span class="chip chip-state state-{{ r.state }}">{{ r.state_label }}</span></td>
+          <td data-label="Publicada em" class="text-nowrap">{{ r.activity.published_date|date:"d/m/Y" }}</td>
+          <td data-label="Entrega" class="text-nowrap">{{ r.activity.deadline|date:"d/m/Y"|default:"—" }}</td>
+          <td class="text-end text-nowrap cell-actions">
             {% if r.can_manage %}
               <a href="{% url 'pedagogy:activity_submissions' r.activity.pk %}" class="btn btn-sm btn-outline-primary">Entregas</a>
               <a href="{% url 'pedagogy:activity_edit' r.activity.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}{% if is_student %}Meus trabalhos em grupo{% else %}Trabalhos em grupo{% endif %} — Plataforma Escolar{% endblock %}
 
 {% block content %}
@@ -81,7 +82,7 @@
           <div class="mt-auto d-flex flex-wrap align-items-center gap-2">
             <a href="{% url 'pedagogy:group_work_detail' r.work.pk %}" class="btn btn-sm btn-outline-primary">Ver o trabalho</a>
             {% with n=r.work.attachments.all|length %}
-              {% if n %}<span class="chip">📎 {{ n }} arquivo{{ n|pluralize:"s" }}</span>{% endif %}
+              {% if n %}<span class="chip">{% icon "paperclip" %}{{ n }} arquivo{{ n|pluralize:"s" }}</span>{% endif %}
             {% endwith %}
           </div>
         </div>

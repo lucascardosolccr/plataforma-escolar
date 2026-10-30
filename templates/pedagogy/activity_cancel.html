@@ -1,14 +1,16 @@
 {% extends "partials/form_card.html" %}
+{% load ui %}
 {% block title %}Cancelar atividade — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-6 col-md-8">
-    <div class="card p-4">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h4 mb-0">Cancelar atividade</h1>
-        <a href="{% url 'pedagogy:activity_detail' activity.pk %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
-      </div>
+<div class="form-page">
+  <div class="page-head">
+    <div>
+      <a href="{% url 'pedagogy:activity_detail' activity.pk %}" class="back-link">{% icon "arrow-left" %}Voltar</a>
+      <h1>Cancelar atividade</h1>
+    </div>
+  </div>
+  <div class="card form-card"><div class="card-body">
 
       <div class="alert alert-warning" role="alert">
         <p class="mb-1">
@@ -16,7 +18,11 @@
           {{ activity.subject.name }} · Turma {{ activity.class_group.name }}
         </p>
         <p class="small mb-0">
-          A atividade passa a aparecer como <strong>cancelada</strong> para as famílias.
+          {% if activity.is_visible_to_family %}
+            As famílias que já viam a atividade passam a vê-la como <strong>cancelada</strong>, com o motivo.
+          {% else %}
+            As famílias ainda não viam esta atividade ({% if activity.status == 'rascunho' %}rascunho{% else %}publicação agendada{% endif %}) e continuarão sem vê-la.
+          {% endif %}
           Nada é apagado: a atividade, os anexos e as entregas já registradas
           continuam no histórico escolar.
         </p>
@@ -30,7 +36,6 @@
           <button type="submit" class="btn btn-danger flex-grow-1">Confirmar cancelamento</button>
         </div>
       </form>
-    </div>
-  </div>
+  </div></div>
 </div>
 {% endblock %}

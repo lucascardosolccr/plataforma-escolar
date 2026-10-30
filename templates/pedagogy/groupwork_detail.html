@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}{{ work.title }} — Trabalho em grupo — Plataforma Escolar{% endblock %}
 
 {% block content %}
@@ -184,7 +185,7 @@
           <ul class="list-unstyled mb-0 small">
             {% for att in work.attachments.all %}
               <li class="mb-2 d-flex align-items-start gap-2">
-                <span aria-hidden="true">📎</span>
+                {% icon "paperclip" %}
                 <a href="{% url 'pedagogy:group_work_attachment' work.pk att.pk %}">{{ att.original_name }}</a>
               </li>
             {% endfor %}

@@ -1,17 +1,17 @@
 {% extends "partials/form_card.html" %}
+{% load ui %}
 {% block title %}{% if obj %}Editar observação{% else %}Nova observação{% endif %} — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-6 col-md-8">
-    <div class="card p-4">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-          <h1 class="h4 mb-0">{% if obj %}Editar observação{% else %}Nova observação{% endif %}</h1>
-          <p class="text-body-secondary small mb-0">Registre dificuldades, habilidades e estratégias de forma objetiva.</p>
-        </div>
-        <a href="{% url 'pedagogy:observation_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
-      </div>
+<div class="form-page">
+  <div class="page-head">
+    <div>
+      <a href="{% url 'pedagogy:observation_list' %}" class="back-link">{% icon "arrow-left" %}Voltar</a>
+      <h1>{% if obj %}Editar observação{% else %}Nova observação{% endif %}</h1>
+      <p>Registre dificuldades, habilidades e estratégias de forma objetiva.</p>
+    </div>
+  </div>
+  <div class="card form-card"><div class="card-body">
       <form method="post" novalidate>
         {% csrf_token %}
         {% include "partials/_form_fields.html" with f=form %}
@@ -25,7 +25,6 @@
           <button type="submit" class="btn btn-primary w-100 mt-2">Registrar</button>
         {% endif %}
       </form>
-    </div>
-  </div>
+  </div></div>
 </div>
 {% endblock %}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Atividades de casa — Plataforma Escolar{% endblock %}
 
 {% block content %}
@@ -73,7 +74,7 @@
           <div class="mt-auto d-flex flex-wrap align-items-center gap-2">
             <a href="{% url 'pedagogy:activity_detail' r.activity.pk %}" class="btn btn-sm btn-outline-primary">Ver instruções</a>
             {% with n=r.activity.attachments.all|length %}
-              {% if n %}<span class="chip">📎 {{ n }} anexo{{ n|pluralize:"s" }}</span>{% endif %}
+              {% if n %}<span class="chip">{% icon "paperclip" %}{{ n }} anexo{{ n|pluralize:"s" }}</span>{% endif %}
             {% endwith %}
           </div>
         </div>

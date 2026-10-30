@@ -34,16 +34,16 @@
 
 <div class="card">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
+    <table class="table table-hover align-middle mb-0 table-stack">
       <thead><tr><th>Estudante</th><th>Turma</th><th>Ano letivo</th><th>Nº matrícula</th><th>Status</th><th class="text-end">Ações</th></tr></thead>
       <tbody>
         {% for e in enrollments %}
         <tr>
           <td class="fw-semibold">{{ e.student.full_name }}</td>
-          <td>{{ e.class_group.name }}</td>
-          <td>{{ e.school_year.name }}</td>
-          <td>{{ e.enrollment_number|default:"—" }}</td>
-          <td>
+          <td data-label="Turma" class="text-nowrap">{{ e.class_group.name }}</td>
+          <td data-label="Ano letivo">{{ e.school_year.name }}</td>
+          <td data-label="Nº matrícula">{{ e.enrollment_number|default:"—" }}</td>
+          <td data-label="Status">
             <span class="chip">{{ e.get_status_display }}</span>
             {% if e.started_on or e.ended_on %}
             <div class="small text-body-secondary mt-1">
@@ -52,7 +52,7 @@
             </div>
             {% endif %}
           </td>
-          <td class="text-end text-nowrap">
+          <td class="text-end text-nowrap cell-actions">
             {% if e.status == "ativo" %}
             <a class="btn btn-sm btn-outline-primary" href="{% url 'enrollment_transfer' e.pk %}"
                aria-label="Transferir {{ e.student.full_name }} de turma">Transferir</a>

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}Detalhes do usuário — Plataforma Escolar{% endblock %}
 
 {% block content %}
@@ -20,7 +21,7 @@
   <div class="col-md-4">
     <div class="card h-100"><div class="card-body">
       <div class="text-body-secondary small text-uppercase">Situação</div>
-      <div>{% if target_user.is_active %}✅ Ativo{% else %}⛔ Inativo{% endif %}</div>
+      <div>{% if target_user.is_active %}<span class="chip chip-state state-pendente">{% icon "circle-check" %}Ativo</span>{% else %}<span class="chip chip-state state-encerrada">{% icon "ban" %}Inativo</span>{% endif %}</div>
     </div></div>
   </div>
   <div class="col-md-4">

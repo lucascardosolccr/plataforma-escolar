@@ -1,17 +1,17 @@
 {% extends "partials/form_card.html" %}
+{% load ui %}
 {% block title %}{% if obj %}Editar avaliação{% else %}Nova avaliação{% endif %} — Plataforma Escolar{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-6 col-md-8">
-    <div class="card p-4">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-          <h1 class="h4 mb-0">{% if obj %}Editar avaliação{% else %}Nova avaliação{% endif %}</h1>
-          <p class="text-body-secondary small mb-0">Somente turmas e disciplinas da sua atribuição.</p>
-        </div>
-        <a href="{% url 'pedagogy:evaluation_list' %}" class="btn btn-outline-secondary btn-sm">Voltar</a>
-      </div>
+<div class="form-page">
+  <div class="page-head">
+    <div>
+      <a href="{% url 'pedagogy:evaluation_list' %}" class="back-link">{% icon "arrow-left" %}Voltar</a>
+      <h1>{% if obj %}Editar avaliação{% else %}Nova avaliação{% endif %}</h1>
+      <p>Somente turmas e disciplinas da sua atribuição.</p>
+    </div>
+  </div>
+  <div class="card form-card"><div class="card-body">
       <form method="post" novalidate>
         {% csrf_token %}
         {% include "partials/_form_fields.html" with f=form %}
@@ -25,7 +25,6 @@
           <button type="submit" class="btn btn-primary w-100 mt-2">Criar avaliação</button>
         {% endif %}
       </form>
-    </div>
-  </div>
+  </div></div>
 </div>
 {% endblock %}

@@ -358,6 +358,21 @@ th[aria-sort="ascending"] .sort-ind::after { content: "↑"; }
 th[aria-sort="descending"] .sort-ind::after { content: "↓"; }
 th[data-sort]:not([aria-sort]) .sort-ind::after { content: "↕"; opacity: .45; }
 
+/* Tabela que vira lista no celular (opt-in: .table-stack + data-label em
+   cada célula). Opcional porque tabelas de lançamento (frequência, notas)
+   precisam continuar em grade para o professor comparar linhas. */
+@media (max-width: 575.98px) {
+  .table-stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .table-stack, .table-stack tbody, .table-stack tr, .table-stack td { display: block; width: 100%; }
+  .table-stack tr { padding: .8rem 1rem; border-bottom: 1px solid var(--ds-line); }
+  .table-stack tbody tr:last-child { border-bottom: 0; }
+  .table-stack > tbody > tr > td { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .2rem 0 !important; border: 0; text-align: right !important; }
+  .table-stack > tbody > tr > td:first-child { font-size: var(--ds-fs-md); text-align: left !important; padding-bottom: .4rem !important; }
+  .table-stack td[data-label]::before { content: attr(data-label); font-size: var(--ds-fs-xs); font-weight: 700; color: var(--ds-text-muted); text-align: left; }
+  .table-stack td.cell-actions { justify-content: flex-end; flex-wrap: wrap; padding-top: .5rem !important; }
+  .table-stack td[colspan] { justify-content: center; text-align: center !important; }
+}
+
 /* ---------- Alertas ---------- */
 .alert {
   border-radius: var(--ds-radius-md);

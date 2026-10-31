@@ -17,7 +17,8 @@ from apps.registry.models import Enrollment, Student
 
 from . import access
 from .models import InterventionStrategy, LearningAlert, LearningIntervention, LearningTrail
-from .recommend import RESULT_LABELS, build_trail, error_types_for, outcomes, recommend, strategy_history
+from .recommend import (RESULT_LABELS, build_trail, comparison, error_types_for, outcomes, recommend,
+                        strategy_history)
 
 DATE = forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"})
 
@@ -158,7 +159,7 @@ def intervention_detail(request, pk):
             messages.success(request, "Situação atualizada.")
         return redirect("cognitio:intervention_detail", pk=iv.pk)
     return render(request, "cognitio/intervention_detail.html", {
-        "iv": iv, "results": outcomes(iv), "labels": RESULT_LABELS, "can_edit": can_edit,
+        "iv": iv, "results": outcomes(iv), "labels": RESULT_LABELS, "can_edit": can_edit, "cmp": comparison(iv),
         "status_choices": LearningIntervention.Status.choices,
         "history": strategy_history(iv.strategy, user.school) if iv.strategy else None})
 

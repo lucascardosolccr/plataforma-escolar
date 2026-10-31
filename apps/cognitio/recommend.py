@@ -3,10 +3,13 @@
 A recomendação é uma ordenação explicada (pontos por critério), nunca uma
 prescrição: o professor aceita, edita, troca ou rejeita. O "resultado
 posterior" compara evidências antes e depois do início da intervenção; é
-associação no tempo, não prova de efeito (não há grupo de comparação).
+associação no tempo, não prova de efeito. A comparação com colegas da mesma
+turma (``comparison``) ajuda a ler o resultado, mas também não é causal: os
+grupos não foram sorteados.
 """
 
 import datetime
+from collections import defaultdict
 
 from django.db.models import Q
 from django.utils import timezone
@@ -146,6 +149,50 @@ def outcomes(intervention, scale=None):
             result = "melhorou" if diff >= 0.1 else "piorou" if diff <= -0.1 else "estavel"
         out.append({"student": st, "before": before, "after": after, "result": result,
                     "n_after": len([e for e in after_ev if e.ratio is not None])})
+    return out
+
+
+MIN_GROUP = 3  # com menos estudantes, a média de um grupo depende de uma pessoa só
+SIMILAR_START = 0.1
+
+
+def _means(evs, start):
+    before = [e.ratio for e in evs if e.observed_on < start and e.ratio is not None]
+    after = [e.ratio for e in evs if e.observed_on >= start and e.ratio is not None]
+    if not before or not after:
+        return None
+    return sum(before) / len(before), sum(after) / len(after)
+
+
+def comparison(intervention):
+    """Ganho médio dos participantes e de colegas da mesma turma com ponto de partida parecido.
+
+    Comparação descritiva: colegas com evidência na mesma habilidade antes e depois do início, que
+    não participaram e cuja média anterior está na faixa dos participantes (± 0,1). Só agregados,
+    e só com pelo menos ``MIN_GROUP`` estudantes em cada grupo.
+    """
+    from apps.registry.models import Student
+
+    start = intervention.starts_on
+    part_ids = set(intervention.students.values_list("pk", flat=True))
+    class_ids = set(Student.objects.filter(enrollments__class_group=intervention.class_group,
+                                           enrollments__status="ativo").values_list("pk", flat=True))
+    evs = defaultdict(list)
+    for e in SkillEvidence.objects.filter(item=intervention.item, student__in=part_ids | class_ids):
+        evs[e.student_id].append(e)
+    part = [m for m in (_means(evs[s], start) for s in part_ids) if m]
+    out = {"n_part": len(part), "n_comp": 0, "enough": False}
+    if not part:
+        return out
+    low = min(b for b, _ in part) - SIMILAR_START
+    high = max(b for b, _ in part) + SIMILAR_START
+    comp = [m for m in (_means(evs[s], start) for s in class_ids - part_ids) if m and low <= m[0] <= high]
+    out["n_comp"] = len(comp)
+    if len(part) < MIN_GROUP or len(comp) < MIN_GROUP:
+        return out
+    gain = lambda rows: sum(a - b for b, a in rows) / len(rows)  # noqa: E731
+    out.update({"enough": True, "gain_part": round(gain(part), 2), "gain_comp": round(gain(comp), 2),
+                "difference": round(gain(part) - gain(comp), 2), "range": (round(max(low, 0), 2), round(min(high, 1), 2))})
     return out
 
 

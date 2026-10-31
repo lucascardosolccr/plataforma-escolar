@@ -8,6 +8,7 @@ não quebrar o vínculo com planejamentos e atividades já registrados.
 
 import datetime
 import json
+import re
 from pathlib import Path
 
 DATA = Path(__file__).resolve().parent / "data"
@@ -240,10 +241,51 @@ def load_bncc(CurriculumItem, Version=None):
             updated += not new
     for item in CurriculumItem.objects.filter(school__isnull=True,
                                               kind__in=["competencia_geral", "habilidade", "competencia_especifica"]):
+        if COMPUTING_CODE.match(item.code):
+            continue  # habilidades de Computação vêm de outro arquivo (load_computing)
         if (item.kind, item.code) not in seen and item.active:
             item.active = False
             item.save(update_fields=["active"])
     return created, updated
+
+
+COMPUTING_FILE = DATA / "bncc_computacao_ef.json"
+COMPUTING_CODE = re.compile(r"^EF\d\dCO\d\d$")
+COMPUTING_VERSION = "Complemento de Computação à BNCC (CNE/CEB, 2022)"
+COMPUTING_AREA = "Computação (complemento à BNCC)"
+COMPUTING_PNED = {"Pensamento computacional": "PNED-I", "Mundo digital": "PNED-II", "Cultura digital": "PNED-III"}
+
+
+def load_computing(CurriculumItem, Version=None, Correspondence=None):
+    """Habilidades do Ensino Fundamental do complemento de Computação à BNCC (texto oficial).
+
+    Cada habilidade é ligada, como sugestão a validar, ao inciso da PNED que tem o mesmo nome do
+    seu eixo (Lei nº 14.533/2023, art. 3º, I a III).
+    """
+    fields = _fields(CurriculumItem)
+    data = json.loads(COMPUTING_FILE.read_text(encoding="utf-8"))
+    meta = data["meta"]
+    created = updated = links = 0
+    pned = {i.code: i for i in CurriculumItem.objects.filter(school=None, kind="competencia_digital")}
+    for h in data["habilidades"]:
+        new = _upsert(CurriculumItem, Version, fields, "habilidade", h["code"], {
+            "text": h["text"], "stage": "Ensino Fundamental", "component": "Computação",
+            "years": ",".join(str(y) for y in h["years"]), "area": COMPUTING_AREA,
+            "thematic_unit": h["eixo"], "knowledge_object": h["objeto"], "structure_auto": True,
+            "source": f"{meta['titulo']}, p. {h['page']} do PDF"[:250], "source_url": meta["fonte"],
+            "verified_on": CHECKED, "curriculum_version": COMPUTING_VERSION, "active": True, "needs_review": False})
+        created += new
+        updated += not new
+        target = pned.get(COMPUTING_PNED.get(h["eixo"], ""))
+        if Correspondence is not None and target is not None:
+            source = CurriculumItem.objects.get(school=None, kind="habilidade", code=h["code"])
+            _, new_link = Correspondence.objects.get_or_create(
+                school=None, source=source, target=target,
+                defaults={"relation": "contribui", "confidence": "media", "origin": "automatica",
+                          "rationale": f"Mesmo eixo: o complemento de Computação e a Lei nº 14.533/2023 (art. 3º) "
+                                       f"usam o nome “{h['eixo']}”."})
+            links += new_link
+    return created, updated, links
 
 
 def _norm(text):

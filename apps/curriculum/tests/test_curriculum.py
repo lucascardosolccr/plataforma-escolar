@@ -58,8 +58,8 @@ class Base(TestCase):
 
 class CatalogTests(Base):
     def test_bncc_loaded_from_official_text(self):
-        skills = CurriculumItem.objects.filter(school__isnull=True, kind="habilidade")
-        self.assertEqual(skills.count(), 1304)
+        skills = CurriculumItem.objects.filter(school__isnull=True, kind="habilidade").exclude(component="Computação")
+        self.assertEqual(skills.count(), 1304)  # BNCC 2018; Computação (complemento de 2022) em test_computacao
         self.assertEqual(CurriculumItem.objects.filter(kind="competencia_geral").count(), 10)
         self.assertTrue(self.h1.text.startswith("Comparar, ordenar, ler e escrever números naturais"))
         self.assertEqual(CurriculumItem.objects.get(code="EF69AR01").year_list, [6, 7, 8, 9])

@@ -15,7 +15,7 @@
 "years": "1",
 "text": "Localizar, nomear e representar graficamente (por meio de desenhos) partes do corpo humano e explicar suas funções.",
 "review": false,
-"unit": "",
+"unit": "Vida e evolução",
 "object": ""
 },
 {
@@ -24,7 +24,7 @@
 "years": "1",
 "text": "Discutir as razões pelas quais os hábitos de higiene do corpo (lavar as mãos antes de comer, escovar os dentes, limpar os olhos, o nariz e as orelhas etc.) são necessários para a manutenção da saúde.",
 "review": false,
-"unit": "",
+"unit": "Vida e evolução",
 "object": ""
 },
 {
@@ -33,7 +33,7 @@
 "years": "1",
 "text": "Comparar características físicas entre os colegas, reconhecendo a diversidade e a importância da valorização, do acolhimento e do respeito às diferenças.",
 "review": false,
-"unit": "",
+"unit": "Vida e evolução",
 "object": ""
 },
 {
@@ -249,7 +249,7 @@
 "years": "1",
 "text": "Identificar semelhanças e diferenças entre jogos e brincadeiras atuais e de outras épocas e lugares.",
 "review": false,
-"unit": "meu tempo",
+"unit": "Mundo pessoal: eu, meu grupo social e meu tempo",
 "object": "A vida em casa, a vida na escola e formas de representação social e espacial: os jogos e brincadeiras como forma de interação social e espacial"
 },
 {
@@ -258,7 +258,7 @@
 "years": "1",
 "text": "Conhecer as histórias da família e da escola e identificar o papel desempenhado por diferentes sujeitos em diferentes espaços.",
 "review": false,
-"unit": "meu tempo",
+"unit": "Mundo pessoal: eu, meu grupo social e meu tempo",
 "object": "A vida em família: diferentes configurações e vínculos"
 },
 {
@@ -267,7 +267,7 @@
 "years": "1",
 "text": "Identificar mudanças e permanências nas formas de organização familiar.",
 "review": false,
-"unit": "meu tempo",
+"unit": "Mundo pessoal: eu, meu grupo social e meu tempo",
 "object": "A vida em família: diferentes configurações e vínculos"
 },
 {
@@ -276,7 +276,7 @@
 "years": "1",
 "text": "Reconhecer o significado das comemorações e festas escolares, diferenciando-as das datas festivas comemoradas no âmbito familiar ou da comunidade.",
 "review": false,
-"unit": "meu tempo",
+"unit": "Mundo pessoal: eu, meu grupo social e meu tempo",
 "object": "A escola, sua representação espacial, sua história e seu papel na comunidade"
 },
 {
@@ -312,7 +312,7 @@
 "years": "1",
 "text": "Distinguir as letras do alfabeto de outros sinais gráficos.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "(Alfabetização) Conhecimento do alfabeto do português do Brasil"
 },
 {
@@ -321,7 +321,7 @@
 "years": "1",
 "text": "Reconhecer o sistema de escrita alfabética como representação dos sons da fala.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Construção do sistema alfabético"
 },
 {
@@ -330,7 +330,7 @@
 "years": "1",
 "text": "Segmentar oralmente palavras em sílabas.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Construção do sistema alfabético e da ortografia"
 },
 {
@@ -339,7 +339,7 @@
 "years": "1",
 "text": "Identificar fonemas e sua representação por letras.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Construção do sistema alfabético e da ortografia"
 },
 {
@@ -348,7 +348,7 @@
 "years": "1",
 "text": "Relacionar elementos sonoros (sílabas, fonemas, partes de palavras) com sua representação escrita.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "(Alfabetização) Construção do sistema alfabético e da ortografia"
 },
 {
@@ -357,7 +357,7 @@
 "years": "1",
 "text": "Comparar palavras, identificando semelhanças e diferenças entre sons de sílabas iniciais.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "(Alfabetização) Construção do sistema alfabético e da ortografia"
 },
 {
@@ -366,7 +366,7 @@
 "years": "1",
 "text": "Nomear as letras do alfabeto e recitá-lo na ordem das letras.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Conhecimento do alfabeto do português do Brasil"
 },
 {
@@ -375,7 +375,7 @@
 "years": "1",
 "text": "Conhecer, diferenciar e relacionar letras em formato imprensa e cursiva, maiúsculas e minúsculas.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Conhecimento das diversas grafias do alfabeto/ Acentuação"
 },
 {
@@ -384,7 +384,7 @@
 "years": "1",
 "text": "Reconhecer a separação das palavras, na escrita, por espaços em branco.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Segmentação de palavras/Classificação de palavras por número de sílabas"
 },
 {
@@ -393,7 +393,7 @@
 "years": "1",
 "text": "Comparar palavras, identificando semelhanças e diferenças entre sons de sílabas mediais e finais.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Construção do sistema alfabético"
 },
 {
@@ -402,7 +402,7 @@
 "years": "1",
 "text": "Identificar outros sinais no texto além das letras, como pontos finais, de interrogação e exclamação e seus efeitos na entonação.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Pontuação"
 },
 {
@@ -411,7 +411,7 @@
 "years": "1",
 "text": "Agrupar palavras pelo critério de aproximação de significado (sinonímia) e separar palavras pelo critério de oposição de significado (antonímia).",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Sinonímia e antonímia/Morfologia/Pontuação"
 },
 {
@@ -456,7 +456,7 @@
 "years": "1",
 "text": "Identificar e reproduzir, em listas, agendas, calendários, regras, avisos, convites, receitas, instruções de montagem e legendas para álbuns, fotos ou ilustrações (digitais ou impressos), a formatação e diagramação específica de cada um desses gêneros.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "(Alfabetização) Forma de composição do texto"
 },
 {
@@ -474,7 +474,7 @@
 "years": "1",
 "text": "Planejar e produzir, em colaboração com os colegas e com a ajuda do professor, diagramas, entrevistas, curiosidades, dentre outros gêneros do campo investigativo, digitais ou impressos, considerando a situação comunicativa e o tema/assunto/finalidade do texto.",
 "review": false,
-"unit": "Produção de textos",
+"unit": "Escrita (compartilhada e autônoma)",
 "object": ""
 },
 {
@@ -492,7 +492,7 @@
 "years": "1",
 "text": "Identificar e reproduzir, em enunciados de tarefas escolares, diagramas, entrevistas, curiosidades, digitais ou impressos, a formatação e diagramação específica de cada um desses gêneros, inclusive em suas versões orais.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "(Alfabetização) Forma de composição dos textos/Adequação do texto às normas de escrita"
 },
 {
@@ -510,7 +510,7 @@
 "years": "1",
 "text": "Identificar elementos de uma narrativa lida ou escutada, incluindo personagens, enredo, tempo e espaço.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "(Alfabetização) Formas de composição de narrativas"
 },
 {
@@ -1014,8 +1014,8 @@
 "years": "2",
 "text": "Compilar histórias da família e/ou da comunidade registradas em diferentes fontes.",
 "review": false,
-"unit": "As formas de registrar as experiências da",
-"object": "comunidade As fontes: relatos orais, objetos, imagens (pinturas, fotografias, vídeos), músicas, escrita, tecnologias digitais de informação e comunicação e inscrições nas paredes, ruas e espaços sociais"
+"unit": "As formas de registrar as experiências da comunidade",
+"object": "As fontes: relatos orais, objetos, imagens (pinturas, fotografias, vídeos), músicas, escrita, tecnologias digitais de informação e comunicação e inscrições nas paredes, ruas e espaços sociais"
 },
 {
 "code": "EF02HI09",
@@ -1023,8 +1023,8 @@
 "years": "2",
 "text": "Identificar objetos e documentos pessoais que remetam à própria experiência no âmbito da família e/ou da comunidade, discutindo as razões pelas quais alguns objetos são preservados e outros são descartados.",
 "review": false,
-"unit": "As formas de registrar as experiências da",
-"object": "comunidade As fontes: relatos orais, objetos, imagens (pinturas, fotografias, vídeos), músicas, escrita, tecnologias digitais de informação e comunicação e inscrições nas paredes, ruas e espaços sociais"
+"unit": "As formas de registrar as experiências da comunidade",
+"object": "As fontes: relatos orais, objetos, imagens (pinturas, fotografias, vídeos), músicas, escrita, tecnologias digitais de informação e comunicação e inscrições nas paredes, ruas e espaços sociais"
 },
 {
 "code": "EF02HI10",
@@ -1032,8 +1032,8 @@
 "years": "2",
 "text": "Identificar diferentes formas de trabalho existentes na comunidade em que vive, seus significados, suas especificidades e importância.",
 "review": false,
-"unit": "O trabalho e a sustentabilidade na",
-"object": "comunidade A sobrevivência e a relação com a natureza"
+"unit": "O trabalho e a sustentabilidade na comunidade",
+"object": "A sobrevivência e a relação com a natureza"
 },
 {
 "code": "EF02HI11",
@@ -1041,8 +1041,8 @@
 "years": "2",
 "text": "Identificar impactos no ambiente causados pelas diferentes formas de trabalho existentes na comunidade em que vive.",
 "review": false,
-"unit": "O trabalho e a sustentabilidade na",
-"object": "comunidade A sobrevivência e a relação com a natureza"
+"unit": "O trabalho e a sustentabilidade na comunidade",
+"object": "A sobrevivência e a relação com a natureza"
 },
 {
 "code": "EF02LP01",
@@ -1059,7 +1059,7 @@
 "years": "2",
 "text": "Segmentar palavras em sílabas e remover e substituir sílabas iniciais, mediais ou finais para criar novas palavras.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Construção do sistema alfabético e da ortografia"
 },
 {
@@ -1068,7 +1068,7 @@
 "years": "2",
 "text": "Ler e escrever palavras com correspondências regulares diretas entre letras e fonemas (f, v, t, d, p, b) e correspondências regulares contextuais (c e q; e e o, em posição átona em final de palavra).",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Construção do sistema alfabético e da ortografia"
 },
 {
@@ -1077,7 +1077,7 @@
 "years": "2",
 "text": "Ler e escrever corretamente palavras com sílabas CV, V, CVC, CCV, identificando que existem vogais em todas as sílabas.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "(Alfabetização) Construção do sistema alfabético e da ortografia"
 },
 {
@@ -1086,7 +1086,7 @@
 "years": "2",
 "text": "Ler e escrever corretamente palavras com marcas de nasalidade (til, m, n).",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "(Alfabetização) Construção do sistema alfabético e da ortografia"
 },
 {
@@ -1095,7 +1095,7 @@
 "years": "2",
 "text": "Perceber o princípio acrofônico que opera nos nomes das letras do alfabeto.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Conhecimento do alfabeto do português do Brasil"
 },
 {
@@ -1104,7 +1104,7 @@
 "years": "2",
 "text": "Escrever palavras, frases, textos curtos nas formas imprensa e cursiva.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Conhecimento das diversas grafias do alfabeto/ Acentuação"
 },
 {
@@ -1113,7 +1113,7 @@
 "years": "2",
 "text": "Segmentar corretamente as palavras ao escrever frases e textos.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Segmentação de palavras/Classificação de palavras por número de sílabas"
 },
 {
@@ -1122,7 +1122,7 @@
 "years": "2",
 "text": "Usar adequadamente ponto final, ponto de interrogação e ponto de exclamação.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Pontuação"
 },
 {
@@ -1131,7 +1131,7 @@
 "years": "2",
 "text": "Identificar sinônimos de palavras de texto lido, determinando a diferença de sentido entre eles, e formar antônimos de palavras encontradas em texto lido pelo acréscimo do prefixo de negação in-/im-.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Sinonímia e antonímia/Morfologia/Pontuação"
 },
 {
@@ -1140,7 +1140,7 @@
 "years": "2",
 "text": "Formar o aumentativo e o diminutivo de palavras com os sufixos -ão e -inho/-zinho.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Morfologia"
 },
 {
@@ -1185,7 +1185,7 @@
 "years": "2",
 "text": "Identificar e reproduzir, em bilhetes, recados, avisos, cartas, e-mails, receitas (modo de fazer), relatos (digitais ou impressos), a formatação e diagramação específica de cada um desses gêneros.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "(Alfabetização) Forma de composição do texto"
 },
 {
@@ -1194,7 +1194,7 @@
 "years": "2",
 "text": "Identificar e reproduzir, em relatos de experiências pessoais, a sequência dos fatos, utilizando expressões que marquem a passagem do tempo (“antes”, “depois”, “ontem”, “hoje”, “amanhã”, “outro dia”, “antigamente”, “há muito tempo” etc.), e o nível de informatividade necessário.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "(Alfabetização) Forma de composição do texto"
 },
 {
@@ -1239,7 +1239,7 @@
 "years": "2",
 "text": "Planejar e produzir, em colaboração com os colegas e com a ajuda do professor, pequenos relatos de experimentos, entrevistas, verbetes de enciclopédia infantil, dentre outros gêneros do campo investigativo, digitais ou impressos, considerando a situação comunicativa e o tema/assunto/finalidade do texto.",
 "review": false,
-"unit": "Produção de textos",
+"unit": "Escrita (compartilhada e autônoma)",
 "object": ""
 },
 {
@@ -1248,7 +1248,7 @@
 "years": "2",
 "text": "Planejar e produzir, com certa autonomia, pequenos registros de observação de resultados de pesquisa, coerentes com um tema investigado.",
 "review": false,
-"unit": "Produção de textos",
+"unit": "Escrita (compartilhada e autônoma)",
 "object": "Escrita autônoma"
 },
 {
@@ -1266,7 +1266,7 @@
 "years": "2",
 "text": "Identificar e reproduzir, em relatos de experimentos, entrevistas, verbetes de enciclopédia infantil, digitais ou impressos, a formatação e diagramação específica de cada um desses gêneros, inclusive em suas versões orais.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "(Alfabetização) Forma de composição dos textos/Adequação do texto às normas de escrita"
 },
 {
@@ -1293,7 +1293,7 @@
 "years": "2",
 "text": "Reconhecer o conflito gerador de uma narrativa ficcional e sua resolução, além de palavras, expressões e frases que caracterizam personagens e ambientes.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "(Alfabetização) Formas de composição de narrativas"
 },
 {
@@ -1302,7 +1302,7 @@
 "years": "2",
 "text": "Observar, em poemas visuais, o formato do texto na página, as ilustrações e outros efeitos visuais.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Formas de composição de textos poéticos visuais"
 },
 {
@@ -1761,7 +1761,7 @@
 "years": "3",
 "text": "Identificar os grupos populacionais que formam a cidade, o município e a região, as relações estabelecidas entre eles e os eventos que marcam a formação da cidade, como fenômenos migratórios (vida rural/vida urbana), desmatamentos, estabelecimento de grandes empresas etc.",
 "review": false,
-"unit": "cidade e o município",
+"unit": "As pessoas e os grupos que compõem a cidade e o município",
 "object": "O “Eu”, o “Outro” e os diferentes grupos sociais e étnicos que compõem a cidade e os municípios: os desafios sociais, culturais e ambientais do lugar onde vive"
 },
 {
@@ -1770,7 +1770,7 @@
 "years": "3",
 "text": "Selecionar, por meio da consulta de fontes de diferentes naturezas, e registrar acontecimentos ocorridos ao longo do tempo na cidade ou região em que vive.",
 "review": false,
-"unit": "cidade e o município",
+"unit": "As pessoas e os grupos que compõem a cidade e o município",
 "object": "O “Eu”, o “Outro” e os diferentes grupos sociais e étnicos que compõem a cidade e os municípios: os desafios sociais, culturais e ambientais do lugar onde vive"
 },
 {
@@ -1779,7 +1779,7 @@
 "years": "3",
 "text": "Identificar e comparar pontos de vista em relação a eventos significativos do local em que vive, aspectos relacionados a condições sociais e à presença de diferentes grupos sociais e culturais, com especial destaque para as culturas africanas, indígenas e de migrantes.",
 "review": false,
-"unit": "cidade e o município",
+"unit": "As pessoas e os grupos que compõem a cidade e o município",
 "object": "O “Eu”, o “Outro” e os diferentes grupos sociais e étnicos que compõem a cidade e os municípios: os desafios sociais, culturais e ambientais do lugar onde vive"
 },
 {
@@ -1788,7 +1788,7 @@
 "years": "3",
 "text": "Identificar os patrimônios históricos e culturais de sua cidade ou região e discutir as razões culturais, sociais e políticas para que assim sejam considerados.",
 "review": false,
-"unit": "cidade e o município",
+"unit": "As pessoas e os grupos que compõem a cidade e o município",
 "object": "Os patrimônios históricos e culturais da cidade e/ou do município em que vive"
 },
 {
@@ -1869,7 +1869,7 @@
 "years": "3",
 "text": "Ler e escrever palavras com correspondências regulares contextuais entre grafemas e fonemas – c/qu; g/gu; r/rr; s/ss; o (e não u) e e (e não i) em sílaba átona em final de palavra – e com marcas de nasalidade (til, m, n).",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Construção do sistema alfabético e da ortografia"
 },
 {
@@ -1878,7 +1878,7 @@
 "years": "3",
 "text": "Ler e escrever corretamente palavras com sílabas CV, V, CVC, CCV, VC, VV, CVV, identificando que existem vogais em todas as sílabas.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Construção do sistema alfabético e da ortografia"
 },
 {
@@ -1887,7 +1887,7 @@
 "years": "3",
 "text": "Ler e escrever corretamente palavras com os dígrafos lh, nh, ch.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Construção do sistema alfabético e da ortografia"
 },
 {
@@ -1896,7 +1896,7 @@
 "years": "3",
 "text": "Usar acento gráfico (agudo ou circunflexo) em monossílabos tônicos terminados em a, e, o e em palavras oxítonas terminadas em a, e, o, seguidas ou não de s.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Conhecimento das diversas grafias do alfabeto/ Acentuação"
 },
 {
@@ -1905,7 +1905,7 @@
 "years": "3",
 "text": "Identificar o número de sílabas de palavras, classificando-as em monossílabas, dissílabas, trissílabas e polissílabas.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Segmentação de palavras/Classificação de palavras por número de sílabas"
 },
 {
@@ -1914,7 +1914,7 @@
 "years": "3",
 "text": "Identificar a sílaba tônica em palavras, classificando-as em oxítonas, paroxítonas e proparoxítonas.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Construção do sistema alfabético"
 },
 {
@@ -1923,7 +1923,7 @@
 "years": "3",
 "text": "Identificar a função na leitura e usar na escrita ponto final, ponto de interrogação, ponto de exclamação e, em diálogos (discurso direto), dois-pontos e travessão.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Pontuação"
 },
 {
@@ -1932,7 +1932,7 @@
 "years": "3",
 "text": "Identificar e diferenciar, em textos, substantivos e verbos e suas funções na oração: agente, ação, objeto da ação.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Morfologia/Morfossintaxe"
 },
 {
@@ -1941,7 +1941,7 @@
 "years": "3",
 "text": "Identificar, em textos, adjetivos e sua função de atribuição de propriedades aos substantivos.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Morfossintaxe"
 },
 {
@@ -1950,7 +1950,7 @@
 "years": "3",
 "text": "Reconhecer prefixos e sufixos produtivos na formação de palavras derivadas de substantivos, de adjetivos e de verbos, utilizando-os para compreender palavras e para formar novas palavras.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Morfologia"
 },
 {
@@ -2004,7 +2004,7 @@
 "years": "3",
 "text": "Identificar e reproduzir, em textos injuntivos instrucionais (receitas, instruções de montagem, digitais ou impressos), a formatação própria desses textos (verbos imperativos, indicação de passos a ser seguidos) e a diagramação específica dos textos desses gêneros (lista de ingredientes ou materiais e instruções de execução – \"modo de fazer\").",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Forma de composição do texto"
 },
 {
@@ -2013,7 +2013,7 @@
 "years": "3",
 "text": "Identificar e reproduzir, em gêneros epistolares e diários, a formatação própria desses textos (relatos de acontecimentos, expressão de vivências, emoções, opiniões ou críticas) e a diagramação específica dos textos desses gêneros (data, saudação, corpo do texto, despedida, assinatura).",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Forma de composição do texto"
 },
 {
@@ -2067,7 +2067,7 @@
 "years": "3",
 "text": "Analisar o uso de adjetivos em cartas dirigidas a veículos da mídia impressa ou digital (cartas do leitor ou de reclamação a jornais ou revistas), digitais ou impressas.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Forma de composição dos textos"
 },
 {
@@ -2085,7 +2085,7 @@
 "years": "3",
 "text": "Planejar e produzir textos para apresentar resultados de observações e de pesquisas em fontes de informações, incluindo, quando pertinente, imagens, diagramas e gráficos ou tabelas simples, considerando a situação comunicativa e o tema/assunto do texto.",
 "review": false,
-"unit": "Produção de textos",
+"unit": "Produção de textos (escrita compartilhada e autônoma)",
 "object": ""
 },
 {
@@ -2094,7 +2094,7 @@
 "years": "3",
 "text": "Identificar e reproduzir, em relatórios de observação e pesquisa, a formatação e diagramação específica desses gêneros (passos ou listas de itens, tabelas, ilustrações, gráficos, resumo dos resultados), inclusive em suas versões orais.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Forma de composição dos textos Adequação do texto às normas de escrita"
 },
 {
@@ -2607,7 +2607,7 @@
 "years": "4",
 "text": "Comparar tipos variados de mapas, identificando suas características, elaboradores, finalidades, diferenças e semelhanças.",
 "review": false,
-"unit": "Formas de representação e pensamento",
+"unit": "Formas de representação e pensamento espacial",
 "object": "Elementos constitutivos dos mapas"
 },
 {
@@ -2625,7 +2625,7 @@
 "years": "4",
 "text": "Reconhecer a história como resultado da ação do ser humano no tempo e no espaço, com base na identificação de mudanças e permanências ao longo do tempo.",
 "review": false,
-"unit": "trajetórias dos grupos humanos",
+"unit": "Transformações e permanências nas trajetórias dos grupos humanos",
 "object": "A ação das pessoas, grupos sociais e comunidades no tempo e no espaço: nomadismo, agricultura, escrita, navegações, indústria, entre outras"
 },
 {
@@ -2634,7 +2634,7 @@
 "years": "4",
 "text": "Identificar mudanças e permanências ao longo do tempo, discutindo os sentidos dos grandes marcos da história da humanidade (nomadismo, desenvolvimento da agricultura e do pastoreio, criação da indústria etc.).",
 "review": false,
-"unit": "trajetórias dos grupos humanos",
+"unit": "Transformações e permanências nas trajetórias dos grupos humanos",
 "object": "A ação das pessoas, grupos sociais e comunidades no tempo e no espaço: nomadismo, agricultura, escrita, navegações, indústria, entre outras"
 },
 {
@@ -2643,7 +2643,7 @@
 "years": "4",
 "text": "Identificar as transformações ocorridas na cidade ao longo do tempo e discutir suas interferências nos modos de vida de seus habitantes, tomando como ponto de partida o presente.",
 "review": false,
-"unit": "trajetórias dos grupos humanos",
+"unit": "Transformações e permanências nas trajetórias dos grupos humanos",
 "object": "O passado e o presente: a noção de permanência e as lentas transformações sociais e culturais"
 },
 {
@@ -2652,8 +2652,8 @@
 "years": "4",
 "text": "Identificar as relações entre os indivíduos e a natureza e discutir o significado do nomadismo e da fixação das primeiras comunidades humanas.",
 "review": false,
-"unit": "Circulação de pessoas, produtos e",
-"object": "culturas A circulação de pessoas e as transformações no meio natural"
+"unit": "Circulação de pessoas, produtos e culturas",
+"object": "A circulação de pessoas e as transformações no meio natural"
 },
 {
 "code": "EF04HI05",
@@ -2661,8 +2661,8 @@
 "years": "4",
 "text": "Relacionar os processos de ocupação do campo a intervenções na natureza, avaliando os resultados dessas intervenções.",
 "review": false,
-"unit": "Circulação de pessoas, produtos e",
-"object": "culturas A circulação de pessoas e as transformações no meio natural"
+"unit": "Circulação de pessoas, produtos e culturas",
+"object": "A circulação de pessoas e as transformações no meio natural"
 },
 {
 "code": "EF04HI06",
@@ -2670,7 +2670,7 @@
 "years": "4",
 "text": "Identificar as transformações ocorridas nos processos de deslocamento das pessoas e mercadorias, analisando as formas de adaptação ou marginalização.",
 "review": false,
-"unit": "Circulação de pessoas, produtos e",
+"unit": "Circulação de pessoas, produtos e culturas",
 "object": "A invenção do comércio e a circulação de produtos"
 },
 {
@@ -2679,7 +2679,7 @@
 "years": "4",
 "text": "Identificar e descrever a importância dos caminhos terrestres, fluviais e marítimos para a dinâmica da vida comercial.",
 "review": false,
-"unit": "Circulação de pessoas, produtos e",
+"unit": "Circulação de pessoas, produtos e culturas",
 "object": "As rotas terrestres, fluviais e marítimas e seus impactos para a formação de cidades e as transformações do meio natural"
 },
 {
@@ -2688,7 +2688,7 @@
 "years": "4",
 "text": "Identificar as transformações ocorridas nos meios de comunicação (cultura oral, imprensa, rádio, televisão, cinema, internet e demais tecnologias digitais de informação e comunicação) e discutir seus significados para os diferentes grupos ou estratos sociais.",
 "review": false,
-"unit": "Circulação de pessoas, produtos e",
+"unit": "Circulação de pessoas, produtos e culturas",
 "object": "O mundo da tecnologia: a integração de pessoas e as exclusões sociais e culturais"
 },
 {
@@ -2697,8 +2697,8 @@
 "years": "4",
 "text": "Identificar as motivações dos processos migratórios em diferentes tempos e espaços e avaliar o papel desempenhado pela migração nas regiões de destino.",
 "review": false,
-"unit": "As questões históricas relativas às",
-"object": "migrações O surgimento da espécie humana no continente africano e sua expansão pelo mundo"
+"unit": "As questões históricas relativas às migrações",
+"object": "O surgimento da espécie humana no continente africano e sua expansão pelo mundo"
 },
 {
 "code": "EF04HI10",
@@ -2706,7 +2706,7 @@
 "years": "4",
 "text": "Analisar diferentes fluxos populacionais e suas contribuições para a formação da sociedade brasileira.",
 "review": false,
-"unit": "As questões históricas relativas às",
+"unit": "As questões históricas relativas às migrações",
 "object": "Os processos migratórios para a formação do Brasil: os grupos indígenas, a presença portuguesa e a diáspora forçada dos africanos Os processos migratórios do final do século XIX e início do século XX no Brasil As dinâmicas internas de migração no Brasil a partir dos anos 1960"
 },
 {
@@ -2715,7 +2715,7 @@
 "years": "4",
 "text": "Analisar, na sociedade em que vive, a existência ou não de mudanças associadas à migração (interna e internacional).",
 "review": false,
-"unit": "As questões históricas relativas às",
+"unit": "As questões históricas relativas às migrações",
 "object": "Os processos migratórios para a formação do Brasil: os grupos indígenas, a presença portuguesa e a diáspora forçada dos africanos Os processos migratórios do final do século XIX e início do século XX no Brasil As dinâmicas internas de migração no Brasil a partir dos anos 1960"
 },
 {
@@ -2724,7 +2724,7 @@
 "years": "4",
 "text": "Grafar palavras utilizando regras de correspondência fonema--grafema regulares diretas e contextuais.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Construção do sistema alfabético e da ortografia"
 },
 {
@@ -2733,7 +2733,7 @@
 "years": "4",
 "text": "Ler e escrever, corretamente, palavras com sílabas VV e CVV em casos nos quais a combinação VV (ditongo) é reduzida na língua oral (ai, ei, ou).",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Construção do sistema alfabético e da ortografia"
 },
 {
@@ -2742,7 +2742,7 @@
 "years": "4",
 "text": "Localizar palavras no dicionário para esclarecer significados, reconhecendo o significado mais plausível para o contexto que deu origem à consulta.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Conhecimento do alfabeto do português do Brasil/Ordem alfabética/Polissemia"
 },
 {
@@ -2751,7 +2751,7 @@
 "years": "4",
 "text": "Usar acento gráfico (agudo ou circunflexo) em paroxítonas terminadas em -i(s), -l, -r, -ão(s).",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Conhecimento das diversas grafias do alfabeto/ Acentuação"
 },
 {
@@ -2760,7 +2760,7 @@
 "years": "4",
 "text": "Identificar a função na leitura e usar, adequadamente, na escrita ponto final, de interrogação, de exclamação, dois-pontos e travessão em diálogos (discurso direto), vírgula em enumerações e em separação de vocativo e de aposto.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Pontuação"
 },
 {
@@ -2769,7 +2769,7 @@
 "years": "4",
 "text": "Identificar em textos e usar na produção textual a concordância entre substantivo ou pronome pessoal e verbo (concordância verbal).",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Morfologia/Morfossintaxe"
 },
 {
@@ -2778,7 +2778,7 @@
 "years": "4",
 "text": "Identificar em textos e usar na produção textual a concordância entre artigo, substantivo e adjetivo (concordância no grupo nominal).",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Morfossintaxe"
 },
 {
@@ -2787,7 +2787,7 @@
 "years": "4",
 "text": "Reconhecer e grafar, corretamente, palavras derivadas com os sufixos -agem, -oso, -eza, -izar/-isar (regulares morfológicas).",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Morfologia"
 },
 {
@@ -2832,7 +2832,7 @@
 "years": "4",
 "text": "Identificar e reproduzir, em textos injuntivos instrucionais (instruções de jogos digitais ou impressos), a formatação própria desses textos (verbos imperativos, indicação de passos a ser seguidos) e formato específico dos textos orais ou escritos desses gêneros (lista/ apresentação de materiais e instruções/passos de jogo).",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Forma de composição do texto"
 },
 {
@@ -2877,7 +2877,7 @@
 "years": "4",
 "text": "Analisar o padrão entonacional e a expressão facial e corporal de âncoras de jornais radiofônicos ou televisivos e de entrevistadores/entrevistados.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Forma de composição dos textos"
 },
 {
@@ -2904,7 +2904,7 @@
 "years": "4",
 "text": "Planejar e produzir textos sobre temas de interesse, com base em resultados de observações e pesquisas em fontes de informações impressas ou eletrônicas, incluindo, quando pertinente, imagens e gráficos ou tabelas simples, considerando a situação comunicativa e o tema/assunto do texto.",
 "review": false,
-"unit": "Produção de textos",
+"unit": "Produção de textos (escrita compartilhada e autônoma)",
 "object": ""
 },
 {
@@ -2913,7 +2913,7 @@
 "years": "4",
 "text": "Planejar e produzir, com certa autonomia, verbetes de enciclopédia infantil, digitais ou impressos, considerando a situação comunicativa e o tema/ assunto/finalidade do texto.",
 "review": false,
-"unit": "Produção de textos",
+"unit": "Produção de textos (escrita compartilhada e autônoma)",
 "object": "Escrita autônoma"
 },
 {
@@ -2922,7 +2922,7 @@
 "years": "4",
 "text": "Identificar e reproduzir, em verbetes de enciclopédia infantil, digitais ou impressos, a formatação e diagramação específica desse gênero (título do verbete, definição, detalhamento, curiosidades), considerando a situação comunicativa e o tema/ assunto/finalidade do texto.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Forma de composição dos textos Coesão e articuladores"
 },
 {
@@ -2931,7 +2931,7 @@
 "years": "4",
 "text": "Identificar e reproduzir, em seu formato, tabelas, diagramas e gráficos em relatórios de observação e pesquisa, como forma de apresentação de dados e informações.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Forma de composição dos textos Adequação do texto às normas de escrita"
 },
 {
@@ -2949,7 +2949,7 @@
 "years": "4",
 "text": "Observar, em poemas concretos, o formato, a distribuição e a diagramação das letras do texto na página.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Forma de composição de textos poéticos visuais"
 },
 {
@@ -2958,7 +2958,7 @@
 "years": "4",
 "text": "Identificar, em textos dramáticos, marcadores das falas das personagens e de cena.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Forma de composição de textos dramáticos"
 },
 {
@@ -3471,7 +3471,7 @@
 "years": "5",
 "text": "Estabelecer conexões e hierarquias entre diferentes cidades, utilizando mapas temáticos e representações gráficas.",
 "review": false,
-"unit": "Formas de representação e pensamento",
+"unit": "Formas de representação e pensamento espacial",
 "object": "Representação das cidades e do espaço urbano"
 },
 {
@@ -3507,7 +3507,7 @@
 "years": "5",
 "text": "Identificar os processos de formação das culturas e dos povos, relacionando-os com o espaço geográfico ocupado.",
 "review": false,
-"unit": "meu grupo social",
+"unit": "Povos e culturas: meu lugar no mundo e meu grupo social",
 "object": "O que forma um povo: do nomadismo aos primeiros povos sedentarizados"
 },
 {
@@ -3516,7 +3516,7 @@
 "years": "5",
 "text": "Identificar os mecanismos de organização do poder político com vistas à compreensão da ideia de Estado e/ou de outras formas de ordenação social.",
 "review": false,
-"unit": "meu grupo social",
+"unit": "Povos e culturas: meu lugar no mundo e meu grupo social",
 "object": "As formas de organização social e política: a noção de Estado"
 },
 {
@@ -3525,7 +3525,7 @@
 "years": "5",
 "text": "Analisar o papel das culturas e das religiões na composição identitária dos povos antigos.",
 "review": false,
-"unit": "meu grupo social",
+"unit": "Povos e culturas: meu lugar no mundo e meu grupo social",
 "object": "O papel das religiões e da cultura para a formação dos povos antigos"
 },
 {
@@ -3534,7 +3534,7 @@
 "years": "5",
 "text": "Associar a noção de cidadania com os princípios de respeito à diversidade, à pluralidade e aos direitos humanos.",
 "review": false,
-"unit": "meu grupo social",
+"unit": "Povos e culturas: meu lugar no mundo e meu grupo social",
 "object": "Cidadania, diversidade cultural e respeito às diferenças sociais, culturais e históricas"
 },
 {
@@ -3543,7 +3543,7 @@
 "years": "5",
 "text": "Associar o conceito de cidadania à conquista de direitos dos povos e das sociedades, compreendendo-o como conquista histórica.",
 "review": false,
-"unit": "meu grupo social",
+"unit": "Povos e culturas: meu lugar no mundo e meu grupo social",
 "object": "Cidadania, diversidade cultural e respeito às diferenças sociais, culturais e históricas"
 },
 {
@@ -3552,8 +3552,8 @@
 "years": "5",
 "text": "Comparar o uso de diferentes linguagens e tecnologias no processo de comunicação e avaliar os significados sociais, políticos e culturais atribuídos a elas.",
 "review": false,
-"unit": "Registros da história: linguagens e",
-"object": "culturas As tradições orais e a valorização da memória O surgimento da escrita e a noção de fonte para a transmissão de saberes, culturas e histórias"
+"unit": "Registros da história: linguagens e culturas",
+"object": "As tradições orais e a valorização da memória O surgimento da escrita e a noção de fonte para a transmissão de saberes, culturas e histórias"
 },
 {
 "code": "EF05HI07",
@@ -3561,8 +3561,8 @@
 "years": "5",
 "text": "Identificar os processos de produção, hierarquização e difusão dos marcos de memória e discutir a presença e/ou a ausência de diferentes grupos que compõem a sociedade na nomeação desses marcos de memória.",
 "review": false,
-"unit": "Registros da história: linguagens e",
-"object": "culturas As tradições orais e a valorização da memória O surgimento da escrita e a noção de fonte para a transmissão de saberes, culturas e histórias"
+"unit": "Registros da história: linguagens e culturas",
+"object": "As tradições orais e a valorização da memória O surgimento da escrita e a noção de fonte para a transmissão de saberes, culturas e histórias"
 },
 {
 "code": "EF05HI08",
@@ -3570,8 +3570,8 @@
 "years": "5",
 "text": "Identificar formas de marcação da passagem do tempo em distintas sociedades, incluindo os povos indígenas originários e os povos africanos.",
 "review": false,
-"unit": "Registros da história: linguagens e",
-"object": "culturas As tradições orais e a valorização da memória O surgimento da escrita e a noção de fonte para a transmissão de saberes, culturas e histórias"
+"unit": "Registros da história: linguagens e culturas",
+"object": "As tradições orais e a valorização da memória O surgimento da escrita e a noção de fonte para a transmissão de saberes, culturas e histórias"
 },
 {
 "code": "EF05HI09",
@@ -3579,8 +3579,8 @@
 "years": "5",
 "text": "Comparar pontos de vista sobre temas que impactam a vida cotidiana no tempo presente, por meio do acesso a diferentes fontes, incluindo orais.",
 "review": false,
-"unit": "Registros da história: linguagens e",
-"object": "culturas As tradições orais e a valorização da memória O surgimento da escrita e a noção de fonte para a transmissão de saberes, culturas e histórias"
+"unit": "Registros da história: linguagens e culturas",
+"object": "As tradições orais e a valorização da memória O surgimento da escrita e a noção de fonte para a transmissão de saberes, culturas e histórias"
 },
 {
 "code": "EF05HI10",
@@ -3588,7 +3588,7 @@
 "years": "5",
 "text": "Inventariar os patrimônios materiais e imateriais da humanidade e analisar mudanças e permanências desses patrimônios ao longo do tempo.",
 "review": false,
-"unit": "Registros da história: linguagens e",
+"unit": "Registros da história: linguagens e culturas",
 "object": "Os patrimônios materiais e imateriais da humanidade"
 },
 {
@@ -3597,7 +3597,7 @@
 "years": "5",
 "text": "Grafar palavras utilizando regras de correspondência fonema--grafema regulares, contextuais e morfológicas e palavras de uso frequente com correspondências irregulares.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Construção do sistema alfabético e da ortografia"
 },
 {
@@ -3606,7 +3606,7 @@
 "years": "5",
 "text": "Identificar o caráter polissêmico das palavras (uma mesma palavra com diferentes significados, de acordo com o contexto de uso), comparando o significado de determinados termos utilizados nas áreas científicas com esses mesmos termos utilizados na linguagem usual.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Conhecimento do alfabeto do português do Brasil/Ordem alfabética/Polissemia"
 },
 {
@@ -3615,7 +3615,7 @@
 "years": "5",
 "text": "Acentuar corretamente palavras oxítonas, paroxítonas e proparoxítonas.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Conhecimento das diversas grafias do alfabeto/ Acentuação"
 },
 {
@@ -3624,7 +3624,7 @@
 "years": "5",
 "text": "Diferenciar, na leitura de textos, vírgula, ponto e vírgula, dois-pontos e reconhecer, na leitura de textos, o efeito de sentido que decorre do uso de reticências, aspas, parênteses.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Pontuação"
 },
 {
@@ -3633,7 +3633,7 @@
 "years": "5",
 "text": "Identificar a expressão de presente, passado e futuro em tempos verbais do modo indicativo.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Morfologia/Morfossintaxe"
 },
 {
@@ -3642,7 +3642,7 @@
 "years": "5",
 "text": "Flexionar, adequadamente, na escrita e na oralidade, os verbos em concordância com pronomes pessoais/nomes sujeitos da oração.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Morfologia/Morfossintaxe"
 },
 {
@@ -3651,7 +3651,7 @@
 "years": "5",
 "text": "Identificar, em textos, o uso de conjunções e a relação que estabelecem entre partes do texto: adição, oposição, tempo, causa, condição, finalidade.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Morfologia"
 },
 {
@@ -3660,7 +3660,7 @@
 "years": "5",
 "text": "Diferenciar palavras primitivas, derivadas e compostas, e derivadas por adição de prefixo e de sufixo.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Morfologia"
 },
 {
@@ -3714,7 +3714,7 @@
 "years": "5",
 "text": "Identificar e reproduzir, em textos de resenha crítica de brinquedos ou livros de literatura infantil, a formatação própria desses textos (apresentação e avaliação do produto).",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Forma de composição do texto"
 },
 {
@@ -3768,7 +3768,7 @@
 "years": "5",
 "text": "Analisar a validade e força de argumentos em argumentações sobre produtos de mídia para público infantil (filmes, desenhos animados, HQs, games etc.), com base em conhecimentos sobre os mesmos.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Forma de composição dos textos"
 },
 {
@@ -3777,7 +3777,7 @@
 "years": "5",
 "text": "Analisar o padrão entonacional, a expressão facial e corporal e as escolhas de variedade e registro linguísticos de vloggers de vlogs opinativos ou argumentativos.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Forma de composição dos textos"
 },
 {
@@ -3804,7 +3804,7 @@
 "years": "5",
 "text": "Planejar e produzir texto sobre tema de interesse, organizando resultados de pesquisa em fontes de informação impressas ou digitais, incluindo imagens e gráficos ou tabelas, considerando a situação comunicativa e o tema/assunto do texto.",
 "review": false,
-"unit": "Produção de textos",
+"unit": "Produção de textos (escrita compartilhada e autônoma)",
 "object": ""
 },
 {
@@ -3813,7 +3813,7 @@
 "years": "5",
 "text": "Planejar e produzir, com certa autonomia, verbetes de dicionário, digitais ou impressos, considerando a situação comunicativa e o tema/assunto/finalidade do texto.",
 "review": false,
-"unit": "Produção de textos",
+"unit": "Produção de textos (escrita compartilhada e autônoma)",
 "object": "Escrita autônoma"
 },
 {
@@ -3822,7 +3822,7 @@
 "years": "5",
 "text": "Utilizar, ao produzir o texto, conhecimentos linguísticos e gramaticais: regras sintáticas de concordância nominal e verbal, convenções de escrita de citações, pontuação (ponto final, dois-pontos, vírgulas em enumerações) e regras ortográficas.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Forma de composição dos textos Adequação do texto às normas de escrita"
 },
 {
@@ -3831,7 +3831,7 @@
 "years": "5",
 "text": "Utilizar, ao produzir o texto, recursos de coesão pronominal (pronomes anafóricos) e articuladores de relações de sentido (tempo, causa, oposição, conclusão, comparação), com nível adequado de informatividade.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Forma de composição dos textos Coesão e articuladores"
 },
 {
@@ -3840,7 +3840,7 @@
 "years": "5",
 "text": "Observar, em ciberpoemas e minicontos infantis em mídia digital, os recursos multissemióticos presentes nesses textos digitais.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Forma de composição de textos poéticos visuais"
 },
 {
@@ -4380,8 +4380,8 @@
 "years": "6",
 "text": "Identificar diferentes formas de compreensão da noção de tempo e de periodização dos processos históricos (continuidades e rupturas).",
 "review": false,
-"unit": "História: tempo, espaço e formas de",
-"object": "registros A questão do tempo, sincronias e diacronias: reflexões sobre o sentido das cronologias"
+"unit": "História: tempo, espaço e formas de registros",
+"object": "A questão do tempo, sincronias e diacronias: reflexões sobre o sentido das cronologias"
 },
 {
 "code": "EF06HI02",
@@ -4389,7 +4389,7 @@
 "years": "6",
 "text": "Identificar a gênese da produção do saber histórico e analisar o significado das fontes que originaram determinadas formas de registro em sociedades e épocas distintas.",
 "review": false,
-"unit": "História: tempo, espaço e formas de",
+"unit": "História: tempo, espaço e formas de registros",
 "object": "Formas de registro da história e da produção do conhecimento histórico"
 },
 {
@@ -4398,7 +4398,7 @@
 "years": "6",
 "text": "Identificar as hipóteses científicas sobre o surgimento da espécie humana e sua historicidade e analisar os significados dos mitos de fundação.",
 "review": false,
-"unit": "História: tempo, espaço e formas de",
+"unit": "História: tempo, espaço e formas de registros",
 "object": "As origens da humanidade, seus deslocamentos e os processos de sedentarização"
 },
 {
@@ -4407,7 +4407,7 @@
 "years": "6",
 "text": "Conhecer as teorias sobre a origem do homem americano.",
 "review": false,
-"unit": "História: tempo, espaço e formas de",
+"unit": "História: tempo, espaço e formas de registros",
 "object": "As origens da humanidade, seus deslocamentos e os processos de sedentarização"
 },
 {
@@ -4416,7 +4416,7 @@
 "years": "6",
 "text": "Descrever modificações da natureza e da paisagem realizadas por diferentes tipos de sociedade, com destaque para os povos indígenas originários e povos africanos, e discutir a natureza e a lógica das transformações ocorridas.",
 "review": false,
-"unit": "História: tempo, espaço e formas de",
+"unit": "História: tempo, espaço e formas de registros",
 "object": "As origens da humanidade, seus deslocamentos e os processos de sedentarização"
 },
 {
@@ -4425,7 +4425,7 @@
 "years": "6",
 "text": "Identificar geograficamente as rotas de povoamento no território americano.",
 "review": false,
-"unit": "História: tempo, espaço e formas de",
+"unit": "História: tempo, espaço e formas de registros",
 "object": "As origens da humanidade, seus deslocamentos e os processos de sedentarização"
 },
 {
@@ -4434,7 +4434,7 @@
 "years": "6",
 "text": "Identificar aspectos e formas de registro das sociedades antigas na África, no Oriente Médio e nas Américas, distinguindo alguns significados presentes na cultura material e na tradição oral dessas sociedades.",
 "review": false,
-"unit": "contraponto com outras sociedades",
+"unit": "A invenção do mundo clássico e o contraponto com outras sociedades",
 "object": "Povos da Antiguidade na África (egípcios), no Oriente Médio (mesopotâmicos) e nas Américas (pré-colombianos) Os povos indígenas originários do atual território brasileiro e seus hábitos culturais e sociais"
 },
 {
@@ -4443,7 +4443,7 @@
 "years": "6",
 "text": "Identificar os espaços territoriais ocupados e os aportes culturais, científicos, sociais e econômicos dos astecas, maias e incas e dos povos indígenas de diversas regiões brasileiras.",
 "review": false,
-"unit": "contraponto com outras sociedades",
+"unit": "A invenção do mundo clássico e o contraponto com outras sociedades",
 "object": "Povos da Antiguidade na África (egípcios), no Oriente Médio (mesopotâmicos) e nas Américas (pré-colombianos) Os povos indígenas originários do atual território brasileiro e seus hábitos culturais e sociais"
 },
 {
@@ -4452,7 +4452,7 @@
 "years": "6",
 "text": "Discutir o conceito de Antiguidade Clássica, seu alcance e limite na tradição ocidental, assim como os impactos sobre outras sociedades e culturas.",
 "review": false,
-"unit": "contraponto com outras sociedades",
+"unit": "A invenção do mundo clássico e o contraponto com outras sociedades",
 "object": "O Ocidente Clássico: aspectos da cultura na Grécia e em Roma"
 },
 {
@@ -4462,7 +4462,7 @@
 "text": "Explicar a formação da Grécia Antiga, com ênfase na formação da pólis e nas transformações políticas, sociais e culturais.",
 "review": false,
 "unit": "Lógicas de organização política",
-"object": "As noções de cidadania e política na Grécia e em Roma • Domínios e expansão das culturas grega e romana • Significados do conceito de “império” e as lógicas de conquista, conflito e negociação dessa forma de organização política As diferentes formas de organização política na África: reinos, impérios, cidades-estados e sociedades linhageiras ou aldeias"
+"object": "As noções de cidadania e política na Grécia e em Roma • \u0007Domínios e expansão das culturas grega e romana • \u0007Significados do conceito de “império” e as lógicas de conquista, conflito e negociação dessa forma de organização política As diferentes formas de organização política na África: reinos, impérios, cidades-estados e sociedades linhageiras ou aldeias"
 },
 {
 "code": "EF06HI11",
@@ -4471,7 +4471,7 @@
 "text": "Caracterizar o processo de formação da Roma Antiga e suas configurações sociais e políticas nos períodos monárquico e republicano.",
 "review": false,
 "unit": "Lógicas de organização política",
-"object": "As noções de cidadania e política na Grécia e em Roma • Domínios e expansão das culturas grega e romana • Significados do conceito de “império” e as lógicas de conquista, conflito e negociação dessa forma de organização política As diferentes formas de organização política na África: reinos, impérios, cidades-estados e sociedades linhageiras ou aldeias"
+"object": "As noções de cidadania e política na Grécia e em Roma • \u0007Domínios e expansão das culturas grega e romana • \u0007Significados do conceito de “império” e as lógicas de conquista, conflito e negociação dessa forma de organização política As diferentes formas de organização política na África: reinos, impérios, cidades-estados e sociedades linhageiras ou aldeias"
 },
 {
 "code": "EF06HI12",
@@ -4480,7 +4480,7 @@
 "text": "Associar o conceito de cidadania a dinâmicas de inclusão e exclusão na Grécia e Roma antigas.",
 "review": false,
 "unit": "Lógicas de organização política",
-"object": "As noções de cidadania e política na Grécia e em Roma • Domínios e expansão das culturas grega e romana • Significados do conceito de “império” e as lógicas de conquista, conflito e negociação dessa forma de organização política As diferentes formas de organização política na África: reinos, impérios, cidades-estados e sociedades linhageiras ou aldeias"
+"object": "As noções de cidadania e política na Grécia e em Roma • \u0007Domínios e expansão das culturas grega e romana • \u0007Significados do conceito de “império” e as lógicas de conquista, conflito e negociação dessa forma de organização política As diferentes formas de organização política na África: reinos, impérios, cidades-estados e sociedades linhageiras ou aldeias"
 },
 {
 "code": "EF06HI13",
@@ -4489,7 +4489,7 @@
 "text": "Conceituar “império” no mundo antigo, com vistas à análise das diferentes formas de equilíbrio e desequilíbrio entre as partes envolvidas.",
 "review": false,
 "unit": "Lógicas de organização política",
-"object": "As noções de cidadania e política na Grécia e em Roma • Domínios e expansão das culturas grega e romana • Significados do conceito de “império” e as lógicas de conquista, conflito e negociação dessa forma de organização política As diferentes formas de organização política na África: reinos, impérios, cidades-estados e sociedades linhageiras ou aldeias"
+"object": "As noções de cidadania e política na Grécia e em Roma • \u0007Domínios e expansão das culturas grega e romana • \u0007Significados do conceito de “império” e as lógicas de conquista, conflito e negociação dessa forma de organização política As diferentes formas de organização política na África: reinos, impérios, cidades-estados e sociedades linhageiras ou aldeias"
 },
 {
 "code": "EF06HI14",
@@ -4497,8 +4497,8 @@
 "years": "6",
 "text": "Identificar e analisar diferentes formas de contato, adaptação ou exclusão entre populações em diferentes tempos e espaços.",
 "review": false,
-"unit": "",
-"object": ""
+"unit": "Lógicas de organização política",
+"object": "A passagem do mundo antigo para o mundo medieval A fragmentação do poder político na Idade Média"
 },
 {
 "code": "EF06HI15",
@@ -4515,8 +4515,8 @@
 "years": "6",
 "text": "Caracterizar e comparar as dinâmicas de abastecimento e as formas de organização do trabalho e da vida social em diferentes sociedades e períodos, com destaque para as relações entre senhores e servos.",
 "review": false,
-"unit": "Trabalho e formas de organização social e",
-"object": "cultural Senhores e servos no mundo antigo e no medieval Escravidão e trabalho livre em diferentes temporalidades e espaços (Roma Antiga, Europa medieval e África) Lógicas comerciais na Antiguidade romana e no mundo medieval"
+"unit": "Trabalho e formas de organização social e cultural",
+"object": "Senhores e servos no mundo antigo e no medieval Escravidão e trabalho livre em diferentes temporalidades e espaços (Roma Antiga, Europa medieval e África) Lógicas comerciais na Antiguidade romana e no mundo medieval"
 },
 {
 "code": "EF06HI17",
@@ -4524,8 +4524,8 @@
 "years": "6",
 "text": "Diferenciar escravidão, servidão e trabalho livre no mundo antigo.",
 "review": false,
-"unit": "Trabalho e formas de organização social e",
-"object": "cultural Senhores e servos no mundo antigo e no medieval Escravidão e trabalho livre em diferentes temporalidades e espaços (Roma Antiga, Europa medieval e África) Lógicas comerciais na Antiguidade romana e no mundo medieval"
+"unit": "Trabalho e formas de organização social e cultural",
+"object": "Senhores e servos no mundo antigo e no medieval Escravidão e trabalho livre em diferentes temporalidades e espaços (Roma Antiga, Europa medieval e África) Lógicas comerciais na Antiguidade romana e no mundo medieval"
 },
 {
 "code": "EF06HI18",
@@ -4533,7 +4533,7 @@
 "years": "6",
 "text": "Analisar o papel da religião cristã na cultura e nos modos de organização social no período medieval.",
 "review": false,
-"unit": "Trabalho e formas de organização social e",
+"unit": "Trabalho e formas de organização social e cultural",
 "object": "O papel da religião cristã, dos mosteiros e da cultura na Idade Média"
 },
 {
@@ -4542,7 +4542,7 @@
 "years": "6",
 "text": "Descrever e analisar os diferentes papéis sociais das mulheres no mundo antigo e nas sociedades medievais.",
 "review": false,
-"unit": "Trabalho e formas de organização social e",
+"unit": "Trabalho e formas de organização social e cultural",
 "object": "O papel da mulher na Grécia e em Roma, e no período medieval"
 },
 {
@@ -4552,7 +4552,7 @@
 "text": "Interagir em situações de intercâmbio oral, demonstrando iniciativa para utilizar a língua inglesa.",
 "review": false,
 "unit": "Interação discursiva",
-"object": "diferentes contextos discursivos presenciais ou simulados, com repertório de falas diversas, incluída a fala do professor. Construção de laços afetivos e convívio social"
+"object": "Construção de laços afetivos e convívio social"
 },
 {
 "code": "EF06LI02",
@@ -4561,7 +4561,7 @@
 "text": "Coletar informações do grupo, perguntando e respondendo sobre a família, os amigos, a escola e a comunidade..",
 "review": false,
 "unit": "Interação discursiva",
-"object": "diferentes contextos discursivos presenciais ou simulados, com repertório de falas diversas, incluída a fala do professor. Construção de laços afetivos e convívio social"
+"object": "Construção de laços afetivos e convívio social"
 },
 {
 "code": "EF06LI03",
@@ -4588,7 +4588,7 @@
 "text": "Aplicar os conhecimentos da língua inglesa para falar de si e de outras pessoas, explicitando informações pessoais e características relacionadas a gostos, preferências e rotinas.",
 "review": false,
 "unit": "Produção oral",
-"object": "Produção de textos orais, com a mediação do professor"
+"object": "Produção de textos orais, com a mediação do professor Hipóteses sobre a finalidade de um texto"
 },
 {
 "code": "EF06LI06",
@@ -4597,7 +4597,7 @@
 "text": "Planejar apresentação sobre a família, a comunidade e a escola, compartilhando-a oralmente com o grupo.",
 "review": false,
 "unit": "Produção oral",
-"object": "Produção de textos orais, com a mediação do professor"
+"object": "Produção de textos orais, com a mediação do professor Hipóteses sobre a finalidade de um texto"
 },
 {
 "code": "EF06LI07",
@@ -4606,7 +4606,7 @@
 "text": "Formular hipóteses sobre a finalidade de um texto em língua inglesa, com base em sua estrutura, organização textual e pistas gráficas.",
 "review": false,
 "unit": "Estratégias de leitura",
-"object": "multimodais) presentes em diferentes suportes e esferas de circulação. Tais práticas envolvem articulação com os conhecimentos prévios dos alunos em língua materna e/ou outras línguas. Hipóteses sobre a finalidade de um texto"
+"object": "Produção de textos orais, com a mediação do professor Hipóteses sobre a finalidade de um texto"
 },
 {
 "code": "EF06LI08",
@@ -4632,7 +4632,7 @@
 "years": "6",
 "text": "Conhecer a organização de um dicionário bilíngue (impresso e/ou on-line) para construir repertório lexical.",
 "review": false,
-"unit": "repertório lexical",
+"unit": "Práticas de leitura e construção de repertório lexical",
 "object": "Construção de repertório lexical e autonomia leitora"
 },
 {
@@ -4641,7 +4641,7 @@
 "years": "6",
 "text": "Explorar ambientes virtuais e/ou aplicativos para construir repertório lexical na língua inglesa.",
 "review": false,
-"unit": "repertório lexical",
+"unit": "Práticas de leitura e construção de repertório lexical",
 "object": "Construção de repertório lexical e autonomia leitora"
 },
 {
@@ -4650,8 +4650,8 @@
 "years": "6",
 "text": "Interessar-se pelo texto lido, compartilhando suas ideias sobre o que o texto informa/comunica.",
 "review": false,
-"unit": "Atitudes e disposições favoráveis do",
-"object": "leitor Partilha de leitura, com mediação do professor"
+"unit": "Atitudes e disposições favoráveis do leitor",
+"object": "Partilha de leitura, com mediação do professor"
 },
 {
 "code": "EF06LI13",
@@ -4660,7 +4660,7 @@
 "text": "Listar ideias para a produção de textos, levando em conta o tema e o assunto.",
 "review": false,
 "unit": "Estratégias de escrita: pré-escrita",
-"object": "alunos, em diferentes suportes e esferas de circulação. Tais práticas envolvem a escrita mediada pelo professor ou colegas e articulada com os conhecimentos prévios dos alunos em língua materna e/ou outras línguas. Planejamento do texto: brainstorming"
+"object": "Planejamento do texto: brainstorming"
 },
 {
 "code": "EF06LI14",
@@ -4678,7 +4678,7 @@
 "text": "Produzir textos escritos em língua inglesa (histórias em quadrinhos, cartazes, chats, blogues, agendas, fotolegendas, entre outros), sobre si mesmo, sua família, seus amigos, gostos, preferências e rotinas, sua comunidade e seu contexto escolar.",
 "review": false,
 "unit": "Práticas de escrita",
-"object": "Produção de textos escritos, em formatos diversos, com a mediação do professor"
+"object": "Produção de textos escritos, em formatos diversos, com a mediação do professor Construção de repertório lexical"
 },
 {
 "code": "EF06LI16",
@@ -4687,7 +4687,7 @@
 "text": "Construir repertório relativo às expressões usadas para o convívio social e o uso da língua inglesa em sala de aula.",
 "review": false,
 "unit": "Estudo do léxico",
-"object": "o funcionamento da língua inglesa, com base nos usos de linguagem trabalhados nos eixos Oralidade, Leitura, Escrita e Dimensão intercultural. Construção de repertório lexical"
+"object": "Produção de textos escritos, em formatos diversos, com a mediação do professor Construção de repertório lexical"
 },
 {
 "code": "EF06LI17",
@@ -4696,7 +4696,7 @@
 "text": "Construir repertório lexical relativo a temas familiares (escola, família, rotina diária, atividades de lazer, esportes, entre outros).",
 "review": false,
 "unit": "Estudo do léxico",
-"object": "o funcionamento da língua inglesa, com base nos usos de linguagem trabalhados nos eixos Oralidade, Leitura, Escrita e Dimensão intercultural. Construção de repertório lexical"
+"object": "Produção de textos escritos, em formatos diversos, com a mediação do professor Construção de repertório lexical"
 },
 {
 "code": "EF06LI18",
@@ -4713,8 +4713,8 @@
 "years": "6",
 "text": "Utilizar o presente do indicativo para identificar pessoas (verbo to be) e descrever rotinas diárias.",
 "review": false,
-"unit": "Estudo do léxico",
-"object": "Gramática Presente simples e contínuo (formas afirmativa, negativa e interrogativa)"
+"unit": "Gramática",
+"object": "Presente simples e contínuo (formas afirmativa, negativa e interrogativa)"
 },
 {
 "code": "EF06LI20",
@@ -4722,8 +4722,8 @@
 "years": "6",
 "text": "Utilizar o presente contínuo para descrever ações em progresso.",
 "review": false,
-"unit": "Estudo do léxico",
-"object": "Gramática Presente simples e contínuo (formas afirmativa, negativa e interrogativa)"
+"unit": "Gramática",
+"object": "Presente simples e contínuo (formas afirmativa, negativa e interrogativa)"
 },
 {
 "code": "EF06LI21",
@@ -4731,7 +4731,7 @@
 "years": "6",
 "text": "Reconhecer o uso do imperativo em enunciados de atividades, comandos e instruções.",
 "review": false,
-"unit": "Estudo do léxico",
+"unit": "Gramática",
 "object": "Imperativo"
 },
 {
@@ -4740,7 +4740,7 @@
 "years": "6",
 "text": "Descrever relações por meio do uso de apóstrofo (’) + s.",
 "review": false,
-"unit": "Estudo do léxico",
+"unit": "Gramática",
 "object": "Caso genitivo (‘s)"
 },
 {
@@ -4749,8 +4749,8 @@
 "years": "6",
 "text": "Empregar, de forma inteligível, os adjetivos possessivos.",
 "review": false,
-"unit": "Estudo do léxico",
-"object": "Adjetivos possessivos"
+"unit": "Gramática",
+"object": "Adjetivos possessivos Países que têm a língua inglesa como língua materna e/ou oficial"
 },
 {
 "code": "EF06LI24",
@@ -4759,7 +4759,7 @@
 "text": "Investigar o alcance da língua inglesa no mundo: como língua materna e/ou oficial (primeira ou segunda língua).",
 "review": false,
 "unit": "A língua inglesa no mundo",
-"object": "Países que têm a língua inglesa como língua materna e/ou oficial"
+"object": "Adjetivos possessivos Países que têm a língua inglesa como língua materna e/ou oficial"
 },
 {
 "code": "EF06LI25",
@@ -4767,7 +4767,7 @@
 "years": "6",
 "text": "Identificar a presença da língua inglesa na sociedade brasileira/comunidade (palavras, expressões, suportes e esferas de circulação e consumo) e seu significado.",
 "review": false,
-"unit": "sociedade brasileira/comunidade",
+"unit": "A língua inglesa no cotidiano da sociedade brasileira/comunidade",
 "object": "Presença da língua inglesa no cotidiano"
 },
 {
@@ -4776,7 +4776,7 @@
 "years": "6",
 "text": "Avaliar, problematizando elementos/produtos culturais de países de língua inglesa absorvidos pela sociedade brasileira/comunidade.",
 "review": false,
-"unit": "sociedade brasileira/comunidade",
+"unit": "A língua inglesa no cotidiano da sociedade brasileira/comunidade",
 "object": "Presença da língua inglesa no cotidiano"
 },
 {
@@ -5523,8 +5523,8 @@
 "years": "7",
 "text": "Explicar o significado de “modernidade” e suas lógicas de inclusão e exclusão, com base em uma concepção europeia.",
 "review": false,
-"unit": "sociedades africanas, americanas e",
-"object": "europeias A construção da ideia de modernidade e seus impactos na concepção de História A ideia de “Novo Mundo” ante o Mundo Antigo: permanências e rupturas de saberes e práticas na emergência do mundo moderno"
+"unit": "O mundo moderno e a conexão entre sociedades africanas, americanas e europeias",
+"object": "A construção da ideia de modernidade e seus impactos na concepção de História A ideia de “Novo Mundo” ante o Mundo Antigo: permanências e rupturas de saberes e práticas na emergência do mundo moderno"
 },
 {
 "code": "EF07HI02",
@@ -5532,8 +5532,8 @@
 "years": "7",
 "text": "Identificar conexões e interações entre as sociedades do Novo Mundo, da Europa, da África e da Ásia no contexto das navegações e indicar a complexidade e as interações que ocorrem nos Oceanos Atlântico, Índico e Pacífico.",
 "review": false,
-"unit": "sociedades africanas, americanas e",
-"object": "europeias A construção da ideia de modernidade e seus impactos na concepção de História A ideia de “Novo Mundo” ante o Mundo Antigo: permanências e rupturas de saberes e práticas na emergência do mundo moderno"
+"unit": "O mundo moderno e a conexão entre sociedades africanas, americanas e europeias",
+"object": "A construção da ideia de modernidade e seus impactos na concepção de História A ideia de “Novo Mundo” ante o Mundo Antigo: permanências e rupturas de saberes e práticas na emergência do mundo moderno"
 },
 {
 "code": "EF07HI03",
@@ -5541,7 +5541,7 @@
 "years": "7",
 "text": "Identificar aspectos e processos específicos das sociedades africanas e americanas antes da chegada dos europeus, com destaque para as formas de organização social e o desenvolvimento de saberes e técnicas.",
 "review": false,
-"unit": "sociedades africanas, americanas e",
+"unit": "O mundo moderno e a conexão entre sociedades africanas, americanas e europeias",
 "object": "Saberes dos povos africanos e pré-colombianos expressos na cultura material e imaterial"
 },
 {
@@ -5550,8 +5550,8 @@
 "years": "7",
 "text": "Identificar as principais características dos Humanismos e dos Renascimentos e analisar seus significados.",
 "review": false,
-"unit": "Humanismos, Renascimentos e o Novo",
-"object": "Mundo Humanismos: uma nova visão de ser humano e de mundo Renascimentos artísticos e culturais"
+"unit": "Humanismos, Renascimentos e o Novo Mundo",
+"object": "Humanismos: uma nova visão de ser humano e de mundo Renascimentos artísticos e culturais"
 },
 {
 "code": "EF07HI05",
@@ -5559,7 +5559,7 @@
 "years": "7",
 "text": "Identificar e relacionar as vinculações entre as reformas religiosas e os processos culturais e sociais do período moderno na Europa e na América.",
 "review": false,
-"unit": "Humanismos, Renascimentos e o Novo",
+"unit": "Humanismos, Renascimentos e o Novo Mundo",
 "object": "Reformas religiosas: a cristandade fragmentada"
 },
 {
@@ -5568,7 +5568,7 @@
 "years": "7",
 "text": "Comparar as navegações no Atlântico e no Pacífico entre os séculos XIV e XVI.",
 "review": false,
-"unit": "Humanismos, Renascimentos e o Novo",
+"unit": "Humanismos, Renascimentos e o Novo Mundo",
 "object": "As descobertas científicas e a expansão marítima"
 },
 {
@@ -5577,7 +5577,7 @@
 "years": "7",
 "text": "Descrever os processos de formação e consolidação das monarquias e suas principais características com vistas à compreensão das razões da centralização política.",
 "review": false,
-"unit": "do mundo colonial americano",
+"unit": "A organização do poder e as dinâmicas do mundo colonial americano",
 "object": "A formação e o funcionamento das monarquias europeias: a lógica da centralização política e os conflitos na Europa"
 },
 {
@@ -5586,7 +5586,7 @@
 "years": "7",
 "text": "Descrever as formas de organização das sociedades americanas no tempo da conquista com vistas à compreensão dos mecanismos de alianças, confrontos e resistências.",
 "review": false,
-"unit": "do mundo colonial americano",
+"unit": "A organização do poder e as dinâmicas do mundo colonial americano",
 "object": "A conquista da América e as formas de organização política dos indígenas e europeus: conflitos, dominação e conciliação"
 },
 {
@@ -5595,7 +5595,7 @@
 "years": "7",
 "text": "Analisar os diferentes impactos da conquista europeia da América para as populações ameríndias e identificar as formas de resistência.",
 "review": false,
-"unit": "do mundo colonial americano",
+"unit": "A organização do poder e as dinâmicas do mundo colonial americano",
 "object": "A conquista da América e as formas de organização política dos indígenas e europeus: conflitos, dominação e conciliação"
 },
 {
@@ -5604,7 +5604,7 @@
 "years": "7",
 "text": "Analisar, com base em documentos históricos, diferentes interpretações sobre as dinâmicas das sociedades americanas no período colonial.",
 "review": false,
-"unit": "do mundo colonial americano",
+"unit": "A organização do poder e as dinâmicas do mundo colonial americano",
 "object": "A estruturação dos vice-reinos nas Américas Resistências indígenas, invasões e expansão na América portuguesa"
 },
 {
@@ -5613,7 +5613,7 @@
 "years": "7",
 "text": "Analisar a formação histórico-geográfica do território da América portuguesa por meio de mapas históricos.",
 "review": false,
-"unit": "do mundo colonial americano",
+"unit": "A organização do poder e as dinâmicas do mundo colonial americano",
 "object": "A estruturação dos vice-reinos nas Américas Resistências indígenas, invasões e expansão na América portuguesa"
 },
 {
@@ -5622,7 +5622,7 @@
 "years": "7",
 "text": "Identificar a distribuição territorial da população brasileira em diferentes épocas, considerando a diversidade étnico-racial e étnico-cultural (indígena, africana, europeia e asiática).",
 "review": false,
-"unit": "do mundo colonial americano",
+"unit": "A organização do poder e as dinâmicas do mundo colonial americano",
 "object": "A estruturação dos vice-reinos nas Américas Resistências indígenas, invasões e expansão na América portuguesa"
 },
 {
@@ -5631,8 +5631,8 @@
 "years": "7",
 "text": "Caracterizar a ação dos europeus e suas lógicas mercantis visando ao domínio no mundo atlântico.",
 "review": false,
-"unit": "Lógicas comerciais e mercantis da",
-"object": "modernidade As lógicas mercantis e o domínio europeu sobre os mares e o contraponto Oriental"
+"unit": "Lógicas comerciais e mercantis da modernidade",
+"object": "As lógicas mercantis e o domínio europeu sobre os mares e o contraponto Oriental"
 },
 {
 "code": "EF07HI14",
@@ -5640,8 +5640,8 @@
 "years": "7",
 "text": "Descrever as dinâmicas comerciais das sociedades americanas e africanas e analisar suas interações com outras sociedades do Ocidente e do Oriente.",
 "review": false,
-"unit": "Lógicas comerciais e mercantis da",
-"object": "modernidade As lógicas mercantis e o domínio europeu sobre os mares e o contraponto Oriental"
+"unit": "Lógicas comerciais e mercantis da modernidade",
+"object": "As lógicas mercantis e o domínio europeu sobre os mares e o contraponto Oriental"
 },
 {
 "code": "EF07HI15",
@@ -5649,7 +5649,7 @@
 "years": "7",
 "text": "Discutir o conceito de escravidão moderna e suas distinções em relação ao escravismo antigo e à servidão medieval.",
 "review": false,
-"unit": "Lógicas comerciais e mercantis da",
+"unit": "Lógicas comerciais e mercantis da modernidade",
 "object": "As lógicas internas das sociedades africanas As formas de organização das sociedades ameríndias A escravidão moderna e o tráfico de escravizados"
 },
 {
@@ -5658,7 +5658,7 @@
 "years": "7",
 "text": "Analisar os mecanismos e as dinâmicas de comércio de escravizados em suas diferentes fases, identificando os agentes responsáveis pelo tráfico e as regiões e zonas africanas de procedência dos escravizados.",
 "review": false,
-"unit": "Lógicas comerciais e mercantis da",
+"unit": "Lógicas comerciais e mercantis da modernidade",
 "object": "As lógicas internas das sociedades africanas As formas de organização das sociedades ameríndias A escravidão moderna e o tráfico de escravizados"
 },
 {
@@ -5667,7 +5667,7 @@
 "years": "7",
 "text": "Discutir as razões da passagem do mercantilismo para o capitalismo.",
 "review": false,
-"unit": "Lógicas comerciais e mercantis da",
+"unit": "Lógicas comerciais e mercantis da modernidade",
 "object": "A emergência do capitalismo"
 },
 {
@@ -5713,7 +5713,7 @@
 "text": "Compor, em língua inglesa, narrativas orais sobre fatos, acontecimentos e personalidades marcantes do passado.",
 "review": false,
 "unit": "Produção oral",
-"object": "Produção de textos orais, com mediação do professor"
+"object": "Produção de textos orais, com mediação do professor Compreensão geral e específica: leitura rápida (skimming, scanning)"
 },
 {
 "code": "EF07LI06",
@@ -5722,7 +5722,7 @@
 "text": "Antecipar o sentido global de textos em língua inglesa por inferências, com base em leitura rápida, observando títulos, primeiras e últimas frases de parágrafos e palavras-chave repetidas.",
 "review": false,
 "unit": "Estratégias de leitura",
-"object": "Compreensão geral e específica: leitura rápida (skimming, scanning)"
+"object": "Produção de textos orais, com mediação do professor Compreensão geral e específica: leitura rápida (skimming, scanning)"
 },
 {
 "code": "EF07LI07",
@@ -5731,7 +5731,7 @@
 "text": "Identificar a(s) informação(ões)-chave de partes de um texto em língua inglesa (parágrafos).",
 "review": false,
 "unit": "Estratégias de leitura",
-"object": "Compreensão geral e específica: leitura rápida (skimming, scanning)"
+"object": "Produção de textos orais, com mediação do professor Compreensão geral e específica: leitura rápida (skimming, scanning)"
 },
 {
 "code": "EF07LI08",
@@ -5766,8 +5766,8 @@
 "years": "7",
 "text": "Participar de troca de opiniões e informações sobre textos, lidos na sala de aula ou em outros ambientes.",
 "review": false,
-"unit": "Atitudes e disposições favoráveis do",
-"object": "leitor Partilha de leitura"
+"unit": "Atitudes e disposições favoráveis do leitor",
+"object": "Partilha de leitura"
 },
 {
 "code": "EF07LI12",
@@ -5775,8 +5775,8 @@
 "years": "7",
 "text": "Planejar a escrita de textos em função do contexto (público, finalidade, layout e suporte).",
 "review": false,
-"unit": "Estratégias de escrita: pré-escrita e",
-"object": "escrita Pré-escrita: planejamento de produção escrita, com mediação do professor"
+"unit": "Estratégias de escrita: pré-escrita e escrita",
+"object": "Pré-escrita: planejamento de produção escrita, com mediação do professor"
 },
 {
 "code": "EF07LI13",
@@ -5784,7 +5784,7 @@
 "years": "7",
 "text": "Organizar texto em unidades de sentido, dividindo-o em parágrafos ou tópicos e subtópicos, explorando as possibilidades de organização gráfica, de suporte e de formato do texto.",
 "review": false,
-"unit": "Estratégias de escrita: pré-escrita e",
+"unit": "Estratégias de escrita: pré-escrita e escrita",
 "object": "Escrita: organização em parágrafos ou tópicos, com mediação do professor"
 },
 {
@@ -5794,7 +5794,7 @@
 "text": "Produzir textos diversos sobre fatos, acontecimentos e personalidades do passado (linha do tempo/timelines, biografias, verbetes de enciclopédias, blogues, entre outros).",
 "review": false,
 "unit": "Práticas de escrita",
-"object": "Produção de textos escritos, em formatos diversos, com mediação do professor"
+"object": "Produção de textos escritos, em formatos diversos, com mediação do professor Construção de repertório lexical"
 },
 {
 "code": "EF07LI15",
@@ -5803,7 +5803,7 @@
 "text": "Construir repertório lexical relativo a verbos regulares e irregulares (formas no passado), preposições de tempo (in, on, at) e conectores (and, but, because, then, so, before, after, entre outros).",
 "review": false,
 "unit": "Estudo do léxico",
-"object": "o funcionamento da língua inglesa, com base nos usos de linguagem trabalhados nos eixos Oralidade, Leitura, Escrita e Dimensão intercultural. Construção de repertório lexical"
+"object": "Produção de textos escritos, em formatos diversos, com mediação do professor Construção de repertório lexical"
 },
 {
 "code": "EF07LI16",
@@ -5829,8 +5829,8 @@
 "years": "7",
 "text": "Utilizar o passado simples e o passado contínuo para produzir textos orais e escritos, mostrando relações de sequência e causalidade.",
 "review": false,
-"unit": "Estudo do léxico",
-"object": "Gramática Passado simples e contínuo (formas afirmativa, negativa e interrogativa)"
+"unit": "Gramática",
+"object": "Passado simples e contínuo (formas afirmativa, negativa e interrogativa)"
 },
 {
 "code": "EF07LI19",
@@ -5838,7 +5838,7 @@
 "years": "7",
 "text": "Discriminar sujeito de objeto utilizando pronomes a eles relacionados.",
 "review": false,
-"unit": "Estudo do léxico",
+"unit": "Gramática",
 "object": "Pronomes do caso reto e do caso oblíquo"
 },
 {
@@ -5847,8 +5847,8 @@
 "years": "7",
 "text": "Empregar, de forma inteligível, o verbo modal can para descrever habilidades (no presente e no passado).",
 "review": false,
-"unit": "Estudo do léxico",
-"object": "Verbo modal can (presente e passado)"
+"unit": "Gramática",
+"object": "Verbo modal can (presente e passado) A língua inglesa como língua global na sociedade contemporânea"
 },
 {
 "code": "EF07LI21",
@@ -5857,7 +5857,7 @@
 "text": "Analisar o alcance da língua inglesa e os seus contextos de uso no mundo globalizado.",
 "review": false,
 "unit": "A língua inglesa no mundo",
-"object": "A língua inglesa como língua global na sociedade contemporânea"
+"object": "Verbo modal can (presente e passado) A língua inglesa como língua global na sociedade contemporânea"
 },
 {
 "code": "EF07LI22",
@@ -6765,7 +6765,7 @@
 "years": "8",
 "text": "Identificar os principais aspectos conceituais do iluminismo e do liberalismo e discutir a relação entre eles e a organização do mundo contemporâneo.",
 "review": false,
-"unit": "Regime em crise",
+"unit": "O mundo contemporâneo: o Antigo Regime em crise",
 "object": "A questão do iluminismo e da ilustração"
 },
 {
@@ -6774,7 +6774,7 @@
 "years": "8",
 "text": "Identificar as particularidades político-sociais da Inglaterra do século XVII e analisar os desdobramentos posteriores à Revolução Gloriosa.",
 "review": false,
-"unit": "Regime em crise",
+"unit": "O mundo contemporâneo: o Antigo Regime em crise",
 "object": "As revoluções inglesas e os princípios do liberalismo"
 },
 {
@@ -6783,7 +6783,7 @@
 "years": "8",
 "text": "Analisar os impactos da Revolução Industrial na produção e circulação de povos, produtos e culturas.",
 "review": false,
-"unit": "Regime em crise",
+"unit": "O mundo contemporâneo: o Antigo Regime em crise",
 "object": "Revolução Industrial e seus impactos na produção e circulação de povos, produtos e culturas"
 },
 {
@@ -6792,7 +6792,7 @@
 "years": "8",
 "text": "Identificar e relacionar os processos da Revolução Francesa e seus desdobramentos na Europa e no mundo.",
 "review": false,
-"unit": "Regime em crise",
+"unit": "O mundo contemporâneo: o Antigo Regime em crise",
 "object": "Revolução Francesa e seus desdobramentos"
 },
 {
@@ -6801,7 +6801,7 @@
 "years": "8",
 "text": "Explicar os movimentos e as rebeliões da América portuguesa, articulando as temáticas locais e suas interfaces com processos ocorridos na Europa e nas Américas.",
 "review": false,
-"unit": "Regime em crise",
+"unit": "O mundo contemporâneo: o Antigo Regime em crise",
 "object": "Rebeliões na América portuguesa: as conjurações mineira e baiana"
 },
 {
@@ -6810,8 +6810,8 @@
 "years": "8",
 "text": "Aplicar os conceitos de Estado, nação, território, governo e país para o entendimento de conflitos e tensões.",
 "review": false,
-"unit": "Os processos de independência nas",
-"object": "Américas Independência dos Estados Unidos da América Independências na América espanhola • A revolução dos escravizados em São Domingo e seus múltiplos significados e desdobramentos: o caso do Haiti Os caminhos até a independência do Brasil"
+"unit": "Os processos de independência nas Américas",
+"object": "Independência dos Estados Unidos da América Independências na América espanhola • \u0007A revolução dos escravizados em São Domingo e seus múltiplos significados e desdobramentos: o caso do Haiti Os caminhos até a independência do Brasil"
 },
 {
 "code": "EF08HI07",
@@ -6819,8 +6819,8 @@
 "years": "8",
 "text": "Identificar e contextualizar as especificidades dos diversos processos de independência nas Américas, seus aspectos populacionais e suas conformações territoriais.",
 "review": false,
-"unit": "Os processos de independência nas",
-"object": "Américas Independência dos Estados Unidos da América Independências na América espanhola • A revolução dos escravizados em São Domingo e seus múltiplos significados e desdobramentos: o caso do Haiti Os caminhos até a independência do Brasil"
+"unit": "Os processos de independência nas Américas",
+"object": "Independência dos Estados Unidos da América Independências na América espanhola • \u0007A revolução dos escravizados em São Domingo e seus múltiplos significados e desdobramentos: o caso do Haiti Os caminhos até a independência do Brasil"
 },
 {
 "code": "EF08HI08",
@@ -6828,8 +6828,8 @@
 "years": "8",
 "text": "Conhecer o ideário dos líderes dos movimentos independentistas e seu papel nas revoluções que levaram à independência das colônias hispano-americanas.",
 "review": false,
-"unit": "Os processos de independência nas",
-"object": "Américas Independência dos Estados Unidos da América Independências na América espanhola • A revolução dos escravizados em São Domingo e seus múltiplos significados e desdobramentos: o caso do Haiti Os caminhos até a independência do Brasil"
+"unit": "Os processos de independência nas Américas",
+"object": "Independência dos Estados Unidos da América Independências na América espanhola • \u0007A revolução dos escravizados em São Domingo e seus múltiplos significados e desdobramentos: o caso do Haiti Os caminhos até a independência do Brasil"
 },
 {
 "code": "EF08HI09",
@@ -6837,8 +6837,8 @@
 "years": "8",
 "text": "Conhecer as características e os principais pensadores do Pan-americanismo.",
 "review": false,
-"unit": "Os processos de independência nas",
-"object": "Américas Independência dos Estados Unidos da América Independências na América espanhola • A revolução dos escravizados em São Domingo e seus múltiplos significados e desdobramentos: o caso do Haiti Os caminhos até a independência do Brasil"
+"unit": "Os processos de independência nas Américas",
+"object": "Independência dos Estados Unidos da América Independências na América espanhola • \u0007A revolução dos escravizados em São Domingo e seus múltiplos significados e desdobramentos: o caso do Haiti Os caminhos até a independência do Brasil"
 },
 {
 "code": "EF08HI10",
@@ -6846,8 +6846,8 @@
 "years": "8",
 "text": "Identificar a Revolução de São Domingo como evento singular e desdobramento da Revolução Francesa e avaliar suas implicações.",
 "review": false,
-"unit": "Os processos de independência nas",
-"object": "Américas Independência dos Estados Unidos da América Independências na América espanhola • A revolução dos escravizados em São Domingo e seus múltiplos significados e desdobramentos: o caso do Haiti Os caminhos até a independência do Brasil"
+"unit": "Os processos de independência nas Américas",
+"object": "Independência dos Estados Unidos da América Independências na América espanhola • \u0007A revolução dos escravizados em São Domingo e seus múltiplos significados e desdobramentos: o caso do Haiti Os caminhos até a independência do Brasil"
 },
 {
 "code": "EF08HI11",
@@ -6855,8 +6855,8 @@
 "years": "8",
 "text": "Identificar e explicar os protagonismos e a atuação de diferentes grupos sociais e étnicos nas lutas de independência no Brasil, na América espanhola e no Haiti.",
 "review": false,
-"unit": "Os processos de independência nas",
-"object": "Américas Independência dos Estados Unidos da América Independências na América espanhola • A revolução dos escravizados em São Domingo e seus múltiplos significados e desdobramentos: o caso do Haiti Os caminhos até a independência do Brasil"
+"unit": "Os processos de independência nas Américas",
+"object": "Independência dos Estados Unidos da América Independências na América espanhola • \u0007A revolução dos escravizados em São Domingo e seus múltiplos significados e desdobramentos: o caso do Haiti Os caminhos até a independência do Brasil"
 },
 {
 "code": "EF08HI12",
@@ -6864,8 +6864,8 @@
 "years": "8",
 "text": "Caracterizar a organização política e social no Brasil desde a chegada da Corte portuguesa, em 1808, até 1822 e seus desdobramentos para a história política brasileira.",
 "review": false,
-"unit": "Os processos de independência nas",
-"object": "Américas Independência dos Estados Unidos da América Independências na América espanhola • A revolução dos escravizados em São Domingo e seus múltiplos significados e desdobramentos: o caso do Haiti Os caminhos até a independência do Brasil"
+"unit": "Os processos de independência nas Américas",
+"object": "Independência dos Estados Unidos da América Independências na América espanhola • \u0007A revolução dos escravizados em São Domingo e seus múltiplos significados e desdobramentos: o caso do Haiti Os caminhos até a independência do Brasil"
 },
 {
 "code": "EF08HI13",
@@ -6873,8 +6873,8 @@
 "years": "8",
 "text": "Analisar o processo de independência em diferentes países latino-americanos e comparar as formas de governo neles adotadas.",
 "review": false,
-"unit": "Os processos de independência nas",
-"object": "Américas Independência dos Estados Unidos da América Independências na América espanhola • A revolução dos escravizados em São Domingo e seus múltiplos significados e desdobramentos: o caso do Haiti Os caminhos até a independência do Brasil"
+"unit": "Os processos de independência nas Américas",
+"object": "Independência dos Estados Unidos da América Independências na América espanhola • \u0007A revolução dos escravizados em São Domingo e seus múltiplos significados e desdobramentos: o caso do Haiti Os caminhos até a independência do Brasil"
 },
 {
 "code": "EF08HI14",
@@ -6882,7 +6882,7 @@
 "years": "8",
 "text": "Discutir a noção da tutela dos grupos indígenas e a participação dos negros na sociedade brasileira do final do período colonial, identificando permanências na forma de preconceitos, estereótipos e violências sobre as populações indígenas e negras no Brasil e nas Américas.",
 "review": false,
-"unit": "Os processos de independência nas",
+"unit": "Os processos de independência nas Américas",
 "object": "A tutela da população indígena, a escravidão dos negros e a tutela dos egressos da escravidão"
 },
 {
@@ -6892,7 +6892,7 @@
 "text": "Identificar e analisar o equilíbrio das forças e os sujeitos envolvidos nas disputas políticas durante o Primeiro e o Segundo Reinado.",
 "review": false,
 "unit": "O Brasil no século XIX",
-"object": "Brasil: Primeiro Reinado O Período Regencial e as contestações ao poder central O Brasil do Segundo Reinado: política e economia • A Lei de Terras e seus desdobramentos na política do Segundo Reinado • Territórios e fronteiras: a Guerra do Paraguai"
+"object": "Brasil: Primeiro Reinado O Período Regencial e as contestações ao poder central O Brasil do Segundo Reinado: política e economia • \u0007A Lei de Terras e seus desdobramentos na política do Segundo Reinado • \u0007Territórios e fronteiras: a Guerra do Paraguai"
 },
 {
 "code": "EF08HI16",
@@ -6901,7 +6901,7 @@
 "text": "Identificar, comparar e analisar a diversidade política, social e regional nas rebeliões e nos movimentos contestatórios ao poder centralizado.",
 "review": false,
 "unit": "O Brasil no século XIX",
-"object": "Brasil: Primeiro Reinado O Período Regencial e as contestações ao poder central O Brasil do Segundo Reinado: política e economia • A Lei de Terras e seus desdobramentos na política do Segundo Reinado • Territórios e fronteiras: a Guerra do Paraguai"
+"object": "Brasil: Primeiro Reinado O Período Regencial e as contestações ao poder central O Brasil do Segundo Reinado: política e economia • \u0007A Lei de Terras e seus desdobramentos na política do Segundo Reinado • \u0007Territórios e fronteiras: a Guerra do Paraguai"
 },
 {
 "code": "EF08HI17",
@@ -6910,7 +6910,7 @@
 "text": "Relacionar as transformações territoriais, em razão de questões de fronteiras, com as tensões e conflitos durante o Império.",
 "review": false,
 "unit": "O Brasil no século XIX",
-"object": "Brasil: Primeiro Reinado O Período Regencial e as contestações ao poder central O Brasil do Segundo Reinado: política e economia • A Lei de Terras e seus desdobramentos na política do Segundo Reinado • Territórios e fronteiras: a Guerra do Paraguai"
+"object": "Brasil: Primeiro Reinado O Período Regencial e as contestações ao poder central O Brasil do Segundo Reinado: política e economia • \u0007A Lei de Terras e seus desdobramentos na política do Segundo Reinado • \u0007Territórios e fronteiras: a Guerra do Paraguai"
 },
 {
 "code": "EF08HI18",
@@ -6919,7 +6919,7 @@
 "text": "Identificar as questões internas e externas sobre a atuação do Brasil na Guerra do Paraguai e discutir diferentes versões sobre o conflito.",
 "review": false,
 "unit": "O Brasil no século XIX",
-"object": "Brasil: Primeiro Reinado O Período Regencial e as contestações ao poder central O Brasil do Segundo Reinado: política e economia • A Lei de Terras e seus desdobramentos na política do Segundo Reinado • Territórios e fronteiras: a Guerra do Paraguai"
+"object": "Brasil: Primeiro Reinado O Período Regencial e as contestações ao poder central O Brasil do Segundo Reinado: política e economia • \u0007A Lei de Terras e seus desdobramentos na política do Segundo Reinado • \u0007Territórios e fronteiras: a Guerra do Paraguai"
 },
 {
 "code": "EF08HI19",
@@ -7036,7 +7036,7 @@
 "text": "Utilizar recursos e repertório linguísticos apropriados para informar/comunicar/falar do futuro: planos, previsões, possibilidades e probabilidades.",
 "review": false,
 "unit": "Produção oral",
-"object": "Produção de textos orais com autonomia"
+"object": "Produção de textos orais com autonomia Construção de sentidos por meio de inferências e reconhecimento de implícitos"
 },
 {
 "code": "EF08LI05",
@@ -7045,7 +7045,7 @@
 "text": "Inferir informações e relações que não aparecem de modo explícito no texto para construção de sentidos.",
 "review": false,
 "unit": "Estratégias de leitura",
-"object": "Construção de sentidos por meio de inferências e reconhecimento de implícitos"
+"object": "Produção de textos orais com autonomia Construção de sentidos por meio de inferências e reconhecimento de implícitos"
 },
 {
 "code": "EF08LI06",
@@ -7072,7 +7072,7 @@
 "text": "Analisar, criticamente, o conteúdo de textos, comparando diferentes perspectivas apresentadas sobre um mesmo assunto.",
 "review": false,
 "unit": "Avaliação dos textos lidos",
-"object": "Reflexão pós-leitura"
+"object": "Reflexão pós-leitura Revisão de textos com a mediação do professor"
 },
 {
 "code": "EF08LI09",
@@ -7080,8 +7080,8 @@
 "years": "8",
 "text": "Avaliar a própria produção escrita e a de colegas, com base no contexto de comunicação (finalidade e adequação ao público, conteúdo a ser comunicado, organização textual, legibilidade, estrutura de frases).",
 "review": false,
-"unit": "Estratégias de escrita: escrita e pós-",
-"object": "escrita Revisão de textos com a mediação do professor"
+"unit": "Estratégias de escrita: escrita e pósescrita",
+"object": "Reflexão pós-leitura Revisão de textos com a mediação do professor"
 },
 {
 "code": "EF08LI10",
@@ -7089,8 +7089,8 @@
 "years": "8",
 "text": "Reconstruir o texto, com cortes, acréscimos, reformulações e correções, para aprimoramento, edição e publicação final.",
 "review": false,
-"unit": "Estratégias de escrita: escrita e pós-",
-"object": "escrita Revisão de textos com a mediação do professor"
+"unit": "Estratégias de escrita: escrita e pósescrita",
+"object": "Reflexão pós-leitura Revisão de textos com a mediação do professor"
 },
 {
 "code": "EF08LI11",
@@ -7108,7 +7108,7 @@
 "text": "Construir repertório lexical relativo a planos, previsões e expectativas para o futuro.",
 "review": false,
 "unit": "Estudo do léxico",
-"object": "o funcionamento da língua inglesa, com base nos usos de linguagem trabalhados nos eixos Oralidade, Leitura, Escrita e Dimensão intercultural. Construção de repertório lexical"
+"object": "Construção de repertório lexical"
 },
 {
 "code": "EF08LI13",
@@ -7125,8 +7125,8 @@
 "years": "8",
 "text": "Utilizar formas verbais do futuro para descrever planos e expectativas e fazer previsões.",
 "review": false,
-"unit": "Estudo do léxico",
-"object": "Gramática Verbos para indicar o futuro"
+"unit": "Gramática",
+"object": "Verbos para indicar o futuro"
 },
 {
 "code": "EF08LI15",
@@ -7134,7 +7134,7 @@
 "years": "8",
 "text": "Utilizar, de modo inteligível, as formas comparativas e superlativas de adjetivos para comparar qualidades e quantidades.",
 "review": false,
-"unit": "Estudo do léxico",
+"unit": "Gramática",
 "object": "Comparativos e superlativos"
 },
 {
@@ -7143,7 +7143,7 @@
 "years": "8",
 "text": "Utilizar, de modo inteligível, corretamente, some, any, many, much.",
 "review": false,
-"unit": "Estudo do léxico",
+"unit": "Gramática",
 "object": "Quantificadores"
 },
 {
@@ -7152,8 +7152,8 @@
 "years": "8",
 "text": "Empregar, de modo inteligível, os pronomes relativos (who, which, that, whose) para construir períodos compostos por subordinação.",
 "review": false,
-"unit": "Estudo do léxico",
-"object": "Pronomes relativos"
+"unit": "Gramática",
+"object": "Pronomes relativos Construção de repertório artístico-cultural"
 },
 {
 "code": "EF08LI18",
@@ -7162,7 +7162,7 @@
 "text": "Construir repertório cultural por meio do contato com manifestações artístico-culturais vinculadas à língua inglesa (artes plásticas e visuais, literatura, música, cinema, dança, festividades, entre outros), valorizando a diversidade entre culturas.",
 "review": false,
 "unit": "Manifestações culturais",
-"object": "(dos alunos e aquelas relacionadas a demais falantes de língua inglesa), de modo a favorecer o convívio, o respeito, a superação de conflitos e a valorização da diversidade entre os povos. Construção de repertório artístico-cultural"
+"object": "Pronomes relativos Construção de repertório artístico-cultural"
 },
 {
 "code": "EF08LI19",
@@ -7962,7 +7962,7 @@
 "years": "9",
 "text": "Descrever e contextualizar os principais aspectos sociais, culturais, econômicos e políticos da emergência da República no Brasil.",
 "review": false,
-"unit": "século XX",
+"unit": "O nascimento da República no Brasil e os processos históricos até a metade do século XX",
 "object": "Experiências republicanas e práticas autoritárias: as tensões e disputas do mundo contemporâneo A proclamação da República e seus primeiros desdobramentos"
 },
 {
@@ -7971,7 +7971,7 @@
 "years": "9",
 "text": "Caracterizar e compreender os ciclos da história republicana, identificando particularidades da história local e regional até 1954.",
 "review": false,
-"unit": "século XX",
+"unit": "O nascimento da República no Brasil e os processos históricos até a metade do século XX",
 "object": "Experiências republicanas e práticas autoritárias: as tensões e disputas do mundo contemporâneo A proclamação da República e seus primeiros desdobramentos"
 },
 {
@@ -7980,7 +7980,7 @@
 "years": "9",
 "text": "Identificar os mecanismos de inserção dos negros na sociedade brasileira pós-abolição e avaliar os seus resultados.",
 "review": false,
-"unit": "século XX",
+"unit": "O nascimento da República no Brasil e os processos históricos até a metade do século XX",
 "object": "A questão da inserção dos negros no período republicano do pós-abolição Os movimentos sociais e a imprensa negra; a cultura afro-brasileira como elemento de resistência e superação das discriminações"
 },
 {
@@ -7989,7 +7989,7 @@
 "years": "9",
 "text": "Discutir a importância da participação da população negra na formação econômica, política e social do Brasil.",
 "review": false,
-"unit": "século XX",
+"unit": "O nascimento da República no Brasil e os processos históricos até a metade do século XX",
 "object": "A questão da inserção dos negros no período republicano do pós-abolição Os movimentos sociais e a imprensa negra; a cultura afro-brasileira como elemento de resistência e superação das discriminações"
 },
 {
@@ -7998,7 +7998,7 @@
 "years": "9",
 "text": "Identificar os processos de urbanização e modernização da sociedade brasileira e avaliar suas contradições e impactos na região em que vive.",
 "review": false,
-"unit": "século XX",
+"unit": "O nascimento da República no Brasil e os processos históricos até a metade do século XX",
 "object": "Primeira República e suas características Contestações e dinâmicas da vida cultural no Brasil entre 1900 e 1930"
 },
 {
@@ -8007,7 +8007,7 @@
 "years": "9",
 "text": "Identificar e discutir o papel do trabalhismo como força política, social e cultural no Brasil, em diferentes escalas (nacional, regional, cidade, comunidade).",
 "review": false,
-"unit": "século XX",
+"unit": "O nascimento da República no Brasil e os processos históricos até a metade do século XX",
 "object": "O período varguista e suas contradições A emergência da vida urbana e a segregação espacial O trabalhismo e seu protagonismo político"
 },
 {
@@ -8016,7 +8016,7 @@
 "years": "9",
 "text": "Identificar e explicar, em meio a lógicas de inclusão e exclusão, as pautas dos povos indígenas, no contexto republicano (até 1964), e das populações afrodescendentes.",
 "review": false,
-"unit": "século XX",
+"unit": "O nascimento da República no Brasil e os processos históricos até a metade do século XX",
 "object": "A questão indígena durante a República (até 1964)"
 },
 {
@@ -8025,7 +8025,7 @@
 "years": "9",
 "text": "Identificar as transformações ocorridas no debate sobre as questões da diversidade no Brasil durante o século XX e compreender o significado das mudanças de abordagem em relação ao tema.",
 "review": false,
-"unit": "século XX",
+"unit": "O nascimento da República no Brasil e os processos históricos até a metade do século XX",
 "object": "Anarquismo e protagonismo feminino"
 },
 {
@@ -8034,7 +8034,7 @@
 "years": "9",
 "text": "Relacionar as conquistas de direitos políticos, sociais e civis à atuação de movimentos sociais.",
 "review": false,
-"unit": "século XX",
+"unit": "O nascimento da República no Brasil e os processos históricos até a metade do século XX",
 "object": "Anarquismo e protagonismo feminino"
 },
 {
@@ -8106,7 +8106,7 @@
 "years": "9",
 "text": "Identificar e analisar processos sociais, econômicos, culturais e políticos do Brasil a partir de 1946.",
 "review": false,
-"unit": "redemocratização: o Brasil após 1946",
+"unit": "Modernização, ditadura civil-militar e redemocratização: o Brasil após 1946",
 "object": "O Brasil da era JK e o ideal de uma nação moderna: a urbanização e seus desdobramentos em um país em transformação"
 },
 {
@@ -8115,7 +8115,7 @@
 "years": "9",
 "text": "Descrever e analisar as relações entre as transformações urbanas e seus impactos na cultura brasileira entre 1946 e 1964 e na produção das desigualdades regionais e sociais.",
 "review": false,
-"unit": "redemocratização: o Brasil após 1946",
+"unit": "Modernização, ditadura civil-militar e redemocratização: o Brasil após 1946",
 "object": "O Brasil da era JK e o ideal de uma nação moderna: a urbanização e seus desdobramentos em um país em transformação"
 },
 {
@@ -8124,7 +8124,7 @@
 "years": "9",
 "text": "Identificar e compreender o processo que resultou na ditadura civil-militar no Brasil e discutir a emergência de questões relacionadas à memória e à justiça sobre os casos de violação dos direitos humanos.",
 "review": false,
-"unit": "redemocratização: o Brasil após 1946",
+"unit": "Modernização, ditadura civil-militar e redemocratização: o Brasil após 1946",
 "object": "Os anos 1960: revolução cultural? A ditadura civil-militar e os processos de resistência As questões indígena e negra e a ditadura"
 },
 {
@@ -8133,7 +8133,7 @@
 "years": "9",
 "text": "Discutir os processos de resistência e as propostas de reorganização da sociedade brasileira durante a ditadura civil-militar.",
 "review": false,
-"unit": "redemocratização: o Brasil após 1946",
+"unit": "Modernização, ditadura civil-militar e redemocratização: o Brasil após 1946",
 "object": "Os anos 1960: revolução cultural? A ditadura civil-militar e os processos de resistência As questões indígena e negra e a ditadura"
 },
 {
@@ -8142,7 +8142,7 @@
 "years": "9",
 "text": "Identificar e relacionar as demandas indígenas e quilombolas como forma de contestação ao modelo desenvolvimentista da ditadura.",
 "review": false,
-"unit": "redemocratização: o Brasil após 1946",
+"unit": "Modernização, ditadura civil-militar e redemocratização: o Brasil após 1946",
 "object": "Os anos 1960: revolução cultural? A ditadura civil-militar e os processos de resistência As questões indígena e negra e a ditadura"
 },
 {
@@ -8151,8 +8151,8 @@
 "years": "9",
 "text": "Discutir o papel da mobilização da sociedade brasileira do final do período ditatorial até a Constituição de 1988.",
 "review": false,
-"unit": "redemocratização: o Brasil após 1946",
-"object": "O processo de redemocratização A Constituição de 1988 e a emancipação das cidadanias (analfabetos, indígenas, negros, jovens etc.) A história recente do Brasil: transformações políticas, econômicas, sociais e culturais de 1989 aos dias atuais Os protagonismos da sociedade civil e as alterações da sociedade brasileira A questão da violência contra populações marginalizadas O Brasil e suas relações "
+"unit": "Modernização, ditadura civil-militar e redemocratização: o Brasil após 1946",
+"object": "O processo de redemocratização A Constituição de 1988 e a emancipação das cidadanias (analfabetos, indígenas, negros, jovens etc.) A história recente do Brasil: transformações políticas, econômicas, sociais e culturais de 1989 aos dias atuais Os protagonismos da sociedade civil e as alterações da sociedade brasileira A questão da violência contra populações marginalizadas O Brasil e suas relações internacionais na era da globalização"
 },
 {
 "code": "EF09HI23",
@@ -8160,8 +8160,8 @@
 "years": "9",
 "text": "Identificar direitos civis, políticos e sociais expressos na Constituição de 1988 e relacioná-los à noção de cidadania e ao pacto da sociedade brasileira de combate a diversas formas de preconceito, como o racismo.",
 "review": false,
-"unit": "redemocratização: o Brasil após 1946",
-"object": "O processo de redemocratização A Constituição de 1988 e a emancipação das cidadanias (analfabetos, indígenas, negros, jovens etc.) A história recente do Brasil: transformações políticas, econômicas, sociais e culturais de 1989 aos dias atuais Os protagonismos da sociedade civil e as alterações da sociedade brasileira A questão da violência contra populações marginalizadas O Brasil e suas relações "
+"unit": "Modernização, ditadura civil-militar e redemocratização: o Brasil após 1946",
+"object": "O processo de redemocratização A Constituição de 1988 e a emancipação das cidadanias (analfabetos, indígenas, negros, jovens etc.) A história recente do Brasil: transformações políticas, econômicas, sociais e culturais de 1989 aos dias atuais Os protagonismos da sociedade civil e as alterações da sociedade brasileira A questão da violência contra populações marginalizadas O Brasil e suas relações internacionais na era da globalização"
 },
 {
 "code": "EF09HI24",
@@ -8169,8 +8169,8 @@
 "years": "9",
 "text": "Analisar as transformações políticas, econômicas, sociais e culturais de 1989 aos dias atuais, identificando questões prioritárias para a promoção da cidadania e dos valores democráticos.",
 "review": false,
-"unit": "redemocratização: o Brasil após 1946",
-"object": "O processo de redemocratização A Constituição de 1988 e a emancipação das cidadanias (analfabetos, indígenas, negros, jovens etc.) A história recente do Brasil: transformações políticas, econômicas, sociais e culturais de 1989 aos dias atuais Os protagonismos da sociedade civil e as alterações da sociedade brasileira A questão da violência contra populações marginalizadas O Brasil e suas relações "
+"unit": "Modernização, ditadura civil-militar e redemocratização: o Brasil após 1946",
+"object": "O processo de redemocratização A Constituição de 1988 e a emancipação das cidadanias (analfabetos, indígenas, negros, jovens etc.) A história recente do Brasil: transformações políticas, econômicas, sociais e culturais de 1989 aos dias atuais Os protagonismos da sociedade civil e as alterações da sociedade brasileira A questão da violência contra populações marginalizadas O Brasil e suas relações internacionais na era da globalização"
 },
 {
 "code": "EF09HI25",
@@ -8178,8 +8178,8 @@
 "years": "9",
 "text": "Relacionar as transformações da sociedade brasileira aos protagonismos da sociedade civil após 1989.",
 "review": false,
-"unit": "redemocratização: o Brasil após 1946",
-"object": "O processo de redemocratização A Constituição de 1988 e a emancipação das cidadanias (analfabetos, indígenas, negros, jovens etc.) A história recente do Brasil: transformações políticas, econômicas, sociais e culturais de 1989 aos dias atuais Os protagonismos da sociedade civil e as alterações da sociedade brasileira A questão da violência contra populações marginalizadas O Brasil e suas relações "
+"unit": "Modernização, ditadura civil-militar e redemocratização: o Brasil após 1946",
+"object": "O processo de redemocratização A Constituição de 1988 e a emancipação das cidadanias (analfabetos, indígenas, negros, jovens etc.) A história recente do Brasil: transformações políticas, econômicas, sociais e culturais de 1989 aos dias atuais Os protagonismos da sociedade civil e as alterações da sociedade brasileira A questão da violência contra populações marginalizadas O Brasil e suas relações internacionais na era da globalização"
 },
 {
 "code": "EF09HI26",
@@ -8187,8 +8187,8 @@
 "years": "9",
 "text": "Discutir e analisar as causas da violência contra populações marginalizadas (negros, indígenas, mulheres, homossexuais, camponeses, pobres etc.) com vistas à tomada de consciência e à construção de uma cultura de paz, empatia e respeito às pessoas.",
 "review": false,
-"unit": "redemocratização: o Brasil após 1946",
-"object": "O processo de redemocratização A Constituição de 1988 e a emancipação das cidadanias (analfabetos, indígenas, negros, jovens etc.) A história recente do Brasil: transformações políticas, econômicas, sociais e culturais de 1989 aos dias atuais Os protagonismos da sociedade civil e as alterações da sociedade brasileira A questão da violência contra populações marginalizadas O Brasil e suas relações "
+"unit": "Modernização, ditadura civil-militar e redemocratização: o Brasil após 1946",
+"object": "O processo de redemocratização A Constituição de 1988 e a emancipação das cidadanias (analfabetos, indígenas, negros, jovens etc.) A história recente do Brasil: transformações políticas, econômicas, sociais e culturais de 1989 aos dias atuais Os protagonismos da sociedade civil e as alterações da sociedade brasileira A questão da violência contra populações marginalizadas O Brasil e suas relações internacionais na era da globalização"
 },
 {
 "code": "EF09HI27",
@@ -8196,8 +8196,8 @@
 "years": "9",
 "text": "Relacionar aspectos das mudanças econômicas, culturais e sociais ocorridas no Brasil a partir da década de 1990 ao papel do País no cenário internacional na era da globalização.",
 "review": false,
-"unit": "redemocratização: o Brasil após 1946",
-"object": "O processo de redemocratização A Constituição de 1988 e a emancipação das cidadanias (analfabetos, indígenas, negros, jovens etc.) A história recente do Brasil: transformações políticas, econômicas, sociais e culturais de 1989 aos dias atuais Os protagonismos da sociedade civil e as alterações da sociedade brasileira A questão da violência contra populações marginalizadas O Brasil e suas relações "
+"unit": "Modernização, ditadura civil-militar e redemocratização: o Brasil após 1946",
+"object": "O processo de redemocratização A Constituição de 1988 e a emancipação das cidadanias (analfabetos, indígenas, negros, jovens etc.) A história recente do Brasil: transformações políticas, econômicas, sociais e culturais de 1989 aos dias atuais Os protagonismos da sociedade civil e as alterações da sociedade brasileira A questão da violência contra populações marginalizadas O Brasil e suas relações internacionais na era da globalização"
 },
 {
 "code": "EF09HI28",
@@ -8287,7 +8287,7 @@
 "text": "Fazer uso da língua inglesa para expor pontos de vista, argumentos e contra-argumentos, considerando o contexto e os recursos linguísticos voltados para a eficácia da comunicação.",
 "review": false,
 "unit": "Interação discursiva",
-"object": "contextos discursivos presenciais ou simulados, com repertório de falas diversas, incluída a fala do professor. Funções e usos da língua inglesa: persuasão"
+"object": "Funções e usos da língua inglesa: persuasão"
 },
 {
 "code": "EF09LI02",
@@ -8314,7 +8314,7 @@
 "text": "Expor resultados de pesquisa ou estudo com o apoio de recursos, tais como notas, gráficos, tabelas, entre outros, adequando as estratégias de construção do texto oral aos objetivos de comunicação e ao contexto.",
 "review": false,
 "unit": "Produção oral",
-"object": "Produção de textos orais com autonomia"
+"object": "Produção de textos orais com autonomia Recursos de persuasão"
 },
 {
 "code": "EF09LI05",
@@ -8323,7 +8323,7 @@
 "text": "Identificar recursos de persuasão (escolha e jogo de palavras, uso de cores e imagens, tamanho de letras), utilizados nos textos publicitários e de propaganda, como elementos de convencimento.",
 "review": false,
 "unit": "Estratégias de leitura",
-"object": "multimodais) presentes em diferentes suportes e esferas de circulação. Tais práticas envolvem articulação com os conhecimentos prévios dos alunos em língua materna e/ou outras línguas, especialmente a língua inglesa. Recursos de persuasão"
+"object": "Produção de textos orais com autonomia Recursos de persuasão"
 },
 {
 "code": "EF09LI06",
@@ -8368,7 +8368,7 @@
 "text": "Propor potenciais argumentos para expor e defender ponto de vista em texto escrito, refletindo sobre o tema proposto e pesquisando dados, evidências e exemplos para sustentar os argumentos, organizando-os em sequência lógica.",
 "review": false,
 "unit": "Estratégias de escrita",
-"object": "alunos, presentes em diferentes suportes e esferas de circulação. Tais práticas envolvem a escrita mediada pelo professor ou colegas e articulada com os conhecimentos prévios dos alunos em língua materna e/ou outras línguas, especialmente a língua inglesa. Escrita: construção da argumentação"
+"object": "Escrita: construção da argumentação"
 },
 {
 "code": "EF09LI11",
@@ -8386,7 +8386,7 @@
 "text": "Produzir textos (infográficos, fóruns de discussão on-line, fotorreportagens, campanhas publicitárias, memes, entre outros) sobre temas de interesse coletivo local ou global, que revelem posicionamento crítico.",
 "review": false,
 "unit": "Práticas de escrita",
-"object": "Produção de textos escritos, com mediação do professor/colegas"
+"object": "Produção de textos escritos, com mediação do professor/colegas Usos de linguagem em meio digital:“internetês”"
 },
 {
 "code": "EF09LI13",
@@ -8395,7 +8395,7 @@
 "text": "Reconhecer, nos novos gêneros digitais (blogues, mensagens instantâneas, tweets, entre outros), novas formas de escrita (abreviação de palavras, palavras com combinação de letras e números, pictogramas, símbolos gráficos, entre outros) na constituição das mensagens.",
 "review": false,
 "unit": "Estudo do léxico",
-"object": "o funcionamento da língua inglesa, com base nos usos de linguagem trabalhados nos eixos Oralidade, Leitura, Escrita e Dimensão intercultural. Usos de linguagem em meio digital: “internetês”"
+"object": "Produção de textos escritos, com mediação do professor/colegas Usos de linguagem em meio digital:“internetês”"
 },
 {
 "code": "EF09LI14",
@@ -8412,8 +8412,8 @@
 "years": "9",
 "text": "Empregar, de modo inteligível, as formas verbais em orações condicionais dos tipos 1 e 2 (If-clauses).",
 "review": false,
-"unit": "Estudo do léxico",
-"object": "Gramática Orações condicionais (tipos 1 e 2)"
+"unit": "Gramática",
+"object": "Orações condicionais (tipos 1 e 2)"
 },
 {
 "code": "EF09LI16",
@@ -8421,8 +8421,8 @@
 "years": "9",
 "text": "Empregar, de modo inteligível, os verbos should, must, have to, may e might para indicar recomendação, necessidade ou obrigação e probabilidade.",
 "review": false,
-"unit": "Estudo do léxico",
-"object": "Verbos modais: should, must, have to, may e might"
+"unit": "Gramática",
+"object": "Verbos modais: should, must, have to, may e might Expansão da língua inglesa: contexto histórico"
 },
 {
 "code": "EF09LI17",
@@ -8431,7 +8431,7 @@
 "text": "Debater sobre a expansão da língua inglesa pelo mundo, em função do processo de colonização nas Américas, África, Ásia e Oceania.",
 "review": false,
 "unit": "A língua inglesa no mundo",
-"object": "(dos alunos e aquelas relacionadas a demais falantes de língua inglesa), de modo a favorecer o convívio, o respeito, a superação de conflitos e a valorização da diversidade entre os povos. Expansão da língua inglesa: contexto histórico"
+"object": "Verbos modais: should, must, have to, may e might Expansão da língua inglesa: contexto histórico"
 },
 {
 "code": "EF09LI18",
@@ -8934,7 +8934,7 @@
 "years": "1,2",
 "text": "Identificar e (re)produzir, em cantiga, quadras, quadrinhas, parlendas, trava-línguas e canções, rimas, aliterações, assonâncias, o ritmo de fala relacionado ao ritmo e à melodia das músicas e seus efeitos de sentido.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "(Alfabetização) Forma de composição do texto"
 },
 {
@@ -8997,7 +8997,7 @@
 "years": "1,2",
 "text": "Identificar e reproduzir, em fotolegendas de notícias, álbum de fotos digital noticioso, cartas de leitor (revista infantil), digitais ou impressos, a formatação e diagramação específica de cada um desses gêneros, inclusive em suas versões orais.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "(Alfabetização) Forma de composição do texto"
 },
 {
@@ -9006,7 +9006,7 @@
 "years": "1,2",
 "text": "Identificar a forma de composição de slogans publicitários.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "(Alfabetização) Forma de composição do texto"
 },
 {
@@ -9015,7 +9015,7 @@
 "years": "1,2",
 "text": "Identificar e reproduzir, em anúncios publicitários e textos de campanhas de conscientização destinados ao público infantil (orais e escritos, digitais ou impressos), a formatação e diagramação específica de cada um desses gêneros, inclusive o uso de imagens.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "(Alfabetização) Forma de composição do texto"
 },
 {
@@ -9042,7 +9042,7 @@
 "years": "1,2",
 "text": "Reconhecer, em textos versificados, rimas, sonoridades, jogos de palavras, palavras, expressões, comparações, relacionando-as com sensações e associações.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Alfabetização)",
 "object": "Formas de composição de textos poéticos"
 },
 {
@@ -9690,7 +9690,7 @@
 "years": "3,4,5",
 "text": "Recorrer ao dicionário para esclarecer dúvida sobre a escrita de palavras, especialmente no caso de palavras com relações irregulares fonema-grafema.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Construção do sistema alfabético e da ortografia"
 },
 {
@@ -9699,7 +9699,7 @@
 "years": "3,4,5",
 "text": "Memorizar a grafia de palavras de uso frequente nas quais as relações fonema-grafema são irregulares e com h inicial que não representa fonema.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Construção do sistema alfabético e da ortografia"
 },
 {
@@ -9708,7 +9708,7 @@
 "years": "3,4,5",
 "text": "Identificar em textos e usar na produção textual pronomes pessoais, possessivos e demonstrativos, como recurso coesivo anafórico.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Morfologia"
 },
 {
@@ -9726,7 +9726,7 @@
 "years": "3,4,5",
 "text": "Identificar e reproduzir, em notícias, manchetes, lides e corpo de notícias simples para público infantil e cartas de reclamação (revista infantil), digitais ou impressos, a formatação e diagramação específica de cada um desses gêneros, inclusive em suas versões orais.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Forma de composição dos textos"
 },
 {
@@ -9843,7 +9843,7 @@
 "years": "3,4,5",
 "text": "Identificar, em narrativas, cenário, personagem central, conflito gerador, resolução e o ponto de vista com base no qual histórias são narradas, diferenciando narrativas em primeira e terceira pessoas.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "(Ortografização) Formas de composição de narrativas"
 },
 {
@@ -9852,7 +9852,7 @@
 "years": "3,4,5",
 "text": "Diferenciar discurso indireto e discurso direto, determinando o efeito de sentido de verbos de enunciação e explicando o uso de variedades linguísticas no discurso direto, quando for o caso.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Discurso direto e indireto"
 },
 {
@@ -9861,7 +9861,7 @@
 "years": "3,4,5",
 "text": "Identificar, em textos versificados, efeitos de sentido decorrentes do uso de recursos rítmicos e sonoros e de metáforas.",
 "review": false,
-"unit": "Análise linguística/semiótica",
+"unit": "Análise linguística/semiótica (Ortografização)",
 "object": "Forma de composição de textos poéticos"
 },
 {
@@ -10797,7 +10797,7 @@
 "years": "6,7,8,9",
 "text": "Produzir notícias para rádios, TV ou vídeos, podcasts noticiosos e de opinião, entrevistas, comentários, vlogs, jornais radiofônicos e televisivos, dentre outros possíveis, relativos a fato e temas de interesse pessoal, local ou global e textos orais de apreciação e opinião – podcasts e vlogs noticiosos, culturais e de opinião, orientando-se por roteiro ou texto, considerando o contexto de produção e demonstrando domínio dos gêneros.",
 "review": false,
-"unit": "ou produções orais, em áudio ou vídeo",
+"unit": "Oralidade",
 "object": "Produção de textos jornalísticos orais"
 },
 {
@@ -10806,7 +10806,7 @@
 "years": "6,7,8,9",
 "text": "Identificar e analisar posicionamentos defendidos e refutados na escuta de interações polêmicas em entrevistas, discussões e debates (televisivo, em sala de aula, em redes sociais etc.), entre outros, e se posicionar frente a eles.",
 "review": false,
-"unit": "ou produções orais, em áudio ou vídeo",
+"unit": "Oralidade",
 "object": "Produção de textos jornalísticos orais"
 },
 {
@@ -10815,7 +10815,7 @@
 "years": "6,7,8,9",
 "text": "Desenvolver estratégias de planejamento, elaboração, revisão, edição, reescrita/ redesign (esses três últimos quando não for situação ao vivo) e avaliação de textos orais, áudio e/ou vídeo, considerando sua adequação aos contextos em que foram produzidos, à forma composicional e estilo de gêneros, a clareza, progressão temática e variedade linguística empregada, os elementos relacionados à fala, tais como modulação de voz, entonação, ritmo, altura e intensidade, respiração etc., os elementos cinésicos, tais como postura corporal, movimentos e gestualidade significativa, expressão facial, contato de olho com plateia etc.",
 "review": false,
-"unit": "ou produções orais, em áudio ou vídeo",
+"unit": "Oralidade",
 "object": "Planejamento e produção de textos jornalísticos orais"
 },
 {

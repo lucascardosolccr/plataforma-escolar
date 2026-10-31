@@ -99,12 +99,14 @@ class CurriculumItem(models.Model):
 
 
 COMPONENTS = ["Língua Portuguesa", "Matemática", "Ciências", "Geografia", "História", "Arte", "Educação Física",
-              "Língua Inglesa", "Ensino Religioso"]
+              "Língua Inglesa", "Ensino Religioso", "Computação"]
 _ALIASES = {
     "portugues": "Língua Portuguesa", "lingua portuguesa": "Língua Portuguesa",
     "matematica": "Matemática", "ciencias": "Ciências", "geografia": "Geografia",
     "historia": "História", "arte": "Arte", "artes": "Arte", "educacao fisica": "Educação Física",
     "ingles": "Língua Inglesa", "lingua inglesa": "Língua Inglesa", "ensino religioso": "Ensino Religioso",
+    "computacao": "Computação", "informatica": "Computação", "pensamento computacional": "Computação",
+    "educacao digital": "Computação",
 }
 
 
@@ -219,6 +221,7 @@ AREAS = {
     "Língua Portuguesa": "Linguagens", "Arte": "Linguagens", "Educação Física": "Linguagens",
     "Língua Inglesa": "Linguagens", "Matemática": "Matemática", "Ciências": "Ciências da Natureza",
     "Geografia": "Ciências Humanas", "História": "Ciências Humanas", "Ensino Religioso": "Ensino Religioso",
+    "Computação": "Computação (complemento à BNCC)",
 }
 
 

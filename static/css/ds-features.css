@@ -108,13 +108,13 @@
 
 /* ---------- EIA-Cognitio: estados de domínio (a cor reforça; o texto sempre diz) ---------- */
 .mcell { display: inline-flex; align-items: center; justify-content: center; min-width: 2rem; height: 1.75rem; padding: 0 .3rem; border-radius: .35rem; font-size: .75rem; font-weight: 800; border: 1px solid var(--ds-line); text-decoration: none; color: var(--ds-text); }
-.m-none { background: var(--ds-surface); color: var(--ds-text-muted); border-style: dashed; }
-.m-insuf { background: var(--ds-surface-2); color: var(--ds-text-muted); }
-.m-contra { background: var(--ds-info-bg); color: var(--ds-info); border-color: var(--ds-info-line); }
-.m-1 { background: var(--ds-danger-bg); color: var(--ds-danger); border-color: var(--ds-danger-line); }
-.m-2 { background: var(--ds-warning-bg); color: var(--ds-warning); border-color: var(--ds-warning-line); }
-.m-3 { background: var(--ds-success-bg); color: var(--ds-success); border-color: var(--ds-success-line); opacity: .8; }
-.m-4 { background: var(--ds-success-bg); color: var(--ds-success); border-color: var(--ds-success-line); }
+.st-none { background: var(--ds-surface); color: var(--ds-text-muted); border-style: dashed; }
+.st-insuf { background: var(--ds-surface-2); color: var(--ds-text-muted); }
+.st-contra { background: var(--ds-info-bg); color: var(--ds-info); border-color: var(--ds-info-line); }
+.st-1 { background: var(--ds-danger-bg); color: var(--ds-danger); border-color: var(--ds-danger-line); }
+.st-2 { background: var(--ds-warning-bg); color: var(--ds-warning); border-color: var(--ds-warning-line); }
+.st-3 { background: var(--ds-success-bg); color: var(--ds-success); border-color: var(--ds-success-line); opacity: .8; }
+.st-4 { background: var(--ds-success-bg); color: var(--ds-success); border-color: var(--ds-success-line); }
 .heat { border-collapse: separate; border-spacing: 3px; }
 .heat th.rot { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; font-size: .75rem; font-weight: 600; padding: .25rem 0; }
 .heat td, .heat th { text-align: center; }
@@ -128,12 +128,12 @@
 .resp-grid input { width: 4.2rem; }
 .resp-grid select { min-width: 5rem; }
 .dist-svg { display: block; border-radius: 6px; background: var(--ds-surface-2); }
-rect.bar.m-4 { fill: var(--ds-success); }
-rect.bar.m-3 { fill: var(--ds-success); opacity: .55; }
-rect.bar.m-2 { fill: var(--ds-warning); }
-rect.bar.m-1 { fill: var(--ds-danger); }
-rect.bar.m-contra { fill: var(--ds-info); }
-rect.bar.m-insuf, rect.bar.m-none { fill: var(--ds-line); }
+rect.bar.st-4 { fill: var(--ds-success); }
+rect.bar.st-3 { fill: var(--ds-success); opacity: .55; }
+rect.bar.st-2 { fill: var(--ds-warning); }
+rect.bar.st-1 { fill: var(--ds-danger); }
+rect.bar.st-contra { fill: var(--ds-info); }
+rect.bar.st-insuf, rect.bar.st-none { fill: var(--ds-line); }
 
 /* ---------- EIA-Cognitio: grafo e alertas ---------- */
 .graph3 { display: grid; grid-template-columns: 1fr minmax(12rem, .7fr) 1fr; gap: 1rem; align-items: start; }
@@ -144,3 +144,11 @@ rect.bar.m-insuf, rect.bar.m-none { fill: var(--ds-line); }
 .alert-note { max-width: 18rem; }
 
 .student-text { white-space: normal; font-size: .95rem; line-height: 1.6; padding: .75rem; background: var(--ds-surface-2); border-radius: .5rem; }
+
+.stack-bar { min-width: 8rem; }
+.stack-bar svg { display: block; border-radius: 4px; background: var(--ds-surface-2); }
+
+/* Símbolos (✓, ≠) vêm de outra fonte e aumentavam a linha: altura e alinhamento fixos. */
+.mcell { line-height: 1; overflow: hidden; vertical-align: middle; flex: none; }
+.legend-stack { flex-direction: column; align-items: flex-start; gap: .35rem; }
+.legend-stack .mcell { min-width: 2.75rem; }

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Painel por disciplina — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'cognitio:dashboard' %}" class="back-link">{% icon "arrow-left" %}Painel</a>
+    <h1>{{ comp|default:"Painel por disciplina" }}</h1>
+    <p>Cada componente tem o seu recorte: unidades temáticas, dimensões próprias da área{% if not no_error_typing %}, tipos de erro{% endif %}{% if texts %} e indícios das produções escritas{% endif %}. {{ n_students }} estudante{{ n_students|pluralize }} · {{ n_items }} habilidade{{ n_items|pluralize }} com evidência.</p>
+  </div>
+</div>
+<form method="get" class="filter-bar" aria-label="Escolher componente">
+  {% include "partials/_filter_select.html" with name="componente" label="Componente" options=comp_choices selected=comp all_label="Escolha" %}
+  {% include "partials/_filter_end.html" %}
+</form>
+{% if no_error_typing %}<div class="alert alert-info" role="note"><div class="small">Em {{ comp }} o painel mostra só participação e evidências por dimensão: o projeto não classifica gosto, talento, desempenho físico isolado nem crença.</div></div>{% endif %}
+
+<div class="row g-3">
+  <section class="col-lg-6" aria-labelledby="un"><div class="card h-100"><div class="card-body">
+    <h2 id="un" class="h6">Por unidade temática ou prática de linguagem</h2>
+    <table class="table table-sm align-middle mb-0"><tbody>{% for unit, n, dist in unit_rows %}<tr><th scope="row" class="small fw-normal">{{ unit }}<span class="d-block text-secondary">{{ n }} par{{ n|pluralize:"es" }}</span></th><td class="w-50">{% include "cognitio/_dist.html" with dist=dist %}</td></tr>{% empty %}<tr><td class="small text-secondary">Sem evidências neste componente.</td></tr>{% endfor %}</tbody></table>
+  </div></div></section>
+  <section class="col-lg-6" aria-labelledby="dm"><div class="card h-100"><div class="card-body">
+    <h2 id="dm" class="h6">Por dimensão analítica da área</h2>
+    <p class="small text-secondary">Ligações entre habilidade e dimensão sugeridas pelo texto oficial ou validadas pela equipe.</p>
+    <table class="table table-sm align-middle mb-0"><tbody>{% for group, name, n, dist in dim_rows %}<tr><th scope="row" class="small fw-normal">{{ group }} · <strong>{{ name }}</strong><span class="d-block text-secondary">{{ n }} par{{ n|pluralize:"es" }}</span></th><td class="w-50">{% include "cognitio/_dist.html" with dist=dist %}</td></tr>{% empty %}<tr><td class="small text-secondary">Nenhuma dimensão com evidência.</td></tr>{% endfor %}</tbody></table>
+  </div></div></section>
+  {% if errors %}
+  <section class="col-lg-6" aria-labelledby="er"><div class="card h-100"><div class="card-body">
+    <h2 id="er" class="h6">Tipos de erro registrados por unidade</h2>
+    <p class="small text-secondary">Ajuda a escolher a intervenção: erro de cálculo pede uma coisa, erro conceitual ou de interpretação pede outra.</p>
+    {% for unit, counts in errors %}<h3 class="small fw-semibold mt-2 mb-1">{{ unit }}</h3><ul class="list-unstyled small mb-0">{% for label, n in counts %}<li>{{ label }}: {{ n }}</li>{% endfor %}</ul>{% endfor %}
+  </div></div></section>
+  {% endif %}
+  {% if texts %}
+  <section class="col-lg-6" aria-labelledby="tx"><div class="card h-100"><div class="card-body">
+    <h2 id="tx" class="h6">Indícios nas produções escritas ({{ texts.n }})</h2>
+    <p class="small text-secondary">Percentual de produções em que cada indício apareceu. Regras explícitas; a revisão do professor prevalece.</p>
+    <table class="table table-sm mb-0"><tbody>{% for label, n, pct in texts.rows %}<tr><td class="small">{{ label }}</td><td class="small">{{ pct }}% de {{ n }}</td></tr>{% empty %}<tr><td class="small text-secondary">Nenhuma produção analisada.</td></tr>{% endfor %}</tbody></table>
+  </div></div></section>
+  {% endif %}
+</div>
+{% endblock %}

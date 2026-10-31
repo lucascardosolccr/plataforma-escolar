@@ -221,3 +221,14 @@ class MapAccessTests(Base):
         self.login(self.prof)
         r = self.client.get(reverse("cognitio:home"))
         self.assertContains(r, "6º Ano A · Matemática")
+
+
+class CssNamesTests(TestCase):
+    def test_state_classes_do_not_collide_with_bootstrap_utilities(self):
+        import re
+
+        from apps.cognitio.mastery import CSS
+
+        # .m-1 a .m-5 são margens do Bootstrap: usar esses nomes estragava o layout das legendas.
+        for css in CSS.values():
+            self.assertIsNone(re.fullmatch(r"[mp][trblxyse]?-(\d|auto)", css), css)

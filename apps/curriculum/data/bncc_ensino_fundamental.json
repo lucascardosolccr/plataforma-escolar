@@ -114,7 +114,7 @@
 "years": "1",
 "text": "Descrever características observadas de seus lugares de vivência (moradia, escola etc.) e identificar semelhanças e diferenças entre esses lugares.",
 "review": false,
-"unit": "",
+"unit": "O sujeito e seu lugar no mundo",
 "object": "O modo de vida das crianças em diferentes lugares"
 },
 {
@@ -123,7 +123,7 @@
 "years": "1",
 "text": "Identificar semelhanças e diferenças entre jogos e brincadeiras de diferentes épocas e lugares.",
 "review": false,
-"unit": "",
+"unit": "O sujeito e seu lugar no mundo",
 "object": "O modo de vida das crianças em diferentes lugares"
 },
 {
@@ -132,7 +132,7 @@
 "years": "1",
 "text": "Identificar e relatar semelhanças e diferenças de usos do espaço público (praças, parques) para o lazer e diferentes manifestações.",
 "review": false,
-"unit": "",
+"unit": "O sujeito e seu lugar no mundo",
 "object": "Situações de convívio em diferentes lugares"
 },
 {
@@ -141,7 +141,7 @@
 "years": "1",
 "text": "Discutir e elaborar, coletivamente, regras de convívio em diferentes espaços (sala de aula, escola etc.).",
 "review": false,
-"unit": "",
+"unit": "O sujeito e seu lugar no mundo",
 "object": "Situações de convívio em diferentes lugares"
 },
 {
@@ -213,7 +213,7 @@
 "years": "1",
 "text": "Identificar aspectos do seu crescimento por meio do registro das lembranças particulares ou de lembranças dos membros de sua família e/ou de sua comunidade.",
 "review": false,
-"unit": "",
+"unit": "Mundo pessoal: meu lugar no mundo",
 "object": "As fases da vida e a ideia de temporalidade (passado, presente, futuro)"
 },
 {
@@ -222,7 +222,7 @@
 "years": "1",
 "text": "Identificar a relação entre as suas histórias e as histórias de sua família e de sua comunidade.",
 "review": false,
-"unit": "",
+"unit": "Mundo pessoal: meu lugar no mundo",
 "object": "As diferentes formas de organização da família e da comunidade: os vínculos pessoais e as relações de amizade"
 },
 {
@@ -231,7 +231,7 @@
 "years": "1",
 "text": "Descrever e distinguir os seus papéis e responsabilidades relacionados à família, à escola e à comunidade.",
 "review": false,
-"unit": "",
+"unit": "Mundo pessoal: meu lugar no mundo",
 "object": "As diferentes formas de organização da família e da comunidade: os vínculos pessoais e as relações de amizade"
 },
 {
@@ -240,7 +240,7 @@
 "years": "1",
 "text": "Identificar as diferenças entre os variados ambientes em que vive (doméstico, escolar e da comunidade), reconhecendo as especificidades dos hábitos e das regras que os regem.",
 "review": false,
-"unit": "",
+"unit": "Mundo pessoal: meu lugar no mundo",
 "object": "A escola e a diversidade do grupo social envolvido"
 },
 {
@@ -519,8 +519,8 @@
 "years": "1",
 "text": "Utilizar números naturais como indicador de quantidade ou de ordem em diferentes situações cotidianas e reconhecer situações em que os números não indicam contagem nem ordem, mas sim código de identificação.",
 "review": false,
-"unit": "",
-"object": "Números Contagem de rotina Contagem ascendente e descendente Reconhecimento de números no contexto diário: indicação de quantidades, indicação de ordem ou indicação de código para a organização de informações"
+"unit": "Números",
+"object": "Contagem de rotina Contagem ascendente e descendente Reconhecimento de números no contexto diário: indicação de quantidades, indicação de ordem ou indicação de código para a organização de informações"
 },
 {
 "code": "EF01MA02",
@@ -528,7 +528,7 @@
 "years": "1",
 "text": "Contar de maneira exata ou aproximada, utilizando diferentes estratégias como o pareamento e outros agrupamentos.",
 "review": false,
-"unit": "",
+"unit": "Números",
 "object": "Quantificação de elementos de uma coleção: estimativas, contagem um a um, pareamento ou outros agrupamentos e comparação"
 },
 {
@@ -537,7 +537,7 @@
 "years": "1",
 "text": "Estimar e comparar quantidades de objetos de dois conjuntos (em torno de 20 elementos), por estimativa e/ou por correspondência (um a um, dois a dois) para indicar “tem mais”, “tem menos” ou “tem a mesma quantidade”.",
 "review": false,
-"unit": "",
+"unit": "Números",
 "object": "Quantificação de elementos de uma coleção: estimativas, contagem um a um, pareamento ou outros agrupamentos e comparação"
 },
 {
@@ -546,7 +546,7 @@
 "years": "1",
 "text": "Contar a quantidade de objetos de coleções até 100 unidades e apresentar o resultado por registros verbais e simbólicos, em situações de seu interesse, como jogos, brincadeiras, materiais da sala de aula, entre outros.",
 "review": false,
-"unit": "",
+"unit": "Números",
 "object": "Leitura, escrita e comparação de números naturais (até 100) Reta numérica"
 },
 {
@@ -555,7 +555,7 @@
 "years": "1",
 "text": "Comparar números naturais de até duas ordens em situações cotidianas, com e sem suporte da reta numérica.",
 "review": false,
-"unit": "",
+"unit": "Números",
 "object": "Leitura, escrita e comparação de números naturais (até 100) Reta numérica"
 },
 {
@@ -564,7 +564,7 @@
 "years": "1",
 "text": "Construir fatos básicos da adição e utilizá-los em procedimentos de cálculo para resolver problemas.",
 "review": false,
-"unit": "",
+"unit": "Números",
 "object": "Construção de fatos básicos da adição"
 },
 {
@@ -573,7 +573,7 @@
 "years": "1",
 "text": "Compor e decompor número de até duas ordens, por meio de diferentes adições, com o suporte de material manipulável, contribuindo para a compreensão de características do sistema de numeração decimal e o desenvolvimento de estratégias de cálculo.",
 "review": false,
-"unit": "",
+"unit": "Números",
 "object": "Composição e decomposição de números naturais"
 },
 {
@@ -582,7 +582,7 @@
 "years": "1",
 "text": "Resolver e elaborar problemas de adição e de subtração, envolvendo números de até dois algarismos, com os significados de juntar, acrescentar, separar e retirar, com o suporte de imagens e/ou material manipulável, utilizando estratégias e formas de registro pessoais.",
 "review": false,
-"unit": "",
+"unit": "Números",
 "object": "Problemas envolvendo diferentes significados da adição e da subtração (juntar, acrescentar, separar, retirar)"
 },
 {
@@ -8772,7 +8772,7 @@
 "years": "1,2",
 "text": "Experimentar, fruir e recriar diferentes brincadeiras e jogos da cultura popular presentes no contexto comunitário e regional, reconhecendo e respeitando as diferenças individuais de desempenho dos colegas.",
 "review": false,
-"unit": "",
+"unit": "Brincadeiras e jogos",
 "object": "Brincadeiras e jogos da cultura popular presentes no contexto comunitário e regional"
 },
 {
@@ -8781,7 +8781,7 @@
 "years": "1,2",
 "text": "Explicar, por meio de múltiplas linguagens (corporal, visual, oral e escrita), as brincadeiras e os jogos populares do contexto comunitário e regional, reconhecendo e valorizando a importância desses jogos e brincadeiras para suas culturas de origem.",
 "review": false,
-"unit": "",
+"unit": "Brincadeiras e jogos",
 "object": "Brincadeiras e jogos da cultura popular presentes no contexto comunitário e regional"
 },
 {
@@ -8790,7 +8790,7 @@
 "years": "1,2",
 "text": "Planejar e utilizar estratégias para resolver desafios de brincadeiras e jogos populares do contexto comunitário e regional, com base no reconhecimento das características dessas práticas.",
 "review": false,
-"unit": "",
+"unit": "Brincadeiras e jogos",
 "object": "Brincadeiras e jogos da cultura popular presentes no contexto comunitário e regional"
 },
 {
@@ -8799,7 +8799,7 @@
 "years": "1,2",
 "text": "Colaborar na proposição e na produção de alternativas para a prática, em outros momentos e espaços, de brincadeiras e jogos e demais práticas corporais tematizadas na escola, produzindo textos (orais, escritos, audiovisuais) para divulgá-las na escola e na comunidade.",
 "review": false,
-"unit": "",
+"unit": "Brincadeiras e jogos",
 "object": "Brincadeiras e jogos da cultura popular presentes no contexto comunitário e regional"
 },
 {
@@ -9285,8 +9285,8 @@
 "years": "1,2,3,4,5",
 "text": "Identificar a função social de textos que circulam em campos da vida social dos quais participa cotidianamente (a casa, a rua, a comunidade, a escola) e nas mídias impressa, de massa e digital, reconhecendo para que foram produzidos, onde circulam, quem os produziu e a quem se destinam.",
 "review": false,
-"unit": "",
-"object": "Leitura/escuta (compartilhada e autônoma) Reconstrução das condições de produção e recepção de textos"
+"unit": "Leitura/escuta",
+"object": "(compartilhada e autônoma) Reconstrução das condições de produção e recepção de textos"
 },
 {
 "code": "EF15LP02",
@@ -9294,7 +9294,7 @@
 "years": "1,2,3,4,5",
 "text": "Estabelecer expectativas em relação ao texto que vai ler (pressuposições antecipadoras dos sentidos, da forma e da função social do texto), apoiando-se em seus conhecimentos prévios sobre as condições de produção e recepção desse texto, o gênero, o suporte e o universo temático, bem como sobre saliências textuais, recursos gráficos, imagens, dados da própria obra (índice, prefácio etc.), confirmando antecipações e inferências realizadas antes e durante a leitura de textos, checando a adequação das hipóteses realizadas.",
 "review": false,
-"unit": "",
+"unit": "Leitura/escuta",
 "object": "Estratégia de leitura"
 },
 {
@@ -9303,7 +9303,7 @@
 "years": "1,2,3,4,5",
 "text": "Localizar informações explícitas em textos.",
 "review": false,
-"unit": "",
+"unit": "Leitura/escuta",
 "object": "Estratégia de leitura"
 },
 {
@@ -9312,7 +9312,7 @@
 "years": "1,2,3,4,5",
 "text": "Identificar o efeito de sentido produzido pelo uso de recursos expressivos gráfico-visuais em textos multissemióticos.",
 "review": false,
-"unit": "",
+"unit": "Leitura/escuta",
 "object": "Estratégia de leitura"
 },
 {

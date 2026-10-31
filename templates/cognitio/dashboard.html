@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Painel de inteligência pedagógica — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'cognitio:home' %}" class="back-link">{% icon "arrow-left" %}EIA-Cognitio</a>
+    <h1>{% if role == "professor" %}Meu painel de aprendizagem{% elif role == "coordenacao" %}Painel da coordenação{% else %}Visão institucional{% endif %}</h1>
+    <p>{% if role == "diretor" or role == "direcao" %}Visão agregada e responsável: sem nomes de estudantes; grupos com menos de 5 estudantes ficam ocultos.{% else %}Dados reais lançados na plataforma, no seu alcance. Cada número leva às evidências.{% endif %} {{ n_evidence }} evidência{{ n_evidence|pluralize }} · {{ n_students }} estudante{{ n_students|pluralize }} · {{ n_items }} habilidade{{ n_items|pluralize }}.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{% url 'cognitio:discipline' %}">{% icon "book-marked" %}Por disciplina</a>
+</div>
+
+<div class="kpi-grid mb-3">
+  <div class="kpi{% if alerts_high %} is-attention{% endif %}"><span class="kpi-label">Alertas ativos</span><span class="kpi-value">{{ alerts_count }}</span><span class="kpi-hint">{{ alerts_high }} importante{{ alerts_high|pluralize }}</span><a class="stretched-link" href="{% url 'cognitio:alerts' %}" aria-label="Abrir alertas"></a></div>
+  <div class="kpi{% if due_ivs %} is-attention{% endif %}"><span class="kpi-label">Intervenções em andamento</span><span class="kpi-value">{{ open_ivs }}</span><span class="kpi-hint">{{ due_ivs }} com revisão vencida</span><a class="stretched-link" href="{% url 'cognitio:interventions' %}" aria-label="Abrir intervenções"></a></div>
+  <div class="kpi"><span class="kpi-label">Habilidades trabalhadas</span><span class="kpi-value">{{ worked_count }}</span><span class="kpi-hint">{{ not_evaluated }} ainda sem avaliação</span></div>
+  {% if plans_count is not None %}<div class="kpi"><span class="kpi-label">Planejamentos (30 dias)</span><span class="kpi-value">{{ plans_count }}</span></div>{% endif %}
+</div>
+
+<div class="row g-3">
+  <section class="col-lg-6" aria-labelledby="dist"><div class="card h-100"><div class="card-body">
+    <h2 id="dist" class="h6">Distribuição de domínio (pares estudante × habilidade)</h2>
+    {% if dist %}{% include "cognitio/_dist.html" with dist=dist %}<ul class="legend legend-stack mt-2">{% for label, css, n, pct, x in dist %}<li><span class="mcell {{ css }}">{{ pct }}%</span>{{ label }} ({{ n }})</li>{% endfor %}</ul>{% else %}<p class="small text-secondary mb-0">Sem evidências ainda.</p>{% endif %}
+  </div></div></section>
+  <section class="col-lg-6" aria-labelledby="evo"><div class="card h-100"><div class="card-body">
+    <h2 id="evo" class="h6">Evolução por período</h2>
+    <p class="small text-secondary">Estado acumulado ao fim de cada período, só de quem já tem conclusão.</p>
+    <div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th scope="col">Período</th><th scope="col">Avaliados</th><th scope="col">Consolidando ou consolidada</th><th scope="col">Dificuldade</th></tr></thead>
+      <tbody>{% for e in evolution %}<tr><td>{{ e.label }}</td><td>{{ e.n }}</td><td>{% if e.cons is None %}—{% else %}{{ e.cons }}%{% endif %}</td><td>{% if e.diff is None %}—{% else %}{{ e.diff }}%{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+  </div></div></section>
+
+  <section class="col-lg-6" aria-labelledby="att"><div class="card h-100"><div class="card-body">
+    <h2 id="att" class="h6">{% icon "triangle-alert" %}Habilidades que pedem atenção</h2>
+    <ul class="list-unstyled small mb-0">{% for d in attention %}<li class="py-1 border-bottom"><a href="{% url 'cognitio:skill_graph' d.item.pk %}"><strong>{{ d.item.code }}</strong></a> · {{ d.diff }} com dificuldade{% if d.classes|length > 1 %} em {{ d.classes|length }} turmas{% endif %}<span class="d-block text-secondary">{{ d.item.text|truncatechars:100 }}</span></li>{% empty %}<li class="text-secondary">Nenhuma habilidade com dificuldade recorrente.</li>{% endfor %}</ul>
+  </div></div></section>
+
+  {% if role == "professor" %}
+  <section class="col-lg-6" aria-labelledby="next"><div class="card h-100"><div class="card-body">
+    <h2 id="next" class="h6">{% icon "calendar-check" %}Sugestões para as próximas aulas</h2>
+    <p class="small text-secondary">Retomar habilidades com dificuldade em 2 ou mais estudantes. Use o mapa da turma para gerar uma trilha.</p>
+    <ul class="list-unstyled small mb-0">{% for d in next_lessons %}<li class="py-1">Retomar <strong>{{ d.item.code }}</strong> ({{ d.diff }} estudante{{ d.diff|pluralize }})</li>{% empty %}<li class="text-secondary">Nada a sugerir com os dados atuais.</li>{% endfor %}</ul>
+  </div></div></section>
+  {% endif %}
+
+  {% if classes %}
+  <section class="col-12" aria-labelledby="tur"><div class="card"><div class="card-body">
+    <h2 id="tur" class="h6">Turmas</h2>
+    <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th scope="col">Turma</th><th scope="col">Distribuição</th><th scope="col">Pares avaliados</th><th scope="col">Alertas</th></tr></thead>
+      <tbody>{% for c in classes %}<tr><th scope="row"><a href="{% url 'cognitio:class_view' c.cg.pk %}">{{ c.cg.name }}</a></th><td class="w-50">{% if c.dist %}{% include "cognitio/_dist.html" with dist=c.dist %}{% else %}<span class="small text-secondary">Sem evidências</span>{% endif %}</td><td>{{ c.n }}</td><td>{{ c.alerts|default:"—" }}</td></tr>{% endfor %}</tbody></table></div>
+  </div></div></section>
+  {% endif %}
+
+  {% if articulation %}
+  <section class="col-lg-6" aria-labelledby="art"><div class="card h-100"><div class="card-body">
+    <h2 id="art" class="h6">Necessidades de formação ou articulação pedagógica</h2>
+    <p class="small text-secondary">Habilidades com dificuldade em mais de uma turma: tema para reunião de área.</p>
+    <ul class="list-unstyled small mb-0">{% for d in articulation %}<li class="py-1"><strong>{{ d.item.code }}</strong> · {{ d.classes|length }} turmas · {{ d.diff }} estudantes</li>{% endfor %}</ul>
+  </div></div></section>
+  {% endif %}
+
+  {% if priority %}
+  <section class="col-lg-6" aria-labelledby="pri"><div class="card h-100"><div class="card-body">
+    <h2 id="pri" class="h6">Estudantes com acompanhamento prioritário</h2>
+    <p class="small text-secondary">Ordem pelo número de alertas importantes ativos. Não é pontuação de capacidade nem ranking.</p>
+    <ul class="list-unstyled small mb-0">{% for st, n in priority %}<li class="py-1"><a href="{% url 'cognitio:student_map' st.pk %}">{{ st }}</a> · {{ n }} alerta{{ n|pluralize }}</li>{% endfor %}</ul>
+  </div></div></section>
+  {% endif %}
+
+  {% if by_component %}
+  <section class="col-12" aria-labelledby="comp"><div class="card"><div class="card-body">
+    <h2 id="comp" class="h6">Desenvolvimento curricular por componente</h2>
+    <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th scope="col">Componente</th><th scope="col">Distribuição</th><th scope="col">Estudantes</th></tr></thead>
+      <tbody>{% for c in by_component %}<tr><th scope="row">{{ c.comp }}</th><td class="w-50">{% if c.hidden %}<span class="small text-secondary">Oculto: menos de 5 estudantes</span>{% else %}{% include "cognitio/_dist.html" with dist=c.dist %}{% endif %}</td><td>{% if c.hidden %}menos de 5{% else %}{{ c.students }}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+  </div></div></section>
+  <section class="col-lg-6" aria-labelledby="qual"><div class="card h-100"><div class="card-body">
+    <h2 id="qual" class="h6">Qualidade dos registros</h2>
+    <ul class="list-unstyled small mb-0">
+      <li class="py-1">Avaliações com habilidade ligada: {% if quality.evals_skill is None %}—{% else %}{{ quality.evals_skill }}%{% endif %} de {{ quality.evals }}</li>
+      <li class="py-1">Avaliações com questões cadastradas: {% if quality.evals_questions is None %}—{% else %}{{ quality.evals_questions }}%{% endif %}</li>
+      <li class="py-1">Atividades publicadas com habilidade ligada: {% if quality.acts_skill is None %}—{% else %}{{ quality.acts_skill }}%{% endif %} de {{ quality.acts }}</li>
+    </ul>
+  </div></div></section>
+  <section class="col-lg-6" aria-labelledby="par"><div class="card h-100"><div class="card-body">
+    <h2 id="par" class="h6">Frequência e participação (60 dias)</h2>
+    <ul class="list-unstyled small mb-0"><li class="py-1">Presença: {% if participation.attendance is None %}—{% else %}{{ participation.attendance }}%{% endif %} ({{ participation.n_att }} registros)</li><li class="py-1">Entregas registradas: {% if participation.deliveries is None %}—{% else %}{{ participation.deliveries }}%{% endif %} ({{ participation.n_subs }} registros)</li></ul>
+  </div></div></section>
+  {% endif %}
+
+  <section class="col-lg-6" aria-labelledby="res"><div class="card h-100"><div class="card-body">
+    <h2 id="res" class="h6">Resultados das intervenções</h2>
+    <p class="small text-secondary">Evidências depois do início comparadas às anteriores (associação no tempo).</p>
+    <ul class="list-unstyled small mb-0">{% for k, v in iv_results %}<li>{% if k == "melhorou" %}Evidências posteriores melhores{% elif k == "estavel" %}Sem mudança relevante{% elif k == "piorou" %}Evidências posteriores mais baixas{% elif k == "sem_evidencia" %}Sem evidência depois do início{% else %}Sem evidência anterior{% endif %}: {{ v }}</li>{% empty %}<li class="text-secondary">Nenhuma intervenção iniciada.</li>{% endfor %}</ul>
+  </div></div></section>
+
+  {% if top_alerts and role != "direcao" %}
+  <section class="col-12" aria-labelledby="tal"><div class="card"><div class="card-body">
+    <h2 id="tal" class="h6">Alertas que exigem atenção</h2>
+    <ul class="list-unstyled small mb-0">{% for a in top_alerts %}<li class="py-1 border-bottom"><strong>{{ a.title }}</strong> <span class="text-secondary">· {{ a.get_level_display }}</span></li>{% endfor %}</ul>
+  </div></div></section>
+  {% endif %}
+</div>
+{% endblock %}

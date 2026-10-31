@@ -226,7 +226,9 @@ def class_view(request, class_id):
         it = next((i for i in items if i.pk == int(sel)), None)
         if it:
             rows = [(st, a) for st, r in matrix for i, a in r if i.pk == it.pk]
-            focus = {"item": it, "rows": sorted(rows, key=lambda r: (r[1].level, r[1].mean or 0))}
+            order = {"dificuldade": 0, "contraditoria": 1, "desenvolvimento": 2, "insuficiente": 3,
+                     "nao_avaliado": 4, "consolidacao": 5, "consolidada": 6}
+            focus = {"item": it, "rows": sorted(rows, key=lambda r: (order[r[1].state], r[1].mean or 0))}
     groups = []
     for s in summary:
         members = [st for st, r in matrix for i, a in r if i.pk == s["item"].pk

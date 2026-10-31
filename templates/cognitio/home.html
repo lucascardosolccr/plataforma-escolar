@@ -9,6 +9,7 @@
     <p>Aprendizagem por habilidade, a partir do que já é registrado na plataforma: questões das avaliações, notas de avaliações e atividades ligadas a habilidades, trabalhos e observações. O sistema sinaliza e sugere; a interpretação e a decisão pedagógica são do professor.</p>
   </div>
   <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-primary" href="{% url 'cognitio:dashboard' %}">{% icon "layout-dashboard" %}Painel</a>
     <a class="btn btn-outline-secondary" href="{% url 'cognitio:alerts' %}">{% icon "triangle-alert" %}Alertas</a>
     <a class="btn btn-outline-secondary" href="{% url 'cognitio:interventions' %}">{% icon "heart-handshake" %}Intervenções</a>
     <a class="btn btn-outline-secondary" href="{% url 'cognitio:strategies' %}">{% icon "book-open" %}Estratégias</a>

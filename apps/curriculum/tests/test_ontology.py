@@ -92,3 +92,10 @@ class CurationTests(Base):
         c = CurriculumCorrespondence.objects.get(source__code="DF-MA6-02")
         self.assertEqual((c.target.code, c.relation, c.confidence, c.origin, c.validated),
                          ("EF06MA01", "parcial", "alta", "importacao", False))
+
+
+class PairSelectionTests(Base):
+    def test_for_pair_lists_only_teachable_items(self):
+        kinds = set(CurriculumItem.for_pair(self.school, "Matemática", 1).values_list("kind", flat=True))
+        self.assertEqual(kinds, {"habilidade"})  # nem competência específica, nem geral, nem PNED
+        self.assertNotIn("CE-MA-01", CurriculumItem.for_pair(self.school, "Matemática", 6).values_list("code", flat=True))

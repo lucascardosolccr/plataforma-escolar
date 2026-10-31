@@ -37,8 +37,8 @@ TRENDS = {
 }
 ABBR = {"nao_avaliado": "—", "insuficiente": "?", "contraditoria": "≠", "dificuldade": "D", "desenvolvimento": "E",
         "consolidacao": "C", "consolidada": "✓"}
-CSS = {"nao_avaliado": "m-none", "insuficiente": "m-insuf", "contraditoria": "m-contra", "dificuldade": "m-1",
-       "desenvolvimento": "m-2", "consolidacao": "m-3", "consolidada": "m-4"}
+CSS = {"nao_avaliado": "st-none", "insuficiente": "st-insuf", "contraditoria": "st-contra", "dificuldade": "st-1",
+       "desenvolvimento": "st-2", "consolidacao": "st-3", "consolidada": "st-4"}
 
 
 @dataclass

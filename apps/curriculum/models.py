@@ -84,9 +84,14 @@ class CurriculumItem(models.Model):
 
     @classmethod
     def for_pair(cls, school, component, year):
-        """Habilidades e objetivos do componente e do ano (sem as competências gerais)."""
-        qs = cls.objects.filter(cls.visible_q(school), active=True, component=component).exclude(
-            kind=cls.Kind.GENERAL)
+        """Habilidades e objetivos do componente e do ano.
+
+        Só o que se ensina e se avalia em aula: habilidades da BNCC e objetivos ou
+        conteúdos da escola. Competências gerais, específicas e da PNED são
+        referências amplas e ficam fora (aparecem em grupos próprios).
+        """
+        qs = cls.objects.filter(cls.visible_q(school), active=True, component=component, kind__in=[
+            cls.Kind.SKILL, cls.Kind.DF_OBJECTIVE, cls.Kind.DF_CONTENT, cls.Kind.OWN])
         if year:
             ids = [i.pk for i in qs if year in i.year_list or not i.year_list]
             qs = qs.filter(pk__in=ids)

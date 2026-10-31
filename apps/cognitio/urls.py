@@ -1,12 +1,14 @@
 from django.urls import path
 
-from . import views, views_evidence, views_intel, views_prescriptive, views_text
+from . import views, views_dash, views_evidence, views_intel, views_prescriptive, views_text
 
 app_name = "cognitio"
 
 urlpatterns = [
     path("cognitio/", views.home, name="home"),
     path("cognitio/escala/", views.scale_settings, name="scale"),
+    path("cognitio/painel/", views_dash.dashboard, name="dashboard"),
+    path("cognitio/disciplina/", views_dash.discipline, name="discipline"),
     path("cognitio/estudante/<int:student_id>/", views.student_map, name="student_map"),
     path("cognitio/turma/<int:class_id>/", views.class_view, name="class_view"),
     path("cognitio/turma/<int:class_id>/disciplina/<int:subject_id>/observacao/", views_evidence.observation_create,

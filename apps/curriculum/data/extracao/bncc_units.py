@@ -77,6 +77,14 @@ for raw in text.split("\n"):
     if TABLE_HEAD.search(line) and not CODE.search(line):
         in_table = True
         continue
+    head = re.match(r"^(LÍNGUA PORTUGUESA|ARTE|EDUCAÇÃO FÍSICA|LÍNGUA INGLESA|MATEMÁTICA|CIÊNCIAS|GEOGRAFIA|"
+                    r"HISTÓRIA|ENSINO RELIGIOSO)\s*[–-]\s*\d", norm(line))
+    if head:
+        # Cabeçalho da tabela: o componente muda antes do primeiro código.
+        comp = {"LÍNGUA PORTUGUESA": "LP", "ARTE": "AR", "EDUCAÇÃO FÍSICA": "EF", "LÍNGUA INGLESA": "LI",
+                "MATEMÁTICA": "MA", "CIÊNCIAS": "CI", "GEOGRAFIA": "GE", "HISTÓRIA": "HI",
+                "ENSINO RELIGIOSO": "ER"}[head.group(1)]
+        continue
     if HEADER.match(norm(line)) and not CODE.search(line):
         continue
     m = CODE.search(line)

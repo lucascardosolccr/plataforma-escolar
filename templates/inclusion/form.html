@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ heading }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  {% url 'inclusion:case_detail' student.pk as back %}
+  {% include "partials/_form_head.html" with heading=heading subheading=subheading back_url=back back_label="Ficha de apoio" %}
+  <form method="post" class="card form-card" novalidate{% if multipart %} enctype="multipart/form-data"{% endif %}>
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with submit_label=submit %}
+  </form>
+</div>
+{% endblock %}

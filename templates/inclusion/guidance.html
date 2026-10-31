@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Orientações de apoio — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Orientações de apoio</h1>
+    <p>Recursos de acessibilidade, estratégias e cuidados definidos pela equipe pedagógica para estudantes das {% if is_teacher %}suas turmas{% else %}turmas que você acompanha{% endif %}. Diagnósticos e laudos não aparecem aqui. Cada estudante tem as suas orientações: não generalize para outros.</p>
+  </div>
+</div>
+{% if classes|length > 1 %}
+<form method="get" class="filter-bar" aria-label="Filtrar por turma">
+  {% include "partials/_filter_select.html" with name="turma" label="Turma" options=classes selected=turma all_label="Todas" %}
+  {% include "partials/_filter_end.html" with count=rows|length noun="estudante(s) com orientação" %}
+</form>
+{% endif %}
+<div class="d-grid gap-3">
+  {% for student, groups, info in rows %}
+  <article class="card"><div class="card-body">
+    <h2 class="h6 mb-1">{{ student }}</h2>
+    <p class="small text-secondary mb-2">{{ groups|join:", " }}</p>
+    {% for n in info.needs %}
+    <div class="mb-2">
+      <p class="small fw-semibold mb-1">{{ n.get_area_display }}</p>
+      {% if n.resources %}<p class="small mb-1"><strong>Recursos:</strong> {{ n.resources|linebreaksbr }}</p>{% endif %}
+      {% if n.classroom_strategies %}<p class="small mb-1"><strong>Estratégias em sala:</strong> {{ n.classroom_strategies|linebreaksbr }}</p>{% endif %}
+      {% if n.care_notes %}<p class="small mb-1"><strong>Cuidados:</strong> {{ n.care_notes|linebreaksbr }}</p>{% endif %}
+    </div>
+    {% endfor %}
+    {% if info.plan %}
+    <dl class="review-list small mb-0">{% for label, value in info.plan %}<dt>{{ label }}</dt><dd>{{ value|linebreaksbr }}</dd>{% endfor %}</dl>
+    {% endif %}
+  </div></article>
+  {% empty %}
+  <div class="card"><div class="empty-state py-5">{% icon "heart-handshake" %}<strong>Nenhuma orientação registrada</strong><span>Quando a equipe pedagógica registrar orientações para estudantes das suas turmas, elas aparecem aqui.</span></div></div>
+  {% endfor %}
+</div>
+{% endblock %}

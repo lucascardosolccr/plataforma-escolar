@@ -93,7 +93,7 @@
 .curriculum-group:last-child { border-bottom: 0; }
 .curriculum-group summary { cursor: pointer; font-weight: 700; padding: .25rem 0; }
 .curriculum-group .form-check { margin: .3rem 0; }
-.curriculum-group .form-check-label { font-size: .875rem; line-height: 1.35; }
+.curriculum-group .form-check-label { font-size: .875rem; line-height: 1.35; font-weight: 400; }
 .code-chips { display: flex; flex-wrap: wrap; gap: .35rem; margin: 0; padding: 0; list-style: none; }
 .coverage-grid td.is-yes { color: var(--ds-success); font-weight: 700; }
 .coverage-grid td.is-no { color: var(--ds-text-muted); }

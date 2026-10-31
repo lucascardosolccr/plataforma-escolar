@@ -168,6 +168,7 @@
               <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:occurrence_list' %}?estudante={{ student.pk }}">Ocorrências</a>
               <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:observation_list' %}?estudante={{ student.pk }}">Observações pedagógicas</a>
               <a class="btn btn-outline-secondary btn-sm" href="{% url 'pedagogy:justification_create' %}?estudante={{ student.pk }}">Justificar falta</a>
+              <a class="btn btn-outline-secondary btn-sm" href="{% url 'inclusion:case_detail' student.pk %}">Necessidades específicas e laudos</a>
             </div>
           </div></div>
         </div>
@@ -187,6 +188,9 @@
                 <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:plan_list' %}?estudante={{ student.pk }}">Plano de acompanhamento</a>
               {% endif %}
               <a class="btn btn-outline-secondary btn-sm" href="{% url 'pedagogy:justification_list' %}?estudante={{ student.pk }}">Justificativas de falta</a>
+              {% if user_role == ROLE_COORDENACAO or user_role == ROLE_DIRECAO or user_role == ROLE_PROFESSOR or user_role == ROLE_SECRETARIA %}
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'inclusion:student_entry' student.pk %}">{% if user_role == ROLE_PROFESSOR %}Orientações de apoio{% elif user_role == ROLE_SECRETARIA %}Apoio à inclusão (situação){% else %}Apoio à inclusão{% endif %}</a>
+              {% endif %}
             </div>
           </div></div>
         </div>

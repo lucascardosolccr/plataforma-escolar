@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Apoio à inclusão — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Apoio à inclusão</h1>
+    <p>{% if is_team %}Fichas de apoio dos estudantes que você acompanha: o que a família informou, documentos, análise, necessidades e planos individualizados.{% else %}Situação da documentação de apoio, para os procedimentos da secretaria. Planos, necessidades e documentos são consultados pela equipe pedagógica.{% endif %}</p>
+  </div>
+  {% if is_team %}
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary" href="{% url 'inclusion:guidance' %}">{% icon "heart-handshake" %}Orientações</a>
+    <a class="btn btn-outline-secondary" href="{% url 'inclusion:panel' %}">{% icon "chart-column" %}Indicadores</a>
+    <a class="btn btn-outline-secondary" href="{% url 'inclusion:settings' %}">{% icon "sliders-horizontal" %}Configurar</a>
+    {% if user_role == ROLE_DIRECAO %}<a class="btn btn-outline-secondary" href="{% url 'inclusion:retention' %}">{% icon "history" %}Prazo de guarda</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<form method="get" class="filter-bar" aria-label="Filtrar fichas">
+  {% include "partials/_filter_select.html" with name="situacao" label="Situação" options=status_choices selected=status all_label="Todas" %}
+  {% include "partials/_filter_end.html" with count=rows|length noun="ficha(s)" %}
+</form>
+{% if is_team %}<p class="small text-secondary">Para abrir a ficha de um estudante que ainda não tem registro, use a ficha cadastral dele (aba Pedagógico, “Apoio à inclusão”).</p>{% endif %}
+
+<div class="card"><div class="table-responsive"><table class="table align-middle mb-0 table-stack">
+  <thead><tr><th scope="col">Estudante</th><th scope="col">Situação</th>{% if is_team %}<th scope="col">Plano</th><th scope="col">Pedidos abertos</th>{% else %}<th scope="col">Condições validadas</th>{% endif %}<th scope="col">Documentos</th><th scope="col">Atualizada</th>{% if not is_team %}<th scope="col"><span class="visually-hidden">Ações</span></th>{% endif %}</tr></thead>
+  <tbody>
+    {% for c, plan in rows %}
+    <tr>
+      <td class="fw-semibold">{% if is_team %}<a href="{% url 'inclusion:case_detail' c.student_id %}">{{ c.student }}</a>{% else %}{{ c.student }}{% endif %}</td>
+      <td data-label="Situação">{{ c.get_status_display }}</td>
+      {% if is_team %}
+      <td data-label="Plano">{% if plan %}{{ plan.get_status_display }}{% if plan.review_overdue %} <span class="chip chip-state state-erro">revisão vencida</span>{% endif %}{% else %}—{% endif %}</td>
+      <td data-label="Pedidos abertos">{{ c.open_requests|default:"—" }}</td>
+      {% else %}
+      <td data-label="Condições validadas" class="small">{% for v in c.validated_categories.all %}{{ v.name }}{% if not forloop.last %}; {% endif %}{% empty %}—{% endfor %}</td>
+      {% endif %}
+      <td data-label="Documentos">{{ c.docs }}</td>
+      <td data-label="Atualizada" class="text-nowrap">{{ c.updated_at|date:"d/m/Y" }}</td>
+      {% if not is_team %}<td class="text-end cell-actions"><a class="btn btn-sm btn-outline-secondary" href="{% url 'inclusion:document_upload' c.student_id %}">Documento recebido</a></td>{% endif %}
+    </tr>
+    {% empty %}
+    <tr><td colspan="6"><div class="empty-state py-4">{% icon "heart-handshake" %}<strong>Nenhuma ficha de apoio com registro</strong></div></td></tr>
+    {% endfor %}
+  </tbody>
+</table></div></div>
+{% endblock %}

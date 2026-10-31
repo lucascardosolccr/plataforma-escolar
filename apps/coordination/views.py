@@ -196,7 +196,15 @@ def panel(request):
         "prints": pending_print_requests(user)[:6],
         "plans_waiting": _visible_qs(user).filter(status="enviado").count(),
         "coverage": week_coverage(user),
+        "support_items": _support_items(user, today),
     })
+
+
+def _support_items(user, today):
+    """Fila do apoio à inclusão (mesma contagem da central de pendências)."""
+    from apps.core.pending import _support_team
+
+    return _support_team(user, today)
 
 
 def record_list(request):

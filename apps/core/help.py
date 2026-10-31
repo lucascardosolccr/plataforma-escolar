@@ -197,6 +197,36 @@ GUIDES = [
         ("Preencha em etapas; dá para salvar e continuar depois.", None),
         ("A secretaria confere e avisa você aqui na plataforma.", None),
     ]),
+    # Prompt 15
+    ("Divulgar a data de uma prova", "clipboard-check", (PROFESSOR,), [
+        ("Ao criar a avaliação, deixe marcado “divulgar a data para a turma”.", "pedagogy:evaluation_create"),
+        ("A prova entra na agenda do estudante e da família, e os lembretes saem com a antecedência definida pela escola.", None),
+        ("Mudou a data ou desmarcou? Salve a avaliação: todos recebem o aviso e os lembretes antigos ficam como resolvidos.", None),
+    ]),
+    ("Relacionar habilidades da BNCC", "book-marked", (PROFESSOR,), [
+        ("Na atividade, no trabalho, na avaliação ou no planejamento, marque as habilidades na seção “Habilidades e objetivos curriculares”.", "pedagogy:activity_create"),
+        ("O filtro aceita código (EF06MA03) ou palavra (frações). Outros códigos podem ser digitados.", None),
+        ("Registre evidências da turma e acompanhe o que foi previsto, trabalhado e avaliado.", "curriculum:coverage"),
+    ]),
+    ("Ver as orientações de apoio dos estudantes", "heart-handshake", (PROFESSOR,), [
+        ("Em Orientações de apoio aparecem recursos, estratégias e cuidados definidos pela equipe pedagógica.", "inclusion:guidance"),
+        ("Diagnóstico e laudo não aparecem: as orientações dizem o que fazer em sala.", None),
+    ]),
+    ("Acompanhar a inclusão de um estudante", "heart-handshake", GESTAO, [
+        ("Em Apoio à inclusão, abra a ficha do estudante (ou pela ficha cadastral, aba Pedagógico).", "inclusion:overview"),
+        ("Analise documentos, peça complementação à família e registre necessidades de apoio, com ou sem laudo.", None),
+        ("Elabore o plano individualizado (PAEE e PEI em documento único) a partir do estudo de caso e revise em até um ano.", None),
+        ("Indicadores agregados, sem diagnóstico, ficam em Indicadores.", "inclusion:panel"),
+    ]),
+    ("Informar à escola uma necessidade específica", "heart-handshake", (RESPONSAVEL,), [
+        ("Em Necessidades e laudos, abra a ficha do seu filho e use “Informar ou atualizar”.", "inclusion:overview"),
+        ("Laudo não é obrigatório. Se tiver, anexe em PDF, JPG ou PNG.", None),
+        ("Acompanhe a análise e responda aos pedidos de complementação pela mesma tela.", None),
+    ]),
+    ("Definir a antecedência dos lembretes", "bell", (DIRECAO, ADMIN), [
+        ("Em Avisos automáticos, ajuste os dias antes da entrega, depois do vencimento e antes das provas.", "communication:notification_rules"),
+        ("O quadro de processamentos mostra quando os lembretes rodaram e quantos avisos saíram.", None),
+    ]),
     ("Escolher que avisos receber", "bell", (RESPONSAVEL, PROFESSOR, ESTUDANTE), [
         ("Em Notificações, abra Preferências e desmarque o que não quer receber.",
          "communication:notification_preferences"),
@@ -206,9 +236,15 @@ GUIDES = [
 
 # Perguntas comuns a todos os perfis: (pergunta, resposta, perfis)
 FAQ = [
-    ("A escola avisa quando o prazo de uma atividade está chegando?",
-     "Sim, se a escola deixar ligado: na véspera ou no dia do prazo, quem ainda não tem entrega registrada recebe um lembrete, uma única vez. Para não receber, desmarque “Atividades” em Notificações → Preferências.",
+    ("A escola avisa quando o prazo de uma atividade ou a data de uma prova está chegando?",
+     "Sim, se a escola deixar ligado. A antecedência é definida pela escola (por exemplo, 3 dias antes, na véspera e no dia). Quem já tem entrega registrada não recebe lembrete, e cada lembrete sai uma vez só. Se o professor mudar a data, você é avisado e os lembretes antigos aparecem como resolvidos. Para não receber, desmarque o tipo em Notificações → Preferências.",
      (RESPONSAVEL, ESTUDANTE)),
+    ("Quem vê o laudo que eu enviar?",
+     "A coordenação que acompanha a turma e a direção. Os professores veem só as orientações de sala de aula, sem diagnóstico nem laudo; a secretaria vê só a situação da documentação. Cada consulta e cada download ficam registrados. Laudo não é obrigatório para matrícula nem para atendimento.",
+     (RESPONSAVEL,)),
+    ("As habilidades da BNCC da plataforma são confiáveis?",
+     "As competências gerais e as habilidades do Ensino Fundamental foram carregadas do PDF oficial da BNCC (MEC), sem reescrita. Os objetivos do Currículo em Movimento do DF são cadastrados pela escola, com a fonte.",
+     GESTAO + (PROFESSOR,)),
     ("Por que só vejo algumas disciplinas?",
      "Cada professor vê as disciplinas atribuídas a ele. Acesso a outra disciplina é concedido pela direção, secretaria ou administração, com prazo.",
      (PROFESSOR,)),

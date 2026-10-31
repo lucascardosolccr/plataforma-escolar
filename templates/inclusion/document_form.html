@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Documento de apoio — {{ student.first_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  {% if family %}{% url 'inclusion:case_detail' student.pk as back %}{% else %}{% url 'inclusion:overview' as back %}{% endif %}
+  {% if replaces %}
+    {% include "partials/_form_head.html" with heading="Substituir documento" subheading="O documento anterior continua guardado no histórico, marcado como substituído." back_url=back back_label="Voltar" %}
+  {% elif family %}
+    {% include "partials/_form_head.html" with heading="Anexar documento" subheading=student.full_name back_url=back back_label="Ficha de apoio" %}
+  {% else %}
+    {% include "partials/_form_head.html" with heading="Registrar documento recebido pela escola" subheading="Documento entregue em papel ou por outro meio, digitalizado pela escola." back_url=back back_label="Voltar" %}
+  {% endif %}
+  {% if family %}{% include "inclusion/_purpose.html" %}{% endif %}
+  <form method="post" enctype="multipart/form-data" class="card form-card" novalidate>
+    {% csrf_token %}
+    <div class="card-body">
+      <p class="small text-secondary">{{ student }} · PDF, JPG ou PNG de até {{ settings.max_upload_mb }} MB. PDFs com script ou arquivo embutido são recusados; imagens são regravadas sem dados de localização.</p>
+      {% include "partials/_form_fields.html" with f=form %}
+    </div>
+    {% include "partials/_form_actions.html" with submit_label="Enviar documento" %}
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Indicadores de apoio à inclusão — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'inclusion:overview' %}" class="back-link">{% icon "arrow-left" %}Apoio à inclusão</a>
+    <h1>Indicadores de apoio à inclusão</h1>
+    <p>Números agregados para organizar recursos e acompanhamento. Não há diagnósticos individuais, contagem por diagnóstico nem ranking. Grupos com menos de {{ min_group }} estudantes aparecem como “menos de {{ min_group }}”.</p>
+  </div>
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><p class="small text-secondary mb-1">Estudantes com apoio registrado</p><p class="fs-3 fw-bold mb-0">{{ k.students }}</p></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><p class="small text-secondary mb-1">Planos vigentes</p><p class="fs-3 fw-bold mb-0">{{ k.active_plans }}</p></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><p class="small text-secondary mb-1">Planos com revisão vencida</p><p class="fs-3 fw-bold mb-0">{{ k.overdue }}</p></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><p class="small text-secondary mb-1">Apoio registrado sem laudo</p><p class="fs-3 fw-bold mb-0">{{ k.without_report }}</p></div></div></div>
+</div>
+<div class="row g-3">
+  <section class="col-lg-6" aria-labelledby="fila"><div class="card h-100"><div class="card-body">
+    <h2 id="fila" class="h6">Fila da equipe</h2>
+    <ul class="list-unstyled mb-0">
+      <li class="d-flex justify-content-between py-1 border-bottom"><span>Documentos aguardando análise</span><strong>{{ k.awaiting_docs }}</strong></li>
+      <li class="d-flex justify-content-between py-1 border-bottom"><span>Respostas da família para ler</span><strong>{{ k.answered }}</strong></li>
+      <li class="d-flex justify-content-between py-1"><span>Pedidos aguardando a família</span><strong>{{ k.open_requests }}</strong></li>
+    </ul>
+  </div></div></section>
+  <section class="col-lg-6" aria-labelledby="areas"><div class="card h-100"><div class="card-body">
+    <h2 id="areas" class="h6">Demandas de apoio por área</h2>
+    <p class="small text-secondary">Estudantes com necessidade vigente em cada área (um estudante pode estar em mais de uma).</p>
+    <ul class="list-unstyled mb-0">{% for label, n in by_area %}<li class="d-flex justify-content-between py-1 border-bottom"><span>{{ label }}</span><strong>{% if n == 0 %}0{% elif n < min_group %}menos de {{ min_group }}{% else %}{{ n }}{% endif %}</strong></li>{% endfor %}</ul>
+  </div></div></section>
+</div>
+{% endblock %}

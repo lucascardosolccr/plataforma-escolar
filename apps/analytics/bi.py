@@ -1214,6 +1214,16 @@ def data_quality(school, period):
         enrollments__status="ativo").distinct()
     out_of_range = Grade.objects.filter(school=school, value__isnull=False).filter(
         Q(value__lt=0) | Q(value__gt=10)).select_related("evaluation", "student")
+    # Prompt 15: sem componente ou sem ano, o acompanhamento curricular não
+    # encontra as habilidades da BNCC esperadas para a turma.
+    from apps.academics.models import Subject, TeacherAssignment
+    from apps.curriculum.models import component_for, year_for
+
+    taught = TeacherAssignment.objects.filter(school=school, school_year__is_current=True)
+    subjects_no_component = [s for s in Subject.objects.filter(pk__in=taught.values("subject_id"))
+                             if not component_for(s)]
+    classes_no_year = [c for c in ClassGroup.objects.filter(pk__in=taught.values("class_group_id"))
+                       if year_for(c) is None]
     return {
         "period": period,
         "missing_grades": sorted(missing_grades, key=lambda r: -r["missing"]),
@@ -1226,10 +1236,13 @@ def data_quality(school, period):
         "without_guardian": without_guardian,
         "inconsistent_status": inconsistent_status,
         "out_of_range": out_of_range[:50],
+        "subjects_no_component": subjects_no_component,
+        "classes_no_year": classes_no_year,
         "not_computable": [
             ("Frequência por disciplina", "A chamada é diária por turma, não por aula."),
             ("Aulas previstas", "A carga horária planejada não é registrada; o divisor são os dias com chamada."),
-            ("Competências e habilidades", "Não há cadastro estruturado; só texto livre nas observações."),
+            ("Habilidades por estudante", "As evidências de aprendizagem são registradas por turma, de propósito: "
+             "a plataforma não classifica estudantes por habilidade."),
             ("Metas de aprendizagem", "Não são cadastradas."),
             ("Bimestres", "O ano letivo não tem divisão em períodos cadastrada; use o seletor de datas."),
             ("Entregas no prazo antes de 30/10/2026", "A situação \"com atraso\" não existia; entregas antigas contam como no prazo."),

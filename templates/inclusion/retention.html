@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Prazo de guarda dos documentos — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'inclusion:overview' %}" class="back-link">{% icon "arrow-left" %}Apoio à inclusão</a>
+    <h1>Prazo de guarda dos documentos</h1>
+    <p>Documentos de estudantes sem matrícula ativa há mais de {{ settings.retention_years }} ano{{ settings.retention_years|pluralize }}. Descartar apaga o arquivo; o registro de que existiu (nome, data, autor e código de verificação) é mantido. Documento de estudante ativo nunca aparece aqui.</p>
+  </div>
+</div>
+<form method="post" class="card" data-bulk>
+  {% csrf_token %}
+  {% if candidates %}
+  <div class="bulk-bar" data-bulk-bar>
+    <label class="form-check mb-0 d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input mt-0" data-bulk-all aria-label="Selecionar todos"><span data-bulk-count>0 selecionados</span></label>
+    <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Os arquivos selecionados serão apagados. O registro de que existiram continua no histórico." data-confirm-title="Descartar arquivos?" data-confirm-ok="Descartar" data-confirm-tone="danger">Descartar selecionados</button>
+  </div>
+  {% endif %}
+  <div class="table-responsive"><table class="table align-middle mb-0 table-stack">
+    <thead><tr><th scope="col"><span class="visually-hidden">Selecionar</span></th><th scope="col">Estudante</th><th scope="col">Documento</th><th scope="col">Enviado em</th></tr></thead>
+    <tbody>{% for d in candidates %}<tr>
+      <td><input type="checkbox" class="form-check-input" name="ids" value="{{ d.public_id }}" aria-label="Selecionar {{ d.original_name }}"></td>
+      <td data-label="Estudante">{{ d.case.student }}</td>
+      <td data-label="Documento">{{ d.original_name }} <span class="small text-secondary">({{ d.get_status_display }})</span></td>
+      <td data-label="Enviado em">{{ d.uploaded_at|date:"d/m/Y" }}</td>
+    </tr>{% empty %}<tr><td colspan="4"><div class="empty-state py-4">{% icon "check" %}<strong>Nenhum documento com prazo de guarda vencido</strong></div></td></tr>{% endfor %}</tbody>
+  </table></div>
+</form>
+{% endblock %}

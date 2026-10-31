@@ -57,6 +57,14 @@
   {% if q.out_of_range %}<div class="alert alert-warning mt-3">{% icon "triangle-alert" %}<div>{{ q.out_of_range|length }} nota(s) fora da faixa 0–10 — confira se a disciplina usa a regra "soma".</div></div>{% endif %}
 </section>
 
+<section class="bi-section" id="curriculo"><h2>Currículo</h2>
+  <p class="small text-body-secondary">Sem o componente da BNCC na disciplina ou sem o ano na turma, o acompanhamento curricular não sabe quais habilidades esperar. Corrija no cadastro da disciplina (campo “componente curricular”) ou na série da turma.</p>
+  <div class="row g-3">
+    <div class="col-md-6"><div class="card h-100"><div class="card-header">Disciplinas sem componente da BNCC</div><ul class="list-group list-group-flush small">{% for s in q.subjects_no_component %}<li class="list-group-item">{{ s.name }}</li>{% empty %}<li class="list-group-item text-body-secondary">Nenhuma.</li>{% endfor %}</ul></div></div>
+    <div class="col-md-6"><div class="card h-100"><div class="card-header">Turmas sem ano identificável</div><ul class="list-group list-group-flush small">{% for c in q.classes_no_year %}<li class="list-group-item">{{ c.name }}</li>{% empty %}<li class="list-group-item text-body-secondary">Nenhuma.</li>{% endfor %}</ul></div></div>
+  </div>
+</section>
+
 <section class="bi-section" id="rotina"><h2>Cadastro e rotina</h2>
   <ul class="rule-list">
     <li><strong>{{ ops.photo_missing }}</strong> estudante(s) ativo(s) sem foto{% if ops.photo_exempt %} e {{ ops.photo_exempt }} com dispensa justificada{% endif %}. <a href="{% url 'photo_pending' %}">Ver pendências de foto</a></li>

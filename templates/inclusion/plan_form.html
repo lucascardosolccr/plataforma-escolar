@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Plano individualizado — {{ student.first_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="form-page form-page-wide">
+  {% url 'inclusion:case_detail' student.pk as back %}
+  {% include "partials/_form_head.html" with heading="Plano individualizado (PAEE e PEI)" subheading="Documento único, derivado do estudo de caso, revisado no máximo a cada ano. Considere o estudante, o contexto, as potencialidades e as necessidades efetivas: o plano não sai pronto de uma categoria." back_url=back back_label="Ficha de apoio" %}
+  <form method="post" class="card form-card" novalidate>
+    {% csrf_token %}
+    <div class="card-body">
+      {% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+      <fieldset class="form-section"><legend><span class="step" aria-hidden="true">1</span>Vigência e responsáveis</legend>
+        <div class="row g-3">
+          {% include "partials/_field.html" with field=form.status col="col-md-4" %}
+          {% include "partials/_field.html" with field=form.starts_on col="col-md-4" %}
+          {% include "partials/_field.html" with field=form.review_due col="col-md-4" %}
+          {% include "partials/_field.html" with field=form.responsibles %}
+        </div>
+      </fieldset>
+      <fieldset class="form-section"><legend><span class="step" aria-hidden="true">2</span>Estudo de caso<small>Decreto nº 12.686/2025, art. 11</small></legend>
+        <div class="row g-3">
+          {% include "partials/_field.html" with field=form.barriers %}
+          {% include "partials/_field.html" with field=form.context_analysis %}
+          {% include "partials/_field.html" with field=form.strengths %}
+          {% include "partials/_field.html" with field=form.support_needs %}
+          {% include "partials/_field.html" with field=form.family_participation %}
+        </div>
+      </fieldset>
+      <fieldset class="form-section"><legend><span class="step" aria-hidden="true">3</span>Recursos e serviços (PAEE)<small>Portaria MEC nº 421/2026, art. 10</small></legend>
+        <div class="row g-3">
+          {% include "partials/_field.html" with field=form.materials_resources %}
+          {% include "partials/_field.html" with field=form.assistive_tech %}
+          {% include "partials/_field.html" with field=form.support_professional %}
+          {% include "partials/_field.html" with field=form.training_network %}
+        </div>
+      </fieldset>
+      <fieldset class="form-section"><legend><span class="step" aria-hidden="true">4</span>Acessibilização curricular (PEI)<small>Portaria MEC nº 421/2026, art. 11</small></legend>
+        <div class="row g-3">
+          {% include "partials/_field.html" with field=form.aee_activities %}
+          {% include "partials/_field.html" with field=form.curricular_measures %}
+          {% include "partials/_field.html" with field=form.objectives %}
+          {% include "partials/_field.html" with field=form.strategies %}
+          {% include "partials/_field.html" with field=form.reasonable_adjustments %}
+          {% include "partials/_field.html" with field=form.monitoring %}
+          {% include "partials/_field.html" with field=form.evidence %}
+          {% include "partials/_field.html" with field=form.referrals %}
+        </div>
+      </fieldset>
+      <fieldset class="form-section mb-0"><legend><span class="step" aria-hidden="true">5</span>O que os professores veem</legend>
+        <div class="row g-3">
+          {% include "partials/_field.html" with field=form.teacher_summary %}
+        </div>
+        <p class="small text-secondary mt-2 mb-0">Os professores do estudante veem estas orientações, as medidas curriculares, as estratégias, as adaptações, os recursos, os objetivos e o acompanhamento. Não veem o estudo de caso, a categoria nem documentos.</p>
+      </fieldset>
+    </div>
+    {% include "partials/_form_actions.html" with submit_label="Salvar plano" %}
+  </form>
+</div>
+{% endblock %}

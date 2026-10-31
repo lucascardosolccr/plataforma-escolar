@@ -82,7 +82,8 @@ class ClassGroupForm(forms.ModelForm):
 class SubjectForm(forms.ModelForm):
     class Meta:
         model = Subject
-        fields = ["name", "code", "grade_level", "workload_hours", "is_active", "valid_from", "valid_until"]
+        fields = ["name", "code", "curriculum_component", "grade_level", "workload_hours", "is_active", "valid_from",
+                  "valid_until"]
         labels = {"name": "Nome da disciplina", "code": "Código"}
         widgets = {
             "valid_from": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),

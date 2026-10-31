@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Necessidades específicas — {{ student.first_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  {% url 'inclusion:case_detail' student.pk as back %}
+  {% include "partials/_form_head.html" with heading="Informar necessidades específicas" subheading=student.full_name back_url=back back_label="Ficha de apoio" %}
+  {% include "inclusion/_purpose.html" %}
+  <form method="post" enctype="multipart/form-data" class="card form-card" novalidate>
+    {% csrf_token %}
+    <div class="card-body">
+      <p class="small text-secondary">Informe o que achar útil. Nenhum campo de condição é obrigatório e você pode atualizar quando quiser. O documento é opcional: PDF, JPG ou PNG de até {{ settings.max_upload_mb }} MB.</p>
+      {% include "partials/_form_fields.html" with f=form %}
+    </div>
+    {% include "partials/_form_actions.html" with submit_label="Enviar à escola" %}
+  </form>
+</div>
+{% endblock %}

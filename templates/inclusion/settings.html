@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Configurar apoio à inclusão — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  {% url 'inclusion:overview' as back %}
+  {% include "partials/_form_head.html" with heading="Configurar apoio à inclusão" subheading="Categorias que a família pode marcar, limite dos arquivos, prazo de guarda e contato para dúvidas." back_url=back back_label="Apoio à inclusão" %}
+  <form method="post" class="card form-card mb-3" novalidate>
+    {% csrf_token %}<input type="hidden" name="acao" value="config">
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with submit_label="Salvar configuração" %}
+  </form>
+  <section class="card" aria-labelledby="cats"><div class="card-body">
+    <h2 id="cats" class="h6">Categorias</h2>
+    <p class="small text-secondary">Lista configurável e não exaustiva. Categoria desativada some do formulário da família, mas continua nas fichas que já a usam. Nenhuma categoria gera plano ou estratégia automaticamente.</p>
+    <ul class="list-unstyled mb-3">
+      {% for c in categories %}
+      <li class="d-flex justify-content-between align-items-center py-1 border-bottom">
+        <span>{{ c.name }}{% if not c.active %} <span class="chip chip-state state-rascunho">desativada</span>{% endif %}</span>
+        <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="alternar"><input type="hidden" name="categoria" value="{{ c.pk }}"><button class="btn btn-sm btn-link" type="submit">{% if c.active %}Desativar{% else %}Reativar{% endif %}</button></form>
+      </li>
+      {% endfor %}
+    </ul>
+    <form method="post" class="row g-2 align-items-end" novalidate>
+      {% csrf_token %}<input type="hidden" name="acao" value="nova">
+      <div class="col-sm-8"><label class="form-label" for="{{ cat_form.name.id_for_label }}">{{ cat_form.name.label }}</label>{{ cat_form.name }}</div>
+      <div class="col-sm-4"><button class="btn btn-outline-primary w-100" type="submit">{% icon "plus" %}Incluir</button></div>
+    </form>
+  </div></section>
+</div>
+{% endblock %}

@@ -864,12 +864,22 @@ def activity_detail(request, pk):
             "today": timezone.localdate(),
             "reach": _enrolled_students(act.class_group).count(),
             "can_manage": acc.can_manage_activities(user, act.class_group, act.subject),
+            "support_count": _support_count(user, act.class_group),
             # Observações internas: só equipe (nunca família nem estudante).
             "is_staff_view": user.role not in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value),
             "print_requests": act.print_requests.order_by("-created_at")[:5]
             if user.role not in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value) else [],
         },
     )
+
+
+def _support_count(user, class_group):
+    """Estudantes da turma com orientação de apoio (só para a equipe que as vê)."""
+    if user.role not in (Role.PROFESSOR.value, Role.COORDENACAO.value, Role.DIRECAO.value):
+        return 0
+    from apps.inclusion.services import students_with_guidance
+
+    return students_with_guidance(class_group)
 
 
 def _save_attachments(request, act, form):

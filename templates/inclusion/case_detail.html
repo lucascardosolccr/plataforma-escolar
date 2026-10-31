@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Apoio à inclusão — {{ student.first_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'inclusion:overview' %}" class="back-link">{% icon "arrow-left" %}{% if team %}Apoio à inclusão{% else %}Necessidades e laudos{% endif %}</a>
+    <h1>{{ student }}</h1>
+    <p>Ficha de apoio · situação: <span class="chip chip-state state-{% if case.status == 'complementacao' %}ajustes{% elif case.status == 'aguardando' or case.status == 'anexado' %}aguardando{% elif case.status == 'analisado' or case.status == 'atualizado' %}validado{% else %}rascunho{% endif %}">{{ case.get_status_display }}</span></p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    {% if can_declare %}
+      <a class="btn btn-primary" href="{% url 'inclusion:declare' student.pk %}">{% icon "pencil" %}Informar ou atualizar</a>
+      <a class="btn btn-outline-secondary" href="{% url 'inclusion:document_upload' student.pk %}">{% icon "paperclip" %}Anexar documento</a>
+    {% endif %}
+    {% if team %}
+      <a class="btn btn-outline-secondary" href="{% url 'inclusion:need_create' student.pk %}">{% icon "plus" %}Necessidade de apoio</a>
+      <a class="btn btn-outline-secondary" href="{% url 'inclusion:request_create' student.pk %}">{% icon "send" %}Pedir complementação</a>
+      <a class="btn btn-outline-secondary" href="{% url 'inclusion:document_upload' student.pk %}">{% icon "file-check" %}Documento recebido</a>
+      <a class="btn btn-primary" href="{% url 'inclusion:case_analysis' student.pk %}">{% icon "clipboard-check" %}Análise e validação</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if not team %}{% include "inclusion/_purpose.html" %}{% endif %}
+
+{% for r in requests %}{% if r.status == 'aberta' %}
+<div class="alert alert-warning" role="status">
+  <div><strong>A escola pediu complementação{% if r.due_on %} até {{ r.due_on|date:"d/m/Y" }}{% endif %}:</strong> {{ r.message }}
+  {% if can_declare %}<div class="mt-2"><a class="btn btn-sm btn-primary" href="{% url 'inclusion:request_respond' r.pk %}">Responder</a></div>{% endif %}</div>
+</div>
+{% endif %}{% endfor %}
+
+<div class="row g-3">
+  <div class="col-lg-8 d-grid gap-3 align-content-start">
+
+    <section class="card" aria-labelledby="sec-familia"><div class="card-body">
+      <h2 id="sec-familia" class="h6">1. Informado pela família</h2>
+      {% if case.declared_at %}
+      <dl class="review-list mb-0">
+        <dt>Possui laudo?</dt><dd>{{ case.get_has_report_display }}</dd>
+        <dt>Condições informadas</dt><dd>{% for c in case.declared_categories.all %}<span class="chip">{{ c.name }}</span> {% empty %}Nenhuma informada.{% endfor %}</dd>
+        {% if case.family_notes %}<dt>Informações complementares</dt><dd>{{ case.family_notes|linebreaksbr }}</dd>{% endif %}
+        <dt>Informado em</dt><dd>{{ case.declared_at|date:"d/m/Y H:i" }}{% if case.declared_by %} por {{ case.declared_by.get_full_name|default:case.declared_by.username }}{% endif %}</dd>
+      </dl>
+      {% else %}<p class="small text-secondary mb-0">A família ainda não informou nada. {% if team %}Necessidades de apoio podem ser registradas pela equipe mesmo assim.{% endif %}</p>{% endif %}
+    </div></section>
+
+    <section class="card" aria-labelledby="sec-docs"><div class="card-body">
+      <h2 id="sec-docs" class="h6">2 e 3. Documentos anexados pela família e recebidos pela escola</h2>
+      <p class="small text-secondary">Enviar um documento não valida nenhum diagnóstico: a análise e a validação são registradas à parte.</p>
+      {% if docs %}
+      <ul class="list-unstyled mb-0 d-grid gap-2">
+        {% for d in docs %}
+        <li class="border rounded p-2">
+          <div class="d-flex flex-wrap gap-2 align-items-baseline">
+            <strong>{{ d.original_name }}</strong>
+            <span class="chip">{{ d.get_source_display }}</span>
+            <span class="chip chip-state state-{% if d.status == 'analisado' %}validado{% elif d.status == 'aguardando' %}aguardando{% elif d.status == 'recebido' %}enviado{% else %}rascunho{% endif %}">{{ d.get_status_display }}</span>
+          </div>
+          <p class="small text-secondary mb-1">{{ d.get_kind_display }}{% if d.issuer %} · {{ d.issuer }}{% endif %}{% if d.issued_on %} · emitido em {{ d.issued_on|date:"d/m/Y" }}{% endif %} · enviado em {{ d.uploaded_at|date:"d/m/Y" }}{% if d.description %} · {{ d.description }}{% endif %}</p>
+          <div class="d-flex flex-wrap gap-2">
+            {% if d.available %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'inclusion:document_download' d.public_id %}">{% icon "download" %}Baixar</a>{% endif %}
+            {% if can_declare and d.source == 'familia' and d.status != 'substituido' and d.status != 'descartado' %}<a class="btn btn-sm btn-link" href="{% url 'inclusion:document_upload' student.pk %}?substitui={{ d.public_id }}">Substituir</a>{% endif %}
+          </div>
+          {% if team and d.status != 'substituido' and d.status != 'descartado' %}
+          <form method="post" action="{% url 'inclusion:document_review' d.public_id %}" class="row g-2 align-items-end mt-1">
+            {% csrf_token %}
+            <div class="col-sm-4"><label class="form-label small" for="dec-{{ d.pk }}">Resultado</label>
+              <select class="form-select form-select-sm" name="decision" id="dec-{{ d.pk }}"><option value="analisado">Documento analisado</option><option value="arquivado">Arquivar</option></select></div>
+            <div class="col-sm-6"><label class="form-label small" for="note-{{ d.pk }}">Registro interno</label>
+              <input class="form-control form-control-sm" name="note" id="note-{{ d.pk }}" value="{{ d.review_note }}"></div>
+            <div class="col-sm-2"><button class="btn btn-sm btn-outline-primary w-100" type="submit">Registrar</button></div>
+          </form>
+          {% if d.reviewed_at %}<p class="small text-secondary mb-0 mt-1">Analisado por {{ d.reviewed_by.get_full_name|default:d.reviewed_by.username }} em {{ d.reviewed_at|date:"d/m/Y" }}</p>{% endif %}
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="small text-secondary mb-0">Nenhum documento.</p>{% endif %}
+    </div></section>
+
+    <section class="card" aria-labelledby="sec-valid"><div class="card-body">
+      <h2 id="sec-valid" class="h6">4 e 5. Análise e validação pela escola</h2>
+      {% if case.validated_at or case.validated_categories.exists %}
+      <dl class="review-list mb-0">
+        <dt>Condições validadas</dt><dd>{% for c in case.validated_categories.all %}<span class="chip">{{ c.name }}</span> {% empty %}Nenhuma.{% endfor %}</dd>
+        {% if team and case.validation_basis %}<dt>Procedimento</dt><dd>{{ case.validation_basis|linebreaksbr }}</dd>{% endif %}
+        {% if case.validated_at %}<dt>Registrado em</dt><dd>{{ case.validated_at|date:"d/m/Y" }}</dd>{% endif %}
+        {% if team %}<dt>Base legal registrada</dt><dd>{{ case.get_legal_basis_display }}{% if case.legal_basis_notes %} — {{ case.legal_basis_notes }}{% endif %}</dd>{% endif %}
+      </dl>
+      {% else %}<p class="small text-secondary mb-0">Nada validado. A escola não faz diagnóstico; valida apenas o que confirmou pelo próprio procedimento.</p>{% endif %}
+    </div></section>
+
+    <section class="card" aria-labelledby="sec-needs"><div class="card-body">
+      <h2 id="sec-needs" class="h6">6. Necessidades de apoio identificadas pela equipe</h2>
+      <p class="small text-secondary">Valem com ou sem laudo. Cada estudante tem as suas: a mesma condição não implica os mesmos recursos.</p>
+      {% for n in needs %}
+      <article class="border rounded p-2 mb-2">
+        <div class="d-flex flex-wrap gap-2 align-items-baseline"><strong>{{ n.get_area_display }}</strong>{% if not n.active %}<span class="chip chip-state state-rascunho">encerrada</span>{% endif %}{% if team %}{% if n.share_with_teachers %}<span class="chip">visível aos professores</span>{% else %}<span class="chip">só equipe</span>{% endif %} <a class="small" href="{% url 'inclusion:need_edit' student.pk n.pk %}">Editar</a>{% endif %}</div>
+        <p class="small mb-1">{{ n.description|linebreaksbr }}</p>
+        {% if n.resources %}<p class="small mb-1"><strong>Recursos:</strong> {{ n.resources|linebreaksbr }}</p>{% endif %}
+        {% if n.classroom_strategies %}<p class="small mb-1"><strong>Estratégias em sala:</strong> {{ n.classroom_strategies|linebreaksbr }}</p>{% endif %}
+        {% if n.care_notes %}<p class="small mb-0"><strong>Cuidados:</strong> {{ n.care_notes|linebreaksbr }}</p>{% endif %}
+      </article>
+      {% empty %}<p class="small text-secondary mb-0">Nenhuma necessidade registrada.</p>{% endfor %}
+    </div></section>
+
+    <section class="card" aria-labelledby="sec-plano"><div class="card-body">
+      <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2">
+        <h2 id="sec-plano" class="h6">Plano individualizado (PAEE e PEI em documento único)</h2>
+        {% if team %}<a class="btn btn-sm btn-outline-primary" href="{% url 'inclusion:plan_create' student.pk %}">{% icon "plus" %}Novo plano</a>{% endif %}
+      </div>
+      {% for p in plans %}
+      <details class="border rounded p-2 mb-2"{% if forloop.first %} open{% endif %}>
+        <summary><strong>{{ p.get_status_display }}</strong> · desde {{ p.starts_on|date:"d/m/Y" }} · revisar até {{ p.review_due|date:"d/m/Y" }}{% if p.review_overdue %} <span class="chip chip-state state-erro">revisão vencida</span>{% endif %} · versão {{ p.version }}</summary>
+        {% if team %}<p class="mt-2"><a class="btn btn-sm btn-outline-secondary" href="{% url 'inclusion:plan_edit' student.pk p.pk %}">{% icon "pencil" %}Editar plano</a></p>{% endif %}
+        <dl class="review-list mt-2 mb-2">
+          {% for label, value in p.filled %}<dt>{{ label }}</dt><dd>{{ value|linebreaksbr }}</dd>{% endfor %}
+          {% if p.responsibles.all %}<dt>Responsáveis pelo acompanhamento</dt><dd>{% for u in p.responsibles.all %}{{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}{% endfor %}</dd>{% endif %}
+        </dl>
+        <h3 class="h6">Histórico do plano</h3>
+        <ul class="list-unstyled small mb-2">{% for r in p.reviews.all %}{% if team or r.visible_to_family %}<li class="py-1"><strong>{{ r.happened_on|date:"d/m/Y" }} · {{ r.get_kind_display }}:</strong> {{ r.notes|linebreaksbr }}</li>{% endif %}{% empty %}<li class="text-secondary">Sem registros.</li>{% endfor %}</ul>
+        {% if team %}
+        <form method="post" action="{% url 'inclusion:plan_review' student.pk p.pk %}" class="row g-2 align-items-end">
+          {% csrf_token %}
+          <div class="col-sm-3"><label class="form-label small" for="rk-{{ p.pk }}">Tipo</label><select class="form-select form-select-sm" id="rk-{{ p.pk }}" name="kind"><option value="revisao">Revisão do plano</option><option value="evolucao">Registro de evolução</option><option value="devolutiva">Devolutiva à família</option><option value="encaminhamento">Encaminhamento</option></select></div>
+          <div class="col-sm-3"><label class="form-label small" for="rd-{{ p.pk }}">Data</label><input type="date" class="form-control form-control-sm" id="rd-{{ p.pk }}" name="happened_on" value="{% now 'Y-m-d' %}"></div>
+          <div class="col-sm-4"><label class="form-label small" for="rn-{{ p.pk }}">Registro</label><input class="form-control form-control-sm" id="rn-{{ p.pk }}" name="notes" required></div>
+          <div class="col-sm-2"><button type="submit" class="btn btn-sm btn-outline-primary w-100">Incluir</button></div>
+        </form>
+        {% endif %}
+      </details>
+      {% empty %}<p class="small text-secondary mb-0">{% if team %}Nenhum plano. O plano parte do estudo de caso e não depende de laudo.{% else %}Nenhum plano disponível.{% endif %}</p>{% endfor %}
+    </div></section>
+  </div>
+
+  <div class="col-lg-4 d-grid gap-3 align-content-start">
+    <section class="card" aria-labelledby="sec-req"><div class="card-body">
+      <h2 id="sec-req" class="h6">Pedidos de complementação</h2>
+      <ul class="list-unstyled small mb-0">
+        {% for r in requests %}
+        <li class="py-2 border-bottom">
+          <span class="chip chip-state state-{% if r.status == 'aberta' %}ajustes{% elif r.status == 'respondida' %}aguardando{% else %}rascunho{% endif %}">{{ r.get_status_display }}</span>
+          <span class="d-block mt-1">{{ r.message }}</span>
+          {% if r.response %}<span class="d-block mt-1"><strong>Resposta:</strong> {{ r.response }}</span>{% endif %}
+          <span class="d-block text-secondary">{{ r.created_at|date:"d/m/Y" }}{% if r.responded_at %} · respondido em {{ r.responded_at|date:"d/m/Y" }}{% endif %}</span>
+          {% if team and r.status != 'encerrada' %}<form method="post" action="{% url 'inclusion:request_close' r.pk %}" class="mt-1">{% csrf_token %}<button class="btn btn-sm btn-link p-0" type="submit">Encerrar pedido</button></form>{% endif %}
+        </li>
+        {% empty %}<li class="text-secondary">Nenhum pedido.</li>{% endfor %}
+      </ul>
+    </div></section>
+
+    <section class="card" aria-labelledby="sec-hist"><div class="card-body">
+      <h2 id="sec-hist" class="h6">{% icon "history" %}Histórico</h2>
+      <p class="small text-secondary">Nada é apagado: cada alteração fica registrada com data e autor.</p>
+      <ol class="list-unstyled small mb-0">
+        {% for e in events %}<li class="py-1 border-bottom"><strong>{{ e.at|date:"d/m/Y H:i" }}</strong> · {{ e.action }}{% if e.actor %} <span class="text-secondary">({{ e.actor.get_full_name|default:e.actor.username }})</span>{% endif %}{% if e.note %}<span class="d-block">{{ e.note|truncatechars:240 }}</span>{% endif %}</li>
+        {% empty %}<li class="text-secondary">Sem registros.</li>{% endfor %}
+      </ol>
+    </div></section>
+  </div>
+</div>
+{% endblock %}

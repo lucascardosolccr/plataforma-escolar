@@ -247,3 +247,22 @@ class LocalItemsAndReferencesTests(Base):
             self.assertTrue(all(ref.nature == "legal" for ref in r.context["refs"]))
         self.login(self.fam)
         self.assertEqual(self.client.get(reverse("curriculum:references")).status_code, 403)
+
+
+class DataQualityTests(Base):
+    def test_unmapped_subjects_and_classes_are_listed(self):
+        robo = Subject.objects.create(school=self.school, name="Robótica")
+        multi = ClassGroup.objects.create(school=self.school, school_year=self.year, name="Multisseriada")
+        TeacherAssignment.objects.create(school=self.school, school_year=self.year, teacher=self.prof,
+                                         class_group=multi, subject=robo)
+        self.login(self.dir)
+        r = self.client.get(reverse("analytics:data_quality"))
+        self.assertEqual(r.status_code, 200)
+        q = r.context["q"]
+        self.assertEqual([s.name for s in q["subjects_no_component"]], ["Robótica"])
+        self.assertEqual([c.name for c in q["classes_no_year"]], ["Multisseriada"])
+        # Informar o componente no cadastro resolve.
+        robo.curriculum_component = "Matemática"
+        robo.save()
+        r = self.client.get(reverse("analytics:data_quality"))
+        self.assertEqual(r.context["q"]["subjects_no_component"], [])

@@ -1,0 +1,15 @@
+{% comment %}Orientação à família sobre a coleta (finalidade, acesso, uso, direitos). Recebe ``settings``.{% endcomment %}
+<section class="card mb-3 purpose-note" aria-labelledby="finalidade">
+  <div class="card-body">
+    <h2 id="finalidade" class="h6">{% load ui %}{% icon "shield" %}Por que a escola pede estas informações</h2>
+    <ul class="small mb-2">
+      <li><strong>Finalidade:</strong> organizar apoios pedagógicos e recursos de acessibilidade para o estudante. Nada mais.</li>
+      <li><strong>Não é obrigatório ter laudo.</strong> A matrícula, a escolarização e o atendimento educacional especializado não dependem de diagnóstico, laudo ou relatório de saúde (Portaria MEC nº 421/2026, art. 7º, § 4º). A escola pode registrar necessidades de apoio mesmo sem documento.</li>
+      <li><strong>Quem consulta:</strong> a coordenação pedagógica que acompanha a turma e a direção. Os professores recebem só as orientações de sala de aula (recursos, estratégias e cuidados), nunca o laudo nem o diagnóstico. A secretaria vê apenas a situação da documentação. Toda consulta e todo download ficam registrados.</li>
+      <li><strong>O que nunca é feito:</strong> usar estas informações para publicidade, discriminação, ranking ou classificação automática de estudantes, ou para treinar inteligência artificial.</li>
+      <li><strong>Seus direitos:</strong> você pode corrigir ou atualizar as informações, substituir documentos e acompanhar tudo pelo histórico. Enviar um documento não significa que a escola validou um diagnóstico.</li>
+      <li><strong>Guarda:</strong> os documentos ficam fora de qualquer endereço público, só abrem para quem tem permissão e são descartados depois de {{ settings.retention_years }} ano{{ settings.retention_years|pluralize }} da saída do estudante.</li>
+    </ul>
+    {% if settings.contact %}<p class="small mb-0">Dúvidas sobre os dados: {{ settings.contact }}</p>{% endif %}
+  </div>
+</section>

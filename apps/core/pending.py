@@ -132,6 +132,26 @@ def _coordination(user):
         _item("Registros da coordenação com retorno vencido", CoordinationRecord.objects.filter(
             school=user.school, created_by=user, follow_up_on__lt=today).count(), reverse("coordination:records"),
             tone="info"),
+    ] + _support_team(user, today)
+
+
+def _support_team(user, today):
+    """Fila do apoio à inclusão no alcance da pessoa (escopo da coordenação)."""
+    from apps.coordination.scope import student_ids
+    from apps.inclusion.models import SupportDocument, SupportPlan, SupportRequest
+
+    docs = SupportDocument.objects.filter(case__school=user.school, status="aguardando")
+    answers = SupportRequest.objects.filter(case__school=user.school, status="respondida")
+    plans = SupportPlan.objects.filter(case__school=user.school, status__in=["vigente", "revisao"],
+                                       review_due__lt=today)
+    ids = student_ids(user) if user.role == Role.COORDENACAO.value else None
+    if ids is not None:
+        docs, answers, plans = (q.filter(case__student_id__in=ids) for q in (docs, answers, plans))
+    url = reverse("inclusion:overview")
+    return [
+        _item("Documentos de apoio aguardando análise", docs.count(), url),
+        _item("Respostas de famílias a pedidos de complementação", answers.count(), url),
+        _item("Planos individualizados com revisão vencida", plans.count(), url),
     ]
 
 
@@ -157,4 +177,12 @@ def _family(user):
         _item("Fotos de filhos a enviar", no_photo, reverse("my_children")),
         _item("Pré-cadastros com correção pedida pela secretaria", StudentApplication.objects.filter(
             guardian=user, status=StudentApplication.Status.CORRECTION).count(), reverse("family_applications")),
+        _item("Complementação pedida pela escola (necessidades e laudos)", _support_requests(child_ids),
+              reverse("inclusion:overview")),
     ]
+
+
+def _support_requests(child_ids):
+    from apps.inclusion.models import SupportRequest
+
+    return SupportRequest.objects.filter(case__student_id__in=child_ids, status="aberta").count()

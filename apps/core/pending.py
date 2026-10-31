@@ -90,7 +90,23 @@ def _teacher(user):
                                       status=Activity.Status.DRAFT).filter(pairs_q(user, edit=True)).count()
     out.append(_item("Rascunhos de atividade sem data de aplicação", no_date, reverse("pedagogy:activity_list"),
                      tone="info"))
-    return out
+    return out + _cognitio(user)
+
+
+def _cognitio(user):
+    """Alertas pedagógicos importantes ainda não revisados e intervenções com revisão vencida
+    (mesmo recorte das telas do EIA-Cognitio)."""
+    from apps.cognitio.views_intel import _alerts_visible
+    from apps.cognitio.views_prescriptive import _visible as interventions_visible
+
+    today = timezone.localdate()
+    alerts = _alerts_visible(user).filter(active=True, level="importante", status="novo").count()
+    due = interventions_visible(user).filter(status__in=["aceita", "andamento"], review_on__lte=today).count()
+    return [
+        _item("Alertas pedagógicos importantes para revisar", alerts, reverse("cognitio:alerts"),
+              "Sinais por regra explícita; você decide o que fazer."),
+        _item("Intervenções com data de revisão vencida", due, reverse("cognitio:interventions")),
+    ]
 
 
 def _secretaria(user):
@@ -132,7 +148,7 @@ def _coordination(user):
         _item("Registros da coordenação com retorno vencido", CoordinationRecord.objects.filter(
             school=user.school, created_by=user, follow_up_on__lt=today).count(), reverse("coordination:records"),
             tone="info"),
-    ] + _support_team(user, today)
+    ] + _support_team(user, today) + _cognitio(user)
 
 
 def _support_team(user, today):

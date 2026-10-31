@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Aprendizagens por habilidade — {{ student.first_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{% if is_student %}Minhas aprendizagens{% else %}Aprendizagens de {{ student.first_name }}{% endif %}</h1>
+    <p>Habilidades da BNCC trabalhadas nas avaliações, atividades e observações dos professores. Aprender leva tempo: “em desenvolvimento” quer dizer que o professor está acompanhando, não que algo está errado. Para conversar sobre qualquer ponto, use as mensagens com a escola.</p>
+  </div>
+</div>
+<div class="d-grid gap-3">
+  {% for comp, c in comps.items %}
+  <section class="card" aria-labelledby="c-{{ forloop.counter }}"><div class="card-body">
+    <h2 id="c-{{ forloop.counter }}" class="h6">{{ comp }}</h2>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <h3 class="small fw-semibold d-flex align-items-center gap-2">{% icon "circle-check" %}Já demonstradas nas atividades ({{ c.done|length }})</h3>
+        <ul class="list-unstyled small mb-0">{% for it in c.done %}<li class="py-1"><strong>{{ it.code }}</strong> {{ it.text }}</li>{% empty %}<li class="text-secondary">Nenhuma ainda.</li>{% endfor %}</ul>
+      </div>
+      <div class="col-md-6">
+        <h3 class="small fw-semibold d-flex align-items-center gap-2">{% icon "clock" %}Em desenvolvimento, com acompanhamento ({{ c.developing|length }})</h3>
+        <ul class="list-unstyled small mb-0">{% for it in c.developing %}<li class="py-1"><strong>{{ it.code }}</strong> {{ it.text }}</li>{% empty %}<li class="text-secondary">Nenhuma.</li>{% endfor %}</ul>
+      </div>
+    </div>
+    {% if c.pending %}<p class="small text-secondary mt-2 mb-0">{{ c.pending }} habilidade{{ c.pending|pluralize }} ainda sem registros suficientes para dizer algo.</p>{% endif %}
+  </div></section>
+  {% empty %}
+  <div class="card"><div class="empty-state py-5">{% icon "book-open" %}<strong>Ainda não há registros por habilidade</strong><span>Eles aparecem quando os professores ligam as avaliações e atividades às habilidades da BNCC.</span></div></div>
+  {% endfor %}
+  {% if feedback %}
+  <section class="card" aria-labelledby="dev"><div class="card-body">
+    <h2 id="dev" class="h6 d-flex align-items-center gap-2">{% icon "message-circle" %}Devolutivas dos professores</h2>
+    <ul class="list-unstyled small mb-0">{% for t in feedback %}<li class="py-2 border-bottom"><strong>{{ t.subject.name }} · {{ t.title }}</strong> <span class="text-secondary">({{ t.produced_on|date:"d/m/Y" }})</span><span class="d-block">{{ t.teacher_feedback|linebreaksbr }}</span></li>{% endfor %}</ul>
+  </div></section>
+  {% endif %}
+</div>
+{% endblock %}

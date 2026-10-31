@@ -40,6 +40,10 @@ class MasteryScale(models.Model):
         "meia-vida das evidências (dias)", default=120,
         help_text="Evidências antigas pesam menos: com 120, uma evidência de 4 meses vale metade.")
     stale_days = models.PositiveSmallIntegerField("evidência deixa de ser recente após (dias)", default=60)
+    share_with_family = models.BooleanField(
+        "mostrar à família e ao estudante o resumo de aprendizagens", default=False,
+        help_text="Lista de habilidades já demonstradas e em desenvolvimento, em linguagem própria, sem alertas, "
+                  "porcentagens nem comparação com colegas.")
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     updated_at = models.DateTimeField(auto_now=True)
 

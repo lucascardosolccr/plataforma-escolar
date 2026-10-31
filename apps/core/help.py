@@ -227,6 +227,24 @@ GUIDES = [
         ("Em Avisos automáticos, ajuste os dias antes da entrega, depois do vencimento e antes das provas.", "communication:notification_rules"),
         ("O quadro de processamentos mostra quando os lembretes rodaram e quantos avisos saíram.", None),
     ]),
+    # Prompt 16 — EIA-Cognitio
+    ("Acompanhar a aprendizagem por habilidade", "chart-line", (PROFESSOR,), [
+        ("Na avaliação, use “Questões” e ligue cada questão à habilidade que ela verifica.", "pedagogy:evaluation_list"),
+        ("Lance os resultados por questão. Em branco, ausente ou não aplicada não contam como dificuldade.", None),
+        ("Veja o mapa da turma e o de cada estudante no EIA-Cognitio.", "cognitio:home"),
+        ("Revise os alertas: cada um diz por que foi gerado. Descartar exige um motivo.", "cognitio:alerts"),
+    ]),
+    ("Planejar uma intervenção ou uma trilha", "heart-handshake", (PROFESSOR,), [
+        ("No mapa da turma, toque numa habilidade e use “Planejar intervenção” ou “Gerar trilha”.", "cognitio:home"),
+        ("As estratégias sugeridas mostram as razões e o respaldo. A decisão é sua.", "cognitio:strategies"),
+        ("Depois do início, a intervenção mostra se as evidências melhoraram (acompanhamento, não prova de efeito).",
+         "cognitio:interventions"),
+    ]),
+    ("Validar o grafo e os modelos do EIA-Cognitio", "chart-line", GESTAO, [
+        ("Na página de uma habilidade, valide ou rejeite pré-requisitos e dimensões propostos.", "curriculum:catalog"),
+        ("Em Modelos e validação, acompanhe as regras de alerta e execute a validação do modelo.", "cognitio:models"),
+        ("Nenhuma probabilidade aparece sem modelo validado e aprovado pela direção.", None),
+    ]),
     ("Escolher que avisos receber", "bell", (RESPONSAVEL, PROFESSOR, ESTUDANTE), [
         ("Em Notificações, abra Preferências e desmarque o que não quer receber.",
          "communication:notification_preferences"),
@@ -242,6 +260,10 @@ FAQ = [
     ("Quem vê o laudo que eu enviar?",
      "A coordenação que acompanha a turma e a direção. Os professores veem só as orientações de sala de aula, sem diagnóstico nem laudo; a secretaria vê só a situação da documentação. Cada consulta e cada download ficam registrados. Laudo não é obrigatório para matrícula nem para atendimento.",
      (RESPONSAVEL,)),
+    ("O EIA-Cognitio decide algo sobre o estudante?",
+     "Não. Ele mostra evidências, sinaliza por regras explícitas e sugere estratégias. Nada reprova, classifica ou "
+     "restringe direitos; laudos e diagnósticos nunca entram nos alertas. Quem interpreta e decide é o professor.",
+     GESTAO + (PROFESSOR,)),
     ("As habilidades da BNCC da plataforma são confiáveis?",
      "As competências gerais e as habilidades do Ensino Fundamental foram carregadas do PDF oficial da BNCC (MEC), sem reescrita. Os objetivos do Currículo em Movimento do DF são cadastrados pela escola, com a fonte.",
      GESTAO + (PROFESSOR,)),

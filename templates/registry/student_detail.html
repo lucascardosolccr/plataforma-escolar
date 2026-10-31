@@ -169,6 +169,7 @@
               <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:observation_list' %}?estudante={{ student.pk }}">Observações pedagógicas</a>
               <a class="btn btn-outline-secondary btn-sm" href="{% url 'pedagogy:justification_create' %}?estudante={{ student.pk }}">Justificar falta</a>
               <a class="btn btn-outline-secondary btn-sm" href="{% url 'inclusion:case_detail' student.pk %}">Necessidades específicas e laudos</a>
+              {% load cognitio_tags %}{% learning_summary_url student as lsu %}{% if lsu %}<a class="btn btn-outline-primary btn-sm" href="{{ lsu }}">Aprendizagens por habilidade</a>{% endif %}
             </div>
           </div></div>
         </div>

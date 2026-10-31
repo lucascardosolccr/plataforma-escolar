@@ -107,7 +107,7 @@ class ObservationForm(forms.Form):
 class ScaleForm(forms.ModelForm):
     class Meta:
         model = MasteryScale
-        fields = ["t1", "t2", "t3", "min_evidence", "min_weight", "half_life_days", "stale_days"]
+        fields = ["t1", "t2", "t3", "min_evidence", "min_weight", "half_life_days", "stale_days", "share_with_family"]
 
     def clean(self):
         data = super().clean()

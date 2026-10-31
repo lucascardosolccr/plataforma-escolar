@@ -5,6 +5,7 @@
 {% block crumb %}<li><span aria-current="page">Painel de {{ student.first_name }}</span></li>{% endblock %}
 
 {% block content %}
+{% load cognitio_tags %}{% learning_summary_url student as lsu %}{% if lsu %}<p class="mb-3"><a class="btn btn-outline-primary btn-sm" href="{{ lsu }}">{% icon "chart-line" %}Aprendizagens por habilidade</a></p>{% endif %}
 {% if subject_limited %}<div class="callout mb-3">{% icon "info" %}<div>Você vê aqui só as disciplinas que leciona (ou tem permissão de consultar). As demais ficam com os respectivos professores e a coordenação.</div></div>{% endif %}
 {% with acad=report.academic att=report.attendance act=report.activities cur=report.current_enrollment %}
 

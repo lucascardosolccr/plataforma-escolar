@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Registrar observação — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  {% url 'cognitio:class_view' cg.pk as back %}
+  {% include "partials/_form_head.html" with heading="Registrar observação de habilidade" subheading="Evidência direta da sala de aula (leitura, resolução no quadro, experimento, apresentação). Registre o que foi observado na situação, não um juízo sobre o estudante." back_url=back back_label="Mapa da turma" %}
+  <form method="post" class="card form-card" novalidate>
+    {% csrf_token %}
+    <div class="card-body"><p class="small text-secondary">{{ cg }} · {{ subject }}</p>{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with submit_label="Registrar" %}
+  </form>
+</div>
+{% endblock %}

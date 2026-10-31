@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Resultados por questão — {{ ev.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'cognitio:questions' ev.pk %}" class="back-link">{% icon "arrow-left" %}Questões e habilidades</a>
+    <h1>Resultados por questão</h1>
+    <p>{{ ev.title }} · {{ ev.class_group }} · {{ ev.subject }}. Informe os pontos de cada questão (vírgula para decimais). “Em branco”, “ausente” e “não aplicada” não contam como dificuldade.{% if error_choices %} O tipo de erro é opcional e ajuda a escolher a intervenção.{% else %} Nesta disciplina não há classificação de erro: o projeto não classifica talento, desempenho físico isolado nem crença.{% endif %}</p>
+  </div>
+</div>
+<form method="post" class="card">
+  {% csrf_token %}
+  <div class="table-responsive"><table class="table table-sm align-middle mb-0 resp-grid">
+    <caption class="visually-hidden">Pontos por estudante e questão</caption>
+    <thead><tr><th scope="col">Estudante</th>{% for q in questions %}<th scope="col" title="{{ q.label }}">Q{{ q.number }} <span class="small text-secondary fw-normal">(máx. {{ q.max_points|floatformat:"-2" }})</span></th>{% endfor %}</tr></thead>
+    <tbody>{% for row in rows %}<tr>
+      <th scope="row" class="small">{{ row.student }}</th>
+      {% for c in row.cells %}<td>
+        <label class="visually-hidden" for="p_{{ c.key }}">Pontos de {{ row.student.first_name }} na questão {{ c.q.number }}</label>
+        <input class="form-control form-control-sm" id="p_{{ c.key }}" name="p_{{ c.key }}" value="{{ c.points }}" inputmode="decimal">
+        <label class="visually-hidden" for="s_{{ c.key }}">Situação</label>
+        <select class="form-select form-select-sm mt-1" id="s_{{ c.key }}" name="s_{{ c.key }}">{% for v, l in status_choices %}<option value="{{ v }}"{% if c.r and c.r.status == v %} selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+        {% if error_choices %}<label class="visually-hidden" for="e_{{ c.key }}">Tipo de erro</label>
+        <select class="form-select form-select-sm mt-1" id="e_{{ c.key }}" name="e_{{ c.key }}"><option value="">Erro: —</option>{% for v, l in error_choices %}<option value="{{ v }}"{% if c.r and c.r.error_type == v %} selected{% endif %}>{{ l }}</option>{% endfor %}</select>{% endif %}
+      </td>{% endfor %}
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  <div class="form-actions d-flex flex-wrap gap-3 align-items-center">
+    {% if can_update_grades %}<label class="form-check mb-0"><input class="form-check-input" type="checkbox" name="atualizar_notas" value="1" checked> Atualizar as notas da avaliação pela soma das questões</label>{% else %}<span class="small text-secondary">Avaliação publicada: as notas são alteradas na tela de notas (a família é avisada).</span>{% endif %}
+    <button type="submit" class="btn btn-primary ms-auto">Salvar resultados</button>
+  </div>
+</form>
+{% endblock %}

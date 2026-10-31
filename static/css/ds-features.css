@@ -105,3 +105,32 @@
 .onto-comp summary { cursor: pointer; }
 .onto-path ol { display: flex; flex-wrap: wrap; gap: .25rem .5rem; list-style: none; padding: 0; margin: 0; font-size: .875rem; color: var(--ds-text-muted); }
 .onto-path li + li::before { content: "›"; margin-right: .5rem; }
+
+/* ---------- EIA-Cognitio: estados de domínio (a cor reforça; o texto sempre diz) ---------- */
+.mcell { display: inline-flex; align-items: center; justify-content: center; min-width: 2rem; height: 1.75rem; padding: 0 .3rem; border-radius: .35rem; font-size: .75rem; font-weight: 800; border: 1px solid var(--ds-line); text-decoration: none; color: var(--ds-text); }
+.m-none { background: var(--ds-surface); color: var(--ds-text-muted); border-style: dashed; }
+.m-insuf { background: var(--ds-surface-2); color: var(--ds-text-muted); }
+.m-contra { background: var(--ds-info-bg); color: var(--ds-info); border-color: var(--ds-info-line); }
+.m-1 { background: var(--ds-danger-bg); color: var(--ds-danger); border-color: var(--ds-danger-line); }
+.m-2 { background: var(--ds-warning-bg); color: var(--ds-warning); border-color: var(--ds-warning-line); }
+.m-3 { background: var(--ds-success-bg); color: var(--ds-success); border-color: var(--ds-success-line); opacity: .8; }
+.m-4 { background: var(--ds-success-bg); color: var(--ds-success); border-color: var(--ds-success-line); }
+.heat { border-collapse: separate; border-spacing: 3px; }
+.heat th.rot { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; font-size: .75rem; font-weight: 600; padding: .25rem 0; }
+.heat td, .heat th { text-align: center; }
+.heat th.sticky { position: sticky; left: 0; background: var(--ds-surface); text-align: left; z-index: 1; }
+.dist { display: flex; height: .7rem; border-radius: 999px; overflow: hidden; min-width: 6rem; background: var(--ds-surface-2); }
+.dist rect { stroke: none; }
+.legend { display: flex; flex-wrap: wrap; gap: .5rem 1rem; font-size: .8rem; list-style: none; padding: 0; margin: 0; }
+.legend li { display: inline-flex; gap: .35rem; align-items: center; }
+.skill-row { display: grid; grid-template-columns: 6.5rem 1fr auto; gap: .5rem; align-items: center; padding: .35rem 0; border-bottom: 1px solid var(--ds-line); }
+.ev-list { font-size: .85rem; }
+.resp-grid input { width: 4.2rem; }
+.resp-grid select { min-width: 5rem; }
+.dist-svg { display: block; border-radius: 6px; background: var(--ds-surface-2); }
+rect.bar.m-4 { fill: var(--ds-success); }
+rect.bar.m-3 { fill: var(--ds-success); opacity: .55; }
+rect.bar.m-2 { fill: var(--ds-warning); }
+rect.bar.m-1 { fill: var(--ds-danger); }
+rect.bar.m-contra { fill: var(--ds-info); }
+rect.bar.m-insuf, rect.bar.m-none { fill: var(--ds-line); }

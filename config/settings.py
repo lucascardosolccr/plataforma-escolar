@@ -84,6 +84,7 @@ INSTALLED_APPS = [
     "apps.printing",
     "apps.curriculum",
     "apps.inclusion",
+    "apps.cognitio",
 ]
 
 MIDDLEWARE = [

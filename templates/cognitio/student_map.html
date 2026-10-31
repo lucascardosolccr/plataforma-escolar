@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Mapa de competências — {{ student.first_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'cognitio:home' %}" class="back-link">{% icon "arrow-left" %}EIA-Cognitio</a>
+    <h1>{{ student }}</h1>
+    <p>Mapa de competências{% for c in classes %} · {{ c.name }}{% endfor %} · {{ period_label }}. Cada estado mostra as evidências que o sustentam. Dificuldade momentânea não é incapacidade; ausência de registro não é dificuldade.</p>
+  </div>
+</div>
+
+<form method="get" class="filter-bar" aria-label="Filtrar o mapa">
+  {% if period_options %}{% include "partials/_filter_select.html" with name="periodo" label="Período" options=period_options selected=period all_label="Últimos dois anos" %}{% endif %}
+  {% include "partials/_filter_select.html" with name="disciplina" label="Disciplina" options=subject_options selected=subj all_label="Todas" %}
+  {% include "partials/_filter_select.html" with name="fonte" label="Tipo de evidência" options=source_options selected=source all_label="Todos" %}
+  {% include "partials/_filter_end.html" %}
+</form>
+
+<div class="kpi-grid mb-3">
+  <div class="kpi"><span class="kpi-label">Consolidadas nas evidências</span><span class="kpi-value">{{ counts.consolidada|default:0 }}</span></div>
+  <div class="kpi"><span class="kpi-label">Em consolidação</span><span class="kpi-value">{{ counts.consolidacao|default:0 }}</span></div>
+  <div class="kpi"><span class="kpi-label">Em desenvolvimento</span><span class="kpi-value">{{ counts.desenvolvimento|default:0 }}</span></div>
+  <div class="kpi{% if counts.dificuldade %} is-attention{% endif %}"><span class="kpi-label">Dificuldade observada</span><span class="kpi-value">{{ counts.dificuldade|default:0 }}</span></div>
+  <div class="kpi"><span class="kpi-label">Sem evidência suficiente ou não avaliadas</span><span class="kpi-value">{{ counts.insuficiente|add:counts.nao_avaliado|default:0 }}</span></div>
+</div>
+{% include "cognitio/_legend.html" %}
+
+{% if detail %}
+<section class="card my-3" aria-labelledby="det"><div class="card-body">
+  <div class="d-flex flex-wrap justify-content-between gap-2">
+    <h2 id="det" class="h6 mb-1"><a href="{% url 'curriculum:item_detail' detail.item.pk %}">{{ detail.item.code }}</a> — {{ detail.a.label }}</h2>
+    <a class="small" href="?{% if period %}periodo={{ period }}&{% endif %}disciplina={{ subj }}">Fechar</a>
+  </div>
+  <p class="small mb-2">{{ detail.item.text }}</p>
+  <ul class="small mb-2">{% for r in detail.a.reasons %}<li>{{ r }}</li>{% endfor %}
+    {% if detail.a.uncertainty %}<li>Incerteza {{ detail.a.uncertainty }}{% if detail.a.margin is not None %} (margem indicativa ±{{ detail.a.margin|floatformat:2 }}){% endif %}.</li>{% endif %}
+    {% if detail.a.trend %}<li>Tendência: {{ detail.a.trend_label }}.</li>{% endif %}
+    {% if detail.a.stale %}<li>A evidência mais recente tem mais de {{ scale.stale_days }} dias: vale uma nova verificação.</li>{% endif %}
+  </ul>
+  <h3 class="h6">Evidências consideradas</h3>
+  <table class="table table-sm ev-list mb-2"><thead><tr><th scope="col">Data</th><th scope="col">Origem</th><th scope="col">Resultado</th><th scope="col">Peso</th></tr></thead>
+    <tbody>{% for e in detail.a.evidence %}<tr><td>{{ e.observed_on|date:"d/m/Y" }}</td><td>{{ e.source_label }} <span class="text-secondary">({{ e.get_source_type_display }})</span></td><td>{% if e.ratio is None %}<span class="text-secondary">sem evidência: {{ e.no_evidence_reason }}</span>{% else %}{% widthratio e.ratio 1 100 %}%{% if e.error_type %} · erro: {{ e.error_type }}{% endif %}{% endif %}</td><td>{{ e.weight|floatformat:1 }}</td></tr>{% endfor %}</tbody>
+  </table>
+  {% if detail.traj %}
+  <h3 class="h6">Trajetória por período (estado acumulado)</h3>
+  <ol class="list-unstyled d-flex flex-wrap gap-3 mb-0">{% for label, a in detail.traj %}<li class="text-center small"><span class="mcell {{ a.css }}" aria-hidden="true">{{ a.abbr }}</span><span class="d-block">{{ label }}</span><span class="visually-hidden">{{ a.label }}</span></li>{% endfor %}</ol>
+  {% endif %}
+</div></section>
+{% endif %}
+
+<div class="row g-3 mt-1">
+  <div class="col-xl-8 d-grid gap-3 align-content-start">
+    {% for comp, units in comps.items %}
+    <section class="card" aria-labelledby="c-{{ forloop.counter }}"><div class="card-body">
+      <h2 id="c-{{ forloop.counter }}" class="h6">{{ comp }}</h2>
+      {% for unit, rows in units.items %}
+      <h3 class="small text-uppercase text-secondary mt-3 mb-1">{{ unit }}</h3>
+      {% for item, a in rows %}
+      <div class="skill-row">
+        <a href="?{% if period %}periodo={{ period }}&{% endif %}disciplina={{ subj }}&habilidade={{ item.pk }}" class="fw-semibold small">{{ item.code }}</a>
+        <span class="small">{{ item.text|truncatechars:120 }}</span>
+        <span class="text-nowrap"><span class="mcell {{ a.css }}" title="{{ a.label }}" aria-hidden="true">{{ a.abbr }}</span><span class="visually-hidden">{{ a.label }}</span>{% if a.percent is not None %} <span class="small text-secondary">{{ a.percent }}%</span>{% endif %}</span>
+      </div>
+      {% endfor %}
+      {% endfor %}
+    </div></section>
+    {% empty %}
+    <div class="card"><div class="empty-state py-5">{% icon "book-open" %}<strong>Sem habilidades registradas para este estudante</strong><span>As habilidades aparecem quando avaliações, atividades ou planejamentos das turmas dele têm habilidades ligadas.</span></div></div>
+    {% endfor %}
+  </div>
+  <div class="col-xl-4">
+    <section class="card" aria-labelledby="tl"><div class="card-body">
+      <h2 id="tl" class="h6">{% icon "history" %}Linha do tempo das evidências</h2>
+      <ol class="list-unstyled small mb-0">{% for e in timeline %}<li class="py-1 border-bottom"><strong>{{ e.observed_on|date:"d/m" }}</strong> · {{ e.item.code }} · {{ e.source_label|truncatechars:60 }}<span class="d-block text-secondary">{% if e.ratio is None %}sem evidência ({{ e.no_evidence_reason }}){% else %}{% widthratio e.ratio 1 100 %}% · peso {{ e.weight|floatformat:1 }}{% endif %}</span></li>{% empty %}<li class="text-secondary">Nenhuma evidência no período.</li>{% endfor %}</ol>
+    </div></section>
+  </div>
+</div>
+{% endblock %}

@@ -105,6 +105,7 @@
           <td class="text-end cell-actions text-nowrap">
             {% if row.managed %}
               <a href="{% url 'pedagogy:evaluation_grade' ev.pk %}" class="btn btn-sm btn-outline-primary">Notas</a>
+              <a href="{% url 'cognitio:questions' ev.pk %}" class="btn btn-sm btn-outline-secondary" title="Questões ligadas a habilidades e resultado por questão">Questões</a>
               <a href="{% url 'pedagogy:evaluation_edit' ev.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
               {% if ev.status == 'rascunho' %}
                 <form method="post" action="{% url 'pedagogy:evaluation_publish' ev.pk %}" class="d-inline"

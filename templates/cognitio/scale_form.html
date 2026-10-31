@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Critérios da escala de domínio — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  {% url 'cognitio:home' as back %}
+  {% include "partials/_form_head.html" with heading="Critérios da escala de domínio" subheading="Regras explícitas usadas em todos os mapas. Os cortes se aplicam à proporção de acerto ponderada (0 a 1). Mude com cuidado: a mudança vale para todo o histórico." back_url=back back_label="EIA-Cognitio" %}
+  <form method="post" class="card form-card" novalidate>
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with submit_label="Salvar critérios" %}
+  </form>
+</div>
+{% endblock %}

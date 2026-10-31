@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Questões e habilidades — {{ ev.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'pedagogy:evaluation_list' %}" class="back-link">{% icon "arrow-left" %}Avaliações e notas</a>
+    <h1>{{ ev.title }}</h1>
+    <p>{{ ev.class_group }} · {{ ev.subject }} · {{ ev.date|date:"d/m/Y" }}. Cadastre as questões e ligue cada uma à habilidade que ela verifica. O resultado por questão vira evidência individual, e a nota pode ser calculada a partir dele.</p>
+  </div>
+  {% if questions %}<a class="btn btn-primary" href="{% url 'cognitio:responses' ev.pk %}">{% icon "clipboard-check" %}Lançar resultados por questão</a>{% endif %}
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <section class="card" aria-labelledby="lista"><div class="card-body">
+      <h2 id="lista" class="h6">Questões ({{ questions|length }}) · total {{ total|floatformat:"-2" }} ponto{{ total|pluralize }}</h2>
+      <ul class="list-unstyled mb-0">
+        {% for q in questions %}
+        <li class="py-2 border-bottom">
+          <div class="d-flex flex-wrap justify-content-between gap-2"><strong>Q{{ q.number }}. {{ q.label }}</strong><span class="small text-secondary">{{ q.max_points|floatformat:"-2" }} pt · {{ q.get_complexity_display }} · {{ q.get_evidence_type_display }}</span></div>
+          <div class="small mt-1">{% for l in q.questionskill_set.all %}<span class="chip{% if l.role == 'principal' %} chip-state state-publicada{% endif %}" title="{{ l.item.text }}">{{ l.item.code }}{% if l.role == 'secundaria' %} (secundária){% endif %}</span> {% endfor %}</div>
+          {% if q.criteria %}<p class="small text-secondary mb-1 mt-1">{{ q.criteria|truncatechars:160 }}</p>{% endif %}
+          <a class="small" href="?editar={{ q.pk }}">Editar</a>
+        </li>
+        {% empty %}<li class="small text-secondary">Nenhuma questão. Comece pelo formulário ao lado.</li>{% endfor %}
+      </ul>
+    </div></section>
+  </div>
+  <div class="col-lg-5">
+    <form method="post" class="card form-card" novalidate>
+      {% csrf_token %}
+      {% if editing %}<input type="hidden" name="question_id" value="{{ editing.pk }}">{% endif %}
+      <div class="card-body">
+        <h2 class="h6">{% if editing %}Editar questão {{ editing.number }}{% else %}Nova questão{% endif %}</h2>
+        {% include "partials/_form_fields.html" with f=form %}
+      </div>
+      <div class="form-actions d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Salvar questão</button>
+        {% if editing %}<a class="btn btn-outline-secondary" href="{% url 'cognitio:questions' ev.pk %}">Cancelar</a>
+        <button type="submit" name="_delete" value="1" class="btn btn-outline-danger ms-auto" data-confirm="Os resultados lançados nesta questão também serão excluídos." data-confirm-title="Excluir questão?" data-confirm-ok="Excluir" data-confirm-tone="danger">Excluir</button>{% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

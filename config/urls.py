@@ -18,6 +18,7 @@ urlpatterns = [
     path("", include("apps.printing.urls")),
     path("", include("apps.curriculum.urls")),
     path("", include("apps.inclusion.urls")),
+    path("", include("apps.cognitio.urls")),
 ]
 
 # O servidor de desenvolvimento (runserver) só serve arquivos estáticos quando

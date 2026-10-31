@@ -184,6 +184,8 @@ ITEMS = {
                              ("inclusion:guidance",), "Recursos e estratégias para estudantes das suas turmas"),
     "fam_support": Item("Necessidades e laudos", "inclusion:overview", "heart-handshake", ("inclusion:",),
                         "Informar a escola e acompanhar a análise"),
+    "cognitio": Item("EIA-Cognitio", "cognitio:home", "chart-line", ("cognitio:",),
+                     "Mapa de competências, alertas e intervenções por habilidade"),
     "norms": Item("Referências normativas", "curriculum:references", "book-open", ("curriculum:references",),
                   "LDB, BNCC, educação inclusiva e LGPD"),
 }
@@ -227,8 +229,8 @@ LAYOUT = {
     ],
     PROFESSOR: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
-        ("Sala de aula", ["classrooms", "lesson_plans", "curriculum", "attendance", "evaluations", "activities",
-                          "prints_mine", "works"]),
+        ("Sala de aula", ["classrooms", "lesson_plans", "curriculum", "cognitio", "attendance", "evaluations",
+                          "activities", "prints_mine", "works"]),
         ("Acompanhamento", ["occurrences", "observations", "support_guidance", "justifications"]),
         COMMUNICATION_STAFF,
         ("Análises", ["teacher_bi", "subject_bi", "reports", "methodology", "norms"]),
@@ -245,7 +247,7 @@ LAYOUT = {
     ],
     COORDENACAO: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
-        ("Coordenação", ["coord_panel", "lesson_plans", "curriculum", "prints_queue", "coord_records"]),
+        ("Coordenação", ["coord_panel", "lesson_plans", "curriculum", "cognitio", "prints_queue", "coord_records"]),
         ("Pedagógico", ["students", "evaluations", "activities", "works", "attendance",
                         "occurrences", "observations", "plans", "support", "justifications"]),
         ("Acadêmico", ["classes", "subjects", "years", "assignments"]),
@@ -254,7 +256,7 @@ LAYOUT = {
     ],
     DIRECAO: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
-        ("Coordenação", ["coord_panel", "lesson_plans", "curriculum", "prints_queue", "coord_designations"]),
+        ("Coordenação", ["coord_panel", "lesson_plans", "curriculum", "cognitio", "prints_queue", "coord_designations"]),
         ("Análises", ["institutional", "subject_bi", "quality", "reports", "methodology", "norms"]),
         ("Pedagógico", ["students", "evaluations", "activities", "works", "attendance",
                         "occurrences", "observations", "plans", "support", "justifications"]),

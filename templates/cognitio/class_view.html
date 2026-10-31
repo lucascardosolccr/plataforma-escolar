@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Competências da turma {{ cg.name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'cognitio:home' %}" class="back-link">{% icon "arrow-left" %}EIA-Cognitio</a>
+    <h1>{{ cg.name }} · {{ subject.name }}</h1>
+    <p>Mapa coletivo de competências ({{ students_count }} estudante{{ students_count|pluralize }}, {{ period_label }}). Toque numa habilidade para ver quem precisa de acompanhamento e as evidências.</p>
+  </div>
+  {% if can_record %}<a class="btn btn-primary" href="{% url 'cognitio:observation_create' cg.pk subject.pk %}">{% icon "plus" %}Registrar observação</a>{% endif %}
+</div>
+
+<form method="get" class="filter-bar" aria-label="Filtrar">
+  {% include "partials/_filter_select.html" with name="disciplina" label="Disciplina" options=subjects selected=subject.pk all_label="Escolha" %}
+  {% if period_options %}{% include "partials/_filter_select.html" with name="periodo" label="Período" options=period_options selected=period all_label="Últimos dois anos" %}{% endif %}
+  {% include "partials/_filter_end.html" %}
+</form>
+{% include "cognitio/_legend.html" %}
+
+{% if focus %}
+<section class="card my-3" aria-labelledby="foco"><div class="card-body">
+  <div class="d-flex flex-wrap justify-content-between gap-2"><h2 id="foco" class="h6 mb-1">{{ focus.item.code }} — quem precisa de acompanhamento</h2><a class="small" href="?disciplina={{ subject.pk }}{% if period %}&periodo={{ period }}{% endif %}">Fechar</a></div>
+  <p class="small">{{ focus.item.text }}</p>
+  <ul class="list-unstyled mb-0">{% for st, a in focus.rows %}<li class="d-flex flex-wrap gap-2 align-items-center py-1 border-bottom"><span class="mcell {{ a.css }}" aria-hidden="true">{{ a.abbr }}</span><a href="{% url 'cognitio:student_map' st.pk %}?habilidade={{ focus.item.pk }}&disciplina={{ subject.pk }}">{{ st }}</a><span class="small text-secondary">{{ a.label }}{% if a.percent is not None %} · {{ a.percent }}%{% endif %} · {{ a.n_valid }} evidência{{ a.n_valid|pluralize }}</span></li>{% endfor %}</ul>
+  {% if can_record %}<p class="mt-2 mb-0"><a class="btn btn-sm btn-outline-primary" href="{% url 'cognitio:observation_create' cg.pk subject.pk %}?item={{ focus.item.pk }}">Registrar observação desta habilidade</a></p>{% endif %}
+</div></section>
+{% endif %}
+
+<div class="row g-3 mt-1">
+  <section class="col-lg-6" aria-labelledby="ret"><div class="card h-100"><div class="card-body">
+    <h2 id="ret" class="h6">{% icon "triangle-alert" %}Habilidades que demandam retomada</h2>
+    <p class="small text-secondary">Ao menos 30% da turma com dificuldade observada.</p>
+    <ul class="list-unstyled small mb-0">{% for s in retake %}<li class="py-1"><a href="?disciplina={{ subject.pk }}&habilidade={{ s.item.pk }}"><strong>{{ s.item.code }}</strong></a> {{ s.difficulty }} estudante{{ s.difficulty|pluralize }} · {{ s.item.text|truncatechars:80 }}</li>{% empty %}<li class="text-secondary">Nenhuma pelos critérios atuais.</li>{% endfor %}</ul>
+  </div></div></section>
+  <section class="col-lg-6" aria-labelledby="grp"><div class="card h-100"><div class="card-body">
+    <h2 id="grp" class="h6">{% icon "users-round" %}Grupos que podem se beneficiar de intervenção semelhante</h2>
+    <p class="small text-secondary">Estudantes com dificuldade observada ou em desenvolvimento na mesma habilidade (2 ou mais).</p>
+    <ul class="list-unstyled small mb-0">{% for g in groups %}<li class="py-1"><strong>{{ g.item.code }}</strong>: {% for st in g.students %}{{ st.first_name }}{% if not forloop.last %}, {% endif %}{% endfor %}</li>{% empty %}<li class="text-secondary">Nenhum agrupamento sugerido.</li>{% endfor %}</ul>
+  </div></div></section>
+</div>
+
+<section class="card mt-3" aria-labelledby="dist"><div class="card-body">
+  <h2 id="dist" class="h6">Distribuição de domínio por habilidade</h2>
+  {% if summary %}
+  <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+    <thead><tr><th scope="col">Habilidade</th><th scope="col">Distribuição</th><th scope="col">Consolidadas</th><th scope="col">Dificuldade</th><th scope="col">Sem evidência suficiente</th></tr></thead>
+    <tbody>{% for s in summary %}<tr>
+      <th scope="row"><a href="?disciplina={{ subject.pk }}&habilidade={{ s.item.pk }}" title="{{ s.item.text }}">{{ s.item.code }}</a><span class="d-block small text-secondary fw-normal">{{ s.item.thematic_unit }}</span></th>
+      <td><svg class="dist-svg" width="160" height="12" role="img" aria-label="{% for state, label, n, x, w, css in s.bars %}{{ n }}: {{ label }}{% if not forloop.last %}; {% endif %}{% endfor %}">{% for state, label, n, x, w, css in s.bars %}<rect class="bar {{ css }}" x="{{ x }}" y="0" height="12" width="{{ w }}"></rect>{% endfor %}</svg></td>
+      <td>{{ s.consolidated }}</td><td>{{ s.difficulty }}</td><td>{{ s.insufficient }}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="small mb-0">Sem habilidades ligadas a esta turma e disciplina.</p>{% endif %}
+</div></section>
+
+{% if items %}
+<section class="card mt-3" aria-labelledby="mapa"><div class="card-body">
+  <h2 id="mapa" class="h6">Mapa de calor: estudantes × habilidades</h2>
+  <div class="table-responsive"><table class="heat">
+    <caption class="visually-hidden">Estado de domínio de cada estudante em cada habilidade</caption>
+    <thead><tr><th scope="col" class="sticky">Estudante</th>{% for it in items %}<th scope="col" class="rot"><a href="?disciplina={{ subject.pk }}&habilidade={{ it.pk }}" title="{{ it.text }}">{{ it.code }}</a></th>{% endfor %}</tr></thead>
+    <tbody>{% for st, row in matrix %}<tr><th scope="row" class="sticky small"><a href="{% url 'cognitio:student_map' st.pk %}?disciplina={{ subject.pk }}">{{ st.first_name }} {{ st.last_name|slice:":1" }}.</a></th>{% for it, a in row %}<td><a class="mcell {{ a.css }}" href="{% url 'cognitio:student_map' st.pk %}?disciplina={{ subject.pk }}&habilidade={{ it.pk }}" title="{{ st.first_name }} · {{ it.code }}: {{ a.label }}">{{ a.abbr }}<span class="visually-hidden"> {{ a.label }}</span></a></td>{% endfor %}</tr>{% endfor %}</tbody>
+  </table></div>
+</div></section>
+{% endif %}
+{% endblock %}

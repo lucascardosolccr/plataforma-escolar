@@ -53,7 +53,7 @@ def _unlocalize(field):
 class EvaluationForm(forms.ModelForm):
     class Meta:
         model = Evaluation
-        fields = ["class_group", "subject", "title", "kind", "description", "weight", "date"]
+        fields = ["class_group", "subject", "title", "kind", "description", "weight", "date", "announced"]
         widgets = {"date": forms.DateInput(format=r"%Y-%m-%d", attrs={"type": "date"})}
         labels = {
             "class_group": "Turma",
@@ -85,6 +85,8 @@ class EvaluationForm(forms.ModelForm):
             self.fields["subject"].initial = subject
         self.fields["date"].required = False
         self.fields["date"].initial = timezone.localdate()
+        if not self.instance.pk:
+            self.fields["announced"].initial = True
         _unlocalize(self.fields["weight"])
 
     def clean(self):

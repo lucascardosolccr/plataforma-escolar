@@ -115,6 +115,12 @@ class Evaluation(models.Model):
     status = models.CharField(
         "situação", max_length=10, choices=Status.choices, default=Status.DRAFT
     )
+    # "Rascunho" quer dizer notas ainda não publicadas; a data da prova pode
+    # (e deve) ser conhecida antes. Com a data divulgada, a prova entra na
+    # agenda do estudante e da família e gera lembretes.
+    announced = models.BooleanField(
+        "divulgar a data para a turma", default=False,
+        help_text="Estudantes e responsáveis veem a data na agenda e recebem lembretes.")
     created_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name="evaluations_created"
     )
@@ -128,6 +134,10 @@ class Evaluation(models.Model):
 
     def __str__(self):
         return f"{self.title} — {self.class_group}"
+
+    @property
+    def family_visible(self):
+        return self.status == self.Status.PUBLISHED or self.announced
 
 
 class Grade(models.Model):

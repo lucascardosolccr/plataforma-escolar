@@ -52,8 +52,11 @@ class ScheduledPublicationMiddleware:
     consulta curta a cada ``INTERVAL`` segundos por processo, não por página —
     e sempre na primeira requisição de um novo dia, para a publicação agendada
     não esperar o intervalo depois da meia-noite.
-    Na primeira requisição de cada dia também saem os lembretes de prazo
-    (``family_events.send_deadline_reminders``).
+    Na primeira requisição de cada dia também saem os lembretes de prazo e de
+    prova (``communication.reminders.run_daily``), registrados em
+    ``ReminderRun``. Se o processamento falhar, ele é tentado de novo na
+    próxima rodada do intervalo; o dia só fica dado como feito com uma
+    execução concluída.
     Uma falha aqui nunca derruba a página: o aviso fica para a próxima vez.
     """
 
@@ -87,16 +90,17 @@ class ScheduledPublicationMiddleware:
                 deliver_due_publications()
             except Exception:  # o aviso não pode quebrar a navegação
                 logger.exception("Falha ao entregar avisos de publicações agendadas")
-            # Lembretes de prazo: uma vez por dia por processo (e sem repetir
-            # entre processos, pelo dedupe_key de cada aviso).
+            # Lembretes: uma vez por dia (o registro em ReminderRun vale
+            # entre processos; o dedupe_key de cada aviso cobre corridas).
             if ScheduledPublicationMiddleware._last_reminder_day != hoje:
-                ScheduledPublicationMiddleware._last_reminder_day = hoje
-                from apps.communication.family_events import send_deadline_reminders
+                from apps.communication import reminders
 
                 try:
-                    send_deadline_reminders(hoje)
+                    if not reminders.done_today(hoje):
+                        reminders.run_daily(hoje)
+                    ScheduledPublicationMiddleware._last_reminder_day = hoje
                 except Exception:
-                    logger.exception("Falha ao enviar lembretes de prazo")
+                    logger.exception("Falha ao processar os lembretes; nova tentativa no próximo intervalo")
         return self.get_response(request)
 
 

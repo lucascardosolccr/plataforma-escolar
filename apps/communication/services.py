@@ -11,14 +11,15 @@ from django.utils import timezone
 from .models import Announcement, Notification, NotificationMute
 
 
-def notify(school, user, kind, title, body="", url="", student=None, dedupe_key=""):
+def notify(school, user, kind, title, body="", url="", student=None, dedupe_key="", **extra):
     """Cria o aviso. Com ``dedupe_key``, não repete o mesmo evento à mesma
-    pessoa (ex.: pedido de impressão reenviado)."""
+    pessoa (ex.: pedido de impressão reenviado). ``extra`` aceita
+    ``priority``, ``ref`` e ``due_on`` (compromisso a que o aviso se refere)."""
     if dedupe_key and Notification.objects.filter(user=user, dedupe_key=dedupe_key).exists():
         return None
     n = Notification.objects.create(
         school=school, user=user, kind=kind, title=title, body=body, url=url,
-        student=student, dedupe_key=dedupe_key,
+        student=student, dedupe_key=dedupe_key, **extra,
     )
     email_notice([user])
     return n
@@ -47,10 +48,12 @@ def email_notice(users):
     return len(msgs)
 
 
-def notify_many(school, users, kind, title, body="", url="", student=None, dedupe_key=""):
-    users = list(users or [])
+def notify_many(school, users, kind, title, body="", url="", student=None, dedupe_key="", **extra):
+    """Um aviso por pessoa (sem repetir quem já recebeu a mesma chave).
+    Devolve quantos avisos foram criados."""
+    users = list({u.pk: u for u in (users or [])}.values())
     if not users:
-        return
+        return 0
     if dedupe_key:
         done = set(Notification.objects.filter(user__in=users, dedupe_key=dedupe_key)
                    .values_list("user_id", flat=True))
@@ -58,11 +61,12 @@ def notify_many(school, users, kind, title, body="", url="", student=None, dedup
     Notification.objects.bulk_create(
         Notification(
             school=school, user=u, kind=kind, title=title, body=body, url=url,
-            student=student, dedupe_key=dedupe_key,
+            student=student, dedupe_key=dedupe_key, **extra,
         )
         for u in users
     )
     email_notice(users)
+    return len(users)
 
 
 def _allowed(school, event, kind, users):
@@ -129,7 +133,7 @@ def _group_work_member_ids(work):
     )
 
 
-def _notify_class_families(item, title, url, detail="", student_ids=None):
+def _notify_class_families(item, title, url, detail="", student_ids=None, priority="normal", event="atividade_atribuida"):
     """Avisa responsáveis e estudantes com conta de uma publicação da turma.
 
     Uma notificação por (responsável, estudante) e com o nome do estudante no
@@ -164,8 +168,12 @@ def _notify_class_families(item, title, url, detail="", student_ids=None):
     pending = []
     from .family_events import event_enabled
 
-    if not event_enabled(item.school, "atividade_atribuida"):
+    if not event_enabled(item.school, event):
         return
+    from apps.pedagogy.models import Activity
+
+    extra = {"priority": priority, "due_on": item.deadline,
+             "ref": f"{'atividade' if isinstance(item, Activity) else 'trabalho'}:{item.pk}"}
     muted = set(NotificationMute.objects.filter(kind=Notification.Kind.ACTIVITY).values_list("user_id", flat=True))
     for link in links:
         key = (link.guardian_id, link.student_id)
@@ -176,10 +184,12 @@ def _notify_class_families(item, title, url, detail="", student_ids=None):
             Notification(
                 school=item.school,
                 user=link.guardian,
+                student=link.student,
                 kind=Notification.Kind.ACTIVITY,
                 title=title,
                 body=f"{link.student} — {contexto}",
                 url=url,
+                **extra,
             )
         )
     # O próprio estudante, quando a escola criou acesso para ele.
@@ -190,10 +200,12 @@ def _notify_class_families(item, title, url, detail="", student_ids=None):
             Notification(
                 school=item.school,
                 user=student.user,
+                student=student,
                 kind=Notification.Kind.ACTIVITY,
                 title=title,
                 body=contexto,
                 url=url,
+                **extra,
             )
         )
     if pending:
@@ -285,7 +297,38 @@ def notify_publication_canceled(item):
         url = reverse("pedagogy:group_work_detail", args=[item.pk])
     motivo = f" Motivo: {item.cancel_reason}" if item.cancel_reason else ""
     publico = None if isinstance(item, Activity) else _group_work_member_ids(item)
-    _notify_class_families(item, title, url, motivo, student_ids=publico)
+    from .reminders import resolve
+
+    ref = f"{'atividade' if isinstance(item, Activity) else 'trabalho'}:{item.pk}"
+    resolve(ref, "Cancelada pelo professor")
+    _notify_class_families(item, title, url, motivo, student_ids=publico, priority="importante")
+    resolve(ref, "Cancelada pelo professor")
+
+
+def notify_deadline_changed(item, old_deadline):
+    """Prazo de atividade ou trabalho já avisado mudou: avisa a família, e os
+    lembretes antigos ficam marcados como resolvidos. Os lembretes da nova
+    data saem pelas etapas normais (a data faz parte da chave)."""
+    from apps.pedagogy.models import Activity
+
+    if item.notified_at is None or item.status != "publicada" or old_deadline == item.deadline:
+        return
+    is_act = isinstance(item, Activity)
+    ref = f"{'atividade' if is_act else 'trabalho'}:{item.pk}"
+    novo = f"{item.deadline:%d/%m/%Y}" if item.deadline else "sem data"
+    antigo = f"{old_deadline:%d/%m/%Y}" if old_deadline else "sem data"
+    from .reminders import resolve
+
+    resolve(ref, f"Prazo alterado para {novo}")
+    if is_act:
+        url = reverse("pedagogy:activity_detail", args=[item.pk])
+        publico = None
+    else:
+        url = reverse("pedagogy:group_work_detail", args=[item.pk])
+        publico = _group_work_member_ids(item)
+    _notify_class_families(item, f"Prazo alterado: {item.title}", url,
+                           f" O prazo passou de {antigo} para {novo}.", student_ids=publico,
+                           priority="importante", event="prazo_alterado")
 
 
 def deliver_due_publications(school=None):

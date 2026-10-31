@@ -109,7 +109,8 @@ class RulesAndPreferencesTests(FamBase):
         self.assertEqual(self.client.get(reverse("communication:notification_rules")).status_code, 403)
         self.login(self.dir)
         on = ["nota_publicada", "atividade_atribuida"]  # falta desligada
-        self.client.post(reverse("communication:notification_rules"), {"ativo": on})
+        self.client.post(reverse("communication:notification_rules"),
+                         {"ativo": on, "activity_days": "3,1,0", "overdue_days": "1", "exam_days": "7,1,0"})
         self.assertFalse(NotificationRule.objects.get(school=self.school, event="falta_registrada").enabled)
         self.login(self.prof)
         today = timezone.localdate().isoformat()
@@ -190,19 +191,23 @@ class DeadlineReminderTests(FamBase):
         n = self.reminders().get()
         self.assertEqual((n.title, n.student, n.kind), ("Prazo amanhã: Mapa", self.ana, "atividade"))
         self.assertFalse(self.reminders(self.outra).exists())  # Bia já entregou
-        # No dia do prazo não repete o lembrete.
-        send_deadline_reminders(today + timedelta(days=1))
+        # Mesmo dia de novo: não repete. No dia do prazo, a etapa "0" lembra
+        # uma vez (desde o Prompt 15 cada antecedência configurada é uma etapa).
+        send_deadline_reminders(today)
         self.assertEqual(self.reminders().count(), 1)
+        send_deadline_reminders(today + timedelta(days=1))
+        send_deadline_reminders(today + timedelta(days=1))
+        self.assertEqual(sorted(self.reminders().values_list("title", flat=True)), ["Prazo amanhã: Mapa", "Prazo hoje: Mapa"])
 
     def test_ignores_far_deadlines_drafts_canceled_and_scheduled(self):
         from apps.communication.family_events import send_deadline_reminders
 
         today = timezone.localdate()
-        self.make(today + timedelta(days=3))
+        self.make(today + timedelta(days=4))  # antes da primeira antecedência (3 dias)
         self.make(today, status="rascunho")
         self.make(today, status="cancelada", visible_before_cancel=True)
         self.make(today + timedelta(days=1), published=today + timedelta(days=1))  # ainda agendada
-        self.make(today - timedelta(days=1))  # prazo vencido
+        self.make(today - timedelta(days=1))  # prazo vencido: vira "atividade pendente", não "prazo"
         send_deadline_reminders(today)
         self.assertFalse(self.reminders().exists())
 
@@ -247,7 +252,7 @@ class DeadlineReminderTests(FamBase):
         WorkGroupMember.objects.create(group=g2, student=self.bia)
         GroupWorkDelivery.objects.create(group_work=work, group=g2, status="entregue")
         send_deadline_reminders(today)
-        send_deadline_reminders(today + timedelta(days=1))
+        send_deadline_reminders(today)
         n = self.fam_notes().get(dedupe_key__startswith="prazo-trabalho:")
         self.assertEqual((n.title, n.student), ("Prazo amanhã: Maquete (trabalho em grupo)", self.ana))
         self.assertFalse(self.fam_notes(self.outra).exists())  # o grupo da Bia já entregou

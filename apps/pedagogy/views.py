@@ -12,6 +12,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from apps.academics.models import ClassGroup, SchoolYear, Subject, TeacherAssignment
+from apps.communication import reminders
 from apps.communication.family_events import notify_family
 from apps.communication.services import (
     announce_publication,
@@ -20,6 +21,7 @@ from apps.communication.services import (
     notify_justification_created,
     notify_justification_resolved,
     notify_occurrence_created,
+    notify_deadline_changed,
     notify_publication_canceled,
 )
 from apps.academics.permissions import pairs_q, teacher_class_ids, teacher_pairs, teacher_subject_ids
@@ -271,6 +273,15 @@ def evaluation_list(request):
             status=Evaluation.Status.PUBLISHED,
         )
     qs = _coord_limit(user, qs, class_field="class_group_id")
+    upcoming = []
+    if is_family:
+        # Próximas provas com data divulgada, mesmo antes das notas.
+        upcoming = list(
+            Evaluation.objects.filter(
+                acc.enrollment_window_q(acc.family_enrollments(user), "date"),
+                school=user.school, announced=True, date__gte=timezone.localdate(),
+            ).select_related("subject", "class_group").order_by("date")[:10]
+        )
     is_teacher = user.role == Role.PROFESSOR.value
     # Pares turma+disciplina que o professor leciona: só neles aparecem
     # "Notas", "Editar" e "Publicar". Antes os botões apareciam também nas
@@ -334,6 +345,7 @@ def evaluation_list(request):
         {
             "rows": rows,
             "page": page,
+            "upcoming": upcoming,
             "status": status,
             "student_id": student_id,
             "can_edit_any": is_teacher,
@@ -373,6 +385,7 @@ def evaluation_create(request):
             ev.status = Evaluation.Status.DRAFT
             ev.save()
             _log(request, "create", ev, f"Criou a avaliação {ev.title} ({ev.class_group})")
+            reminders.notify_exam_change(ev)
         messages.success(request, "Avaliação criada.")
         return redirect("pedagogy:evaluation_list")
     return render(request, "pedagogy/evaluation_form.html", {"form": form, "obj": None})
@@ -388,19 +401,22 @@ def evaluation_edit(request, pk):
         request.POST or None, instance=ev, user=user, school=user.school,
         class_group=ev.class_group, subject=ev.subject,
     )
+    old_date, was_announced = ev.date, ev.announced
     if request.method == "POST":
         if request.POST.get("_delete"):
             with transaction.atomic():
                 pk = ev.pk
                 detail = f"Excluiu a avaliação {ev.title} ({ev.class_group})"
+                reminders.notify_exam_change(ev, old_date, was_announced, deleted=True)
                 ev.delete()
                 _log(request, "delete", ev, detail, target_id=pk)
             messages.success(request, "Avaliação excluída.")
             return redirect("pedagogy:evaluation_list")
         if form.is_valid():
             with transaction.atomic():
-                form.save()
+                ev = form.save()
                 _log(request, "update", ev, f"Atualizou a avaliação {ev.title}")
+                reminders.notify_exam_change(ev, old_date, was_announced)
             messages.success(request, "Avaliação atualizada.")
             return redirect("pedagogy:evaluation_list")
     return render(request, "pedagogy/evaluation_form.html", {"form": form, "obj": ev})
@@ -910,6 +926,7 @@ def activity_edit(request, pk):
         messages.warning(request, "Atividade cancelada não pode ser editada.")
         return redirect("pedagogy:activity_detail", pk=act.pk)
     was_draft = act.status == Activity.Status.DRAFT
+    old_deadline = act.deadline
     form = ActivityForm(
         request.POST or None,
         request.FILES or None,
@@ -927,6 +944,8 @@ def activity_edit(request, pk):
                 act.save(update_fields=["status"])
             _log(request, "update", act, f"Atualizou a atividade {act.title}")
             avisou = announce_publication(act)
+            if not avisou:
+                notify_deadline_changed(act, old_deadline)
         messages.success(request, _publication_message(act, "esta atividade", avisou))
         return redirect("pedagogy:activity_detail", pk=act.pk)
     return render(request, "pedagogy/activity_form.html", {"form": form, "obj": act})
@@ -1066,6 +1085,7 @@ def activity_submissions(request, pk):
                                       body=f"O professor registrou a situação da entrega de {st.first_name}.",
                                       url=url, dedupe_key=f"entrega-{sub.pk}-{sub.status}")
                 count += 1
+            reminders.resolve_delivered_activity(act)
             messages.success(request, f"{count} entrega(s) registrada(s).")
         if invalid:
             messages.warning(
@@ -1470,6 +1490,7 @@ def group_work_edit(request, pk):
         messages.warning(request, "Trabalho cancelado não pode ser editado.")
         return redirect("pedagogy:group_work_detail", pk=work.pk)
     was_draft = work.status == GroupWork.Status.DRAFT
+    old_deadline = work.deadline
     form = GroupWorkForm(
         request.POST or None,
         request.FILES or None,
@@ -1487,6 +1508,8 @@ def group_work_edit(request, pk):
                 work.save(update_fields=["status"])
             _log(request, "update", work, f"Atualizou o trabalho {work.title}")
             avisou = announce_publication(work)
+            if not avisou:
+                notify_deadline_changed(work, old_deadline)
         messages.success(request, _publication_message(work, "este trabalho", avisou))
         return redirect("pedagogy:group_work_detail", pk=work.pk)
     return render(request, "pedagogy/groupwork_form.html", {"form": form, "obj": work})
@@ -1807,6 +1830,7 @@ def group_work_deliveries(request, pk):
                     )
                     n += 1
             _log(request, "update", work, f"Registrou {n} entrega(s) de {work.title}")
+            reminders.resolve_delivered_group_work(work)
         messages.success(request, f"{n} registro(s) de entrega salvos.")
         if invalid:
             messages.warning(

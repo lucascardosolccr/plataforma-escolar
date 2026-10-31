@@ -6,7 +6,7 @@ from apps.core.models import User
 from apps.registry.models import Enrollment, GuardianLink, Student
 
 from . import access as acc
-from .models import Announcement, ServiceRequest
+from .models import Announcement, ReminderPolicy, ServiceRequest
 
 
 class PersonChoiceField(forms.ModelChoiceField):
@@ -185,3 +185,45 @@ def thread_queryset(user):
     """Conversas do usuário, com filtro opcional por estudante."""
     qs = user.threads.select_related("student").prefetch_related("participants")
     return qs
+
+
+class ReminderPolicyForm(forms.ModelForm):
+    """Antecedência dos lembretes: números de dias separados por vírgula."""
+
+    class Meta:
+        model = ReminderPolicy
+        fields = ["activity_days", "overdue_days", "exam_days", "include_guardians"]
+        labels = {
+            "activity_days": "Atividades e trabalhos: avisar quantos dias antes da entrega",
+            "overdue_days": "Atividade pendente: avisar quantos dias depois do vencimento",
+            "exam_days": "Provas: avisar quantos dias antes",
+        }
+        help_texts = {
+            "activity_days": "Ex.: 7, 3, 1, 0 (0 = no próprio dia). Até 60 dias.",
+            "overdue_days": "Ex.: 1, 3. Deixe vazio para não avisar depois do prazo.",
+            "exam_days": "Ex.: 7, 1, 0. Só vale para provas com a data divulgada.",
+        }
+
+    def _days(self, name, required):
+        raw = (self.cleaned_data.get(name) or "").strip()
+        parts = [p.strip() for p in raw.replace(";", ",").split(",") if p.strip()]
+        if not parts:
+            if required:
+                raise ValidationError("Informe ao menos um número de dias.")
+            return ""
+        bad = [p for p in parts if not p.isdigit() or int(p) > 60]
+        if bad:
+            raise ValidationError(f"Use números inteiros de 0 a 60 separados por vírgula (não aceito: {', '.join(bad)}).")
+        return ", ".join(str(d) for d in ReminderPolicy.parse(raw))
+
+    def clean_activity_days(self):
+        return self._days("activity_days", True)
+
+    def clean_overdue_days(self):
+        value = self._days("overdue_days", False)
+        if value and "0" in value.split(", "):
+            raise ValidationError("Depois do vencimento, use números a partir de 1.")
+        return value
+
+    def clean_exam_days(self):
+        return self._days("exam_days", True)

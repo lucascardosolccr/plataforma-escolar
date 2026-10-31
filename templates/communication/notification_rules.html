@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="form-page">
-  {% include "partials/_form_head.html" with heading="Avisos automáticos à família" subheading="Quais registros dos professores e da escola geram notificação aos responsáveis vinculados." %}
+  {% include "partials/_form_head.html" with heading="Avisos automáticos à família" subheading="Quais registros geram notificação aos estudantes e responsáveis vinculados, e com quanta antecedência saem os lembretes." %}
   <form method="post" class="card form-card">
     {% csrf_token %}
     <div class="card-body">
@@ -17,6 +17,11 @@
         </div>
         {% endfor %}
       </fieldset>
+      <fieldset class="mt-4">
+        <legend class="form-label fs-6">Antecedência dos lembretes</legend>
+        <p class="small text-secondary">Os lembretes vão para o estudante com acesso e para os responsáveis vinculados. Quem já tem entrega registrada não é lembrado; atividade cancelada ou com o prazo alterado tem os lembretes antigos marcados como resolvidos.</p>
+        {% include "partials/_form_fields.html" with f=form %}
+      </fieldset>
       <ul class="rule-list small mt-3">
         <li><strong>Nunca geram aviso:</strong> observação marcada como interna, registros da coordenação, observações internas das atividades e pedidos de impressão. São da equipe.</li>
         <li>Observação pedagógica só avisa quando o professor marca “compartilhar com a família”.</li>
@@ -25,5 +30,21 @@
     </div>
     {% include "partials/_form_actions.html" with submit_label="Salvar regras" %}
   </form>
+  <section class="card mt-3" aria-labelledby="proc-lembretes">
+    <div class="card-body">
+      <h2 id="proc-lembretes" class="h6">Processamentos recentes dos lembretes</h2>
+      <p class="small text-secondary">Os lembretes são processados na primeira vez que alguém usa a plataforma no dia. Um processamento que falha é tentado de novo depois de alguns minutos, sem duplicar avisos.</p>
+      {% if runs %}
+      <div class="table-responsive"><table class="table table-sm">
+        <thead><tr><th scope="col">Dia</th><th scope="col">Início</th><th scope="col">Situação</th><th scope="col">Avisos criados</th><th scope="col">Detalhes</th></tr></thead>
+        <tbody>{% for r in runs %}<tr>
+          <td>{{ r.day|date:"d/m/Y" }}</td><td>{{ r.started_at|date:"H:i" }}</td>
+          <td><span class="chip chip-state state-{% if r.status == 'ok' %}validado{% elif r.status == 'erro' %}erro{% else %}aguardando{% endif %}">{{ r.get_status_display }}</span></td>
+          <td>{{ r.sent }}</td><td class="small">{% if r.status == 'erro' %}Falha registrada no log técnico.{% else %}{{ r.detail }}{% endif %}</td>
+        </tr>{% endfor %}</tbody>
+      </table></div>
+      {% else %}<p class="small mb-0">Nenhum processamento registrado ainda.</p>{% endif %}
+    </div>
+  </section>
 </div>
 {% endblock %}

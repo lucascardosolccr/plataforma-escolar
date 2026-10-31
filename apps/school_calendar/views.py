@@ -209,7 +209,7 @@ def _collect_events(user, start, end, class_filter=None, subject_filter=None,
     if kind_filter is None or kind_filter == "evaluation":
         qs = _scoped(
             Evaluation.objects.filter(
-                school=user.school, status=Evaluation.Status.PUBLISHED
+                Q(status=Evaluation.Status.PUBLISHED) | Q(announced=True), school=user.school
             ),
             user,
         ).select_related("class_group", "subject")

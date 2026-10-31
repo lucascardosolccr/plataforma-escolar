@@ -225,7 +225,8 @@ class CalendarScope:
     def evaluation_visible(self, ev):
         from apps.pedagogy.models import Evaluation
 
-        if ev.status != Evaluation.Status.PUBLISHED:
+        # Prova com data divulgada aparece antes das notas saírem.
+        if ev.status != Evaluation.Status.PUBLISHED and not ev.announced:
             return False
         if self.staff:
             return True

@@ -21,7 +21,9 @@
 
 <form method="get" class="filter-bar" aria-label="Filtrar notificações">
   {% include "partials/_filter_select.html" with name="situacao" label="Situação" options=situacao_choices selected=situacao all_label="Todas" %}
-  {% include "partials/_filter_select.html" with name="tipo" label="Tipo" options=kind_choices selected=kind all_label="Todos" %}
+  {% include "partials/_filter_select.html" with name="tipo" label="Categoria" options=kind_choices selected=kind all_label="Todas" %}
+  {% include "partials/_filter_select.html" with name="prioridade" label="Prioridade" options=prioridade_choices selected=prioridade all_label="Todas" %}
+  {% include "partials/_filter_select.html" with name="estado" label="Compromisso" options=estado_choices selected=estado all_label="Todos" %}
   {% if student_choices|length > 1 %}{% include "partials/_filter_select.html" with name="aluno" label="Estudante" options=student_choices selected=aluno all_label="Todos" %}{% endif %}
   <div class="filter-field"><label for="f-de" class="form-label">De</label><input type="date" id="f-de" name="de" class="form-control" value="{{ de|date:'Y-m-d' }}" data-autosubmit></div>
   <div class="filter-field"><label for="f-ate" class="form-label">Até</label><input type="date" id="f-ate" name="ate" class="form-control" value="{{ ate|date:'Y-m-d' }}" data-autosubmit></div>
@@ -44,13 +46,13 @@
     <h2 class="feed-day">{{ g.label }}</h2>
     <ul class="feed">
       {% for n in g.items %}
-      <li class="feed-item{% if not n.is_read %} is-unread{% endif %}">
+      <li class="feed-item{% if not n.is_read %} is-unread{% endif %}{% if n.priority == 'importante' %} is-important{% endif %}{% if n.resolved_at %} is-resolved{% endif %}">
         <input type="checkbox" class="form-check-input" name="ids" value="{{ n.pk }}" id="n-{{ n.pk }}" aria-label="Selecionar: {{ n.title }}">
-        <span class="feed-icon" aria-hidden="true">{% if n.kind == 'avaliacao' %}{% icon "graduation-cap" %}{% elif n.kind == 'atividade' %}{% icon "notebook-pen" %}{% elif n.kind == 'comunicado' %}{% icon "megaphone" %}{% elif n.kind == 'justificativa' %}{% icon "file-check" %}{% elif n.kind == 'mensagem' %}{% icon "message-circle" %}{% elif n.kind == 'solicitacao' %}{% icon "inbox" %}{% elif n.kind == 'ocorrencia' %}{% icon "flag" %}{% elif n.kind == 'vinculo' %}{% icon "link" %}{% else %}{% icon "calendar-check" %}{% endif %}</span>
+        <span class="feed-icon" aria-hidden="true">{% if n.kind == 'avaliacao' %}{% icon "graduation-cap" %}{% elif n.kind == 'atividade' %}{% icon "notebook-pen" %}{% elif n.kind == 'comunicado' %}{% icon "megaphone" %}{% elif n.kind == 'justificativa' %}{% icon "file-check" %}{% elif n.kind == 'mensagem' %}{% icon "message-circle" %}{% elif n.kind == 'solicitacao' %}{% icon "inbox" %}{% elif n.kind == 'ocorrencia' %}{% icon "flag" %}{% elif n.kind == 'vinculo' %}{% icon "link" %}{% elif n.kind == 'prova' %}{% icon "clipboard-check" %}{% elif n.kind == 'apoio' %}{% icon "heart-handshake" %}{% else %}{% icon "calendar-check" %}{% endif %}</span>
         <div class="feed-body">
-          <p class="feed-title">{% if not n.is_read %}<span class="visually-hidden">Não lida: </span>{% endif %}{{ n.title }}</p>
+          <p class="feed-title">{% if not n.is_read %}<span class="visually-hidden">Não lida: </span>{% endif %}{% if n.priority == 'importante' %}<span class="chip chip-state state-erro">Importante</span> {% endif %}{{ n.title }}</p>
           {% if n.body %}<p class="feed-text">{{ n.body|truncatechars:180 }}</p>{% endif %}
-          <p class="feed-meta">{{ n.get_kind_display }} · {{ n.created_at|date:"H:i" }}</p>
+          <p class="feed-meta">{{ n.get_kind_display }} · recebida às {{ n.created_at|date:"H:i" }}{% with st=n.state %}{% if st.0 %} · <span class="chip chip-state state-{% if st.0 == 'resolvida' %}validado{% elif st.0 == 'vencida' %}rascunho{% elif st.0 == 'hoje' %}a_vencer{% else %}pendente{% endif %}">{{ st.1 }}</span>{% endif %}{% endwith %}</p>
         </div>
         <div class="feed-actions">
           {% if n.url %}

@@ -60,6 +60,22 @@ def notification_list(request):
         qs = qs.filter(is_read=False)
     elif situacao == "lidas":
         qs = qs.filter(is_read=True)
+    prioridade = request.GET.get("prioridade")
+    if prioridade == Notification.Priority.HIGH:
+        qs = qs.filter(priority=prioridade)
+    else:
+        prioridade = ""
+    # Situação do compromisso (prazo, prova): a vencer, data passada, resolvido.
+    hoje = timezone.localdate()
+    estado = request.GET.get("estado")
+    if estado == "a_vencer":
+        qs = qs.filter(due_on__gte=hoje, resolved_at__isnull=True)
+    elif estado == "vencidas":
+        qs = qs.filter(due_on__lt=hoje, resolved_at__isnull=True)
+    elif estado == "resolvidas":
+        qs = qs.filter(resolved_at__isnull=False)
+    else:
+        estado = ""
     # Filtro por estudante: só os que aparecem nas próprias notificações
     # (a família escolhe entre os filhos; ninguém lista aluno alheio).
     student_choices = [
@@ -104,7 +120,13 @@ def notification_list(request):
             "page": page,
             "kind": kind,
             "situacao": situacao,
-            "filtered": bool(kind or situacao or aluno or de or ate),
+            "filtered": bool(kind or situacao or aluno or de or ate or prioridade or estado),
+            "prioridade": prioridade,
+            "estado": estado,
+            "prioridade_choices": [(Notification.Priority.HIGH, "Só importantes")],
+            "estado_choices": [("a_vencer", "A vencer"), ("vencidas", "Data passada"),
+                               ("resolvidas", "Resolvidas")],
+            "today": hoje,
             "student_choices": student_choices,
             "aluno": aluno,
             "de": de,
@@ -518,24 +540,35 @@ def notification_rules(request):
     from apps.core.models import Role as _Role
 
     from .family_events import EVENTS
-    from .models import NotificationRule
+    from .forms import ReminderPolicyForm
+    from .models import NotificationRule, ReminderPolicy, ReminderRun
 
     user = request.user
     if user.role not in (_Role.DIRECAO.value, _Role.ADMIN.value):
         raise PermissionDenied
-    if request.method == "POST":
+    policy = ReminderPolicy.for_school(user.school)
+    form = ReminderPolicyForm(request.POST or None, instance=policy)
+    if request.method == "POST" and form.is_valid():
         on = set(request.POST.getlist("ativo"))
         with transaction.atomic():
             for key in EVENTS:
                 NotificationRule.objects.update_or_create(
                     school=user.school, event=key, defaults={"enabled": key in on, "updated_by": user})
+            policy = form.save(commit=False)
+            policy.school = user.school
+            policy.updated_by = user
+            policy.save()
             _log(request, "update", None, "Atualizou as regras de aviso à família: "
-                 + (", ".join(sorted(on)) or "todas desligadas"), target_type="NotificationRule",
-                 target_id="escola")
-        messages.success(request, "Regras de aviso salvas.")
+                 + (", ".join(sorted(on)) or "todas desligadas")
+                 + f"; antecedência atividades [{policy.activity_days}], depois do prazo [{policy.overdue_days}], "
+                   f"provas [{policy.exam_days}], responsáveis {'sim' if policy.include_guardians else 'não'}",
+                 target_type="NotificationRule", target_id="escola")
+        messages.success(request, "Regras de aviso salvas. A nova antecedência vale a partir do próximo processamento.")
         return redirect("communication:notification_rules")
     from .family_events import event_enabled
 
     return render(request, "communication/notification_rules.html", {
         "events": [(k, label, event_enabled(user.school, k)) for k, (label, _kind, _d) in EVENTS.items()],
+        "form": form,
+        "runs": ReminderRun.objects.all()[:7],
     })

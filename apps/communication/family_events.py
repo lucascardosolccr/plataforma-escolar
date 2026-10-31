@@ -16,10 +16,7 @@ Separação pedida pelo Prompt 14:
 Os textos dizem o que aconteceu e onde ver, sem repetir dado sensível.
 """
 
-import datetime
-
 from django.urls import reverse
-from django.utils import timezone
 
 from .models import Notification, NotificationMute, NotificationRule
 
@@ -34,6 +31,11 @@ EVENTS = {
     "entrega_registrada": ("Entrega registrada ou marcada como não entregue", K.ACTIVITY, True),
     "prazo_proximo": ("Lembrete de prazo: atividade ou trabalho em grupo não entregue vencendo hoje ou amanhã",
                       K.ACTIVITY, True),
+    "atividade_pendente": ("Atividade ainda pendente depois do vencimento (conforme a antecedência configurada)",
+                           K.ACTIVITY, True),
+    "prazo_alterado": ("Prazo de atividade ou trabalho alterado pelo professor", K.ACTIVITY, True),
+    "prova_marcada": ("Prova com data divulgada, data alterada ou prova desmarcada", K.EXAM, True),
+    "prova_lembrete": ("Lembrete de prova (conforme a antecedência configurada)", K.EXAM, True),
     "falta_registrada": ("Falta registrada", K.ATTENDANCE, True),
     "falta_corrigida": ("Falta corrigida para presença", K.ATTENDANCE, True),
     "limite_faltas": ("Faltas perto do limite", K.ATTENDANCE, True),
@@ -43,7 +45,7 @@ EVENTS = {
 #: Tipos que a família não pode silenciar (segurança e vínculo).
 ESSENTIAL_KINDS = {K.OCCURRENCE, K.LINK, K.REGISTRATION}
 #: Tipos que aparecem nas preferências pessoais.
-MUTABLE_KINDS = [K.EVALUATION, K.GRADE, K.ACTIVITY, K.ATTENDANCE, K.OBSERVATION, K.ANNOUNCEMENT, K.MENU,
+MUTABLE_KINDS = [K.EVALUATION, K.GRADE, K.ACTIVITY, K.EXAM, K.ATTENDANCE, K.OBSERVATION, K.ANNOUNCEMENT, K.MENU,
                  K.CALENDAR, K.MESSAGE]
 
 
@@ -63,20 +65,29 @@ def family_of(student, include_student=True):
     return users
 
 
-def notify_family(student, key, title, body="", url="", dedupe_key="", include_student=True):
+def notify_family(student, key, title, body="", url="", dedupe_key="", include_student=True, guardians=True,
+                  **extra):
     """Avisa a família do estudante sobre o evento ``key``, se a escola deixa
-    e a pessoa não silenciou o tipo. Devolve quantos foram avisados."""
+    e a pessoa não silenciou o tipo. Devolve quantos avisos foram criados.
+
+    ``guardians=False`` avisa só o estudante, quando ele tem acesso (sem
+    acesso, os responsáveis continuam recebendo: alguém precisa saber).
+    ``extra``: ``priority``, ``ref``, ``due_on``.
+    """
     from .services import notify_many
 
     label, kind, _default = EVENTS[key]
     if not event_enabled(student.school, key):
         return 0
     users = family_of(student, include_student)
+    has_account = include_student and student.user_id and student.user.is_active
+    if not guardians and has_account:
+        users = [student.user]
     if kind not in ESSENTIAL_KINDS:
         muted = set(NotificationMute.objects.filter(user__in=users, kind=kind).values_list("user_id", flat=True))
         users = [u for u in users if u.pk not in muted]
-    notify_many(student.school, users, kind, title, body=body, url=url, student=student, dedupe_key=dedupe_key)
-    return len(users)
+    return notify_many(student.school, users, kind, title, body=body, url=url, student=student,
+                       dedupe_key=dedupe_key, **extra)
 
 
 def student_url(name, student, **extra):
@@ -85,75 +96,10 @@ def student_url(name, student, **extra):
 
 
 def send_deadline_reminders(today=None):
-    """Lembra a família da atividade (ou trabalho em grupo) ainda não entregue
-    que vence hoje ou amanhã.
+    """Lembretes de prazo de atividades e trabalhos em grupo (antes do prazo
+    e, para atividades, depois do vencimento). A lógica fica em
+    ``communication.reminders``; esta função continua aqui porque outros
+    módulos e testes a chamam. Devolve quantos avisos foram criados."""
+    from .reminders import activity_reminders, group_work_reminders
 
-    Um lembrete por estudante e atividade (``dedupe_key``): quem foi lembrado
-    na véspera não recebe outro no dia. Não há agendador: o
-    ``ScheduledPublicationMiddleware`` chama esta função na primeira
-    requisição de cada dia. Só entra quem a atividade alcança (matrícula
-    ativa e ``covers``) e ainda não tem entrega registrada. Devolve quantos
-    avisos foram tentados.
-    """
-    from apps.pedagogy.models import Activity, Submission
-    from apps.registry.models import Enrollment
-
-    today = today or timezone.localdate()
-    tomorrow = today + datetime.timedelta(days=1)
-    acts = (Activity.objects.filter(Activity.family_visible_q(today=today), status=Activity.Status.PUBLISHED,
-                                    deadline__in=[today, tomorrow])
-            .select_related("school", "subject", "class_group"))
-    enabled, total = {}, 0
-    for act in acts:
-        if act.school_id not in enabled:
-            enabled[act.school_id] = event_enabled(act.school, "prazo_proximo")
-        if not enabled[act.school_id]:
-            continue
-        delivered = set(Submission.objects.filter(activity=act, status__in=Submission.DELIVERED_STATUSES)
-                        .values_list("student_id", flat=True))
-        when = "hoje" if act.deadline == today else "amanhã"
-        url = reverse("pedagogy:activity_detail", args=[act.pk])
-        for enr in (Enrollment.objects.filter(class_group=act.class_group, status="ativo")
-                    .select_related("student__school", "student__user")):
-            if enr.student_id in delivered or not enr.covers(act.published_date, act.deadline):
-                continue
-            total += notify_family(
-                enr.student, "prazo_proximo", f"Prazo {when}: {act.title}",
-                body=f"{enr.student} — {act.subject}, entrega até {act.deadline:%d/%m/%Y}. "
-                     "Se já entregou, desconsidere: o professor ainda vai registrar.",
-                url=url, dedupe_key=f"prazo:{act.pk}:{enr.student_id}",
-            )
-    return total + _group_work_reminders(today, tomorrow, enabled)
-
-
-def _group_work_reminders(today, tomorrow, enabled):
-    """Trabalhos em grupo: lembra cada integrante atual cujo grupo (ou ele, na
-    entrega individual) ainda não tem entrega registrada."""
-    from apps.pedagogy.models import GroupWork, GroupWorkDelivery, WorkGroupMember
-
-    delivered_states = (GroupWorkDelivery.Status.DELIVERED, GroupWorkDelivery.Status.LATE)
-    works = (GroupWork.objects.filter(GroupWork.family_visible_q(today=today), status=GroupWork.Status.PUBLISHED,
-                                      deadline__in=[today, tomorrow])
-             .select_related("school", "subject"))
-    total = 0
-    for work in works:
-        if work.school_id not in enabled:
-            enabled[work.school_id] = event_enabled(work.school, "prazo_proximo")
-        if not enabled[work.school_id]:
-            continue
-        done = GroupWorkDelivery.objects.filter(group_work=work, status__in=delivered_states)
-        done_groups = set(done.filter(student__isnull=True).values_list("group_id", flat=True))
-        done_students = set(done.filter(student__isnull=False).values_list("student_id", flat=True))
-        when = "hoje" if work.deadline == today else "amanhã"
-        url = reverse("pedagogy:group_work_detail", args=[work.pk])
-        for m in (WorkGroupMember.objects.filter(group__group_work=work, removed_at__isnull=True)
-                  .select_related("student__school", "student__user")):
-            if m.group_id in done_groups or m.student_id in done_students:
-                continue
-            total += notify_family(
-                m.student, "prazo_proximo", f"Prazo {when}: {work.title} (trabalho em grupo)",
-                body=f"{m.student} — {work.subject}, entrega até {work.deadline:%d/%m/%Y}. "
-                     "Se o grupo já entregou, desconsidere: o professor ainda vai registrar.",
-                url=url, dedupe_key=f"prazo-trabalho:{work.pk}:{m.student_id}",
-            )
-    return total
+    return activity_reminders(today) + group_work_reminders(today)

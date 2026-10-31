@@ -18,6 +18,24 @@
   {% endif %}
 </div>
 
+{% if upcoming %}
+<section class="card mb-3" aria-labelledby="proximas-provas">
+  <div class="card-body">
+    <h2 id="proximas-provas" class="h6 mb-2">{% icon "calendar-check" %}Próximas provas</h2>
+    <ul class="list-unstyled mb-2">
+      {% for ev in upcoming %}
+      <li class="d-flex flex-wrap gap-2 align-items-baseline py-1">
+        <strong>{{ ev.date|date:"d/m (D)" }}</strong>
+        <span>{{ ev.title }}</span>
+        <span class="text-secondary small">{{ ev.subject }} · {{ ev.class_group }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    <a class="small" href="{% url 'school_calendar:calendar_index' %}?type=evaluation">Ver na agenda</a>
+  </div>
+</section>
+{% endif %}
+
 <form method="get" class="filter-bar" aria-label="Filtrar avaliações">
   {% if child_options %}{% include "partials/_filter_select.html" with name="estudante" label="Filho" options=child_options selected=student_id all_label="Todos" %}
   {% elif student_id %}<input type="hidden" name="estudante" value="{{ student_id }}">{% endif %}

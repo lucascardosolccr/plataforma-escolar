@@ -26,6 +26,12 @@ class Notification(models.Model):
         GRADE = "nota", "Nota lançada ou alterada"
         PHOTO = "foto", "Fotografia pendente"
         PLANNING = "planejamento", "Planejamento docente"
+        EXAM = "prova", "Prova ou avaliação marcada"
+        SUPPORT = "apoio", "Apoio à inclusão"
+
+    class Priority(models.TextChoices):
+        NORMAL = "normal", "Informativo"
+        HIGH = "importante", "Importante"
 
     school = models.ForeignKey(
         School, on_delete=models.CASCADE, related_name="notifications", verbose_name="escola"
@@ -46,6 +52,14 @@ class Notification(models.Model):
     )
     # Chave de evento: o mesmo evento não gera dois avisos à mesma pessoa.
     dedupe_key = models.CharField("chave do evento", max_length=120, blank=True, db_index=True)
+    priority = models.CharField("prioridade", max_length=10, choices=Priority.choices, default=Priority.NORMAL)
+    # Compromisso a que o aviso se refere ("atividade:12", "avaliacao:5"):
+    # permite marcar como resolvidos os lembretes quando a entrega é
+    # registrada, a atividade é cancelada ou a data muda.
+    ref = models.CharField("compromisso", max_length=40, blank=True, db_index=True)
+    due_on = models.DateField("data do compromisso", null=True, blank=True)
+    resolved_at = models.DateTimeField("resolvida em", null=True, blank=True)
+    resolution = models.CharField("como foi resolvida", max_length=80, blank=True)
     is_read = models.BooleanField("lida", default=False)
     read_at = models.DateTimeField("lida em", null=True, blank=True)
     created_at = models.DateTimeField("criada em", auto_now_add=True, db_index=True)
@@ -58,6 +72,19 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"[{self.get_kind_display()}] {self.title} → {self.user}"
+
+    def state(self, today=None):
+        """(código, rótulo) do compromisso: resolvido, vencido ou a vencer."""
+        if self.resolved_at:
+            return "resolvida", self.resolution or "Resolvido"
+        if self.due_on:
+            today = today or timezone.localdate()
+            if self.due_on < today:
+                return "vencida", "Data passada"
+            if self.due_on == today:
+                return "hoje", "É hoje"
+            return "futura", f"Para {self.due_on:%d/%m}"
+        return "", ""
 
     def mark_read(self):
         if not self.is_read:
@@ -298,3 +325,69 @@ class NotificationMute(models.Model):
         verbose_name = "preferência de notificação"
         verbose_name_plural = "preferências de notificação"
         constraints = [models.UniqueConstraint(fields=["user", "kind"], name="uniq_mute_per_kind")]
+
+
+class ReminderPolicy(models.Model):
+    """Antecedência dos lembretes automáticos, definida pela escola.
+
+    Os números são dias em relação à data do compromisso: ``7,3,1,0`` avisa
+    sete dias antes, três, na véspera e no dia. ``overdue_days`` são dias
+    depois do vencimento, enquanto a atividade continuar pendente.
+    """
+
+    school = models.OneToOneField(School, on_delete=models.CASCADE, related_name="reminder_policy")
+    activity_days = models.CharField("atividades e trabalhos: dias antes da entrega", max_length=40,
+                                     default="3,1,0")
+    overdue_days = models.CharField("atividades pendentes: dias depois do vencimento", max_length=40,
+                                    default="1", blank=True)
+    exam_days = models.CharField("provas: dias antes da data", max_length=40, default="7,1,0")
+    include_guardians = models.BooleanField(
+        "avisar também os responsáveis", default=True,
+        help_text="Desligado, os lembretes vão só para o estudante com acesso. Estudante sem acesso "
+                  "continua com os lembretes enviados aos responsáveis.")
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "antecedência dos lembretes"
+        verbose_name_plural = "antecedências dos lembretes"
+
+    @staticmethod
+    def parse(text, limit=60):
+        """``"7, 3,1"`` → ``[7, 3, 1]`` (sem repetição, do maior para o menor)."""
+        days = set()
+        for part in (text or "").replace(";", ",").split(","):
+            part = part.strip()
+            if part.isdigit() and int(part) <= limit:
+                days.add(int(part))
+        return sorted(days, reverse=True)
+
+    @classmethod
+    def for_school(cls, school):
+        return cls.objects.filter(school=school).first() or cls(school=school)
+
+
+class ReminderRun(models.Model):
+    """Registro de cada processamento diário dos lembretes.
+
+    Sem agendador, o processamento roda na primeira requisição do dia. Uma
+    execução com erro fica registrada e é tentada de novo mais tarde; como
+    cada aviso tem chave de evento, repetir nunca duplica aviso.
+    """
+
+    class Status(models.TextChoices):
+        RUNNING = "processando", "Processando"
+        OK = "ok", "Concluído"
+        ERROR = "erro", "Falhou"
+
+    day = models.DateField("dia de referência", db_index=True)
+    started_at = models.DateTimeField("início", auto_now_add=True)
+    finished_at = models.DateTimeField("fim", null=True, blank=True)
+    status = models.CharField("situação", max_length=12, choices=Status.choices, default=Status.RUNNING)
+    sent = models.PositiveIntegerField("avisos criados", default=0)
+    detail = models.TextField("detalhes", blank=True)
+
+    class Meta:
+        ordering = ["-started_at"]
+        verbose_name = "processamento de lembretes"
+        verbose_name_plural = "processamentos de lembretes"

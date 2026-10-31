@@ -83,3 +83,6 @@
 .pending-count.is-info { background: var(--ds-info-bg); color: var(--ds-info); border-color: var(--ds-info-line); }
 .feed-item:has(.stretched-link) { position: relative; }
 .feed-item:has(.stretched-link):hover { background: var(--ds-surface-2); }
+
+/* ---------- Central de notificações: compromisso resolvido ---------- */
+.feed-item.is-resolved .feed-title { color: var(--ds-text-muted); }

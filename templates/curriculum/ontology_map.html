@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Mapa curricular — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'curriculum:catalog' %}" class="back-link">{% icon "arrow-left" %}Currículo</a>
+    <h1>Mapa curricular</h1>
+    <p>Do mais amplo ao mais específico: área do conhecimento, componente, unidade temática (ou prática de linguagem) e habilidades. Toque numa unidade para ver as habilidades. Unidades e objetos foram lidos das tabelas do PDF oficial da BNCC por regra automática e devem ser conferidos.</p>
+  </div>
+</div>
+
+<div class="onto-grid">
+  {% for area, comps in tree %}
+  <section class="card" aria-labelledby="a-{{ forloop.counter }}"><div class="card-body">
+    <h2 id="a-{{ forloop.counter }}" class="h6 text-uppercase text-secondary">{{ area }}</h2>
+    {% for comp, units in comps.items %}
+    <details class="onto-comp"{% if forloop.first %} open{% endif %}>
+      <summary><strong>{{ comp }}</strong></summary>
+      <ul class="list-unstyled mb-0">
+        {% for unit, n in units %}<li class="d-flex justify-content-between gap-2 py-1"><a href="{% url 'curriculum:catalog' %}?componente={{ comp|urlencode }}&unidade={{ unit|urlencode }}">{{ unit }}</a><span class="text-secondary small">{{ n }}</span></li>{% endfor %}
+      </ul>
+    </details>
+    {% endfor %}
+  </div></section>
+  {% endfor %}
+</div>
+
+<section class="card mt-3" aria-labelledby="pned"><div class="card-body">
+  <h2 id="pned" class="h6">Educação digital escolar (PNED, Lei nº 14.533/2023, art. 3º)</h2>
+  <p class="small text-secondary">Os cinco incisos da lei, com o texto literal. O número ao lado indica habilidades da BNCC cujo texto menciona termos do inciso: são sugestões automáticas, a validar. O anexo de Computação complementar à BNCC (Parecer CNE/CEB nº 2/2022) não pôde ser obtido da fonte oficial nesta versão.</p>
+  <ul class="list-unstyled mb-0">{% for d in digital %}<li class="py-2 border-bottom"><a href="{% url 'curriculum:item_detail' d.pk %}"><strong>{{ d.code }} · {{ d.thematic_unit }}</strong></a> <span class="chip">{{ d.n }} habilidade{{ d.n|pluralize }} relacionada{{ d.n|pluralize }}</span><span class="d-block small">{{ d.text|truncatechars:220 }}</span></li>{% endfor %}</ul>
+</div></section>
+
+<section class="card mt-3" aria-labelledby="dimtit"><div class="card-body">
+  <h2 id="dimtit" class="h6">Dimensões analíticas por componente</h2>
+  <p class="small text-secondary">Matriz metodológica do EIA-Cognitio: aspectos observáveis próprios de cada área, usados para analisar evidências. Não é texto normativo.</p>
+  <div class="onto-grid">{% for comp, items in dims %}<div><h3 class="h6">{{ comp }}</h3><ul class="list-unstyled small mb-0">{% for d in items %}<li class="py-1">{{ d.group }} · <strong>{{ d.name }}</strong> <span class="text-secondary">({{ d.n }})</span></li>{% endfor %}</ul></div>{% endfor %}</div>
+</div></section>
+
+<details class="card mt-3"><summary class="card-body fw-semibold">Competências específicas da BNCC ({{ specific|length }})</summary>
+  <div class="card-body pt-0"><ul class="list-unstyled small mb-0">{% for c in specific %}<li class="py-1"><a href="{% url 'curriculum:item_detail' c.pk %}"><strong>{{ c.code }}</strong></a> {{ c.component|default:c.area }} — {{ c.text|truncatechars:160 }}</li>{% endfor %}</ul></div>
+</details>
+{% endblock %}

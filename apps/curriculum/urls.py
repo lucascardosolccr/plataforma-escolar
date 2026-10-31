@@ -1,12 +1,14 @@
 from django.urls import path
 
-from . import views
+from . import views, views_ontology
 
 app_name = "curriculum"
 
 urlpatterns = [
     path("curriculo/", views.catalog, name="catalog"),
     path("curriculo/<int:pk>/", views.item_detail, name="item_detail"),
+    path("curriculo/<int:pk>/curadoria/", views_ontology.item_curate, name="item_curate"),
+    path("curriculo/mapa/", views_ontology.ontology_map, name="ontology_map"),
     path("curriculo/novo/", views.item_create, name="item_create"),
     path("curriculo/importar/", views.item_import, name="item_import"),
     path("curriculo/acompanhamento/", views.coverage, name="coverage"),

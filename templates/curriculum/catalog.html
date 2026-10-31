@@ -9,6 +9,7 @@
     <p>Competências gerais e habilidades da BNCC (texto oficial do MEC) e os objetivos do Currículo em Movimento do DF ou próprios que a escola cadastrou. Use os códigos ao planejar, propor atividades e avaliar.</p>
   </div>
   <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary" href="{% url 'curriculum:ontology_map' %}">{% icon "layers" %}Mapa curricular</a>
     <a class="btn btn-outline-secondary" href="{% url 'curriculum:coverage' %}">{% icon "chart-column" %}Acompanhamento</a>
     {% if can_manage %}
     <a class="btn btn-outline-secondary" href="{% url 'curriculum:item_import' %}">{% icon "file-text" %}Importar</a>
@@ -21,6 +22,7 @@
   <div class="filter-field"><label for="f-q" class="form-label">Código ou palavra</label><input type="search" id="f-q" name="q" value="{{ q }}" class="form-control" placeholder="EF06MA03, frações…"></div>
   {% include "partials/_filter_select.html" with name="tipo" label="Tipo" options=kind_choices selected=kind all_label="Todos" %}
   {% include "partials/_filter_select.html" with name="componente" label="Componente" options=comp_choices selected=comp all_label="Todos" %}
+  {% if unit_choices %}{% include "partials/_filter_select.html" with name="unidade" label="Unidade temática" options=unit_choices selected=unit all_label="Todas" %}{% endif %}
   {% include "partials/_filter_select.html" with name="ano" label="Ano" options=year_choices selected=year all_label="Todos" %}
   <button type="submit" class="btn btn-sm btn-outline-secondary">{% icon "search" %}Buscar</button>
   {% include "partials/_filter_end.html" with count=page.paginator.count noun="item(ns)" %}
@@ -35,7 +37,7 @@
         <tr>
           <td class="fw-semibold text-nowrap"><a href="{% url 'curriculum:item_detail' i.pk %}">{{ i.code }}</a></td>
           <td data-label="Texto">{{ i.text }}{% if i.needs_review %} <span class="chip chip-state state-ajustes">texto a conferir</span>{% endif %}</td>
-          <td data-label="Componente e ano" class="small">{{ i.component|default:"Todos" }}{% if i.years %} · {{ i.years }}º ano{% endif %}</td>
+          <td data-label="Componente e ano" class="small">{{ i.component|default:i.area|default:"Todos" }}{% if i.years %} · {{ i.years }}º ano{% endif %}{% if i.thematic_unit %}<span class="d-block text-secondary">{{ i.thematic_unit }}</span>{% endif %}</td>
           <td data-label="Fonte" class="small">{% if i.is_local %}Escola{% else %}BNCC (MEC){% endif %}</td>
         </tr>
         {% empty %}

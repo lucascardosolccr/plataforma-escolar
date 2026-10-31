@@ -98,3 +98,10 @@
 .coverage-grid td.is-yes { color: var(--ds-success); font-weight: 700; }
 .coverage-grid td.is-no { color: var(--ds-text-muted); }
 .evo-bar { fill: var(--ds-primary); }
+
+/* ---------- Ontologia curricular ---------- */
+.onto-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 1rem; }
+.onto-comp { border-bottom: 1px solid var(--ds-line); padding: .35rem 0; }
+.onto-comp summary { cursor: pointer; }
+.onto-path ol { display: flex; flex-wrap: wrap; gap: .25rem .5rem; list-style: none; padding: 0; margin: 0; font-size: .875rem; color: var(--ds-text-muted); }
+.onto-path li + li::before { content: "›"; margin-right: .5rem; }

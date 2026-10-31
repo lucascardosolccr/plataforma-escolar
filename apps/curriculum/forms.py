@@ -150,7 +150,9 @@ class CurriculumItemForm(forms.ModelForm):
 class CurriculumImportForm(forms.Form):
     file = forms.FileField(label="Planilha CSV", help_text=(
         "Colunas: tipo (objetivo_df, conteudo_df ou proprio), codigo, componente, anos, texto, fonte, url, "
-        "habilidades_bncc. Separador vírgula ou ponto e vírgula, codificação UTF-8."))
+        "habilidades_bncc e, opcionais, relacao (equivalente, parcial, relacionada) e confianca (alta, media, "
+        "baixa). Separador vírgula ou ponto e vírgula, codificação UTF-8. Correspondências importadas ficam "
+        "marcadas como a validar."))
 
     def clean_file(self):
         f = self.cleaned_data["file"]

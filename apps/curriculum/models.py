@@ -27,15 +27,26 @@ class CurriculumItem(models.Model):
         DF_OBJECTIVE = "objetivo_df", "Objetivo de aprendizagem (Currículo em Movimento do DF)"
         DF_CONTENT = "conteudo_df", "Conteúdo (Currículo em Movimento do DF)"
         OWN = "proprio", "Objetivo próprio da escola"
+        SPECIFIC = "competencia_especifica", "Competência específica (BNCC)"
+        DIGITAL = "competencia_digital", "Educação digital escolar (PNED, Lei nº 14.533/2023)"
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, null=True, blank=True,
                                related_name="curriculum_items",
                                help_text="Vazio: referência nacional comum a todas as escolas.")
-    kind = models.CharField("tipo", max_length=20, choices=Kind.choices)
+    kind = models.CharField("tipo", max_length=24, choices=Kind.choices)
     code = models.CharField("código", max_length=30)
     text = models.TextField("texto")
     stage = models.CharField("etapa", max_length=40, default="Ensino Fundamental")
+    area = models.CharField("área do conhecimento", max_length=60, blank=True)
     component = models.CharField("componente curricular", max_length=80, blank=True)
+    thematic_unit = models.CharField("unidade temática ou prática de linguagem", max_length=160, blank=True)
+    knowledge_object = models.TextField("objetos de conhecimento", blank=True)
+    structure_auto = models.BooleanField(
+        "estrutura extraída automaticamente", default=False,
+        help_text="Unidade e objeto lidos da tabela do PDF oficial por regra automática: conferir.")
+    curriculum_version = models.CharField("versão do documento", max_length=80, blank=True)
+    # O texto oficial nunca é alterado; adaptação didática fica aqui, separada.
+    operational_note = models.TextField("interpretação operacional usada pela plataforma", blank=True)
     years = models.CharField("anos", max_length=40, blank=True, help_text="Ex.: 6 ou 6,7")
     bncc = models.ManyToManyField("self", symmetrical=False, blank=True, related_name="local_items",
                                   verbose_name="habilidades da BNCC relacionadas")
@@ -197,3 +208,99 @@ class NormativeReference(models.Model):
 
     def __str__(self):
         return f"{self.name} — {self.provision}" if self.provision else self.name
+
+
+AREAS = {
+    "Língua Portuguesa": "Linguagens", "Arte": "Linguagens", "Educação Física": "Linguagens",
+    "Língua Inglesa": "Linguagens", "Matemática": "Matemática", "Ciências": "Ciências da Natureza",
+    "Geografia": "Ciências Humanas", "História": "Ciências Humanas", "Ensino Religioso": "Ensino Religioso",
+}
+
+
+class CurriculumItemVersion(models.Model):
+    """Texto anterior de um item quando a fonte é recarregada com redação diferente."""
+
+    item = models.ForeignKey(CurriculumItem, on_delete=models.CASCADE, related_name="versions")
+    text = models.TextField()
+    version_label = models.CharField(max_length=80, blank=True)
+    replaced_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-replaced_at"]
+
+
+class CurriculumCorrespondence(models.Model):
+    """Correspondência entre itens de documentos diferentes (DF ↔ BNCC, BNCC ↔ PNED).
+
+    Documentos distintos não têm equivalência perfeita: cada ligação diz o tipo de
+    relação, o grau de confiança e se já foi validada por um profissional.
+    """
+
+    class Relation(models.TextChoices):
+        EQUIVALENT = "equivalente", "Equivalente"
+        PARTIAL = "parcial", "Correspondência parcial"
+        RELATED = "relacionada", "Relacionada"
+        CONTRIBUTES = "contribui", "Contribui para"
+
+    class Confidence(models.TextChoices):
+        HIGH = "alta", "Alta"
+        MEDIUM = "media", "Média"
+        LOW = "baixa", "Baixa"
+
+    class Origin(models.TextChoices):
+        MANUAL = "manual", "Registrada por profissional"
+        IMPORT = "importacao", "Importada de planilha"
+        AUTO = "automatica", "Sugestão automática (palavras do texto oficial)"
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, null=True, blank=True)
+    source = models.ForeignKey(CurriculumItem, on_delete=models.CASCADE, related_name="correspondences_out")
+    target = models.ForeignKey(CurriculumItem, on_delete=models.CASCADE, related_name="correspondences_in")
+    relation = models.CharField("relação", max_length=12, choices=Relation.choices, default=Relation.RELATED)
+    confidence = models.CharField("confiança", max_length=6, choices=Confidence.choices, default=Confidence.LOW)
+    origin = models.CharField("origem", max_length=12, choices=Origin.choices)
+    rationale = models.CharField("justificativa", max_length=300, blank=True)
+    validated = models.BooleanField("validada pedagogicamente", default=False)
+    validated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    validated_at = models.DateTimeField(null=True, blank=True)
+    rejected = models.BooleanField("rejeitada", default=False)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["school", "source", "target"], name="uniq_correspondence")]
+        verbose_name = "correspondência curricular"
+        verbose_name_plural = "correspondências curriculares"
+
+
+class SkillDimension(models.Model):
+    """Dimensão analítica de um componente (ex.: Língua Portuguesa → Leitura → Inferência).
+
+    É a matriz analítica do projeto (escolha metodológica, a validar com os
+    professores), não texto normativo. Liga as habilidades oficiais a aspectos
+    observáveis próprios de cada área.
+    """
+
+    component = models.CharField("componente ou núcleo", max_length=80)
+    group = models.CharField("grupo", max_length=80)
+    name = models.CharField("dimensão", max_length=120)
+    keywords = models.CharField("palavras que sugerem a dimensão", max_length=400, blank=True)
+    description = models.CharField("o que observar", max_length=300, blank=True)
+    order = models.PositiveSmallIntegerField(default=0)
+    items = models.ManyToManyField(CurriculumItem, through="ItemDimension", related_name="dimensions")
+
+    class Meta:
+        ordering = ["component", "order", "name"]
+        constraints = [models.UniqueConstraint(fields=["component", "group", "name"], name="uniq_dimension")]
+        verbose_name = "dimensão analítica"
+        verbose_name_plural = "dimensões analíticas"
+
+    def __str__(self):
+        return f"{self.group} — {self.name}"
+
+
+class ItemDimension(models.Model):
+    item = models.ForeignKey(CurriculumItem, on_delete=models.CASCADE)
+    dimension = models.ForeignKey(SkillDimension, on_delete=models.CASCADE)
+    origin = models.CharField(max_length=12, default="automatica")  # automatica | manual
+    validated = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["item", "dimension"], name="uniq_item_dimension")]

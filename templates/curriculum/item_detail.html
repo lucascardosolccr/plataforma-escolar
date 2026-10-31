@@ -11,11 +11,69 @@
   </div>
 </div>
 
+{% if item.area or item.thematic_unit %}
+<nav aria-label="Posição na ontologia curricular" class="onto-path mb-3">
+  <ol>
+    {% if item.area %}<li>{{ item.area }}</li>{% endif %}
+    {% if item.component %}<li>{{ item.component }}</li>{% endif %}
+    {% if item.thematic_unit %}<li><a href="{% url 'curriculum:catalog' %}?componente={{ item.component|urlencode }}&unidade={{ item.thematic_unit|urlencode }}">{{ item.thematic_unit }}</a></li>{% endif %}
+    <li aria-current="page">{{ item.code }}</li>
+  </ol>
+</nav>
+{% endif %}
 <div class="card mb-3"><div class="card-body">
+  <p class="small text-secondary mb-1">Texto oficial{% if item.curriculum_version %} · {{ item.curriculum_version }}{% endif %}</p>
   <p class="fs-5 mb-3">{{ item.text }}</p>
+  {% if item.knowledge_object %}<p class="small mb-2"><strong>Objetos de conhecimento:</strong> {{ item.knowledge_object }}{% if item.structure_auto %} <span class="chip chip-state state-ajustes" title="Lido da tabela do PDF oficial por regra automática">extração automática — conferir</span>{% endif %}</p>{% endif %}
+  {% if item.operational_note %}<p class="small mb-2"><strong>Interpretação operacional usada pela plataforma:</strong> {{ item.operational_note }}</p>{% endif %}
   {% if item.needs_review %}<p class="small"><span class="chip chip-state state-ajustes">Texto a conferir</span> A extração automática não garantiu o texto completo; confira no documento oficial.</p>{% endif %}
   <p class="small text-secondary mb-0">Fonte: {% if item.source_url %}<a href="{{ item.source_url }}" rel="noopener noreferrer" target="_blank">{{ item.source }}</a>{% else %}{{ item.source }}{% endif %}{% if item.verified_on %} · conferido em {{ item.verified_on|date:"d/m/Y" }}{% endif %}</p>
 </div></div>
+
+<section class="card mb-3" aria-labelledby="dims"><div class="card-body">
+  <h2 id="dims" class="h6">Dimensões analíticas</h2>
+  <p class="small text-secondary">Aspectos observáveis usados pelo EIA-Cognitio para analisar evidências. As ligações automáticas vêm de palavras do texto oficial e só valem como sugestão até serem validadas.</p>
+  <ul class="list-unstyled mb-2">
+    {% for l in dimension_links %}
+    <li class="d-flex flex-wrap align-items-center gap-2 py-1">
+      <span class="chip">{{ l.dimension.group }} · {{ l.dimension.name }}</span>
+      {% if l.validated %}<span class="chip chip-state state-validado">validada</span>{% else %}<span class="chip chip-state state-ajustes">sugestão automática</span>{% endif %}
+      {% if can_curate and not l.validated %}
+      <form method="post" action="{% url 'curriculum:item_curate' item.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="acao" value="dimensao"><input type="hidden" name="id" value="{{ l.pk }}"><button class="btn btn-sm btn-link p-0" name="decisao" value="validar">Validar</button> · <button class="btn btn-sm btn-link p-0" name="decisao" value="rejeitar">Rejeitar</button></form>
+      {% endif %}
+    </li>
+    {% empty %}<li class="small text-secondary">Nenhuma dimensão ligada.</li>{% endfor %}
+  </ul>
+  {% if can_curate and dimension_options %}
+  <form method="post" action="{% url 'curriculum:item_curate' item.pk %}" class="row g-2 align-items-end">{% csrf_token %}<input type="hidden" name="acao" value="nova_dimensao">
+    <div class="col-sm-8"><label class="form-label small" for="nd">Associar dimensão</label><select class="form-select form-select-sm" id="nd" name="dimensao">{% for d in dimension_options %}<option value="{{ d.pk }}">{{ d.component }} — {{ d.group }} · {{ d.name }}</option>{% endfor %}</select></div>
+    <div class="col-sm-4"><button class="btn btn-sm btn-outline-primary w-100" type="submit">Associar</button></div>
+  </form>
+  {% endif %}
+</div></section>
+
+{% if correspondences %}
+<section class="card mb-3" aria-labelledby="corr"><div class="card-body">
+  <h2 id="corr" class="h6">Correspondências com outros documentos</h2>
+  <p class="small text-secondary">Documentos diferentes não têm equivalência perfeita. Cada ligação mostra o tipo, a confiança e se já foi validada.</p>
+  <ul class="list-unstyled mb-0">{% for c in correspondences %}
+    <li class="py-2 border-bottom small">
+      {% if c.source_id == item.pk %}<strong>{{ c.get_relation_display }}</strong> → <a href="{% url 'curriculum:item_detail' c.target.pk %}">{{ c.target.code }}</a> {{ c.target.thematic_unit|default:c.target.text|truncatechars:80 }}{% else %}<a href="{% url 'curriculum:item_detail' c.source.pk %}">{{ c.source.code }}</a> {{ c.source.text|truncatechars:90 }} → <strong>{{ c.get_relation_display|lower }}</strong> este item{% endif %}
+      <span class="d-block text-secondary">Confiança {{ c.get_confidence_display|lower }} · {{ c.get_origin_display }}{% if c.validated %} · validada por {{ c.validated_by.get_full_name|default:c.validated_by.username }}{% else %} · requer validação pedagógica{% endif %}</span>
+      {% if can_curate and not c.validated %}<form method="post" action="{% url 'curriculum:item_curate' item.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="acao" value="correspondencia"><input type="hidden" name="id" value="{{ c.pk }}"><button class="btn btn-sm btn-link p-0" name="decisao" value="validar">Validar</button> · <button class="btn btn-sm btn-link p-0" name="decisao" value="rejeitar">Rejeitar</button></form>{% endif %}
+    </li>{% endfor %}</ul>
+</div></section>
+{% endif %}
+
+{% if can_curate %}
+<details class="card mb-3"><summary class="card-body fw-semibold">Interpretação operacional (adaptação didática)</summary>
+  <form method="post" action="{% url 'curriculum:item_curate' item.pk %}" class="card-body pt-0">{% csrf_token %}<input type="hidden" name="acao" value="nota">
+    <label class="form-label small" for="nota">Como a escola operacionaliza esta habilidade. O texto oficial continua intacto.</label>
+    <textarea class="form-control" id="nota" name="nota" rows="3">{{ item.operational_note }}</textarea>
+    <button class="btn btn-sm btn-outline-primary mt-2" type="submit">Salvar interpretação</button>
+  </form>
+</details>
+{% endif %}
 
 {% if related %}
 <section class="card mb-3" aria-labelledby="rel"><div class="card-body">

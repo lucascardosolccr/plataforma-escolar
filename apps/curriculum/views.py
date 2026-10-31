@@ -45,6 +45,16 @@ def catalog(request):
         qs = qs.filter(pk__in=[i.pk for i in qs if int(year) in i.year_list])
     else:
         year = ""
+    unit = (request.GET.get("unidade") or "").strip()
+    unit_choices = []
+    if comp:
+        unit_choices = [(u, u) for u in CurriculumItem.objects.filter(school__isnull=True, component=comp)
+                        .exclude(thematic_unit="").values_list("thematic_unit", flat=True).distinct()
+                        .order_by("thematic_unit")]
+    if unit and comp:
+        qs = qs.filter(thematic_unit=unit)
+    else:
+        unit = ""
     q = (request.GET.get("q") or "").strip()
     if q:
         qs = qs.filter(Q(code__icontains=q) | Q(text__icontains=q))
@@ -53,7 +63,8 @@ def catalog(request):
         "page": page, "items": page, "kind": kind, "comp": comp, "year": year, "q": q,
         "kind_choices": CurriculumItem.Kind.choices, "comp_choices": [(c, c) for c in COMPONENTS],
         "year_choices": [(str(n), f"{n}º ano") for n in range(1, 10)],
-        "filtered": bool(kind or comp or year or q), "can_manage": services.can_manage_items(user),
+        "filtered": bool(kind or comp or year or q or unit), "can_manage": services.can_manage_items(user),
+        "unit": unit, "unit_choices": unit_choices,
     })
 
 
@@ -79,8 +90,18 @@ def item_detail(request, pk):
         plans = LessonPlan.objects.filter(curriculum=item, class_group_id__in=class_ids)
         evals = Evaluation.objects.filter(curriculum=item, class_group_id__in=class_ids)
     acts = acts.exclude(status=Activity.Status.CANCELED).select_related("class_group", "subject")
+    from .models import CurriculumCorrespondence, ItemDimension, SkillDimension
+
+    corr = CurriculumCorrespondence.objects.filter(
+        Q(source=item) | Q(target=item), Q(school__isnull=True) | Q(school=user.school), rejected=False
+    ).select_related("source", "target")
     return render(request, "curriculum/item_detail.html", {
         "item": item,
+        "dimension_links": ItemDimension.objects.filter(item=item).select_related("dimension"),
+        "dimension_options": SkillDimension.objects.filter(
+            Q(component=item.component) | Q(component="Competências digitais")).order_by("component", "order"),
+        "correspondences": corr,
+        "can_curate": services.can_manage_items(user),
         "activities": acts.order_by("-class_date")[:20],
         "plans": plans.select_related("class_group", "subject").order_by("-starts_on")[:20],
         "evaluations": evals.select_related("class_group", "subject").order_by("-date")[:20],
@@ -171,10 +192,22 @@ def item_create(request):
             item.created_by = user
             item.save()
             item.bncc.set(form.cleaned_data["bncc_codes"])
+            _link_bncc(item, form.cleaned_data["bncc_codes"], user, "manual", "media")
             _log(request, "create", item, f"Cadastrou item curricular {item.code}")
         messages.success(request, "Item curricular cadastrado.")
         return redirect("curriculum:item_detail", pk=item.pk)
     return render(request, "curriculum/item_form.html", {"form": form})
+
+
+def _link_bncc(item, targets, user, origin, confidence, relation=""):
+    """Correspondência do item da escola com a BNCC, a validar pedagogicamente."""
+    from .models import CurriculumCorrespondence as C
+
+    relation = relation if relation in dict(C.Relation.choices) else C.Relation.RELATED
+    for t in targets:
+        C.objects.update_or_create(school=item.school, source=item, target=t, defaults={
+            "relation": relation, "confidence": confidence, "origin": origin, "rejected": False,
+            "rationale": "Informada na planilha importada" if origin == "importacao" else "Informada no cadastro"})
 
 
 def item_import(request):
@@ -205,8 +238,12 @@ def item_import(request):
                               "created_by": user, "active": True})
                 codes = [c.upper() for c in row.get("habilidades_bncc", "").replace(";", ",").split(",") if c.strip()]
                 if codes:
-                    item.bncc.set(CurriculumItem.objects.filter(school__isnull=True, kind="habilidade",
-                                                                code__in=[c.strip() for c in codes]))
+                    targets = CurriculumItem.objects.filter(school__isnull=True, kind="habilidade",
+                                                            code__in=[c.strip() for c in codes])
+                    item.bncc.set(targets)
+                    conf = row.get("confianca", "").lower()
+                    _link_bncc(item, targets, user, "importacao", conf if conf in ("alta", "media", "baixa") else "media",
+                               row.get("relacao", "").lower())
                 created += new
                 updated += not new
             _log(request, "import", None, f"Importou itens curriculares: {created} novos, {updated} atualizados, "

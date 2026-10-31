@@ -25,6 +25,7 @@ D12686 = PLANALTO + "_ato2023-2026/2025/decreto/D12686.htm"
 D12773 = PLANALTO + "_Ato2023-2026/2025/decreto/D12773.htm"
 L14254 = PLANALTO + "_ato2019-2022/2021/lei/L14254.htm"
 L12764 = PLANALTO + "_ato2011-2014/2012/lei/l12764.htm"
+PNED_URL = PLANALTO + "_ato2023-2026/2023/lei/l14533.htm"
 P421 = "https://www.ifg.edu.br/attachments/article/47027/PORTARIA%20MEC%20No%20421,%20DE%2015%20DE%20MAIO%20DE%202026.pdf"
 
 # (nome, órgão, dispositivo, trecho, literal?, assunto, etapa, natureza, vigência, url, conferido?, uso na plataforma)
@@ -172,33 +173,131 @@ REFERENCES = [
 ]
 
 
-def load_bncc(CurriculumItem):
+BNCC_VERSION = "BNCC — versão final (2018)"
+SPECIFIC_CODES = {"Linguagens": "LG", "Língua Portuguesa": "LP", "Arte": "AR", "Educação Física": "EF",
+                  "Língua Inglesa": "LI", "Matemática": "MA", "Ciências": "CI", "Ciências Humanas": "CH",
+                  "Geografia": "GE", "História": "HI", "Ensino Religioso": "ER"}
+
+
+def _fields(Model):
+    return {f.name for f in Model._meta.get_fields()}
+
+
+def _upsert(CurriculumItem, Version, fields, kind, code, values):
+    """Cria ou atualiza; se o texto oficial mudou, guarda a redação anterior."""
+    values = {k: v for k, v in values.items() if k in fields}
+    item = CurriculumItem.objects.filter(school=None, kind=kind, code=code).first()
+    if item is None:
+        CurriculumItem.objects.create(school=None, kind=kind, code=code, **values)
+        return 1
+    if Version is not None and values.get("text") and item.text != values["text"]:
+        Version.objects.create(item=item, text=item.text, version_label=getattr(item, "curriculum_version", ""))
+    for k, v in values.items():
+        setattr(item, k, v)
+    item.save()
+    return 0
+
+
+def load_bncc(CurriculumItem, Version=None):
+    """Competências gerais, competências específicas e habilidades do EF (texto oficial).
+
+    Funciona com o modelo histórico da migração 0002 (sem os campos de ontologia) e
+    com o atual: campos que o modelo ainda não tem são ignorados.
+    """
+    from .models import AREAS
+
+    fields = _fields(CurriculumItem)
     data = json.loads(BNCC_FILE.read_text(encoding="utf-8"))
+    common = {"source": BNCC_SOURCE, "source_url": BNCC_URL, "verified_on": BNCC_CHECKED, "active": True,
+              "curriculum_version": BNCC_VERSION}
     seen = set()
     created = updated = 0
     for n, text in sorted(data["competencias_gerais"].items(), key=lambda kv: int(kv[0])):
         code = f"CG{int(n):02d}"
         seen.add(("competencia_geral", code))
-        _, new = CurriculumItem.objects.update_or_create(
-            school=None, kind="competencia_geral", code=code,
-            defaults={"text": text, "stage": "Educação básica", "component": "", "years": "",
-                      "source": BNCC_SOURCE, "source_url": BNCC_URL, "verified_on": BNCC_CHECKED, "active": True})
+        new = _upsert(CurriculumItem, Version, fields, "competencia_geral", code,
+                      {"text": text, "stage": "Educação básica", "component": "", "years": "", **common})
         created += new
         updated += not new
     for h in data["habilidades"]:
         seen.add(("habilidade", h["code"]))
-        _, new = CurriculumItem.objects.update_or_create(
-            school=None, kind="habilidade", code=h["code"],
-            defaults={"text": h["text"], "stage": "Ensino Fundamental", "component": h["component"],
-                      "years": h["years"], "source": BNCC_SOURCE, "source_url": BNCC_URL,
-                      "verified_on": BNCC_CHECKED, "needs_review": bool(h.get("review")), "active": True})
+        new = _upsert(CurriculumItem, Version, fields, "habilidade", h["code"], {
+            "text": h["text"], "stage": "Ensino Fundamental", "component": h["component"], "years": h["years"],
+            "needs_review": bool(h.get("review")), "area": AREAS.get(h["component"], ""),
+            "thematic_unit": h.get("unit", ""), "knowledge_object": h.get("object", ""),
+            "structure_auto": bool(h.get("unit") or h.get("object")), **common})
         created += new
         updated += not new
-    for item in CurriculumItem.objects.filter(school__isnull=True, kind__in=["competencia_geral", "habilidade"]):
+    if "area" in fields:
+        for c in data.get("competencias_especificas", []):
+            code = f"CE-{SPECIFIC_CODES[c['name']]}-{c['n']:02d}"
+            seen.add(("competencia_especifica", code))
+            is_area = c["level"] == "area"
+            new = _upsert(CurriculumItem, Version, fields, "competencia_especifica", code, {
+                "text": c["text"], "stage": "Ensino Fundamental", "component": "" if is_area else c["name"],
+                "area": c["name"] if is_area else AREAS.get(c["name"], ""), "years": "", **common})
+            created += new
+            updated += not new
+    for item in CurriculumItem.objects.filter(school__isnull=True,
+                                              kind__in=["competencia_geral", "habilidade", "competencia_especifica"]):
         if (item.kind, item.code) not in seen and item.active:
             item.active = False
             item.save(update_fields=["active"])
     return created, updated
+
+
+def _norm(text):
+    import unicodedata
+
+    return "".join(c for c in unicodedata.normalize("NFD", (text or "").lower()) if unicodedata.category(c) != "Mn")
+
+
+def _matches(text, keywords):
+    import re
+
+    t = _norm(text)
+    return any(re.search(r"\b" + re.escape(_norm(k.strip())), t) for k in keywords.split("|") if k.strip())
+
+
+def load_digital_and_dimensions(CurriculumItem, SkillDimension, ItemDimension, Correspondence):
+    """Eixo Educação Digital Escolar (PNED), matriz analítica e sugestões automáticas de ligação.
+
+    As ligações automáticas ficam com ``validated=False`` e confiança baixa: só
+    sugerem; o professor ou a coordenação confirma.
+    """
+    from .data.dimensoes import DIMENSIONS, PNED
+
+    pned = {}
+    for code, name, text, kw in PNED:
+        item, _ = CurriculumItem.objects.update_or_create(
+            school=None, kind="competencia_digital", code=code,
+            defaults={"text": text, "stage": "Educação básica", "component": "Competências digitais",
+                      "area": "Educação digital (transversal)", "thematic_unit": name, "years": "",
+                      "source": "Lei nº 14.533/2023 (PNED), art. 3º", "source_url": PNED_URL,
+                      "verified_on": CHECKED, "curriculum_version": "Lei nº 14.533/2023", "active": True})
+        pned[code] = (item, kw)
+    dims = []
+    for order, (comp, group, name, kw, desc) in enumerate(DIMENSIONS):
+        d, _ = SkillDimension.objects.update_or_create(
+            component=comp, group=group, name=name, defaults={"keywords": kw, "description": desc, "order": order})
+        dims.append(d)
+    skills = list(CurriculumItem.objects.filter(school__isnull=True, kind="habilidade", active=True))
+    links = 0
+    for d in dims:
+        for s in skills:
+            if (d.component == s.component or d.component == "Competências digitais") and _matches(s.text, d.keywords):
+                _, new = ItemDimension.objects.get_or_create(item=s, dimension=d, defaults={"origin": "automatica"})
+                links += new
+    corr = 0
+    for code, (target, kw) in pned.items():
+        for s in skills:
+            if _matches(s.text, kw):
+                _, new = Correspondence.objects.get_or_create(
+                    school=None, source=s, target=target,
+                    defaults={"relation": "contribui", "confidence": "baixa", "origin": "automatica",
+                              "rationale": "O texto oficial da habilidade menciona termos do inciso."})
+                corr += new
+    return len(dims), links, corr
 
 
 def load_references(NormativeReference):

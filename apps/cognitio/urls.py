@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_evidence, views_intel, views_prescriptive
+from . import views, views_evidence, views_intel, views_prescriptive, views_text
 
 app_name = "cognitio"
 
@@ -26,4 +26,8 @@ urlpatterns = [
     path("cognitio/trilha/<int:class_id>/<int:subject_id>/<int:item_id>/", views_prescriptive.trail_create,
          name="trail_create"),
     path("cognitio/estrategias/", views_prescriptive.strategy_bank, name="strategies"),
+    # Produções escritas (PLN por regras)
+    path("cognitio/producoes/", views_text.text_list, name="texts"),
+    path("cognitio/producoes/nova/", views_text.text_create, name="text_create"),
+    path("cognitio/producoes/<int:pk>/", views_text.text_detail, name="text_detail"),
 ]

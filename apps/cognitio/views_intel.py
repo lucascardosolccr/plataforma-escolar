@@ -204,6 +204,8 @@ def _url(name):
 
 def models_page(request):
     """Validação e monitoramento dos modelos (coordenação e direção)."""
+    from .views_text import analyzer_quality
+
     user = request.user
     if not _staff_team(user):
         raise PermissionDenied
@@ -239,4 +241,5 @@ def models_page(request):
         "runs": runs, "rules": alerts.RULES, "alert_rows": rows, "mins": (predictive.MIN_TRAIN, predictive.MIN_POS,
                                                                           predictive.MIN_TEST),
         "is_direction": user.role == Role.DIRECAO.value,
+        "analyzer": analyzer_quality(user.school),
     })

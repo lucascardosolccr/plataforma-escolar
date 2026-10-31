@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Produções escritas — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'cognitio:home' %}" class="back-link">{% icon "arrow-left" %}EIA-Cognitio</a>
+    <h1>Produções escritas</h1>
+    <p>Respostas, redações e relatórios analisados por regras explícitas. A análise aponta indícios com o trecho que os sustenta; quem decide é o professor. Não há nota automática nem avaliação de ortografia.</p>
+  </div>
+  {% if can_create %}<a class="btn btn-primary" href="{% url 'cognitio:text_create' %}">{% icon "plus" %}Analisar produção</a>{% endif %}
+</div>
+<div class="card"><div class="table-responsive"><table class="table align-middle mb-0 table-stack">
+  <thead><tr><th scope="col">Data</th><th scope="col">Estudante</th><th scope="col">Produção</th><th scope="col">Situação</th></tr></thead>
+  <tbody>{% for t in texts %}<tr>
+    <td class="text-nowrap">{{ t.produced_on|date:"d/m/Y" }}</td>
+    <td data-label="Estudante">{{ t.student }}<span class="d-block small text-secondary">{{ t.class_group.name }} · {{ t.subject.name }}</span></td>
+    <td data-label="Produção"><a href="{% url 'cognitio:text_detail' t.pk %}">{{ t.title }}</a></td>
+    <td data-label="Situação">{% if t.reviewed %}<span class="chip chip-state state-validado">Revisada</span>{% else %}<span class="chip chip-state state-ajustes">Aguardando revisão</span>{% endif %}</td>
+  </tr>{% empty %}<tr><td colspan="4"><div class="empty-state py-4">{% icon "file-text" %}<strong>Nenhuma produção registrada</strong></div></td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

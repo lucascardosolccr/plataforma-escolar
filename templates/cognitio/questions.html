@@ -15,6 +15,10 @@
 <div class="row g-3">
   <div class="col-lg-7">
     <section class="card" aria-labelledby="lista"><div class="card-body">
+      {% if suggestions %}<details class="mb-3"><summary class="small fw-semibold">Habilidades sugeridas pelo texto da avaliação (revise)</summary>
+        <p class="small text-secondary mt-1">Comparação automática entre o título, a descrição e as questões e o texto oficial das habilidades do componente e do ano. É só uma sugestão: escolha no formulário.</p>
+        <ul class="list-unstyled small mb-0">{% for s in suggestions %}<li class="py-1"><strong>{{ s.item.code }}</strong> ({{ s.score }}) {{ s.item.text|truncatechars:110 }} <span class="text-secondary">· termos: {{ s.shared|join:", " }}</span></li>{% endfor %}</ul>
+      </details>{% endif %}
       <h2 id="lista" class="h6">Questões ({{ questions|length }}) · total {{ total|floatformat:"-2" }} ponto{{ total|pluralize }}</h2>
       <ul class="list-unstyled mb-0">
         {% for q in questions %}

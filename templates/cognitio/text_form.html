@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Analisar produção escrita — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  {% url 'cognitio:texts' as back %}
+  {% include "partials/_form_head.html" with heading="Analisar produção escrita" subheading="A análise roda na própria plataforma, sem serviço externo, e aponta indícios observáveis conforme o componente. Você revisa cada indício antes de qualquer registro." back_url=back back_label="Produções escritas" %}
+  <form method="post" class="card form-card" novalidate>
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with submit_label="Analisar" %}
+  </form>
+</div>
+{% endblock %}

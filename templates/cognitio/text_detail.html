@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ t.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'cognitio:texts' %}" class="back-link">{% icon "arrow-left" %}Produções escritas</a>
+    <h1>{{ t.title }}</h1>
+    <p>{{ t.student }} · {{ t.class_group.name }} · {{ t.subject.name }} · {{ t.produced_on|date:"d/m/Y" }}{% if t.genre %} · {{ t.genre }}{% endif %}</p>
+  </div>
+</div>
+<div class="alert alert-info" role="note"><div class="small"><strong>Confiança {{ t.result.confidence }}.</strong> {% for n in t.result.notes %}{{ n }} {% endfor %}</div></div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <section class="card" aria-labelledby="txt"><div class="card-body">
+      <h2 id="txt" class="h6">Texto do estudante</h2>
+      {% if t.prompt_text %}<p class="small text-secondary"><strong>Proposta:</strong> {{ t.prompt_text }}</p>{% endif %}
+      <div class="student-text">{{ t.text|linebreaks }}</div>
+      <p class="small text-secondary mb-0">{{ t.result.metrics.palavras }} palavras · {{ t.result.metrics.frases }} frases · {{ t.result.metrics.paragrafos }} parágrafo(s){% if t.result.metrics.diversidade_lexical %} · diversidade lexical {{ t.result.metrics.diversidade_lexical }}{% endif %}</p>
+    </div></section>
+  </div>
+  <div class="col-lg-6 d-grid gap-3 align-content-start">
+    <section class="card" aria-labelledby="ind"><div class="card-body">
+      <h2 id="ind" class="h6">Indícios encontrados</h2>
+      <ul class="list-unstyled mb-0">{% for s, fb in signals %}
+        <li class="py-2 border-bottom small">
+          <span class="chip chip-state state-{% if s.status == 'evidenciado' %}validado{% else %}rascunho{% endif %}">{% if s.status == 'evidenciado' %}Evidenciado{% else %}Não evidenciado{% endif %}</span> <strong>{{ s.label }}</strong>
+          <span class="d-block">{{ s.detail }}</span>
+          {% if s.excerpt %}<blockquote class="mb-1 mt-1">“{{ s.excerpt }}”</blockquote>{% endif %}
+          {% if can_review %}<form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="acao" value="sinal"><input type="hidden" name="sinal" value="{{ s.key }}">
+            {% if fb %}<span class="text-secondary">Você {% if fb.agrees %}concordou{% else %}discordou{% endif %}.</span> {% endif %}
+            <button class="btn btn-sm btn-link p-0" name="concorda" value="1">Concordo</button> · <button class="btn btn-sm btn-link p-0" name="concorda" value="0">Discordo</button></form>{% endif %}
+        </li>{% empty %}<li class="small text-secondary">Nenhum indício para este componente.</li>{% endfor %}</ul>
+      {% if t.result.difficulties %}<h3 class="h6 mt-3">Possíveis dificuldades (a confirmar)</h3><ul class="small">{% for d in t.result.difficulties %}<li>{{ d }}</li>{% endfor %}</ul>{% endif %}
+      {% if t.result.feedback %}<h3 class="h6">Sugestões de devolutiva</h3><ul class="small mb-0">{% for d in t.result.feedback %}<li>{{ d }}</li>{% endfor %}</ul>{% endif %}
+    </div></section>
+    {% if can_review %}
+    <form method="post" class="card"><div class="card-body">{% csrf_token %}<input type="hidden" name="acao" value="revisar">
+      <h2 class="h6">Sua revisão</h2>
+      <p class="small text-secondary">O nível que você registrar vira evidência das habilidades indicadas (peso 0,8). A análise automática, sozinha, nunca vira evidência.</p>
+      <label class="form-label small" for="hab">Habilidades</label>
+      <input class="form-control form-control-sm mb-1" id="hab" name="habilidades" value="{{ codes }}">
+      {% if suggestions %}<p class="small text-secondary mb-2">Sugestões pelo texto oficial (revise): {% for s in suggestions %}<strong title="{{ s.item.text }}">{{ s.item.code }}</strong> ({{ s.score }}){% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+      <label class="form-label small" for="niv">Nível observado nesta produção</label>
+      <select class="form-select form-select-sm mb-2" id="niv" name="nivel"><option value="">Não registrar nível</option>{% for v, l in levels %}<option value="{{ v }}"{% if t.teacher_level == v %} selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+      <label class="form-label small" for="dev">Devolutiva ao estudante</label>
+      <textarea class="form-control form-control-sm" id="dev" name="devolutiva" rows="3">{{ t.teacher_feedback }}</textarea>
+      <button class="btn btn-sm btn-primary mt-2" type="submit">{% if t.reviewed %}Atualizar revisão{% else %}Registrar revisão{% endif %}</button>
+    </div></form>
+    {% elif t.reviewed %}<section class="card"><div class="card-body small"><strong>Revisada pelo professor.</strong> {{ t.teacher_feedback }}</div></section>{% endif %}
+  </div>
+</div>
+{% endblock %}

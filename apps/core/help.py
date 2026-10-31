@@ -245,6 +245,15 @@ GUIDES = [
         ("Em Modelos e validação, acompanhe as regras de alerta e execute a validação do modelo.", "cognitio:models"),
         ("Nenhuma probabilidade aparece sem modelo validado e aprovado pela direção.", None),
     ]),
+    ("Conferir o Currículo em Movimento do DF", "list-checks", GESTAO, [
+        ("Em Currículo → Importar, traga o Currículo em Movimento (já incluído na plataforma). Os itens chegam "
+         "marcados \"texto a conferir\".", "curriculum:item_import"),
+        ("Em Curadoria, leia lado a lado o objetivo e a habilidade sugerida; marque vários e valide ou rejeite. "
+         "Comece pela confiança média: são textos quase iguais.", "curriculum:curation"),
+        ("Na página de cada item, confira o texto com o documento oficial (a página do PDF aparece na fonte) e "
+         "use \"Marcar como conferido\"; dá para corrigir a extração, e a redação anterior fica guardada.",
+         "curriculum:catalog"),
+    ]),
     ("Escolher que avisos receber", "bell", (RESPONSAVEL, PROFESSOR, ESTUDANTE), [
         ("Em Notificações, abra Preferências e desmarque o que não quer receber.",
          "communication:notification_preferences"),

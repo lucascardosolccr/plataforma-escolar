@@ -12,6 +12,7 @@
     <a class="btn btn-outline-secondary" href="{% url 'curriculum:ontology_map' %}">{% icon "layers" %}Mapa curricular</a>
     <a class="btn btn-outline-secondary" href="{% url 'curriculum:coverage' %}">{% icon "chart-column" %}Acompanhamento</a>
     {% if can_manage %}
+    <a class="btn btn-outline-secondary" href="{% url 'curriculum:curation' %}">{% icon "list-checks" %}Curadoria</a>
     <a class="btn btn-outline-secondary" href="{% url 'curriculum:item_import' %}">{% icon "file-text" %}Importar</a>
     <a class="btn btn-primary" href="{% url 'curriculum:item_create' %}">{% icon "plus" %}Cadastrar objetivo</a>
     {% endif %}

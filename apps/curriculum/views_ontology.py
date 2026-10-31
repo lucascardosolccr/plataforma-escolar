@@ -3,7 +3,8 @@
 from collections import OrderedDict
 
 from django.contrib import messages
-from django.db.models import Count, Q
+from django.db.models import Case, Count, Q, When
+from django.http import QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -93,3 +94,71 @@ def item_curate(request, pk):
         _log(request, "update", item, f"Registrou interpretação operacional de {item.code}")
     messages.success(request, "Registro salvo.")
     return redirect("curriculum:item_detail", pk=item.pk)
+
+
+def curation_queue(request):
+    """Fila de curadoria: correspondências da escola ainda não decididas, com os dois textos lado a lado,
+    para validar ou rejeitar várias de uma vez. Correspondências nacionais (BNCC → PNED) ficam fora:
+    a decisão de uma escola não altera o catálogo das outras."""
+    from apps.core.pagination import paginate
+
+    from .models import COMPONENTS
+
+    user = request.user
+    _require(services.can_manage_items(user))
+    pending = CurriculumCorrespondence.objects.filter(school=user.school, validated=False, rejected=False)
+    if request.method == "POST":
+        decision = request.POST.get("decisao")
+        ids = [i for i in request.POST.getlist("ids") if i.isdigit()]
+        rows = list(pending.filter(pk__in=ids).select_related("source", "target"))
+        if decision in ("validar", "rejeitar") and rows:
+            reject = decision == "rejeitar"
+            now = timezone.now()
+            relation = request.POST.get("relacao", "")
+            relation = relation if not reject and relation in dict(CurriculumCorrespondence.Relation.choices) else ""
+            for c in rows:
+                c.validated, c.rejected, c.validated_by, c.validated_at = not reject, reject, user, now
+                c.relation = relation or c.relation
+            CurriculumCorrespondence.objects.bulk_update(
+                rows, ["validated", "rejected", "validated_by", "validated_at", "relation"])
+            sample = ", ".join(f"{c.source.code} → {c.target.code}" for c in rows[:20])
+            _log(request, "update", None, f"{'Rejeitou' if reject else 'Validou'} {len(rows)} correspondência(s) "
+                                          f"na fila de curadoria: {sample}{' …' if len(rows) > 20 else ''}",
+                 target_type="CurriculumCorrespondence", target_id="lote")
+            messages.success(request, f"{len(rows)} correspondência{'s' if len(rows) > 1 else ''} "
+                                      f"{'rejeitada' if reject else 'validada'}{'s' if len(rows) > 1 else ''}.")
+        # volta para a mesma página e filtros (o caminho é sempre o desta tela; só a consulta é reaproveitada)
+        back = QueryDict(mutable=True)
+        for k, v in QueryDict(request.POST.get("voltar", "")).items():
+            if k in ("componente", "ano", "confianca", "page"):
+                back[k] = v
+        return redirect(f"{request.path}?{back.urlencode()}" if back else request.path)
+    comp = request.GET.get("componente", "")
+    if comp in COMPONENTS:
+        pending = pending.filter(source__component=comp)
+    else:
+        comp = ""
+    year = request.GET.get("ano", "")
+    if year.isdigit() and 1 <= int(year) <= 9:
+        pending = pending.filter(source__years__regex=rf"(^|,){year}(,|$)")
+    else:
+        year = ""
+    conf = request.GET.get("confianca", "")
+    if conf in dict(CurriculumCorrespondence.Confidence.choices):
+        pending = pending.filter(confidence=conf)
+    else:
+        conf = ""
+    totals = dict(CurriculumCorrespondence.objects.filter(school=user.school, validated=False, rejected=False)
+                  .values_list("confidence").annotate(n=Count("pk")))
+    rank = Case(When(confidence="alta", then=0), When(confidence="media", then=1), default=2)
+    page = paginate(request, pending.select_related("source", "target")
+                    .annotate(rank=rank).order_by("rank", "source__code", "pk"))
+    return render(request, "curriculum/curation_queue.html", {
+        "page": page, "rows": page, "comp": comp, "year": year, "conf": conf,
+        "comp_choices": [(c, c) for c in COMPONENTS], "year_choices": [(str(n), f"{n}º ano") for n in range(1, 10)],
+        "conf_choices": CurriculumCorrespondence.Confidence.choices,
+        "relation_choices": CurriculumCorrespondence.Relation.choices,
+        "totals": [(label, totals[k]) for k, label in CurriculumCorrespondence.Confidence.choices if totals.get(k)],
+        "total": sum(totals.values()), "filtered": bool(comp or year or conf),
+        "back_qs": request.GET.urlencode(),
+    })

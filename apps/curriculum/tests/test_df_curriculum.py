@@ -78,6 +78,49 @@ class ImportTests(Base):
         self.assertIn("Texto quase igual", c.rationale)
 
 
+class CurationQueueTests(Base):
+    def setUp(self):
+        super().setUp()
+        codes = {"CMDF-MA06-O001", "CMDF-MA06-O002", "CMDF-LP08-O012"}
+        with mock.patch.object(df_curriculum, "dataset", return_value=_subset(codes)):
+            df_curriculum.import_for_school(self.school, self.coord)
+        self.mine = CurriculumCorrespondence.objects.filter(school=self.school)
+        self.url = reverse("curriculum:curation")
+
+    def test_queue_filters_orders_and_decides_in_bulk(self):
+        self.assertGreaterEqual(self.mine.count(), 3)
+        self.login(self.prof)
+        self.assertEqual(self.client.get(self.url).status_code, 403)
+        self.login(self.coord)
+        r = self.client.get(self.url)
+        rows = list(r.context["rows"])
+        self.assertEqual(rows[0].confidence, "media")  # a mais confiável primeiro
+        self.assertContains(r, "EF08LP11")
+        r = self.client.get(self.url, {"componente": "Matemática", "ano": "6"})
+        self.assertTrue(all(c.source.component == "Matemática" for c in r.context["rows"]))
+        self.assertNotContains(r, "EF08LP11")
+        # outra escola e correspondências nacionais (BNCC → PNED) ficam fora da decisão em lote
+        other = School.objects.create(name="Outra", code="o")
+        foreign = CurriculumCorrespondence.objects.create(school=other, source=rows[0].source, target=self.h1,
+                                                          origin="manual")
+        national = CurriculumCorrespondence.objects.filter(school__isnull=True, validated=False).first()
+        ids = [c.pk for c in rows[:2]] + [foreign.pk, national.pk]
+        r = self.client.post(self.url, {"ids": ids, "decisao": "validar", "relacao": "equivalente",
+                                        "voltar": "componente=Matem%C3%A1tica&ano=6&x=y"})
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("ano=6", r["Location"])
+        self.assertNotIn("x=y", r["Location"])
+        self.assertEqual(self.mine.filter(validated=True, validated_by=self.coord, relation="equivalente").count(), 2)
+        foreign.refresh_from_db()
+        national.refresh_from_db()
+        self.assertFalse(foreign.validated or national.validated)
+        self.assertTrue(AuditLog.objects.filter(target_id="lote", detail__startswith="Validou 2").exists())
+        rest = self.mine.filter(validated=False).values_list("pk", flat=True)
+        self.client.post(self.url, {"ids": list(rest), "decisao": "rejeitar"})
+        self.assertFalse(self.mine.filter(validated=False, rejected=False).exists())
+        self.assertContains(self.client.get(self.url), "Nada aguardando decisão")
+
+
 class ScreenTests(Base):
     def setUp(self):
         super().setUp()

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Curadoria de correspondências — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Curadoria de correspondências</h1>
+    <p>Ligações entre os objetivos da escola (como o Currículo em Movimento do DF) e as habilidades da BNCC que ainda esperam decisão. Leia os dois textos lado a lado e valide só o que de fato corresponde. Documentos diferentes raramente têm equivalência perfeita.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary" href="{% url 'curriculum:catalog' %}?situacao=a_conferir">{% icon "file-text" %}Textos a conferir</a>
+  </div>
+</div>
+
+<p class="small text-secondary">{{ total }} aguardando decisão{% if totals %} ({% for label, n in totals %}{{ n }} de confiança {{ label|lower }}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}. Validar não muda nenhum texto. Rejeitar tira a sugestão da página do item, e ela não volta quando o Currículo em Movimento é importado de novo.</p>
+
+<form method="get" class="filter-bar" aria-label="Filtrar a fila">
+  {% include "partials/_filter_select.html" with name="componente" label="Componente" options=comp_choices selected=comp all_label="Todos" %}
+  {% include "partials/_filter_select.html" with name="ano" label="Ano" options=year_choices selected=year all_label="Todos" %}
+  {% include "partials/_filter_select.html" with name="confianca" label="Confiança" options=conf_choices selected=conf all_label="Todas" %}
+  <button type="submit" class="btn btn-sm btn-outline-secondary">{% icon "search" %}Filtrar</button>
+  {% include "partials/_filter_end.html" with count=page.paginator.count noun="correspondência(s)" %}
+</form>
+
+<form method="post" class="card" data-bulk>
+  {% csrf_token %}
+  <input type="hidden" name="voltar" value="{{ back_qs }}">
+  <div class="bulk-bar" data-bulk-bar>
+    <label class="d-flex align-items-center gap-2 mb-0">
+      <input type="checkbox" class="form-check-input mt-0" data-bulk-all aria-label="Selecionar todas desta página">
+      <span data-bulk-count>0 selecionados</span>
+    </label>
+    <label class="d-flex align-items-center gap-2 mb-0 small">Validar como
+      <select name="relacao" class="form-select form-select-sm w-auto">
+        <option value="">a relação sugerida</option>
+        {% for k, label in relation_choices %}<option value="{{ k }}">{{ label|lower }}</option>{% endfor %}
+      </select>
+    </label>
+    <button type="submit" name="decisao" value="validar" class="btn btn-sm btn-primary" disabled>{% icon "circle-check" %}Validar</button>
+    <button type="submit" name="decisao" value="rejeitar" class="btn btn-sm btn-outline-danger" disabled>{% icon "x" %}Rejeitar</button>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 table-stack">
+      <thead><tr><th scope="col"><span class="visually-hidden">Selecionar</span></th><th scope="col">Objetivo da escola</th><th scope="col">Habilidade da BNCC</th><th scope="col">Sugestão</th></tr></thead>
+      <tbody>
+        {% for c in rows %}
+        <tr>
+          <td><input type="checkbox" class="form-check-input" name="ids" value="{{ c.pk }}" aria-label="Selecionar {{ c.source.code }} → {{ c.target.code }}"></td>
+          <td data-label="Objetivo da escola" class="small"><a class="fw-semibold" href="{% url 'curriculum:item_detail' c.source.pk %}">{{ c.source.code }}</a> · {{ c.source.component }}{% if c.source.years %} · {{ c.source.years }}º ano{% endif %}<span class="d-block">{{ c.source.text }}</span>{% if c.source.needs_review %}<span class="chip chip-state state-ajustes">texto a conferir</span>{% endif %}</td>
+          <td data-label="Habilidade da BNCC" class="small"><a class="fw-semibold" href="{% url 'curriculum:item_detail' c.target.pk %}">{{ c.target.code }}</a><span class="d-block">{{ c.target.text }}</span></td>
+          <td data-label="Sugestão" class="small"><span class="chip">{{ c.get_relation_display }} · confiança {{ c.get_confidence_display|lower }}</span><span class="d-block text-secondary mt-1">{{ c.get_origin_display }}{% if c.rationale %}. {{ c.rationale }}{% endif %}</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4"><div class="empty-state py-4">{% icon "circle-check" %}<strong>Nada aguardando decisão</strong>{% if filtered %}<a href="?">Limpar filtros</a>{% else %}<span>As sugestões aparecem depois de importar o Currículo em Movimento ou uma planilha com correspondências.</span>{% endif %}</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</form>
+{% include "partials/_pager.html" %}
+{% endblock %}

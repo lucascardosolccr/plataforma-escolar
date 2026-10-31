@@ -86,3 +86,15 @@
 
 /* ---------- Central de notificações: compromisso resolvido ---------- */
 .feed-item.is-resolved .feed-title { color: var(--ds-text-muted); }
+
+/* ---------- Seleção de habilidades curriculares ---------- */
+.curriculum-groups { max-height: 22rem; overflow-y: auto; border: 1px solid var(--ds-line); border-radius: var(--ds-radius, .5rem); padding: .25rem .75rem; background: var(--ds-surface); }
+.curriculum-group { border-bottom: 1px solid var(--ds-line); padding: .35rem 0; }
+.curriculum-group:last-child { border-bottom: 0; }
+.curriculum-group summary { cursor: pointer; font-weight: 700; padding: .25rem 0; }
+.curriculum-group .form-check { margin: .3rem 0; }
+.curriculum-group .form-check-label { font-size: .875rem; line-height: 1.35; }
+.code-chips { display: flex; flex-wrap: wrap; gap: .35rem; margin: 0; padding: 0; list-style: none; }
+.coverage-grid td.is-yes { color: var(--ds-success); font-weight: 700; }
+.coverage-grid td.is-no { color: var(--ds-text-muted); }
+.evo-bar { fill: var(--ds-primary); }

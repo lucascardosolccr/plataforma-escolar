@@ -384,6 +384,7 @@ def evaluation_create(request):
             ev.created_by = user
             ev.status = Evaluation.Status.DRAFT
             ev.save()
+            form.save_m2m()
             _log(request, "create", ev, f"Criou a avaliação {ev.title} ({ev.class_group})")
             reminders.notify_exam_change(ev)
         messages.success(request, "Avaliação criada.")
@@ -903,6 +904,7 @@ def activity_create(request):
                 Activity.Status.PUBLISHED if publish else Activity.Status.DRAFT
             )
             act.save()
+            form.save_m2m()
             _save_attachments(request, act, form)
             _log(
                 request,
@@ -1463,6 +1465,7 @@ def group_work_create(request):
                 GroupWork.Status.PUBLISHED if publish else GroupWork.Status.DRAFT
             )
             work.save()
+            form.save_m2m()
             _save_work_attachments(request, work, form)
             _log(
                 request,

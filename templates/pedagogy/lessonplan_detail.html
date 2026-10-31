@@ -27,6 +27,7 @@
         {% if plan.methodology %}<dt>Estratégias</dt><dd>{{ plan.methodology|linebreaksbr }}</dd>{% endif %}
         {% if plan.resources %}<dt>Recursos</dt><dd>{{ plan.resources|linebreaksbr }}</dd>{% endif %}
         {% if plan.assessment %}<dt>Avaliação</dt><dd>{{ plan.assessment|linebreaksbr }}</dd>{% endif %}
+        {% include "curriculum/_codes_dd.html" with obj=plan %}
       </dl>
     </div></div>
   </div>

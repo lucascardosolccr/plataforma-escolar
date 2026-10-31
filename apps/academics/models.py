@@ -91,6 +91,12 @@ class Subject(models.Model):
                                    help_text="Ex.: 1º ao 5º ano. Em branco: todas.")
     # Vigência: fora dela a disciplina sai das listas de escolha (como a
     # desativada), mas o histórico continua. Em branco: sem limite.
+    # Componente da BNCC: vazio, a plataforma deduz pelo nome ("Matemática").
+    curriculum_component = models.CharField(
+        "componente curricular (BNCC)", max_length=80, blank=True,
+        choices=[(c, c) for c in ("Língua Portuguesa", "Matemática", "Ciências", "Geografia", "História", "Arte",
+                                  "Educação Física", "Língua Inglesa", "Ensino Religioso")],
+        help_text="Deixe em branco para deduzir pelo nome da disciplina.")
     valid_from = models.DateField("vigente a partir de", null=True, blank=True)
     valid_until = models.DateField("vigente até", null=True, blank=True,
                                    help_text="Em branco: sem data para encerrar.")

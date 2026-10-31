@@ -121,6 +121,9 @@ class Evaluation(models.Model):
     announced = models.BooleanField(
         "divulgar a data para a turma", default=False,
         help_text="Estudantes e responsáveis veem a data na agenda e recebem lembretes.")
+    curriculum = models.ManyToManyField(
+        "curriculum.CurriculumItem", blank=True, related_name="%(class)s_set",
+        verbose_name="habilidades e objetivos curriculares")
     created_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name="evaluations_created"
     )
@@ -233,6 +236,9 @@ class Activity(FamilyVisibility, models.Model):
     # não chega: avisar antes mandaria um link que ainda responde "acesso
     # negado". Também impede aviso duplicado (ver communication.services).
     notified_at = models.DateTimeField("família avisada em", null=True, blank=True)
+    curriculum = models.ManyToManyField(
+        "curriculum.CurriculumItem", blank=True, related_name="%(class)s_set",
+        verbose_name="habilidades e objetivos curriculares")
     created_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name="activities_created"
     )
@@ -418,6 +424,9 @@ class GroupWork(FamilyVisibility, models.Model):
         "família já via quando foi cancelado", default=False
     )
     notified_at = models.DateTimeField("família avisada em", null=True, blank=True)
+    curriculum = models.ManyToManyField(
+        "curriculum.CurriculumItem", blank=True, related_name="%(class)s_set",
+        verbose_name="habilidades e objetivos curriculares")
     created_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name="group_works_created"
     )
@@ -887,6 +896,9 @@ class LessonPlan(models.Model):
     methodology = models.TextField("estratégias e metodologia", blank=True)
     resources = models.TextField("recursos e materiais", blank=True)
     assessment = models.TextField("avaliação prevista", blank=True)
+    curriculum = models.ManyToManyField(
+        "curriculum.CurriculumItem", blank=True, related_name="%(class)s_set",
+        verbose_name="habilidades e objetivos curriculares")
     status = models.CharField("situação", max_length=10, choices=Status.choices, default=Status.DRAFT)
     submitted_at = models.DateTimeField("enviado em", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

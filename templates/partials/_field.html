@@ -2,7 +2,7 @@
 Um campo do formulário: rótulo, controle, erro e ajuda. Recebe ``field`` e,
 opcionalmente, ``col`` (classe de coluna) para forçar a largura.
 {% endcomment %}
-{% if field.is_hidden %}{{ field }}{% else %}
+{% if field.is_hidden %}{{ field }}{% elif field.name == "curriculum" %}{% include "curriculum/_picker.html" %}{% else %}
 <div class="{% if col %}{{ col }}{% elif field|is_wide or field|is_checkbox %}col-12{% else %}col-md-6{% endif %}">
   {% if field|is_choice_group %}
     <fieldset{% if field.help_text or field.errors %} aria-describedby="{% if field.errors %}{{ field.auto_id }}_erro {% endif %}{% if field.help_text %}{{ field.auto_id }}_ajuda{% endif %}"{% endif %}>

@@ -99,6 +99,10 @@ class AuditLog(models.Model):
         ("reject", "Rejeição"),
         # Exportação de dados (CSV/Excel): quem levou quais dados para fora.
         ("export", "Exportação"),
+        # Prompt 15: dado sensível (necessidades específicas, laudos).
+        ("view", "Consulta"),
+        ("download", "Download"),
+        ("import", "Importação"),
     ]
 
     user = models.ForeignKey(

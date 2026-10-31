@@ -66,6 +66,7 @@
           <dt>Realização</dt><dd>{{ activity.get_work_mode_display }}</dd>
           {% if activity.content %}<dt>Conteúdo</dt><dd>{{ activity.content }}</dd>{% endif %}
           {% if activity.objective %}<dt>Objetivo</dt><dd>{{ activity.objective }}</dd>{% endif %}
+          {% include "curriculum/_codes_dd.html" with obj=activity %}
         </dl>
         <h2 class="h6 text-body-secondary mb-2">Instruções</h2>
         {% if activity.description %}

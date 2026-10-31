@@ -1,6 +1,7 @@
 from django import forms
 from django.utils import timezone
 
+from apps.curriculum.forms import CurriculumFormMixin
 from apps.academics.models import ClassGroup, Subject, TeacherAssignment
 from apps.academics.permissions import teacher_class_ids, teacher_subject_ids, teaches
 from apps.core.models import Role, User
@@ -50,10 +51,11 @@ def _unlocalize(field):
     return field
 
 
-class EvaluationForm(forms.ModelForm):
+class EvaluationForm(CurriculumFormMixin, forms.ModelForm):
     class Meta:
         model = Evaluation
-        fields = ["class_group", "subject", "title", "kind", "description", "weight", "date", "announced"]
+        fields = ["class_group", "subject", "title", "kind", "description", "weight", "date", "announced",
+                  "curriculum"]
         widgets = {"date": forms.DateInput(format=r"%Y-%m-%d", attrs={"type": "date"})}
         labels = {
             "class_group": "Turma",
@@ -88,6 +90,7 @@ class EvaluationForm(forms.ModelForm):
         if not self.instance.pk:
             self.fields["announced"].initial = True
         _unlocalize(self.fields["weight"])
+        self.attach_curriculum(user)
 
     def clean(self):
         cleaned = super().clean()
@@ -175,7 +178,7 @@ class MultipleFileField(forms.FileField):
         return [super(MultipleFileField, self).clean(f, initial) for f in files]
 
 
-class ActivityForm(forms.ModelForm):
+class ActivityForm(CurriculumFormMixin, forms.ModelForm):
     # Os validadores ficam no campo do FORMULÁRIO de propósito: ActivityAttachment
     # é criado com objects.create(), que não executa validadores de modelo. Sem
     # isto um executável passaria direto para o disco.
@@ -205,6 +208,7 @@ class ActivityForm(forms.ModelForm):
             "published_date",
             "deadline",
             "internal_notes",
+            "curriculum",
         ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 5}),
@@ -239,6 +243,7 @@ class ActivityForm(forms.ModelForm):
 
     def __init__(self, *args, user=None, school=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.attach_curriculum(user)
         self.user = user
         self.school = school
         self.fields["published_date"].required = False
@@ -310,7 +315,7 @@ class ActivityForm(forms.ModelForm):
         return self.cleaned_data.get("work_mode") or Activity.WorkMode.INDIVIDUAL
 
 
-class GroupWorkForm(forms.ModelForm):
+class GroupWorkForm(CurriculumFormMixin, forms.ModelForm):
     attachments = MultipleFileField(
         label="Arquivos de apoio",
         required=False,
@@ -336,6 +341,7 @@ class GroupWorkForm(forms.ModelForm):
             "deadline",
             "delivery_mode",
             "notes",
+            "curriculum",
         ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 5}),
@@ -367,6 +373,7 @@ class GroupWorkForm(forms.ModelForm):
 
     def __init__(self, *args, user=None, school=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.attach_curriculum(user)
         self.user = user
         self.school = school
         self.fields["published_date"].required = False

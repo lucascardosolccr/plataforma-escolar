@@ -175,6 +175,11 @@ ITEMS = {
                           ("coordination:records",), "Orientações, reuniões e acompanhamentos"),
     "coord_designations": Item("Designação da coordenação", "coordination:designations", "user-cog",
                                ("coordination:designation",), "Quem acompanha quais turmas"),
+    "curriculum": Item("Currículo", "curriculum:catalog", "book-marked",
+                       ("curriculum:catalog", "curriculum:item_", "curriculum:coverage", "curriculum:evidence_"),
+                       "BNCC, Currículo em Movimento e acompanhamento curricular"),
+    "norms": Item("Referências normativas", "curriculum:references", "book-open", ("curriculum:references",),
+                  "LDB, BNCC, educação inclusiva e LGPD"),
 }
 
 # Itens do rodapé do menu, iguais para todos os perfis.
@@ -216,11 +221,11 @@ LAYOUT = {
     ],
     PROFESSOR: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
-        ("Sala de aula", ["classrooms", "lesson_plans", "attendance", "evaluations", "activities", "prints_mine",
-                          "works"]),
+        ("Sala de aula", ["classrooms", "lesson_plans", "curriculum", "attendance", "evaluations", "activities",
+                          "prints_mine", "works"]),
         ("Acompanhamento", ["occurrences", "observations", "justifications"]),
         COMMUNICATION_STAFF,
-        ("Análises", ["teacher_bi", "subject_bi", "reports", "methodology"]),
+        ("Análises", ["teacher_bi", "subject_bi", "reports", "methodology", "norms"]),
     ],
     SECRETARIA: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
@@ -229,22 +234,22 @@ LAYOUT = {
         ("Acadêmico", ["classes", "subjects", "years", "official_calendar", "assignments", "teacher_perms"]),
         ("Pedagógico", ["evaluations", "activities", "prints_queue", "works", "attendance", "occurrences"]),
         COMMUNICATION_STAFF,
-        ("Análises", ["secretaria_panel", "subject_bi", "quality", "reports", "methodology"]),
+        ("Análises", ["secretaria_panel", "subject_bi", "quality", "reports", "methodology", "norms"]),
         ("Configuração", ["config", "registration_cfg"]),
     ],
     COORDENACAO: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
-        ("Coordenação", ["coord_panel", "lesson_plans", "prints_queue", "coord_records"]),
+        ("Coordenação", ["coord_panel", "lesson_plans", "curriculum", "prints_queue", "coord_records"]),
         ("Pedagógico", ["students", "evaluations", "activities", "works", "attendance",
                         "occurrences", "observations", "plans", "justifications"]),
         ("Acadêmico", ["classes", "subjects", "years", "assignments"]),
         COMMUNICATION_STAFF,
-        ("Análises", ["institutional", "subject_bi", "quality", "reports", "methodology"]),
+        ("Análises", ["institutional", "subject_bi", "quality", "reports", "methodology", "norms"]),
     ],
     DIRECAO: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
-        ("Coordenação", ["coord_panel", "lesson_plans", "prints_queue", "coord_designations"]),
-        ("Análises", ["institutional", "subject_bi", "quality", "reports", "methodology"]),
+        ("Coordenação", ["coord_panel", "lesson_plans", "curriculum", "prints_queue", "coord_designations"]),
+        ("Análises", ["institutional", "subject_bi", "quality", "reports", "methodology", "norms"]),
         ("Pedagógico", ["students", "evaluations", "activities", "works", "attendance",
                         "occurrences", "observations", "plans", "justifications"]),
         ("Acadêmico", ["classes", "subjects", "years", "official_calendar", "teacher_perms"]),
@@ -260,7 +265,8 @@ LAYOUT = {
         ("Pedagógico", ["evaluations", "activities", "prints_queue", "works", "attendance", "occurrences",
                         "justifications"]),
         COMMUNICATION_STAFF,
-        ("Análises", ["institutional", "secretaria_panel", "subject_bi", "quality", "reports", "methodology"]),
+        ("Análises", ["institutional", "secretaria_panel", "subject_bi", "quality", "reports", "methodology",
+                      "norms"]),
     ],
 }
 

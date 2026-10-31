@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Importar objetivos curriculares — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  {% url 'curriculum:catalog' as back %}
+  {% include "partials/_form_head.html" with heading="Importar objetivos curriculares" subheading="Planilha CSV com os objetivos e conteúdos do Currículo em Movimento do DF ou objetivos próprios. Linhas com o mesmo tipo e código são atualizadas, nunca duplicadas." back_url=back back_label="Currículo" %}
+  {% if report %}
+  <div class="alert {% if report.errors %}alert-warning{% else %}alert-success{% endif %}" role="status">
+    <div><strong>{{ report.created }} novo{{ report.created|pluralize }}, {{ report.updated }} atualizado{{ report.updated|pluralize }}.</strong>
+    {% if report.errors %}<ul class="mb-0 small">{% for e in report.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}</div>
+  </div>
+  {% endif %}
+  <form method="post" enctype="multipart/form-data" class="card form-card" novalidate>
+    {% csrf_token %}
+    <div class="card-body">
+      {% include "partials/_form_fields.html" with f=form %}
+      <p class="small text-secondary mb-0">Exemplo de linha: <code>objetivo_df;DF-MA6-01;Matemática;6;Texto copiado do documento;Currículo em Movimento do DF, 2ª ed., 2018, p. 250;;EF06MA01</code></p>
+    </div>
+    {% include "partials/_form_actions.html" with submit_label="Importar" %}
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Acompanhamento curricular — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'curriculum:catalog' %}" class="back-link">{% icon "arrow-left" %}Currículo</a>
+    <h1>Acompanhamento curricular</h1>
+    <p>O que foi planejado, trabalhado, avaliado e com evidência registrada em cada turma. É um apoio ao planejamento e à reflexão pedagógica: não avalia professores nem classifica estudantes.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary" href="{% url 'curriculum:evidence_list' %}">{% icon "notebook-pen" %}Evidências</a>
+    {% if can_record and pair %}<a class="btn btn-primary" href="{% url 'curriculum:evidence_create' %}?par={{ par }}">{% icon "plus" %}Registrar evidência</a>{% endif %}
+  </div>
+</div>
+
+{% if options %}
+<form method="get" class="filter-bar" aria-label="Escolher turma e disciplina">
+  {% include "partials/_filter_select.html" with name="par" label="Turma e disciplina" options=options selected=par all_label="Escolha…" %}
+  {% include "partials/_filter_end.html" %}
+</form>
+{% endif %}
+
+{% if not pair %}
+  <div class="card"><div class="empty-state py-5">{% icon "book-open" %}<strong>Nenhuma turma para acompanhar</strong><span>As turmas aparecem conforme as atribuições (professor) ou a designação (coordenação).</span></div></div>
+{% else %}
+  {% with c=data.counts %}
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><p class="small text-secondary mb-1">Previstas no planejamento</p><p class="fs-3 fw-bold mb-0">{{ c.planned }}</p></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><p class="small text-secondary mb-1">Trabalhadas em atividades</p><p class="fs-3 fw-bold mb-0">{{ c.worked }}</p></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><p class="small text-secondary mb-1">Avaliadas</p><p class="fs-3 fw-bold mb-0">{{ c.assessed }}</p></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><p class="small text-secondary mb-1">Com evidência registrada</p><p class="fs-3 fw-bold mb-0">{{ c.evidenced }}</p></div></div></div>
+  </div>
+  <p class="small text-secondary">{% if data.component %}Componente {{ data.component }}{% if data.grade_year %}, {{ data.grade_year }}º ano{% endif %}: {{ c.expected }} habilidade{{ c.expected|pluralize }} da BNCC para o ano.{% else %}Não foi possível relacionar esta disciplina a um componente da BNCC; informe o componente no cadastro da disciplina.{% endif %} Período: {{ data.period.0|date:"d/m/Y" }} a {{ data.period.1|date:"d/m/Y" }}.</p>
+  {% endwith %}
+
+  <div class="row g-3 mb-3">
+    <section class="col-lg-4" aria-labelledby="retomada"><div class="card h-100"><div class="card-body">
+      <h2 id="retomada" class="h6">{% icon "triangle-alert" %}Precisam de retomada ({{ data.counts.retake }})</h2>
+      <p class="small text-secondary">A última evidência registrada indica retomada.</p>
+      <ul class="list-unstyled small mb-0">{% for i in data.retake %}<li class="py-1"><a href="{% url 'curriculum:item_detail' i.pk %}"><strong>{{ i.code }}</strong></a> {{ i.text|truncatechars:90 }}</li>{% empty %}<li class="text-secondary">Nenhuma.</li>{% endfor %}</ul>
+    </div></div></section>
+    <section class="col-lg-4" aria-labelledby="naoexec"><div class="card h-100"><div class="card-body">
+      <h2 id="naoexec" class="h6">{% icon "clock" %}Planejadas e não executadas ({{ data.counts.not_done }})</h2>
+      <p class="small text-secondary">Estavam em planejamentos já encerrados e não aparecem em atividade, avaliação ou evidência.</p>
+      <ul class="list-unstyled small mb-0">{% for i in data.not_done %}<li class="py-1"><a href="{% url 'curriculum:item_detail' i.pk %}"><strong>{{ i.code }}</strong></a> {{ i.text|truncatechars:90 }}</li>{% empty %}<li class="text-secondary">Nenhuma.</li>{% endfor %}</ul>
+    </div></div></section>
+    <section class="col-lg-4" aria-labelledby="evo"><div class="card h-100"><div class="card-body">
+      <h2 id="evo" class="h6">{% icon "chart-line" %}Evolução no ano</h2>
+      <p class="small text-secondary">Itens trabalhados, avaliados ou com evidência, acumulados por mês.</p>
+      {% if data.evolution %}
+      <table class="table table-sm mb-0"><caption class="visually-hidden">Itens acumulados por mês</caption>
+        <thead><tr><th scope="col">Mês</th><th scope="col">Novos</th><th scope="col">Acumulado</th></tr></thead>
+        <tbody>{% for e in data.evolution %}<tr><td>{{ e.month|date:"M/Y" }}</td><td>{{ e.new }}</td><td><svg width="80" height="10" aria-hidden="true" focusable="false"><rect class="evo-bar" x="0" y="1" height="8" width="{% widthratio e.total data.max_total 80 %}"></rect></svg> {{ e.total }}</td></tr>{% endfor %}</tbody>
+      </table>
+      {% endif %}
+    </div></div></section>
+  </div>
+
+  <section class="card mb-3" aria-labelledby="mapa"><div class="card-body">
+    <h2 id="mapa" class="h6">Situação de cada habilidade ou objetivo</h2>
+    {% if data.rows %}
+    <div class="table-responsive"><table class="table table-sm align-middle coverage-grid table-stack mb-0">
+      <thead><tr><th scope="col">Código</th><th scope="col">Previsto</th><th scope="col">Trabalhado</th><th scope="col">Avaliado</th><th scope="col">Evidência</th><th scope="col">Última evidência</th></tr></thead>
+      <tbody>{% for r in data.rows %}<tr>
+        <th scope="row"><a href="{% url 'curriculum:item_detail' r.item.pk %}" title="{{ r.item.text }}">{{ r.item.code }}</a>{% if r.not_done %} <span class="chip chip-state state-ajustes">não executado</span>{% endif %}</th>
+        <td data-label="Previsto" class="{% if r.planned %}is-yes{% else %}is-no{% endif %}">{% if r.planned %}Sim{% else %}—{% endif %}</td>
+        <td data-label="Trabalhado" class="{% if r.worked %}is-yes{% else %}is-no{% endif %}">{% if r.worked %}Sim{% else %}—{% endif %}</td>
+        <td data-label="Avaliado" class="{% if r.assessed %}is-yes{% else %}is-no{% endif %}">{% if r.assessed %}Sim{% else %}—{% endif %}</td>
+        <td data-label="Evidência" class="{% if r.evidenced %}is-yes{% else %}is-no{% endif %}">{% if r.evidenced %}Sim{% else %}—{% endif %}</td>
+        <td data-label="Última evidência">{% if r.judgement == "retomada" %}<span class="chip chip-state state-erro">Precisa de retomada</span>{% elif r.judgement == "desenvolvimento" %}<span class="chip chip-state state-a_vencer">Em desenvolvimento</span>{% elif r.judgement == "consolidada" %}<span class="chip chip-state state-validado">Consolidada</span>{% else %}—{% endif %}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<p class="small mb-0">Nada registrado ainda. Marque as habilidades ao criar planejamentos, atividades e avaliações.</p>{% endif %}
+  </div></section>
+
+  <details class="card"><summary class="card-body fw-semibold">Habilidades da BNCC do ano ainda não contempladas ({{ data.counts.gaps }})</summary>
+    <div class="card-body pt-0">
+      <p class="small text-secondary">Lacunas possíveis: não aparecem em planejamento, atividade, avaliação nem evidência desta turma. Nem toda habilidade precisa estar em todo bimestre; use como ponto de partida para o planejamento.</p>
+      <ul class="list-unstyled small mb-0">{% for i in data.gaps %}<li class="py-1"><a href="{% url 'curriculum:item_detail' i.pk %}"><strong>{{ i.code }}</strong></a> {{ i.text }}</li>{% empty %}<li class="text-secondary">Nenhuma lacuna.</li>{% endfor %}</ul>
+    </div>
+  </details>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ item.code }} — Currículo — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'curriculum:catalog' %}" class="back-link">{% icon "arrow-left" %}Currículo</a>
+    <h1>{{ item.code }}</h1>
+    <p>{{ item.get_kind_display }}{% if item.component %} · {{ item.component }}{% endif %}{% if item.years %} · {{ item.years }}º ano{% endif %}</p>
+  </div>
+</div>
+
+<div class="card mb-3"><div class="card-body">
+  <p class="fs-5 mb-3">{{ item.text }}</p>
+  {% if item.needs_review %}<p class="small"><span class="chip chip-state state-ajustes">Texto a conferir</span> A extração automática não garantiu o texto completo; confira no documento oficial.</p>{% endif %}
+  <p class="small text-secondary mb-0">Fonte: {% if item.source_url %}<a href="{{ item.source_url }}" rel="noopener noreferrer" target="_blank">{{ item.source }}</a>{% else %}{{ item.source }}{% endif %}{% if item.verified_on %} · conferido em {{ item.verified_on|date:"d/m/Y" }}{% endif %}</p>
+</div></div>
+
+{% if related %}
+<section class="card mb-3" aria-labelledby="rel"><div class="card-body">
+  <h2 id="rel" class="h6">{% if item.is_local %}Habilidades da BNCC relacionadas{% else %}Objetivos da escola relacionados{% endif %}</h2>
+  <ul class="list-unstyled mb-0">{% for r in related %}<li class="py-1"><a href="{% url 'curriculum:item_detail' r.pk %}"><strong>{{ r.code }}</strong></a> {{ r.text|truncatechars:160 }}</li>{% endfor %}</ul>
+</div></section>
+{% endif %}
+
+<section class="card" aria-labelledby="uso"><div class="card-body">
+  <h2 id="uso" class="h6">{% if is_teacher %}Onde você já trabalhou este item{% else %}Onde foi trabalhado nas turmas que você acompanha{% endif %}</h2>
+  <p class="small text-secondary">Sugestões para reaproveitar ou retomar. São referências do que já foi feito: a decisão pedagógica é de quem planeja.</p>
+  <div class="row g-3">
+    <div class="col-md-4"><h3 class="h6">Planejamentos</h3>
+      <ul class="list-unstyled small mb-0">{% for p in plans %}<li class="py-1"><a href="{% url 'pedagogy:lessonplan_detail' p.pk %}">{{ p.title }}</a><span class="d-block text-secondary">{{ p.class_group.name }} · {{ p.starts_on|date:"d/m/Y" }}</span></li>{% empty %}<li class="text-secondary">Nenhum.</li>{% endfor %}</ul></div>
+    <div class="col-md-4"><h3 class="h6">Atividades</h3>
+      <ul class="list-unstyled small mb-0">{% for a in activities %}<li class="py-1"><a href="{% url 'pedagogy:activity_detail' a.pk %}">{{ a.title }}</a><span class="d-block text-secondary">{{ a.class_group.name }} · {{ a.class_date|date:"d/m/Y" }}{% if is_teacher %} · <a href="{% url 'pedagogy:activity_reuse' a.pk %}">reutilizar</a>{% endif %}</span></li>{% empty %}<li class="text-secondary">Nenhuma.</li>{% endfor %}</ul></div>
+    <div class="col-md-4"><h3 class="h6">Avaliações</h3>
+      <ul class="list-unstyled small mb-0">{% for e in evaluations %}<li class="py-1">{{ e.title }}<span class="d-block text-secondary">{{ e.class_group.name }} · {{ e.date|date:"d/m/Y" }}</span></li>{% empty %}<li class="text-secondary">Nenhuma.</li>{% endfor %}</ul></div>
+  </div>
+</div></section>
+{% endblock %}

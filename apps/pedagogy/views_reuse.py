@@ -114,6 +114,7 @@ def activity_reuse(request, pk):
                             class_date=form.cleaned_data["class_date"], deadline=form.cleaned_data["deadline"],
                             **{f: getattr(src, f) for f in COPIED_FIELDS})
             copy.save()
+            copy.curriculum.set(src.curriculum.all())
             if form.cleaned_data.get("copy_attachments"):
                 for att in src.attachments.all():
                     try:

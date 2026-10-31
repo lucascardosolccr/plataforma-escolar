@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Currículo — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Currículo</h1>
+    <p>Competências gerais e habilidades da BNCC (texto oficial do MEC) e os objetivos do Currículo em Movimento do DF ou próprios que a escola cadastrou. Use os códigos ao planejar, propor atividades e avaliar.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary" href="{% url 'curriculum:coverage' %}">{% icon "chart-column" %}Acompanhamento</a>
+    {% if can_manage %}
+    <a class="btn btn-outline-secondary" href="{% url 'curriculum:item_import' %}">{% icon "file-text" %}Importar</a>
+    <a class="btn btn-primary" href="{% url 'curriculum:item_create' %}">{% icon "plus" %}Cadastrar objetivo</a>
+    {% endif %}
+  </div>
+</div>
+
+<form method="get" class="filter-bar" aria-label="Filtrar o catálogo">
+  <div class="filter-field"><label for="f-q" class="form-label">Código ou palavra</label><input type="search" id="f-q" name="q" value="{{ q }}" class="form-control" placeholder="EF06MA03, frações…"></div>
+  {% include "partials/_filter_select.html" with name="tipo" label="Tipo" options=kind_choices selected=kind all_label="Todos" %}
+  {% include "partials/_filter_select.html" with name="componente" label="Componente" options=comp_choices selected=comp all_label="Todos" %}
+  {% include "partials/_filter_select.html" with name="ano" label="Ano" options=year_choices selected=year all_label="Todos" %}
+  <button type="submit" class="btn btn-sm btn-outline-secondary">{% icon "search" %}Buscar</button>
+  {% include "partials/_filter_end.html" with count=page.paginator.count noun="item(ns)" %}
+</form>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0 table-stack">
+      <thead><tr><th scope="col">Código</th><th scope="col">Texto</th><th scope="col">Componente e ano</th><th scope="col">Fonte</th></tr></thead>
+      <tbody>
+        {% for i in items %}
+        <tr>
+          <td class="fw-semibold text-nowrap"><a href="{% url 'curriculum:item_detail' i.pk %}">{{ i.code }}</a></td>
+          <td data-label="Texto">{{ i.text }}{% if i.needs_review %} <span class="chip chip-state state-ajustes">texto a conferir</span>{% endif %}</td>
+          <td data-label="Componente e ano" class="small">{{ i.component|default:"Todos" }}{% if i.years %} · {{ i.years }}º ano{% endif %}</td>
+          <td data-label="Fonte" class="small">{% if i.is_local %}Escola{% else %}BNCC (MEC){% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4"><div class="empty-state py-4">{% icon "book-open" %}<strong>Nada encontrado</strong>{% if filtered %}<a href="?">Limpar filtros</a>{% endif %}</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/_pager.html" %}
+{% endblock %}

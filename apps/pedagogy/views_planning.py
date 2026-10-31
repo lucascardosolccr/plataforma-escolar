@@ -27,6 +27,7 @@ from apps.academics.permissions import teacher_class_ids, teacher_subject_ids, t
 from apps.communication.models import Notification
 from apps.communication.services import notify, notify_many
 from apps.coordination.scope import class_scope, reaches_class
+from apps.curriculum.forms import CurriculumFormMixin
 from apps.core.models import Role, User, create_audit_log
 from apps.core.pagination import paginate
 from apps.core.params import id_param
@@ -69,11 +70,11 @@ def reviewers_for(plan):
     return users or list(User.objects.filter(school=plan.school, role=Role.DIRECAO.value, is_active=True))
 
 
-class LessonPlanForm(forms.ModelForm):
+class LessonPlanForm(CurriculumFormMixin, forms.ModelForm):
     class Meta:
         model = LessonPlan
         fields = ["class_group", "subject", "starts_on", "ends_on", "title", "content", "objectives",
-                  "methodology", "resources", "assessment"]
+                  "methodology", "resources", "assessment", "curriculum"]
         labels = {"class_group": "Turma", "subject": "Disciplina"}
         widgets = {
             "starts_on": DATE, "ends_on": DATE,
@@ -95,6 +96,7 @@ class LessonPlanForm(forms.ModelForm):
             pk__in=teacher_class_ids(user, edit=True)).select_related("school_year").order_by("name")
         self.fields["subject"].queryset = Subject.choices_for(
             user.school, keep=self.instance.subject_id).filter(pk__in=teacher_subject_ids(user, edit=True))
+        self.attach_curriculum(user)
 
     def clean(self):
         data = super().clean()
@@ -178,6 +180,7 @@ def lessonplan_create(request):
         plan.school = request.user.school
         plan.teacher = request.user
         plan.save()
+        form.save_m2m()
         create_audit_log(user=request.user, action="create", request=request, target=plan,
                          detail=f"Criou planejamento “{plan.title}” ({plan.class_group} / {plan.subject})")
         messages.success(request, "Planejamento salvo como rascunho. Envie quando estiver pronto.")
@@ -288,6 +291,7 @@ def lessonplan_duplicate(request, pk):
         title=plan.title, content=plan.content, objectives=plan.objectives, methodology=plan.methodology,
         resources=plan.resources, assessment=plan.assessment,
     )
+    copy.curriculum.set(plan.curriculum.all())
     create_audit_log(user=request.user, action="create", request=request, target=copy,
                      detail=f"Copiou o planejamento “{plan.title}” para {copy.starts_on:%d/%m/%Y}")
     messages.success(request, "Cópia criada como rascunho, no período seguinte. Ajuste o que mudar.")

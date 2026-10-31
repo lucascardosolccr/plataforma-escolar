@@ -350,6 +350,28 @@
     });
   });
 
+  /* ---------- Filtro de lista por texto (data-filter-list) ----------
+   * O campo aponta para o id da lista; cada [data-filter-item] some quando
+   * não contém o texto digitado (sem acento e sem diferença de maiúsculas).
+   * Grupos recolhidos abrem quando têm resultado. Sem JavaScript, a lista
+   * aparece inteira. */
+  function plain(t) { return (t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase(); }
+  $$("[data-filter-list]").forEach(function (input) {
+    var list = document.getElementById(input.getAttribute("data-filter-list"));
+    if (!list) return;
+    input.addEventListener("input", function () {
+      var q = plain(input.value.trim());
+      $$("[data-filter-item]", list).forEach(function (li) {
+        li.hidden = q !== "" && plain(li.textContent).indexOf(q) === -1;
+      });
+      $$("details", list).forEach(function (d) {
+        var any = $$("[data-filter-item]", d).some(function (li) { return !li.hidden; });
+        d.hidden = q !== "" && !any;
+        if (q !== "" && any) d.open = true;
+      });
+    });
+  });
+
   /* ---------- Filtros que se aplicam sozinhos (data-autosubmit) ----------
    * Substitui o antigo onchange="this.form.submit()", que a política de
    * segurança não permite mais. Sem JavaScript, o botão "Filtrar" do

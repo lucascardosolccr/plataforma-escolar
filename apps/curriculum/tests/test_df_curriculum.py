@@ -95,6 +95,7 @@ class ScreenTests(Base):
         r = self.client.post(url, {"acao": "curriculo_df"}, follow=True)
         self.assertContains(r, "3 itens novos")
         self.assertContains(r, "Atualizar o Currículo em Movimento")
+        self.assertContains(r, "3 itens já na escola")
         self.assertEqual(CurriculumItem.objects.filter(school=self.school, code__in=self.codes).count(), 3)
         self.assertTrue(AuditLog.objects.filter(action="import", target_id="curriculo_df").exists())
 

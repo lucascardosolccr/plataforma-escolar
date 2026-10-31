@@ -23,7 +23,7 @@
     </ul>
     <form method="post" class="d-flex flex-wrap align-items-center gap-2">{% csrf_token %}
       <button class="btn btn-primary btn-sm" name="acao" value="curriculo_df">{% if df_imported %}Atualizar o Currículo em Movimento{% else %}Importar o Currículo em Movimento{% endif %}</button>
-      {% if df_imported %}<span class="small text-secondary">{{ df_imported }} item{{ df_imported|pluralize:"ns" }} já na escola.</span>{% endif %}
+      {% if df_imported %}<span class="small text-secondary">{{ df_imported }} ite{{ df_imported|pluralize:"m,ns" }} já na escola.</span>{% endif %}
     </form>
   </div></section>
   <form method="post" enctype="multipart/form-data" class="card form-card" novalidate>

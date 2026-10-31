@@ -12,6 +12,20 @@
     {% if report.errors %}<ul class="mb-0 small">{% for e in report.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}</div>
   </div>
   {% endif %}
+  <section class="card form-card mb-3" aria-labelledby="cmdf"><div class="card-body">
+    <h2 id="cmdf" class="h6 d-flex align-items-center gap-2">{% icon "book-open" %}Currículo em Movimento do DF já incluído</h2>
+    <p class="small mb-2">{{ df_meta.titulo }}, {{ df_meta.edicao }} ({{ df_meta.ano }}): {{ df_total }} objetivos e conteúdos, do 1º ao 9º ano, extraídos automaticamente das tabelas do documento.</p>
+    <ul class="small text-secondary mb-3">
+      <li>Cada item entra marcado como <strong>texto a conferir</strong>, com a página do documento. O documento não tem códigos oficiais: os códigos <code>CMDF-…</code> são da plataforma.</li>
+      <li>As ligações com a BNCC são <strong>sugestões automáticas</strong> por semelhança de palavras, para a coordenação validar ou rejeitar na página de cada item.</li>
+      <li>Importar de novo não apaga nada: atualiza só o que ainda está a conferir e não mexe em correspondências já decididas.</li>
+      <li>Fonte: o portal da SEEDF recusou a conexão (certificado inválido); usamos a <a href="{{ df_meta.copia_usada }}" rel="noopener" target="_blank">cópia do Observatório de Educação do Instituto Unibanco</a>. Confira com o documento oficial.</li>
+    </ul>
+    <form method="post" class="d-flex flex-wrap align-items-center gap-2">{% csrf_token %}
+      <button class="btn btn-primary btn-sm" name="acao" value="curriculo_df">{% if df_imported %}Atualizar o Currículo em Movimento{% else %}Importar o Currículo em Movimento{% endif %}</button>
+      {% if df_imported %}<span class="small text-secondary">{{ df_imported }} item{{ df_imported|pluralize:"ns" }} já na escola.</span>{% endif %}
+    </form>
+  </div></section>
   <form method="post" enctype="multipart/form-data" class="card form-card" novalidate>
     {% csrf_token %}
     <div class="card-body">

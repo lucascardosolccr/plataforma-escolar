@@ -48,9 +48,19 @@ def catalog(request):
     unit = (request.GET.get("unidade") or "").strip()
     unit_choices = []
     if comp:
-        unit_choices = [(u, u) for u in CurriculumItem.objects.filter(school__isnull=True, component=comp)
-                        .exclude(thematic_unit="").values_list("thematic_unit", flat=True).distinct()
-                        .order_by("thematic_unit")]
+        units_qs = CurriculumItem.objects.filter(CurriculumItem.visible_q(user.school), component=comp)
+        if kind:
+            units_qs = units_qs.filter(kind=kind)
+        unit_choices = [(u, u) for u in units_qs.exclude(thematic_unit="").values_list("thematic_unit", flat=True)
+                        .distinct().order_by("thematic_unit")]
+    status = request.GET.get("situacao", "")
+    if status == "a_conferir" and services.can_manage_items(user):
+        qs = qs.filter(needs_review=True, school=user.school)
+    elif status == "sugestoes" and services.can_manage_items(user):
+        qs = qs.filter(correspondences_out__school=user.school, correspondences_out__validated=False,
+                       correspondences_out__rejected=False).distinct()
+    else:
+        status = ""
     if unit and comp:
         qs = qs.filter(thematic_unit=unit)
     else:
@@ -63,8 +73,9 @@ def catalog(request):
         "page": page, "items": page, "kind": kind, "comp": comp, "year": year, "q": q,
         "kind_choices": CurriculumItem.Kind.choices, "comp_choices": [(c, c) for c in COMPONENTS],
         "year_choices": [(str(n), f"{n}º ano") for n in range(1, 10)],
-        "filtered": bool(kind or comp or year or q or unit), "can_manage": services.can_manage_items(user),
-        "unit": unit, "unit_choices": unit_choices,
+        "filtered": bool(kind or comp or year or q or unit or status), "can_manage": services.can_manage_items(user),
+        "unit": unit, "unit_choices": unit_choices, "status": status,
+        "status_choices": [("a_conferir", "Texto a conferir"), ("sugestoes", "Com sugestões de correspondência")],
     })
 
 
@@ -212,8 +223,20 @@ def _link_bncc(item, targets, user, origin, confidence, relation=""):
 
 def item_import(request):
     """Importa objetivos do Currículo em Movimento ou próprios a partir de CSV."""
+    from . import df_curriculum
+
     user = request.user
     _require(services.can_manage_items(user))
+    if request.method == "POST" and request.POST.get("acao") == "curriculo_df":
+        r = df_curriculum.import_for_school(user.school, user)
+        _log(request, "import", None, f"Importou o Currículo em Movimento do DF (arquivo incluído): {r['created']} novos, "
+                                      f"{r['updated']} atualizados, {r['kept']} já conferidos mantidos, "
+                                      f"{r['suggestions']} sugestões de correspondência",
+             target_type="CurriculumItem", target_id="curriculo_df")
+        messages.success(request, f"Currículo em Movimento do DF: {r['created']} itens novos, {r['updated']} atualizados, "
+                                  f"{r['kept']} já conferidos mantidos sem alteração e {r['suggestions']} sugestões "
+                                  "de correspondência com a BNCC para validar.")
+        return redirect("curriculum:item_import")
     form = CurriculumImportForm(request.POST or None, request.FILES or None)
     report = None
     if request.method == "POST" and form.is_valid():
@@ -250,7 +273,9 @@ def item_import(request):
                                           f"{len(errors)} linhas recusadas", target_type="CurriculumItem",
                  target_id="importacao")
         report = {"created": created, "updated": updated, "errors": errors}
-    return render(request, "curriculum/item_import.html", {"form": form, "report": report})
+    return render(request, "curriculum/item_import.html", {
+        "form": form, "report": report, "df_meta": df_curriculum.dataset()["meta"],
+        "df_total": len(df_curriculum.dataset()["itens"]), "df_imported": df_curriculum.imported_count(user.school)})
 
 
 def references(request):

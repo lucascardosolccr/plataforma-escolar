@@ -9,7 +9,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from . import services
-from .models import AREAS, CurriculumCorrespondence, CurriculumItem, ItemDimension, SkillDimension
+from .models import (AREAS, CurriculumCorrespondence, CurriculumItem, CurriculumItemVersion, ItemDimension,
+                     SkillDimension)
 from .views import _log, _require
 
 AREA_ORDER = ["Linguagens", "Matemática", "Ciências da Natureza", "Ciências Humanas", "Ensino Religioso"]
@@ -72,6 +73,20 @@ def item_curate(request, pk):
         c.save()
         _log(request, "update", item, f"{'Rejeitou' if reject else 'Validou'} correspondência "
                                       f"{c.source.code} → {c.target.code}")
+    elif action == "conferir_texto":
+        # só item da própria escola (ex.: Currículo em Movimento extraído do PDF); a BNCC nacional não é editada
+        _require(item.school_id == user.school_id)
+        text = " ".join((request.POST.get("texto") or "").split())
+        if not text:
+            messages.error(request, "O texto não pode ficar vazio.")
+            return redirect("curriculum:item_detail", pk=item.pk)
+        changed = text != item.text
+        if changed:
+            CurriculumItemVersion.objects.create(item=item, text=item.text, version_label="extração automática")
+            item.text = text
+        item.needs_review, item.verified_on = False, timezone.localdate()
+        item.save(update_fields=["text", "needs_review", "verified_on"])
+        _log(request, "update", item, f"Conferiu o texto de {item.code}{' e corrigiu a extração' if changed else ''}")
     elif action == "nota":
         item.operational_note = (request.POST.get("nota") or "").strip()[:2000]
         item.save(update_fields=["operational_note"])

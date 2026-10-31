@@ -26,7 +26,15 @@
   <p class="fs-5 mb-3">{{ item.text }}</p>
   {% if item.knowledge_object %}<p class="small mb-2"><strong>Objetos de conhecimento:</strong> {{ item.knowledge_object }}{% if item.structure_auto %} <span class="chip chip-state state-ajustes" title="Lido da tabela do PDF oficial por regra automática">extração automática — conferir</span>{% endif %}</p>{% endif %}
   {% if item.operational_note %}<p class="small mb-2"><strong>Interpretação operacional usada pela plataforma:</strong> {{ item.operational_note }}</p>{% endif %}
-  {% if item.needs_review %}<p class="small"><span class="chip chip-state state-ajustes">Texto a conferir</span> A extração automática não garantiu o texto completo; confira no documento oficial.</p>{% endif %}
+  {% if item.needs_review %}<p class="small"><span class="chip chip-state state-ajustes">Texto a conferir</span> A extração automática não garantiu o texto completo; confira no documento oficial.</p>
+  {% if can_curate and item.is_local %}
+  <form method="post" action="{% url 'curriculum:item_curate' item.pk %}" class="mb-3">{% csrf_token %}
+    <input type="hidden" name="acao" value="conferir_texto">
+    <label for="f-texto" class="form-label small">Texto conferido com o documento (corrija se a extração errou)</label>
+    <textarea id="f-texto" name="texto" rows="3" class="form-control mb-2">{{ item.text }}</textarea>
+    <button class="btn btn-sm btn-outline-primary">{% icon "circle-check" %}Marcar como conferido</button>
+  </form>
+  {% endif %}{% endif %}
   <p class="small text-secondary mb-0">Fonte: {% if item.source_url %}<a href="{{ item.source_url }}" rel="noopener noreferrer" target="_blank">{{ item.source }}</a>{% else %}{{ item.source }}{% endif %}{% if item.verified_on %} · conferido em {{ item.verified_on|date:"d/m/Y" }}{% endif %}</p>
 </div></div>
 
@@ -58,8 +66,9 @@
   <p class="small text-secondary">Documentos diferentes não têm equivalência perfeita. Cada ligação mostra o tipo, a confiança e se já foi validada.</p>
   <ul class="list-unstyled mb-0">{% for c in correspondences %}
     <li class="py-2 border-bottom small">
-      {% if c.source_id == item.pk %}<strong>{{ c.get_relation_display }}</strong> → <a href="{% url 'curriculum:item_detail' c.target.pk %}">{{ c.target.code }}</a> {{ c.target.thematic_unit|default:c.target.text|truncatechars:80 }}{% else %}<a href="{% url 'curriculum:item_detail' c.source.pk %}">{{ c.source.code }}</a> {{ c.source.text|truncatechars:90 }} → <strong>{{ c.get_relation_display|lower }}</strong> este item{% endif %}
+      {% if c.source_id == item.pk %}<strong>{{ c.get_relation_display }}</strong> → <a href="{% url 'curriculum:item_detail' c.target.pk %}">{{ c.target.code }}</a> {% if item.is_local %}{{ c.target.text|truncatechars:160 }}{% else %}{{ c.target.thematic_unit|default:c.target.text|truncatechars:80 }}{% endif %}{% else %}<a href="{% url 'curriculum:item_detail' c.source.pk %}">{{ c.source.code }}</a> {{ c.source.text|truncatechars:90 }} → <strong>{{ c.get_relation_display|lower }}</strong> este item{% endif %}
       <span class="d-block text-secondary">Confiança {{ c.get_confidence_display|lower }} · {{ c.get_origin_display }}{% if c.validated %} · validada por {{ c.validated_by.get_full_name|default:c.validated_by.username }}{% else %} · requer validação pedagógica{% endif %}</span>
+      {% if c.rationale and not c.validated %}<span class="d-block text-secondary">{{ c.rationale }}</span>{% endif %}
       {% if can_curate and not c.validated %}<form method="post" action="{% url 'curriculum:item_curate' item.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="acao" value="correspondencia"><input type="hidden" name="id" value="{{ c.pk }}"><button class="btn btn-sm btn-link p-0" name="decisao" value="validar">Validar</button> · <button class="btn btn-sm btn-link p-0" name="decisao" value="rejeitar">Rejeitar</button></form>{% endif %}
     </li>{% endfor %}</ul>
 </div></section>

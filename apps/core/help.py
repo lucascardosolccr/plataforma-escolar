@@ -130,7 +130,10 @@ GUIDES = [
         ("Abra Pré-cadastros e escolha um pedido enviado.", "application_review_list"),
         ("Aprove (cria a ficha e o vínculo), peça correção ou recuse, sempre com mensagem.", None),
         ("Matrícula só se você escolher a turma; dá para matricular depois.", None),
-        ("O que a família pode fazer é definido em Cadastro pelas famílias.", "registration_settings"),
+        ("O que a família pode fazer, e para quais anos letivos, é definido em Cadastro pelas famílias.",
+         "registration_settings"),
+        ("Com mais de um ano aberto, a família escolhe o ano; as turmas oferecidas na aprovação são desse ano.",
+         None),
     ]),
     ("Cobrar fotos pendentes", "user-round", (SECRETARIA, DIRECAO, ADMIN), [
         ("Fotografias lista quem ainda não tem foto, por turma.", "photo_pending"),

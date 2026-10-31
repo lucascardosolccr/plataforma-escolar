@@ -65,10 +65,17 @@ def _own_application(request, pk):
     return get_object_or_404(StudentApplication, pk=pk, guardian=request.user, school=request.user.school)
 
 
-def _year_for(settings_obj):
-    return settings_obj.school_year or SchoolYear.objects.filter(
-        school=settings_obj.school, is_current=True
-    ).first()
+def _year_for(app, settings_obj):
+    """Ano da matrícula na análise: o que a família escolheu ou, em pedidos
+    antigos (sem ano), o primeiro ano aberto."""
+    if app.school_year_id:
+        return app.school_year
+    years = settings_obj.open_years()
+    return years[0] if years else None
+
+
+def _year_txt(app):
+    return f" · ano letivo {app.school_year.name}" if app.school_year_id else ""
 
 
 # --------------------------------------------------------------------------
@@ -78,9 +85,9 @@ def _year_for(settings_obj):
 def family_applications(request):
     _family_only(request.user)
     cfg = RegistrationSettings.for_school(request.user.school)
-    apps = StudentApplication.objects.filter(guardian=request.user).select_related("student")
+    apps = StudentApplication.objects.filter(guardian=request.user).select_related("student", "school_year")
     return render(request, "registry/application_family_list.html", {
-        "applications": apps, "cfg": cfg, "can_apply": cfg.family_can_apply,
+        "applications": apps, "cfg": cfg, "can_apply": cfg.family_can_apply, "open_years": cfg.open_years(),
     })
 
 
@@ -92,8 +99,9 @@ def application_start(request):
         messages.error(request, "O cadastro pela família não está aberto nesta escola agora.")
         return redirect("family_applications")
     profile = GuardianProfile.objects.filter(user=request.user).first()
+    years = cfg.open_years()
     app = StudentApplication.objects.create(
-        school=request.user.school, guardian=request.user,
+        school=request.user.school, guardian=request.user, school_year=years[0] if len(years) == 1 else None,
         phone=getattr(profile, "phone", ""), address=getattr(profile, "address", ""),
         relation=getattr(profile, "relation", ""),
     )
@@ -110,7 +118,7 @@ def application_step(request, pk, step):
     enabled = cfg.fields_list
     form = doc_form = None
     if step == 1:
-        form = ApplicationStudentForm(request.POST or None, instance=app, enabled=enabled)
+        form = ApplicationStudentForm(request.POST or None, instance=app, enabled=enabled, years=cfg.open_years())
     elif step == 2:
         form = ApplicationContactForm(request.POST or None, instance=app, enabled=enabled)
     elif step == 3:
@@ -191,6 +199,16 @@ def application_submit(request, pk):
     if _missing(app):
         messages.error(request, "Falta preencher: " + ", ".join(_missing(app)) + ".")
         return redirect("application_step", pk=app.pk, step=1)
+    # O ano precisa continuar aberto no envio (a escola pode ter fechado
+    # o ano escolhido enquanto o rascunho esperava).
+    years = RegistrationSettings.for_school(app.school).open_years()
+    if years and app.school_year not in years:
+        if len(years) == 1:
+            app.school_year = years[0]
+            app.save(update_fields=["school_year"])
+        else:
+            messages.error(request, "Escolha o ano letivo: o que estava marcado não recebe mais pré-cadastros.")
+            return redirect("application_step", pk=app.pk, step=1)
     with transaction.atomic():
         resent = app.status == StudentApplication.Status.CORRECTION
         app.status = StudentApplication.Status.SUBMITTED
@@ -202,7 +220,8 @@ def application_submit(request, pk):
         notify_many(
             app.school, reviewers, Notification.Kind.REGISTRATION,
             f"{'Pré-cadastro corrigido' if resent else 'Novo pré-cadastro'}: {app.full_name}",
-            body=f"Enviado por {request.user.get_full_name() or request.user.username}. Ano/série: {app.desired_grade}.",
+            body=f"Enviado por {request.user.get_full_name() or request.user.username}. "
+                 f"Ano/série: {app.desired_grade}{_year_txt(app)}.",
             url=reverse("application_review", args=[app.pk]),
         )
     messages.success(request, "Pré-cadastro enviado. A secretaria vai analisar e você será avisado aqui.")
@@ -270,7 +289,7 @@ def review_list(request):
     status = request.GET.get("situacao", StudentApplication.Status.SUBMITTED)
     qs = StudentApplication.objects.filter(school=request.user.school).exclude(
         status=StudentApplication.Status.DRAFT
-    ).select_related("guardian", "student")
+    ).select_related("guardian", "student", "school_year")
     counts = dict(qs.values_list("status").annotate(n=Count("pk")))
     if status in dict(StudentApplication.Status.choices):
         qs = qs.filter(status=status)
@@ -301,7 +320,7 @@ def application_review(request, pk):
         pk=pk, school=request.user.school,
     )
     cfg = RegistrationSettings.for_school(app.school)
-    year = _year_for(cfg)
+    year = _year_for(app, cfg)
     matches = list(_matches(app))
     form = ReviewForm(request.POST or None, school=app.school, matches=matches, year=year)
     can_decide = app.status == StudentApplication.Status.SUBMITTED
@@ -437,9 +456,14 @@ def registration_settings(request):
             obj = form.save(commit=False)
             obj.updated_by = request.user
             obj.save()
+            chosen = form.cleaned_data["open_years"]
+            years = SchoolYear.objects.filter(school=request.user.school)
+            years.exclude(pk__in=chosen).update(accepts_applications=False)
+            years.filter(pk__in=chosen).update(accepts_applications=True)
+            opened = ", ".join(y.name for y in chosen) or "nenhum"
             create_audit_log(user=request.user, action="update", request=request, target=obj,
                              detail=f"Configurou o cadastro pela família: {obj.get_family_mode_display()}; "
-                                    f"campos: {obj.family_fields or 'nenhum opcional'}")
+                                    f"campos: {obj.family_fields or 'nenhum opcional'}; anos abertos: {opened}")
         messages.success(request, "Configurações de cadastro salvas.")
         return redirect("registration_settings")
     labels = dict(RegistrationSettings.OPTIONAL_FIELDS)

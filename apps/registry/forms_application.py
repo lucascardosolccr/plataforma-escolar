@@ -29,9 +29,10 @@ class ApplicationStudentForm(_EnabledFieldsMixin, forms.ModelForm):
 
     class Meta:
         model = StudentApplication
-        fields = ["first_name", "last_name", "birth_date", "desired_grade", "desired_turn"]
+        fields = ["school_year", "first_name", "last_name", "birth_date", "desired_grade", "desired_turn"]
         widgets = {"birth_date": DATE}
         labels = {
+            "school_year": "Ano letivo em que vai estudar",
             "first_name": "Nome do estudante",
             "last_name": "Sobrenome",
             "birth_date": "Data de nascimento",
@@ -40,10 +41,18 @@ class ApplicationStudentForm(_EnabledFieldsMixin, forms.ModelForm):
         }
         help_texts = {"desired_grade": "Por exemplo: 1º ano, 5º ano, Educação Infantil."}
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, years=(), **kwargs):
         super().__init__(*args, **kwargs)
         for name in ("first_name", "birth_date", "desired_grade"):
             self.fields[name].required = True
+        # Só pergunta o ano quando a escola abriu mais de um; com um só, a
+        # tela grava esse ano sem perguntar.
+        if len(years) > 1:
+            self.fields["school_year"].queryset = SchoolYear.objects.filter(pk__in=[y.pk for y in years])
+            self.fields["school_year"].required = True
+            self.fields["school_year"].empty_label = "Escolha…"
+        else:
+            del self.fields["school_year"]
 
     def clean_birth_date(self):
         value = self.cleaned_data["birth_date"]
@@ -156,16 +165,22 @@ class RegistrationSettingsForm(forms.ModelForm):
 
     class Meta:
         model = RegistrationSettings
-        fields = ["family_mode", "family_fields", "allow_correction_requests", "opens_on", "closes_on",
-                  "school_year"]
+        fields = ["family_mode", "family_fields", "allow_correction_requests", "opens_on", "closes_on"]
         widgets = {"family_mode": forms.RadioSelect, "opens_on": DATE, "closes_on": DATE}
         labels = {"opens_on": "Período de cadastro: abre em", "closes_on": "Fecha em"}
         help_texts = {"opens_on": "Em branco: sem data de abertura.", "closes_on": "Em branco: sem data de fechamento."}
 
+    open_years = forms.ModelMultipleChoiceField(
+        queryset=SchoolYear.objects.none(), required=False, widget=forms.CheckboxSelectMultiple,
+        label="Anos letivos que aceitam novos pré-cadastros",
+        help_text="Com mais de um marcado, a família escolhe o ano no pré-cadastro.",
+    )
+
     def __init__(self, *args, school=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["school_year"].queryset = SchoolYear.objects.filter(school=school)
+        self.fields["open_years"].queryset = SchoolYear.objects.filter(school=school).order_by("-name")
         self.initial["family_fields"] = self.instance.fields_list
+        self.initial["open_years"] = [y.pk for y in self.instance.open_years()] if school else []
 
     def clean_family_fields(self):
         return ",".join(self.cleaned_data["family_fields"])
@@ -174,4 +189,6 @@ class RegistrationSettingsForm(forms.ModelForm):
         data = super().clean()
         if data.get("opens_on") and data.get("closes_on") and data["closes_on"] < data["opens_on"]:
             self.add_error("closes_on", "O fechamento não pode ser antes da abertura.")
+        if data.get("family_mode") == RegistrationSettings.MODE_FULL and not data.get("open_years"):
+            self.add_error("open_years", "Marque pelo menos um ano letivo para receber pré-cadastros.")
         return data

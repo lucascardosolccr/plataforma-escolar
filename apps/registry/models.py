@@ -380,6 +380,21 @@ class RegistrationSettings(models.Model):
     def family_can_apply(self):
         return self.family_mode == self.MODE_FULL and self.is_open()
 
+    def open_years(self):
+        """Anos letivos abertos a novos pré-cadastros.
+
+        São os marcados em ``SchoolYear.accepts_applications``. Escola que
+        ainda não marcou nenhum segue a regra anterior: o ano escolhido aqui
+        ou, em branco, o ano atual.
+        """
+        from apps.academics.models import SchoolYear
+
+        years = list(SchoolYear.objects.filter(school=self.school, accepts_applications=True).order_by("name"))
+        if years:
+            return years
+        legacy = self.school_year or SchoolYear.objects.filter(school=self.school, is_current=True).first()
+        return [legacy] if legacy else []
+
     @property
     def family_can_send_photo(self):
         return self.family_mode in (self.MODE_PHOTO, self.MODE_FULL)
@@ -427,6 +442,10 @@ class StudentApplication(models.Model):
     school_notes = models.TextField(
         "informações que a escola precisa saber", blank=True,
         help_text="Só o necessário: por exemplo, quem pode buscar o estudante.",
+    )
+    school_year = models.ForeignKey(
+        "academics.SchoolYear", on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+        verbose_name="ano letivo pretendido",
     )
     review_note = models.TextField("mensagem da secretaria", blank=True)
     reviewed_by = models.ForeignKey(

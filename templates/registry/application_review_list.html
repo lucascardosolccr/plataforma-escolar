@@ -25,7 +25,7 @@
         {% for a in applications %}
         <tr>
           <td class="fw-semibold">{{ a.full_name }}<span class="d-block small text-body-secondary fw-normal">nasc. {{ a.birth_date|date:"d/m/Y"|default:"—" }}</span></td>
-          <td data-label="Ano/série">{{ a.desired_grade|default:"—" }}</td>
+          <td data-label="Ano/série">{{ a.desired_grade|default:"—" }}{% if a.school_year %} <span class="d-block small text-body-secondary">ano letivo {{ a.school_year.name }}</span>{% endif %}</td>
           <td data-label="Responsável">{{ a.guardian.get_full_name|default:a.guardian.username }}</td>
           <td data-label="Enviado em">{{ a.submitted_at|date:"d/m/Y H:i"|default:"—" }}</td>
           <td data-label="Situação"><span class="chip chip-state state-{{ a.status }}">{{ a.get_status_display }}</span></td>

@@ -67,6 +67,7 @@
           <dt>Estudante</dt><dd>{{ app.full_name|default:"—" }}</dd>
           <dt>Nascimento</dt><dd>{{ app.birth_date|date:"d/m/Y"|default:"—" }}</dd>
           <dt>Ano/série</dt><dd>{{ app.desired_grade|default:"—" }}</dd>
+          {% if app.school_year %}<dt>Ano letivo</dt><dd>{{ app.school_year.name }}</dd>{% endif %}
           {% if "desired_turn" in enabled %}<dt>Turno</dt><dd>{{ app.get_desired_turn_display|default:"—" }}</dd>{% endif %}
           {% if "relation" in enabled %}<dt>Parentesco</dt><dd>{{ app.get_relation_display|default:"—" }}</dd>{% endif %}
           {% if "phone" in enabled %}<dt>Telefone</dt><dd>{{ app.phone|default:"—" }}</dd>{% endif %}

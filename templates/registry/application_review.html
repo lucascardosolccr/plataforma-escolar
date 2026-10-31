@@ -24,6 +24,7 @@
           <dt>Sobrenome</dt><dd>{{ app.last_name|default:"—" }}</dd>
           <dt>Nascimento</dt><dd>{{ app.birth_date|date:"d/m/Y"|default:"—" }}</dd>
           <dt>Ano/série</dt><dd>{{ app.desired_grade|default:"—" }}</dd>
+          {% if app.school_year %}<dt>Ano letivo</dt><dd>{{ app.school_year.name }}</dd>{% endif %}
           <dt>Turno desejado</dt><dd>{{ app.get_desired_turn_display|default:"—" }}</dd>
           <dt>Parentesco</dt><dd>{{ app.get_relation_display|default:"—" }}</dd>
           <dt>Telefone</dt><dd>{{ app.phone|default:"—" }}</dd>

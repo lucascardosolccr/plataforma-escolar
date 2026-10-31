@@ -13,6 +13,10 @@ class SchoolYear(models.Model):
     start_date = models.DateField("início", null=True, blank=True)
     end_date = models.DateField("fim", null=True, blank=True)
     is_current = models.BooleanField("ano letivo atual", default=False)
+    accepts_applications = models.BooleanField(
+        "aceita novos pré-cadastros", default=False,
+        help_text="Marcado nas Configurações de cadastro: as famílias podem pedir vaga para este ano.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

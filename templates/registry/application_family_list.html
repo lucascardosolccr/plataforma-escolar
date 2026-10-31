@@ -6,7 +6,7 @@
 <div class="page-head">
   <div>
     <h1>Pré-cadastro de filhos</h1>
-    <p>Cadastre seu filho em etapas. A secretaria confere e aprova; só depois disso a ficha e a matrícula existem.</p>
+    <p>Cadastre seu filho em etapas. A secretaria confere e aprova; só depois disso a ficha e a matrícula existem.{% if can_apply and open_years %} Aberto para {% for y in open_years %}{{ y.name }}{% if not forloop.last %} e {% endif %}{% endfor %}.{% endif %}</p>
   </div>
   {% if can_apply %}
   <form method="post" action="{% url 'application_start' %}">
@@ -29,7 +29,7 @@
     <li class="feed-item">
       <div class="feed-body flex-grow-1">
         <p class="feed-title">{{ a.full_name|default:"(nome ainda não preenchido)" }}</p>
-        <p class="feed-meta">{{ a.desired_grade|default:"ano/série não informado" }} · atualizado em {{ a.updated_at|date:"d/m/Y H:i" }}</p>
+        <p class="feed-meta">{{ a.desired_grade|default:"ano/série não informado" }}{% if a.school_year %} · {{ a.school_year.name }}{% endif %} · atualizado em {{ a.updated_at|date:"d/m/Y H:i" }}</p>
         {% if a.status == "correcao" and a.review_note %}<p class="small mb-0 mt-1"><strong>Secretaria:</strong> {{ a.review_note }}</p>{% endif %}
       </div>
       <div class="feed-actions d-flex flex-wrap gap-2 align-items-center">

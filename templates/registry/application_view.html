@@ -16,6 +16,7 @@
       <dl class="review-list">
         <dt>Nascimento</dt><dd>{{ app.birth_date|date:"d/m/Y"|default:"—" }}</dd>
         <dt>Ano/série</dt><dd>{{ app.desired_grade|default:"—" }}</dd>
+          {% if app.school_year %}<dt>Ano letivo</dt><dd>{{ app.school_year.name }}</dd>{% endif %}
         <dt>Documentos</dt><dd>{% for d in documents %}<a href="{% url 'application_document' app.pk d.pk %}">{{ d.original_name }}</a>{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd>
       </dl>
     </div>

@@ -292,3 +292,92 @@ class RetentionAndExportAuditTests(AppBase):
         self.login(self.sec)
         self.client.get(reverse("student_import_rejected", args=[batch.pk]))
         self.assertTrue(AuditLog.objects.filter(action="export", target_type="ImportBatch").exists())
+
+
+class SchoolYearOpeningTests(AppBase):
+    """Novos pré-cadastros habilitados por ano letivo."""
+
+    def setUp(self):
+        super().setUp()
+        self.next_year = SchoolYear.objects.create(school=self.school, name="2027")
+        self.next_class = ClassGroup.objects.create(school=self.school, school_year=self.next_year, name="2º A")
+
+    def configure(self, *years, mode="completo"):
+        self.login(self.sec)
+        return self.client.post(reverse("registration_settings"), {
+            "family_mode": mode, "family_fields": ["photo", "desired_turn"], "allow_correction_requests": "on",
+            "open_years": [y.pk for y in years]})
+
+    def step1(self, app, **extra):
+        data = {"first_name": "Lia", "last_name": "Souza", "birth_date": "2019-05-10",
+                "desired_grade": "2º ano", "desired_turn": "manha", "nav": "next"}
+        data.update(extra)
+        return self.client.post(reverse("application_step", args=[app.pk, 1]), data)
+
+    def test_without_marked_years_keeps_previous_rule(self):
+        self.assertEqual(self.cfg.open_years(), [self.year])
+        self.cfg.school_year = self.next_year
+        self.cfg.save()
+        self.assertEqual(self.cfg.open_years(), [self.next_year])
+
+    def test_settings_mark_years_and_full_mode_needs_one(self):
+        r = self.configure()
+        self.assertContains(r, "Marque pelo menos um ano letivo")
+        self.configure(self.next_year)
+        self.assertEqual(list(SchoolYear.objects.filter(accepts_applications=True)), [self.next_year])
+        self.cfg.refresh_from_db()
+        self.assertEqual(self.cfg.open_years(), [self.next_year])
+        self.configure(self.year, mode="foto")  # fechar 2027 e abrir 2026 no modo só foto
+        self.assertEqual(list(SchoolYear.objects.filter(accepts_applications=True)), [self.year])
+
+    def test_single_open_year_is_set_without_asking(self):
+        self.configure(self.next_year)
+        self.login(self.fam)
+        self.client.post(reverse("application_start"))
+        app = StudentApplication.objects.get()
+        self.assertEqual(app.school_year, self.next_year)
+        self.assertNotContains(self.client.get(reverse("application_step", args=[app.pk, 1])), 'name="school_year"')
+
+    def test_two_open_years_family_chooses_and_review_uses_that_year(self):
+        self.configure(self.year, self.next_year)
+        self.login(self.fam)
+        self.assertContains(self.client.get(reverse("family_applications")), "Aberto para 2026 e 2027")
+        self.client.post(reverse("application_start"))
+        app = StudentApplication.objects.get()
+        self.assertIsNone(app.school_year)
+        r = self.step1(app)
+        self.assertEqual(r.status_code, 200)  # o ano é obrigatório quando há escolha
+        other = SchoolYear.objects.create(school=School.objects.create(name="O", code="o"), name="2027")
+        self.step1(app, school_year=other.pk)  # ano de outra escola não é aceito
+        app.refresh_from_db()
+        self.assertIsNone(app.school_year)
+        self.step1(app, school_year=self.next_year.pk)
+        app.refresh_from_db()
+        self.assertEqual(app.school_year, self.next_year)
+        self.client.post(reverse("application_submit", args=[app.pk]))
+        self.assertTrue(Notification.objects.filter(user=self.sec, body__contains="ano letivo 2027").exists())
+        self.login(self.sec)
+        r = self.client.get(reverse("application_review", args=[app.pk]))
+        self.assertEqual(list(r.context["form"].fields["class_group"].queryset), [self.next_class])
+        self.client.post(reverse("application_review", args=[app.pk]), {
+            "decision": "aprovar", "target": "nova", "class_group": self.next_class.pk})
+        app.refresh_from_db()
+        self.assertTrue(Enrollment.objects.filter(student=app.student, school_year=self.next_year).exists())
+
+    def test_year_closed_while_draft_waits(self):
+        self.configure(self.year, self.next_year)
+        self.login(self.fam)
+        self.client.post(reverse("application_start"))
+        app = StudentApplication.objects.get()
+        self.step1(app, school_year=self.year.pk)
+        self.configure(self.next_year, SchoolYear.objects.create(school=self.school, name="2028"))
+        self.login(self.fam)
+        r = self.client.post(reverse("application_submit", args=[app.pk]))
+        self.assertRedirects(r, reverse("application_step", args=[app.pk, 1]))
+        app.refresh_from_db()
+        self.assertEqual(app.status, "rascunho")
+        self.configure(self.next_year)  # um só ano aberto: o envio passa para ele
+        self.login(self.fam)
+        self.client.post(reverse("application_submit", args=[app.pk]))
+        app.refresh_from_db()
+        self.assertEqual((app.status, app.school_year), ("enviado", self.next_year))

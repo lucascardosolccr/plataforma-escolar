@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Intervenções pedagógicas — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'cognitio:home' %}" class="back-link">{% icon "arrow-left" %}EIA-Cognitio</a>
+    <h1>Intervenções pedagógicas</h1>
+    <p>O que foi planejado, por quem, para quem, e o que as evidências posteriores mostram. O resultado compara evidências antes e depois do início: é acompanhamento, não prova de efeito.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{% url 'cognitio:strategies' %}">{% icon "book-open" %}Banco de estratégias</a>
+</div>
+<form method="get" class="filter-bar" aria-label="Filtrar">
+  {% include "partials/_filter_select.html" with name="situacao" label="Situação" options=status_choices selected=status all_label="Todas" %}
+  {% include "partials/_filter_end.html" with count=rows|length noun="intervenção(ões)" %}
+</form>
+<div class="d-grid gap-3">
+  {% for row in rows %}{% with iv=row.iv %}
+  <article class="card"><div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between gap-2 align-items-baseline">
+      <h2 class="h6 mb-0"><a href="{% url 'cognitio:intervention_detail' iv.pk %}">{{ iv.title }}</a></h2>
+      <span class="small"><span class="chip">{{ iv.get_status_display }}</span>{% if row.due %} <span class="chip chip-state state-a_vencer">revisão em {{ iv.review_on|date:"d/m" }}</span>{% endif %}</span>
+    </div>
+    <p class="small text-secondary mb-1">{{ iv.class_group.name }} · {{ iv.subject.name }} · {{ iv.item.code }}{% if iv.trail %} · {{ iv.trail.title }}{% endif %} · de {{ iv.starts_on|date:"d/m" }} a {{ iv.review_on|date:"d/m" }}</p>
+    <ul class="list-unstyled small mb-0">{% for r in row.results %}<li>{{ r.student.first_name }}: {% for k, v in labels.items %}{% if k == r.result %}{{ v }}{% endif %}{% endfor %}{% if r.after %} ({{ r.before.label|lower }} → {{ r.after.label|lower }}){% endif %}</li>{% endfor %}</ul>
+  </div></article>
+  {% endwith %}{% empty %}
+  <div class="card"><div class="empty-state py-5">{% icon "heart-handshake" %}<strong>Nenhuma intervenção</strong><span>Planeje a partir de um alerta ou de uma habilidade no mapa da turma.</span></div></div>
+  {% endfor %}
+</div>
+{% endblock %}

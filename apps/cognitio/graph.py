@@ -82,7 +82,16 @@ def build_progressions(CurriculumItem, SkillRelation, threshold=0.20, per_target
 
 
 def _visible(qs, school):
-    return qs.filter(Q(school__isnull=True) | Q(school=school)).exclude(status="rejeitada")
+    """Relações nacionais e da escola. A decisão local (validar ou rejeitar) substitui
+    a proposta nacional do mesmo par; rejeitadas não aparecem."""
+    from django.db.models import Exists, OuterRef
+
+    from .models import SkillRelation
+
+    local = SkillRelation.objects.filter(school=school, source=OuterRef("source"), target=OuterRef("target"))
+    return (qs.filter(Q(school__isnull=True) | Q(school=school))
+            .exclude(Q(school__isnull=True) & Q(Exists(local)))
+            .exclude(status="rejeitada"))
 
 
 def prerequisites(item, school):

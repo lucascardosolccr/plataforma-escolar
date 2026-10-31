@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Pré-requisitos de {{ item.code }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'curriculum:item_detail' item.pk %}" class="back-link">{% icon "arrow-left" %}{{ item.code }}</a>
+    <h1>Pré-requisitos e efeitos em cadeia</h1>
+    <p><strong>{{ item.code }}</strong> {{ item.text }}</p>
+  </div>
+</div>
+<div class="alert alert-info" role="note"><div class="small">As relações não são leis: indicam progressões curriculares inferidas do texto oficial, relações registradas pela equipe ou hipóteses. Associações estatísticas aparecem só com dados suficientes e não provam causa.{% if context_class %} Contexto: turma {{ context_class.name }}.{% endif %}</div></div>
+
+<div class="graph3">
+  <section aria-labelledby="pre"><h2 id="pre" class="h6">Pode depender de ({{ prereqs|length }})</h2>
+    {% for r in prereqs %}
+    <article class="gnode">
+      <a href="{% url 'cognitio:skill_graph' r.source.pk %}{% if context_class %}?turma={{ context_class.pk }}{% endif %}"><strong>{{ r.source.code }}</strong></a>
+      <span class="chip">{{ r.get_kind_display }}</span> <span class="chip chip-state state-{% if r.status == 'validada' %}validado{% else %}ajustes{% endif %}">{{ r.get_status_display }}</span>
+      <p class="small mb-1">{{ r.source.text|truncatechars:140 }}</p>
+      <p class="small text-secondary mb-1">{{ r.rationale }} Confiança {{ r.get_confidence_display|lower }}.</p>
+      {% if r.ctx %}<p class="small mb-1">Na turma: {{ r.ctx.dificuldade }} com dificuldade, {{ r.ctx.consolidada }} consolidando ou consolidada ({{ r.ctx.avaliados }} com conclusão).</p>{% endif %}
+      {% if r.assoc %}<p class="small mb-1">{% if r.assoc.enough %}Associação observada ({{ r.assoc.n }} estudantes): dificuldade em {{ item.code }} em {% widthratio r.assoc.p_with 1 100 %}% de quem tinha dificuldade em {{ r.source.code }} e em {% widthratio r.assoc.p_without 1 100 %}% de quem não tinha. Não é causalidade.{% else %}Associação estatística: dados insuficientes ({{ r.assoc.n }} estudante{{ r.assoc.n|pluralize }} com as duas habilidades avaliadas; mínimo 20).{% endif %}</p>{% endif %}
+      {% if can_curate and r.status != 'validada' %}<form method="post" action="{% url 'cognitio:relation_curate' item.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="id" value="{{ r.pk }}"><button class="btn btn-sm btn-link p-0" name="decisao" value="validar">Validar</button> · <button class="btn btn-sm btn-link p-0" name="decisao" value="rejeitar">Rejeitar</button></form>{% endif %}
+    </article>
+    {% empty %}<p class="small text-secondary">Nenhum pré-requisito registrado.</p>{% endfor %}
+  </section>
+  <section class="gcenter" aria-labelledby="alvo"><h2 id="alvo" class="h6">Habilidade</h2>
+    <article class="gnode is-center"><strong>{{ item.code }}</strong><p class="small mb-1">{{ item.thematic_unit }}</p>{% if item_ctx %}<p class="small mb-0">Na turma: {{ item_ctx.dificuldade }} com dificuldade · {{ item_ctx.consolidada }} consolidando ou consolidada</p>{% endif %}</article>
+    {% if second %}<h3 class="h6 mt-3">Mais atrás na cadeia</h3><ul class="list-unstyled small">{% for r in second %}<li>{{ r.source.code }} → {{ r.target.code }}</li>{% endfor %}</ul>{% endif %}
+  </section>
+  <section aria-labelledby="dep"><h2 id="dep" class="h6">Pode afetar ({{ deps|length }})</h2>
+    {% for r in deps %}
+    <article class="gnode">
+      <a href="{% url 'cognitio:skill_graph' r.target.pk %}{% if context_class %}?turma={{ context_class.pk }}{% endif %}"><strong>{{ r.target.code }}</strong></a>
+      <span class="chip">{{ r.get_kind_display }}</span>
+      <p class="small mb-1">{{ r.target.text|truncatechars:140 }}</p>
+      {% if r.ctx %}<p class="small mb-0">Na turma: {{ r.ctx.dificuldade }} com dificuldade.</p>{% endif %}
+    </article>
+    {% empty %}<p class="small text-secondary">Nenhuma habilidade dependente registrada.</p>{% endfor %}
+  </section>
+</div>
+
+{% if can_curate %}
+<details class="card mt-3"><summary class="card-body fw-semibold">Registrar relação (equipe pedagógica)</summary>
+  <form method="post" action="{% url 'cognitio:relation_curate' item.pk %}" class="card-body pt-0 row g-2 align-items-end">{% csrf_token %}<input type="hidden" name="acao" value="nova">
+    <div class="col-md-5"><label class="form-label small" for="pr">Pré-requisito de {{ item.code }}</label><select class="form-select form-select-sm" id="pr" name="prerequisito">{% for c in candidates %}<option value="{{ c.pk }}">{{ c.code }} — {{ c.text|truncatechars:70 }}</option>{% endfor %}</select></div>
+    <div class="col-md-3"><label class="form-label small" for="tp">Tipo</label><select class="form-select form-select-sm" id="tp" name="tipo"><option value="conceitual">Relação conceitual</option><option value="progressao">Progressão curricular</option><option value="hipotese">Hipótese de dependência</option></select></div>
+    <div class="col-md-2"><label class="form-label small" for="cf">Confiança</label><select class="form-select form-select-sm" id="cf" name="confianca"><option value="alta">Alta</option><option value="media" selected>Média</option><option value="baixa">Baixa</option></select></div>
+    <div class="col-md-12"><label class="form-label small" for="js">Justificativa (referência curricular ou pedagógica)</label><input class="form-control form-control-sm" id="js" name="justificativa" maxlength="400"></div>
+    <div class="col-md-3"><button class="btn btn-sm btn-outline-primary w-100" type="submit">Registrar</button></div>
+  </form>
+</details>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Alertas pedagógicos — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'cognitio:home' %}" class="back-link">{% icon "arrow-left" %}EIA-Cognitio</a>
+    <h1>Alertas pedagógicos</h1>
+    <p>Sinais precoces para agir antes que as dificuldades se acumulem. Cada alerta diz por que foi gerado, com que regra, com que incerteza e com que limitações. {% if model_run %}Há um modelo preditivo aprovado ({{ model_run.version }}).{% else %}Não há modelo preditivo validado: todos os alertas são sinalizações exploratórias por regra, sem probabilidade.{% endif %} Nenhum alerta reprova, classifica ou restringe direitos.</p>
+  </div>
+  <form method="post">{% csrf_token %}<button class="btn btn-outline-primary" name="recalcular" value="1">{% icon "history" %}Recalcular alertas</button></form>
+</div>
+<form method="get" class="filter-bar" aria-label="Filtrar alertas">
+  {% include "partials/_filter_select.html" with name="situacao" label="Situação" options=status_choices selected=status all_label="Todos" %}
+  {% include "partials/_filter_select.html" with name="regra" label="Regra" options=rule_choices selected=rule all_label="Todas" %}
+  {% include "partials/_filter_select.html" with name="turma" label="Turma" options=class_choices selected=turma all_label="Todas" %}
+  {% include "partials/_filter_end.html" with count=page.paginator.count noun="alerta(s)" %}
+</form>
+<div class="d-grid gap-3">
+  {% for a in alerts %}{% include "cognitio/_alert_card.html" with a=a next=request.get_full_path %}
+  {% empty %}<div class="card"><div class="empty-state py-5">{% icon "check" %}<strong>Nenhum alerta com estes filtros</strong><span>Use “Recalcular alertas” depois de lançar novas evidências.</span></div></div>{% endfor %}
+</div>
+{% include "partials/_pager.html" %}
+{% endblock %}

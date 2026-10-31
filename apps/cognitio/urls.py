@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_evidence
+from . import views, views_evidence, views_intel, views_prescriptive
 
 app_name = "cognitio"
 
@@ -13,4 +13,17 @@ urlpatterns = [
          name="observation_create"),
     path("cognitio/avaliacao/<int:evaluation_id>/questoes/", views_evidence.questions, name="questions"),
     path("cognitio/avaliacao/<int:evaluation_id>/resultados/", views_evidence.responses, name="responses"),
+    # Grafo, alertas e modelos
+    path("cognitio/habilidade/<int:item_id>/grafo/", views_intel.skill_graph, name="skill_graph"),
+    path("cognitio/habilidade/<int:item_id>/grafo/relacao/", views_intel.relation_curate, name="relation_curate"),
+    path("cognitio/alertas/", views_intel.alert_list, name="alerts"),
+    path("cognitio/alertas/<int:pk>/revisar/", views_intel.alert_review, name="alert_review"),
+    path("cognitio/modelos/", views_intel.models_page, name="models"),
+    # Intervenções e trilhas
+    path("cognitio/intervencoes/", views_prescriptive.intervention_list, name="interventions"),
+    path("cognitio/intervencoes/nova/", views_prescriptive.intervention_create, name="intervention_create"),
+    path("cognitio/intervencoes/<int:pk>/", views_prescriptive.intervention_detail, name="intervention_detail"),
+    path("cognitio/trilha/<int:class_id>/<int:subject_id>/<int:item_id>/", views_prescriptive.trail_create,
+         name="trail_create"),
+    path("cognitio/estrategias/", views_prescriptive.strategy_bank, name="strategies"),
 ]

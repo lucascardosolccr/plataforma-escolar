@@ -362,3 +362,101 @@ class ModelRun(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class InterventionStrategy(models.Model):
+    """Estratégia pedagógica do banco de intervenções, com o nível de respaldo declarado."""
+
+    class Evidence(models.TextChoices):
+        RESEARCH = "pesquisa", "Com respaldo em pesquisa publicada (não garante efeito em toda turma)"
+        PRACTICE = "pratica", "Prática pedagógica recomendada"
+        EXPERIMENTAL = "experimental", "Sugestão experimental, a avaliar"
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, null=True, blank=True)
+    title = models.CharField("estratégia", max_length=160)
+    component = models.CharField("componente", max_length=80, blank=True, help_text="Vazio: serve a qualquer componente.")
+    dimension = models.ForeignKey("curriculum.SkillDimension", on_delete=models.SET_NULL, null=True, blank=True,
+                                  verbose_name="dimensão analítica")
+    error_types = models.CharField("tipos de erro a que responde", max_length=120, blank=True)
+    objective = models.TextField("objetivo")
+    procedures = models.TextField("procedimentos")
+    materials = models.TextField("materiais", blank=True)
+    minutes = models.PositiveSmallIntegerField("tempo estimado (min)", default=30)
+    follow_up = models.TextField("critérios de acompanhamento", blank=True)
+    expected_evidence = models.TextField("evidência esperada", blank=True)
+    evidence_level = models.CharField("respaldo", max_length=12, choices=Evidence.choices)
+    references = models.TextField("referências", blank=True)
+    stages = models.CharField("etapa e anos", max_length=80, default="Ensino Fundamental")
+    active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    class Meta:
+        ordering = ["component", "title"]
+        verbose_name = "estratégia de intervenção"
+        verbose_name_plural = "estratégias de intervenção"
+
+    def __str__(self):
+        return self.title
+
+
+class LearningTrail(models.Model):
+    """Trilha de aprendizagem: sequência de intervenções para um estudante ou grupo."""
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE)
+    title = models.CharField("trilha", max_length=200)
+    class_group = models.ForeignKey(ClassGroup, on_delete=models.CASCADE)
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    students = models.ManyToManyField("registry.Student", related_name="learning_trails")
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class LearningIntervention(models.Model):
+    """Intervenção pedagógica planejada pelo professor (aceita, editada ou criada por ele).
+
+    O resultado posterior é calculado das evidências antes e depois do início:
+    associação no tempo, não prova de efeito causal.
+    """
+
+    class Status(models.TextChoices):
+        PROPOSED = "proposta", "Sugerida (aguardando o professor)"
+        ACCEPTED = "aceita", "Aceita"
+        RUNNING = "andamento", "Em andamento"
+        DONE = "concluida", "Concluída"
+        REJECTED = "rejeitada", "Rejeitada pelo professor"
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE)
+    class_group = models.ForeignKey(ClassGroup, on_delete=models.CASCADE, verbose_name="turma")
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, verbose_name="disciplina")
+    item = models.ForeignKey("curriculum.CurriculumItem", on_delete=models.PROTECT, verbose_name="habilidade a desenvolver")
+    students = models.ManyToManyField("registry.Student", related_name="learning_interventions", verbose_name="estudantes")
+    strategy = models.ForeignKey(InterventionStrategy, on_delete=models.SET_NULL, null=True, blank=True,
+                                 verbose_name="estratégia")
+    alert = models.ForeignKey(LearningAlert, on_delete=models.SET_NULL, null=True, blank=True, related_name="interventions")
+    trail = models.ForeignKey(LearningTrail, on_delete=models.CASCADE, null=True, blank=True, related_name="steps")
+    order = models.PositiveSmallIntegerField(default=1)
+    title = models.CharField("título", max_length=200)
+    objective = models.TextField("objetivo")
+    activity = models.TextField("atividade recomendada")
+    complexity = models.PositiveSmallIntegerField("nível de complexidade", default=2,
+                                                  choices=[(1, "Básico"), (2, "Intermediário"), (3, "Avançado")])
+    materials = models.TextField("materiais necessários", blank=True)
+    minutes = models.PositiveSmallIntegerField("tempo estimado (min)", default=30)
+    methodology = models.TextField("estratégia metodológica", blank=True)
+    criteria = models.TextField("critérios de avaliação", blank=True)
+    expected_evidence = models.TextField("evidência esperada", blank=True)
+    starts_on = models.DateField("início", default=timezone.localdate)
+    review_on = models.DateField("data de revisão")
+    status = models.CharField("situação", max_length=10, choices=Status.choices, default=Status.ACCEPTED)
+    teacher_note = models.TextField("registro do professor", blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "intervenção pedagógica"
+        verbose_name_plural = "intervenções pedagógicas"

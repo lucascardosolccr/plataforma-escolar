@@ -31,7 +31,7 @@
 <section class="card my-3" aria-labelledby="det"><div class="card-body">
   <div class="d-flex flex-wrap justify-content-between gap-2">
     <h2 id="det" class="h6 mb-1"><a href="{% url 'curriculum:item_detail' detail.item.pk %}">{{ detail.item.code }}</a> — {{ detail.a.label }}</h2>
-    <a class="small" href="?{% if period %}periodo={{ period }}&{% endif %}disciplina={{ subj }}">Fechar</a>
+    <span class="small"><a href="{% url 'cognitio:skill_graph' detail.item.pk %}">Pré-requisitos</a> · <a href="?{% if period %}periodo={{ period }}&{% endif %}disciplina={{ subj }}">Fechar</a></span>
   </div>
   <p class="small mb-2">{{ detail.item.text }}</p>
   <ul class="small mb-2">{% for r in detail.a.reasons %}<li>{{ r }}</li>{% endfor %}
@@ -70,7 +70,19 @@
     <div class="card"><div class="empty-state py-5">{% icon "book-open" %}<strong>Sem habilidades registradas para este estudante</strong><span>As habilidades aparecem quando avaliações, atividades ou planejamentos das turmas dele têm habilidades ligadas.</span></div></div>
     {% endfor %}
   </div>
-  <div class="col-xl-4">
+  <div class="col-xl-4 d-grid gap-3 align-content-start">
+    <section class="card" aria-labelledby="al"><div class="card-body">
+      <h2 id="al" class="h6">{% icon "triangle-alert" %}Alertas pedagógicos ({{ alerts|length }})</h2>
+      <ul class="list-unstyled small mb-0">{% for a in alerts %}<li class="py-1 border-bottom"><strong>{{ a.title }}</strong><span class="d-block text-secondary">{{ a.explanation|truncatechars:140 }}</span><a href="{% url 'cognitio:alerts' %}?turma={{ a.class_group_id }}">Revisar</a></li>{% empty %}<li class="text-secondary">Nenhum alerta ativo.</li>{% endfor %}</ul>
+    </div></section>
+    <section class="card" aria-labelledby="iv"><div class="card-body">
+      <h2 id="iv" class="h6">{% icon "heart-handshake" %}Intervenções e resultados</h2>
+      <ul class="list-unstyled small mb-0">{% for iv, r in iv_rows %}<li class="py-1 border-bottom"><a href="{% url 'cognitio:intervention_detail' iv.pk %}">{{ iv.title }}</a><span class="d-block text-secondary">{{ iv.get_status_display }}{% if r %} · {% for k, v in labels.items %}{% if k == r.result %}{{ v }}{% endif %}{% endfor %}{% endif %}</span></li>{% empty %}<li class="text-secondary">Nenhuma intervenção registrada.</li>{% endfor %}</ul>
+    </div></section>
+    <section class="card" aria-labelledby="prox"><div class="card-body">
+      <h2 id="prox" class="h6">{% icon "calendar-days" %}Próximos objetivos de aprendizagem</h2>
+      <ul class="list-unstyled small mb-0">{% for it, when in upcoming %}<li class="py-1"><strong>{{ when|date:"d/m" }}</strong> · <a href="{% url 'cognitio:skill_graph' it.pk %}">{{ it.code }}</a> {{ it.text|truncatechars:80 }}</li>{% empty %}<li class="text-secondary">Nada planejado nas próximas semanas.</li>{% endfor %}</ul>
+    </div></section>
     <section class="card" aria-labelledby="tl"><div class="card-body">
       <h2 id="tl" class="h6">{% icon "history" %}Linha do tempo das evidências</h2>
       <ol class="list-unstyled small mb-0">{% for e in timeline %}<li class="py-1 border-bottom"><strong>{{ e.observed_on|date:"d/m" }}</strong> · {{ e.item.code }} · {{ e.source_label|truncatechars:60 }}<span class="d-block text-secondary">{% if e.ratio is None %}sem evidência ({{ e.no_evidence_reason }}){% else %}{% widthratio e.ratio 1 100 %}% · peso {{ e.weight|floatformat:1 }}{% endif %}</span></li>{% empty %}<li class="text-secondary">Nenhuma evidência no período.</li>{% endfor %}</ol>

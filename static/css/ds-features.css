@@ -134,3 +134,11 @@ rect.bar.m-2 { fill: var(--ds-warning); }
 rect.bar.m-1 { fill: var(--ds-danger); }
 rect.bar.m-contra { fill: var(--ds-info); }
 rect.bar.m-insuf, rect.bar.m-none { fill: var(--ds-line); }
+
+/* ---------- EIA-Cognitio: grafo e alertas ---------- */
+.graph3 { display: grid; grid-template-columns: 1fr minmax(12rem, .7fr) 1fr; gap: 1rem; align-items: start; }
+@media (max-width: 900px) { .graph3 { grid-template-columns: 1fr; } }
+.gnode { border: 1px solid var(--ds-line); border-radius: .6rem; padding: .6rem .75rem; margin-bottom: .6rem; background: var(--ds-surface); }
+.gnode.is-center { border: 2px solid var(--ds-primary); text-align: center; }
+.alert-card.is-high { border-left: 4px solid var(--ds-danger); }
+.alert-note { max-width: 18rem; }

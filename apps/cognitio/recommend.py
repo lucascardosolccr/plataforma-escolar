@@ -1,0 +1,164 @@
+"""Inteligência prescritiva: recomendação de estratégias, trilhas e resultado das intervenções.
+
+A recomendação é uma ordenação explicada (pontos por critério), nunca uma
+prescrição: o professor aceita, edita, troca ou rejeita. O "resultado
+posterior" compara evidências antes e depois do início da intervenção; é
+associação no tempo, não prova de efeito (não há grupo de comparação).
+"""
+
+import datetime
+
+from django.db.models import Q
+from django.utils import timezone
+
+from .mastery import assess
+from .models import InterventionStrategy, LearningIntervention, MasteryScale, SkillEvidence
+
+
+def load_strategies(Strategy, Dimension):
+    from .data.estrategias import ESTRATEGIAS
+
+    n = 0
+    for (comp, dim, errors, title, objective, proc, materials, minutes, follow, expected, level, refs) in ESTRATEGIAS:
+        dimension = Dimension.objects.filter(component=comp, name=dim).first() if comp and dim else None
+        _, new = Strategy.objects.update_or_create(
+            school=None, title=title, defaults={
+                "component": comp or "", "dimension": dimension, "error_types": errors, "objective": objective,
+                "procedures": proc, "materials": materials, "minutes": minutes, "follow_up": follow,
+                "expected_evidence": expected, "evidence_level": level, "references": refs, "active": True})
+        n += new
+    return n
+
+
+def strategy_history(strategy, school):
+    """Uso e resultado da estratégia na escola (contagem simples, sem inferência causal)."""
+    out = {"uses": 0, "improved": 0, "unchanged": 0, "no_data": 0}
+    for iv in LearningIntervention.objects.filter(school=school, strategy=strategy).prefetch_related("students"):
+        for r in outcomes(iv):
+            out["uses"] += 1
+            key = {"melhorou": "improved", "sem_evidencia": "no_data"}.get(r["result"], "unchanged")
+            out[key] += 1
+    return out
+
+
+def recommend(item, school, component="", error_types=(), students=(), limit=5):
+    """Estratégias ordenadas para a habilidade, com as razões de cada uma."""
+    component = component or item.component
+    dims = set(item.dimensions.values_list("pk", flat=True))
+    qs = InterventionStrategy.objects.filter(Q(school__isnull=True) | Q(school=school), active=True).filter(
+        Q(component=component) | Q(component="") | Q(component="Competências digitais", dimension__in=dims))
+    used = {}
+    if students:
+        for iv in LearningIntervention.objects.filter(school=school, item=item, students__in=students).distinct():
+            for r in outcomes(iv):
+                if r["result"] != "melhorou" and iv.strategy_id:
+                    used[iv.strategy_id] = r["result"]
+    ranked = []
+    for s in qs.select_related("dimension"):
+        score, reasons = 0, []
+        if s.component == component:
+            score += 3
+            reasons.append(f"própria de {component}")
+        elif not s.component:
+            score += 1
+            reasons.append("estratégia geral de avaliação formativa")
+        if s.dimension_id and s.dimension_id in dims:
+            score += 3
+            reasons.append(f"trabalha a dimensão “{s.dimension.name}”, ligada a esta habilidade")
+        errs = {e for e in s.error_types.split("|") if e}
+        hit = errs & set(error_types)
+        if hit:
+            score += 2 * len(hit)
+            reasons.append("responde ao tipo de erro registrado")
+        if s.evidence_level == "pesquisa":
+            score += 1
+        if s.pk in used:
+            score -= 3
+            reasons.append("já usada com estes estudantes nesta habilidade sem melhora registrada")
+        hist = strategy_history(s, school)
+        if hist["uses"] >= 3 and hist["improved"] / hist["uses"] >= 0.5:
+            score += 1
+            reasons.append(f"melhora registrada em {hist['improved']} de {hist['uses']} usos nesta escola")
+        ranked.append((score, s, reasons, hist))
+    ranked.sort(key=lambda t: (-t[0], t[1].title))
+    return [{"strategy": s, "score": sc, "reasons": rs, "history": h} for sc, s, rs, h in ranked[:limit] if sc > 0]
+
+
+def error_types_for(students, item):
+    errs = SkillEvidence.objects.filter(student__in=students, item=item).exclude(error_type="") \
+        .values_list("error_type", flat=True)
+    return list(set(errs))
+
+
+def build_trail(item, school, students, class_group, subject, scale=None):
+    """Passos sugeridos: pré-requisitos com dificuldade ou sem evidência → habilidade → verificação."""
+    from .graph import prerequisites
+    from .mastery import group_evidence
+
+    scale = scale or MasteryScale.for_school(school)
+    steps = []
+    grouped = group_evidence(SkillEvidence.objects.filter(student__in=students))
+    for rel in prerequisites(item, school):
+        weak = [st for st in students
+                if assess(grouped.get((st.pk, rel.source_id), []), scale).state in ("dificuldade", "insuficiente",
+                                                                                   "nao_avaliado", "contraditoria")]
+        if weak:
+            rec = recommend(rel.source, school, subject_name(subject), students=weak, limit=1)
+            steps.append({"item": rel.source, "kind": "Retomar pré-requisito", "students": weak,
+                          "strategy": rec[0]["strategy"] if rec else None,
+                          "why": f"{rel.get_kind_display()} ({rel.get_status_display().lower()}): {rel.rationale[:160]}"})
+    rec = recommend(item, school, subject_name(subject), error_types_for(students, item), students, limit=1)
+    steps.append({"item": item, "kind": "Desenvolver a habilidade", "students": list(students),
+                  "strategy": rec[0]["strategy"] if rec else None, "why": "Habilidade-alvo."})
+    verify = InterventionStrategy.objects.filter(school__isnull=True,
+                                                 title="Verificação curta com devolutiva imediata").first()
+    steps.append({"item": item, "kind": "Verificar novamente", "students": list(students), "strategy": verify,
+                  "why": "Registrar nova evidência para saber se a intervenção ajudou."})
+    return steps
+
+
+def subject_name(subject):
+    from apps.curriculum.models import component_for
+
+    return component_for(subject) if subject else ""
+
+
+def outcomes(intervention, scale=None):
+    """Para cada estudante: estado antes e depois do início e o resultado."""
+    scale = scale or MasteryScale.for_school(intervention.school)
+    out = []
+    evs = list(SkillEvidence.objects.filter(item=intervention.item,
+                                            student__in=intervention.students.all()).order_by("observed_on"))
+    for st in intervention.students.all():
+        mine = [e for e in evs if e.student_id == st.pk]
+        before = assess([e for e in mine if e.observed_on < intervention.starts_on], scale,
+                        today=intervention.starts_on - datetime.timedelta(days=1))
+        after_ev = [e for e in mine if e.observed_on >= intervention.starts_on]
+        after = assess(after_ev, scale) if after_ev else None
+        if not after_ev or not [e for e in after_ev if e.ratio is not None]:
+            result = "sem_evidencia"
+        elif before.mean is None:
+            result = "sem_comparacao"
+        else:
+            after_mean = sum(e.ratio for e in after_ev if e.ratio is not None) / len(
+                [e for e in after_ev if e.ratio is not None])
+            diff = after_mean - before.mean
+            result = "melhorou" if diff >= 0.1 else "piorou" if diff <= -0.1 else "estavel"
+        out.append({"student": st, "before": before, "after": after, "result": result,
+                    "n_after": len([e for e in after_ev if e.ratio is not None])})
+    return out
+
+
+RESULT_LABELS = {
+    "melhorou": "Evidências posteriores melhores",
+    "estavel": "Sem mudança relevante",
+    "piorou": "Evidências posteriores mais baixas",
+    "sem_evidencia": "Ainda sem evidência depois do início",
+    "sem_comparacao": "Sem evidência anterior para comparar",
+}
+
+
+def due_reviews(school, today=None):
+    today = today or timezone.localdate()
+    return LearningIntervention.objects.filter(school=school, review_on__lte=today,
+                                               status__in=["aceita", "andamento"])

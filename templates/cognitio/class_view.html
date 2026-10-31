@@ -24,7 +24,12 @@
   <div class="d-flex flex-wrap justify-content-between gap-2"><h2 id="foco" class="h6 mb-1">{{ focus.item.code }} — quem precisa de acompanhamento</h2><a class="small" href="?disciplina={{ subject.pk }}{% if period %}&periodo={{ period }}{% endif %}">Fechar</a></div>
   <p class="small">{{ focus.item.text }}</p>
   <ul class="list-unstyled mb-0">{% for st, a in focus.rows %}<li class="d-flex flex-wrap gap-2 align-items-center py-1 border-bottom"><span class="mcell {{ a.css }}" aria-hidden="true">{{ a.abbr }}</span><a href="{% url 'cognitio:student_map' st.pk %}?habilidade={{ focus.item.pk }}&disciplina={{ subject.pk }}">{{ st }}</a><span class="small text-secondary">{{ a.label }}{% if a.percent is not None %} · {{ a.percent }}%{% endif %} · {{ a.n_valid }} evidência{{ a.n_valid|pluralize }}</span></li>{% endfor %}</ul>
-  {% if can_record %}<p class="mt-2 mb-0"><a class="btn btn-sm btn-outline-primary" href="{% url 'cognitio:observation_create' cg.pk subject.pk %}?item={{ focus.item.pk }}">Registrar observação desta habilidade</a></p>{% endif %}
+  <p class="mt-2 mb-0 d-flex flex-wrap gap-2">
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'cognitio:skill_graph' focus.item.pk %}?turma={{ cg.pk }}">Pré-requisitos e efeitos em cadeia</a>
+    {% if can_record %}<a class="btn btn-sm btn-outline-primary" href="{% url 'cognitio:observation_create' cg.pk subject.pk %}?item={{ focus.item.pk }}">Registrar observação</a>
+    <a class="btn btn-sm btn-outline-primary" href="{% url 'cognitio:intervention_create' %}?turma={{ cg.pk }}&disciplina={{ subject.pk }}&habilidade={{ focus.item.pk }}{% for st, a in focus.rows %}{% if a.state == 'dificuldade' or a.state == 'desenvolvimento' %}&estudante={{ st.pk }}{% endif %}{% endfor %}">Planejar intervenção</a>
+    <a class="btn btn-sm btn-primary" href="{% url 'cognitio:trail_create' cg.pk subject.pk focus.item.pk %}?{% for st, a in focus.rows %}{% if a.state == 'dificuldade' or a.state == 'desenvolvimento' %}estudante={{ st.pk }}&{% endif %}{% endfor %}">Gerar trilha para quem precisa</a>{% endif %}
+  </p>
 </div></section>
 {% endif %}
 

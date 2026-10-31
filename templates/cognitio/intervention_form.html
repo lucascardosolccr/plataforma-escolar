@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Planejar intervenção — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'cognitio:class_view' cg.pk %}?disciplina={{ subject.pk }}&habilidade={{ item.pk }}" class="back-link">{% icon "arrow-left" %}Mapa da turma</a>
+    <h1>Planejar intervenção</h1>
+    <p>{{ cg.name }} · {{ subject.name }} · <strong>{{ item.code }}</strong> {{ item.text|truncatechars:160 }}</p>
+  </div>
+</div>
+{% if alert %}<div class="alert alert-info" role="note"><div class="small"><strong>Alerta de origem:</strong> {{ alert.title }}. {{ alert.explanation }}</div></div>{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    <section class="card" aria-labelledby="sug"><div class="card-body">
+      <h2 id="sug" class="h6">Estratégias sugeridas</h2>
+      <p class="small text-secondary">Sugestões ordenadas pelos critérios abaixo. A decisão é sua: escolha, edite ou escreva a sua.</p>
+      <ol class="list-unstyled mb-0">{% for r in recs %}
+        <li class="py-2 border-bottom">
+          <strong>{{ r.strategy.title }}</strong> <span class="chip">{{ r.strategy.get_evidence_level_display }}</span>
+          <ul class="small mb-1">{% for why in r.reasons %}<li>{{ why }}</li>{% endfor %}</ul>
+          {% if r.strategy.references %}<p class="small text-secondary mb-1">{{ r.strategy.references }}</p>{% endif %}
+          {% if strategy and strategy.pk == r.strategy.pk %}<span class="small fw-semibold">Em uso no formulário</span>{% else %}<a class="small" href="?{{ query }}&estrategia={{ r.strategy.pk }}">Usar esta</a>{% endif %}
+        </li>
+      {% empty %}<li class="small text-secondary">Nenhuma estratégia do banco se aplica. Descreva a sua no formulário.</li>{% endfor %}</ol>
+    </div></section>
+  </div>
+  <div class="col-lg-7">
+    <form method="post" class="card form-card" novalidate>
+      {% csrf_token %}{% if strategy %}<input type="hidden" name="strategy" value="{{ strategy.pk }}">{% endif %}
+      <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+      {% include "partials/_form_actions.html" with submit_label="Registrar intervenção" %}
+    </form>
+  </div>
+</div>
+{% endblock %}

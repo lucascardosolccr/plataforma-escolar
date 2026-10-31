@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Trilha de aprendizagem — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'cognitio:class_view' cg.pk %}?disciplina={{ subject.pk }}&habilidade={{ item.pk }}" class="back-link">{% icon "arrow-left" %}Mapa da turma</a>
+    <h1>Trilha de aprendizagem: {{ item.code }}</h1>
+    <p>{{ cg.name }} · {{ subject.name }} · {% for s in students %}{{ s.first_name }}{% if not forloop.last %}, {% endif %}{% endfor %}. Passos sugeridos a partir dos pré-requisitos e das evidências. Desmarque o que não fizer sentido; cada passo vira uma intervenção editável, com uma semana de intervalo.</p>
+  </div>
+</div>
+<form method="post" class="card">{% csrf_token %}
+  {% for s in students %}<input type="hidden" name="estudante" value="{{ s.pk }}">{% endfor %}
+  <ol class="list-unstyled mb-0">
+    {% for st in steps %}
+    <li class="card-body border-bottom">
+      <label class="form-check d-flex gap-2"><input class="form-check-input mt-1" type="checkbox" name="passo" value="{{ forloop.counter0 }}" checked>
+        <span><strong>{{ forloop.counter }}. {{ st.kind }}: {{ st.item.code }}</strong> <span class="small text-secondary">({{ st.students|length }} estudante{{ st.students|length|pluralize }})</span>
+          <span class="d-block small">{{ st.item.text|truncatechars:140 }}</span>
+          <span class="d-block small text-secondary">{{ st.why }}</span>
+          {% if st.strategy %}<span class="d-block small">Estratégia: {{ st.strategy.title }} <span class="chip">{{ st.strategy.get_evidence_level_display }}</span></span>{% endif %}
+        </span>
+      </label>
+    </li>
+    {% endfor %}
+  </ol>
+  <div class="form-actions"><button class="btn btn-primary" type="submit">Criar trilha</button></div>
+</form>
+{% endblock %}

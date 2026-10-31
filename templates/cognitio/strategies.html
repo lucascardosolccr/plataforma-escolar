@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Banco de estratégias — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'cognitio:interventions' %}" class="back-link">{% icon "arrow-left" %}Intervenções</a>
+    <h1>Banco de estratégias pedagógicas</h1>
+    <p>Cada estratégia declara o respaldo: pesquisa publicada (não garante efeito em toda turma), prática recomendada ou sugestão experimental. O histórico mostra usos e resultados nesta escola, sem afirmar causa.</p>
+  </div>
+</div>
+<form method="get" class="filter-bar" aria-label="Filtrar">
+  {% include "partials/_filter_select.html" with name="componente" label="Componente" options=comp_choices selected=comp all_label="Todos" %}
+  {% include "partials/_filter_end.html" with count=rows|length noun="estratégia(s)" %}
+</form>
+<div class="row g-3">
+  <div class="col-xl-8 d-grid gap-3 align-content-start">
+    {% for s, h in rows %}
+    <article class="card"><div class="card-body">
+      <div class="d-flex flex-wrap justify-content-between gap-2"><h2 class="h6 mb-0">{{ s.title }}</h2><span class="chip chip-state state-{% if s.evidence_level == 'pesquisa' %}validado{% elif s.evidence_level == 'pratica' %}publicada{% else %}ajustes{% endif %}">{{ s.get_evidence_level_display }}</span></div>
+      <p class="small text-secondary mb-1">{{ s.component|default:"Qualquer componente" }}{% if s.dimension %} · {{ s.dimension.name }}{% endif %} · {{ s.minutes }} min{% if s.school %} · cadastrada pela escola{% endif %}</p>
+      <p class="small mb-1"><strong>Objetivo:</strong> {{ s.objective }}</p>
+      <details class="small"><summary>Procedimentos, acompanhamento e referências</summary>
+        <p class="mt-1 mb-1">{{ s.procedures|linebreaksbr }}</p>
+        {% if s.materials %}<p class="mb-1"><strong>Materiais:</strong> {{ s.materials }}</p>{% endif %}
+        {% if s.follow_up %}<p class="mb-1"><strong>Acompanhamento:</strong> {{ s.follow_up }}</p>{% endif %}
+        {% if s.expected_evidence %}<p class="mb-1"><strong>Evidência esperada:</strong> {{ s.expected_evidence }}</p>{% endif %}
+        {% if s.references %}<p class="mb-0"><strong>Referências:</strong> {{ s.references }}</p>{% endif %}
+      </details>
+      <p class="small mb-0 mt-1">{% if h.uses %}Nesta escola: {{ h.uses }} uso(s), {{ h.improved }} com melhora nas evidências posteriores.{% else %}Ainda sem uso registrado nesta escola.{% endif %}</p>
+    </div></article>
+    {% endfor %}
+  </div>
+  <div class="col-xl-4">
+    <form method="post" class="card form-card" novalidate>{% csrf_token %}
+      <div class="card-body"><h2 class="h6">Cadastrar estratégia da escola</h2><p class="small text-secondary">Entra como sugestão experimental, até ser avaliada.</p>{% include "partials/_form_fields.html" with f=form %}</div>
+      {% include "partials/_form_actions.html" with submit_label="Cadastrar" %}
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% load ui %}{% comment %}Cartão de alerta explicável. Recebe ``a`` e ``next``.{% endcomment %}
+<article class="card alert-card{% if a.level == 'importante' %} is-high{% endif %}"><div class="card-body">
+  <div class="d-flex flex-wrap justify-content-between gap-2 align-items-baseline">
+    <h3 class="h6 mb-0">{{ a.title }}</h3>
+    <span class="small"><span class="chip chip-state state-{% if a.level == 'importante' %}erro{% else %}a_vencer{% endif %}">{{ a.get_level_display }}</span> <span class="chip">{{ a.get_status_display }}</span>{% if not a.active %} <span class="chip chip-state state-rascunho">condição não está mais presente</span>{% endif %}</span>
+  </div>
+  <p class="small text-secondary mb-2">{% if a.class_group %}{{ a.class_group.name }}{% endif %}{% if a.subject %} · {{ a.subject.name }}{% endif %}{% if a.item %} · <a href="{% url 'cognitio:skill_graph' a.item.pk %}{% if a.class_group %}?turma={{ a.class_group.pk }}{% endif %}">{{ a.item.code }}</a>{% endif %}{% if a.period_start %} · período {{ a.period_start|date:"d/m/Y" }} a {{ a.period_end|date:"d/m/Y" }}{% endif %}</p>
+  <p class="small mb-1"><strong>Por quê:</strong> {{ a.explanation }}</p>
+  {% if a.factors %}<ul class="small mb-1">{% for f in a.factors %}<li>{{ f }}</li>{% endfor %}</ul>{% endif %}
+  <p class="small mb-1"><strong>Próxima ação sugerida:</strong> {{ a.next_action }}</p>
+  <details class="small"><summary>Método, incerteza e limitações</summary>
+    <p class="mb-1 mt-1"><strong>Regra:</strong> {{ a.method }}</p>
+    <p class="mb-1"><strong>Incerteza:</strong> {{ a.uncertainty|default:"Não estimada." }}</p>
+    <p class="mb-0"><strong>Limitações:</strong> {{ a.limitations }}</p>
+  </details>
+  {% if a.status_note %}<p class="small mt-1 mb-0"><strong>Registro:</strong> {{ a.status_note }}</p>{% endif %}
+  <div class="d-flex flex-wrap gap-2 mt-2">
+    {% if a.student %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'cognitio:student_map' a.student.pk %}{% if a.item %}?habilidade={{ a.item.pk }}{% endif %}">Ver evidências</a>{% elif a.class_group %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'cognitio:class_view' a.class_group.pk %}{% if a.subject %}?disciplina={{ a.subject.pk }}{% if a.item %}&habilidade={{ a.item.pk }}{% endif %}{% endif %}">Ver turma</a>{% endif %}
+    {% if a.status != 'descartado' and a.status != 'resolvido' %}
+    <form method="post" action="{% url 'cognitio:alert_review' a.pk %}" class="d-flex flex-wrap gap-2 align-items-center">{% csrf_token %}<input type="hidden" name="next" value="{{ next }}">
+      <label class="visually-hidden" for="reg-{{ a.pk }}">Registro</label><input class="form-control form-control-sm alert-note" id="reg-{{ a.pk }}" name="registro" placeholder="Registro (obrigatório para descartar)">
+      {% if a.item and a.subject %}<button class="btn btn-sm btn-primary" name="decisao" value="intervir">Planejar intervenção</button>{% endif %}
+      <button class="btn btn-sm btn-outline-secondary" name="decisao" value="analisar">Em análise</button>
+      <button class="btn btn-sm btn-outline-secondary" name="decisao" value="resolvido">Resolvido</button>
+      <button class="btn btn-sm btn-outline-danger" name="decisao" value="descartar">Descartar</button>
+    </form>
+    {% endif %}
+  </div>
+</div></article>

@@ -131,6 +131,20 @@ def student_map(request, student_id):
         detail = {"item": it, "a": assess(ev_list, scale), "traj": trajectory(ev_list, scale, cutoffs) if cutoffs else []}
     create_audit_log(user=user, action="view", request=request, target=student,
                      detail=f"Consultou o mapa de competências de {student}")
+    from .models import LearningAlert, LearningIntervention
+    from .recommend import RESULT_LABELS, outcomes
+
+    alerts = LearningAlert.objects.filter(student=student, active=True).exclude(
+        status__in=["descartado", "resolvido"]).select_related("item", "subject", "class_group")
+    ivs = LearningIntervention.objects.filter(students=student).select_related("item", "subject").order_by("-starts_on")
+    if subjects is not None:
+        alerts = alerts.filter(subject_id__in=subjects)
+        ivs = ivs.filter(subject_id__in=subjects)
+    iv_rows = []
+    for iv in ivs[:10]:
+        mine = [r for r in outcomes(iv) if r["student"].pk == student.pk]
+        iv_rows.append((iv, mine[0] if mine else None))
+    upcoming = _next_objectives(class_ids, subjects)
     timeline = list(evs.order_by("-observed_on")[:40])
     return render(request, "cognitio/student_map.html", {
         "student": student, "comps": comps, "counts": counts, "states": STATES, "detail": detail,
@@ -138,7 +152,27 @@ def student_map(request, student_id):
         "subject_options": [(s.pk, s.name) for s in subject_options], "subj": subj,
         "source_options": SkillEvidence.Source.choices, "source": source, "scale": scale,
         "classes": ClassGroup.objects.filter(pk__in=class_ids),
+        "alerts": alerts, "iv_rows": iv_rows, "labels": RESULT_LABELS, "upcoming": upcoming,
     })
+
+
+def _next_objectives(class_ids, subjects):
+    """Próximos objetivos: habilidades de planejamentos e atividades das próximas semanas."""
+    from apps.pedagogy.models import Activity, LessonPlan
+
+    today = timezone.localdate()
+    end = today + datetime.timedelta(days=30)
+    q = Q() if subjects is None else Q(subject_id__in=subjects)
+    out = {}
+    plans = LessonPlan.objects.filter(q, class_group_id__in=class_ids, ends_on__gte=today, starts_on__lte=end)
+    for p in plans.prefetch_related("curriculum"):
+        for it in p.curriculum.all():
+            out.setdefault(it.pk, (it, p.starts_on))
+    acts = Activity.objects.filter(q, class_group_id__in=class_ids, class_date__gte=today, class_date__lte=end)
+    for a in acts.prefetch_related("curriculum"):
+        for it in a.curriculum.all():
+            out.setdefault(it.pk, (it, a.class_date))
+    return sorted(out.values(), key=lambda t: t[1])
 
 
 def class_view(request, class_id):

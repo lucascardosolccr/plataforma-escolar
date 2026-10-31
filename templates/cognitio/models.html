@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Modelos e validação — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'cognitio:home' %}" class="back-link">{% icon "arrow-left" %}EIA-Cognitio</a>
+    <h1>Modelos e validação</h1>
+    <p>Transparência algorítmica: o que roda, com que dados e com que resultado. Um modelo só sai do modo exploratório com dados reais suficientes (pelo menos {{ mins.0 }} exemplos de treino, {{ mins.2 }} de teste e {{ mins.1 }} casos de dificuldade), validação com separação temporal e aprovação registrada pela direção. Dados de demonstração ou sintéticos não demonstram eficácia.</p>
+  </div>
+  <form method="post">{% csrf_token %}<button class="btn btn-outline-primary" name="acao" value="treinar">{% icon "chart-line" %}Executar validação agora</button></form>
+</div>
+
+<section class="card mb-3" aria-labelledby="regras"><div class="card-body">
+  <h2 id="regras" class="h6">Regras de alerta em uso (sinalização exploratória)</h2>
+  <ul class="small mb-2">{% for key, label in rules.items %}<li>{{ label }}</li>{% endfor %}</ul>
+  <h3 class="h6">Revisão humana dos alertas</h3>
+  <p class="small text-secondary">Quantos alertas cada regra gerou e quantos os professores descartaram. Muitos descartes indicam regra a ajustar.</p>
+  <table class="table table-sm"><thead><tr><th scope="col">Regra</th><th scope="col">Gerados</th><th scope="col">Descartados</th></tr></thead>
+    <tbody>{% for label, total, dismissed in alert_rows %}<tr><td>{{ label }}</td><td>{{ total }}</td><td>{{ dismissed }}</td></tr>{% empty %}<tr><td colspan="3" class="text-secondary">Nenhum alerta gerado ainda.</td></tr>{% endfor %}</tbody></table>
+</div></section>
+
+<section class="card" aria-labelledby="runs"><div class="card-body">
+  <h2 id="runs" class="h6">Execuções do modelo “risco de dificuldade em habilidade subsequente”</h2>
+  {% for r in runs %}
+  <article class="border rounded p-2 mb-2">
+    <div class="d-flex flex-wrap justify-content-between gap-2"><strong>v{{ r.version }} · {{ r.created_at|date:"d/m/Y H:i" }}</strong><span class="chip chip-state state-{% if r.status == 'aprovado' %}validado{% elif r.status == 'experimental' %}aguardando{% else %}rascunho{% endif %}">{{ r.get_status_display }}</span></div>
+    <p class="small mb-1">{{ r.notes }}</p>
+    {% if r.metrics %}
+    <div class="table-responsive"><table class="table table-sm small mb-1"><thead><tr><th scope="col">Métrica (teste, período posterior)</th><th scope="col">Modelo</th><th scope="col">Regra simples</th><th scope="col">Taxa base</th></tr></thead>
+      <tbody>
+        <tr><td>Precisão</td><td>{{ r.metrics.precisao|floatformat:2|default:"—" }}</td><td>{{ r.baseline.regra.precisao|floatformat:2|default:"—" }}</td><td>{{ r.baseline.taxa_base.precisao|floatformat:2|default:"—" }}</td></tr>
+        <tr><td>Revocação (sensibilidade)</td><td>{{ r.metrics.revocacao|floatformat:2|default:"—" }}</td><td>{{ r.baseline.regra.revocacao|floatformat:2|default:"—" }}</td><td>{{ r.baseline.taxa_base.revocacao|floatformat:2|default:"—" }}</td></tr>
+        <tr><td>Especificidade</td><td>{{ r.metrics.especificidade|floatformat:2|default:"—" }}</td><td>{{ r.baseline.regra.especificidade|floatformat:2|default:"—" }}</td><td>{{ r.baseline.taxa_base.especificidade|floatformat:2|default:"—" }}</td></tr>
+        <tr><td>F1</td><td>{{ r.metrics.f1|floatformat:2|default:"—" }}</td><td>{{ r.baseline.regra.f1|floatformat:2|default:"—" }}</td><td>—</td></tr>
+        <tr><td>AUC</td><td>{{ r.metrics.auc|floatformat:2|default:"—" }}</td><td>{{ r.baseline.regra.auc|floatformat:2|default:"—" }}</td><td>—</td></tr>
+        <tr><td>Brier (menor é melhor)</td><td>{{ r.metrics.brier|floatformat:3|default:"—" }}</td><td>{{ r.baseline.regra.brier|floatformat:3|default:"—" }}</td><td>{{ r.baseline.taxa_base.brier|floatformat:3|default:"—" }}</td></tr>
+      </tbody></table></div>
+    <p class="small text-secondary mb-1">Treino: {{ r.n_train }} · teste: {{ r.n_test }} (a partir de {{ r.cutoff|date:"d/m/Y" }}) · casos de dificuldade: {{ r.positives }}. Falsos positivos: {{ r.metrics.fp }}, falsos negativos: {{ r.metrics.fn }}.</p>
+    {% if r.metrics.calibracao %}<p class="small mb-1">Calibração: {% for b in r.metrics.calibracao %}{{ b.faixa }} → previsto {{ b.previsto|floatformat:2 }}, observado {{ b.observado|floatformat:2 }} (n={{ b.n }}){% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
+    {% else %}<p class="small text-secondary mb-1">Exemplos disponíveis: {{ r.n_train }} · casos de dificuldade: {{ r.positives }}.</p>{% endif %}
+    {% if is_direction %}<form method="post" class="d-flex gap-2">{% csrf_token %}<input type="hidden" name="id" value="{{ r.pk }}">{% if r.status == 'experimental' %}<button class="btn btn-sm btn-outline-primary" name="acao" value="aprovar" data-confirm="A aprovação permite mostrar probabilidades estimadas nos alertas. Confirme que a validação foi discutida com professores e coordenação." data-confirm-title="Aprovar o modelo?" data-confirm-ok="Aprovar">Aprovar uso</button>{% endif %}{% if r.status == 'aprovado' or r.status == 'experimental' %}<button class="btn btn-sm btn-outline-danger" name="acao" value="desativar">Desativar</button>{% endif %}</form>{% endif %}
+  </article>
+  {% empty %}<p class="small text-secondary mb-0">Nenhuma execução registrada. Use “Executar validação agora”.</p>{% endfor %}
+</div></section>
+{% endblock %}

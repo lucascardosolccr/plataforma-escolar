@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ iv.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'cognitio:interventions' %}" class="back-link">{% icon "arrow-left" %}Intervenções</a>
+    <h1>{{ iv.title }}</h1>
+    <p>{{ iv.class_group.name }} · {{ iv.subject.name }} · <a href="{% url 'cognitio:skill_graph' iv.item.pk %}?turma={{ iv.class_group.pk }}">{{ iv.item.code }}</a> · {{ iv.get_status_display }}</p>
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-7">
+    <section class="card"><div class="card-body">
+      <dl class="review-list mb-0">
+        <dt>Objetivo</dt><dd>{{ iv.objective|linebreaksbr }}</dd>
+        <dt>Atividade</dt><dd>{{ iv.activity|linebreaksbr }}</dd>
+        {% if iv.methodology %}<dt>Estratégia</dt><dd>{{ iv.methodology }}{% if iv.strategy %} <span class="chip">{{ iv.strategy.get_evidence_level_display }}</span>{% endif %}</dd>{% endif %}
+        <dt>Complexidade e tempo</dt><dd>{{ iv.get_complexity_display }} · {{ iv.minutes }} min</dd>
+        {% if iv.materials %}<dt>Materiais</dt><dd>{{ iv.materials|linebreaksbr }}</dd>{% endif %}
+        {% if iv.criteria %}<dt>Critérios</dt><dd>{{ iv.criteria|linebreaksbr }}</dd>{% endif %}
+        {% if iv.expected_evidence %}<dt>Evidência esperada</dt><dd>{{ iv.expected_evidence|linebreaksbr }}</dd>{% endif %}
+        <dt>Período</dt><dd>{{ iv.starts_on|date:"d/m/Y" }} a {{ iv.review_on|date:"d/m/Y" }} (revisão)</dd>
+        {% if iv.strategy.references %}<dt>Referências</dt><dd class="small">{{ iv.strategy.references }}</dd>{% endif %}
+      </dl>
+    </div></section>
+  </div>
+  <div class="col-lg-5 d-grid gap-3 align-content-start">
+    <section class="card" aria-labelledby="res"><div class="card-body">
+      <h2 id="res" class="h6">Resultado posterior por estudante</h2>
+      <p class="small text-secondary">Compara as evidências desta habilidade antes e depois do início. Associação no tempo, sem grupo de comparação: não prova que a intervenção causou a mudança.</p>
+      <ul class="list-unstyled small mb-0">{% for r in results %}<li class="py-1 border-bottom"><a href="{% url 'cognitio:student_map' r.student.pk %}?habilidade={{ iv.item.pk }}">{{ r.student }}</a><span class="d-block">{% for k, v in labels.items %}{% if k == r.result %}{{ v }}{% endif %}{% endfor %} · antes: {{ r.before.label|lower }}{% if r.after %} · depois: {{ r.after.label|lower }} ({{ r.n_after }} evidência{{ r.n_after|pluralize }}){% endif %}</span></li>{% endfor %}</ul>
+    </div></section>
+    {% if history and history.uses %}<section class="card"><div class="card-body small"><h2 class="h6">Histórico desta estratégia na escola</h2>{{ history.uses }} uso(s) com resultado: {{ history.improved }} com melhora nas evidências posteriores, {{ history.unchanged }} sem melhora, {{ history.no_data }} sem evidência nova.</div></section>{% endif %}
+    {% if can_edit %}
+    <form method="post" class="card"><div class="card-body">{% csrf_token %}
+      <h2 class="h6">Atualizar</h2>
+      <label class="form-label small" for="sit">Situação</label>
+      <select class="form-select form-select-sm mb-2" id="sit" name="situacao">{% for v, l in status_choices %}<option value="{{ v }}"{% if iv.status == v %} selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+      <label class="form-label small" for="reg">Registro do professor</label>
+      <textarea class="form-control form-control-sm" id="reg" name="registro" rows="3">{{ iv.teacher_note }}</textarea>
+      <button class="btn btn-sm btn-primary mt-2" type="submit">Salvar</button>
+    </div></form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

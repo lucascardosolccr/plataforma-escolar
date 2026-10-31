@@ -250,6 +250,7 @@ def run_daily(today=None):
         counts["atividades"] = activity_reminders(today, policies, enabled)
         counts["trabalhos"] = group_work_reminders(today, policies, enabled)
         counts["provas"] = exam_reminders(today, policies, enabled)
+        counts["alertas_pedagogicos"] = _learning_alerts(today)
     except Exception:
         run.status = ReminderRun.Status.ERROR
         run.detail = traceback.format_exc()[-2000:]
@@ -334,3 +335,12 @@ def notify_exam_change(ev, old_date=None, was_announced=False, deleted=False):
         notify_family(st, "prova_marcada", title, body=f"{st} — {ev.subject}, turma {ev.class_group}: {body_tail}",
                       url=agenda_url(), dedupe_key=key, priority=HIGH if was_announced else NORMAL,
                       ref=ref, due_on=ev.date)
+
+
+
+def _learning_alerts(today):
+    """Recalcula os alertas do EIA-Cognitio uma vez por dia (regras explícitas)."""
+    from apps.cognitio.alerts import generate_for_school
+    from apps.core.models import School
+
+    return sum(generate_for_school(s, today) for s in School.objects.all())

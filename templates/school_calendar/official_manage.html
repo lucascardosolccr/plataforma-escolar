@@ -22,7 +22,7 @@
   <div class="card-body d-flex flex-wrap gap-3 align-items-center justify-content-between">
     <div>
       <h2 class="h6 mb-1">Ano letivo {{ year }}: {% if year.start_date and year.end_date %}{{ year.start_date|date:"d/m/Y" }} a {{ year.end_date|date:"d/m/Y" }}{% else %}<span class="text-danger">sem datas de início e término</span>{% endif %}</h2>
-      <p class="small text-body-secondary mb-0">{% if total_days is not None %}{{ total_days }} dias letivos pelo calendário cadastrado (dias úteis, menos os dias sem aula, mais os dias letivos extras).{% else %}Cadastre início e término em <a href="{% url 'school_year_edit' year.pk %}">Anos letivos</a> para contar os dias letivos.{% endif %}</p>
+      <p class="small text-body-secondary mb-0">{% if total_days is not None %}{{ total_days }} dias letivos pelo calendário cadastrado (dias úteis, menos os dias sem aula, mais os dias letivos extras).{% else %}{% can "manage_academics" as can_ac %}Cadastre início e término em {% if can_ac %}<a href="{% url 'school_year_edit' year.pk %}">Anos letivos</a>{% else %}Anos letivos (secretaria, coordenação ou administração){% endif %} para contar os dias letivos.{% endif %}</p>
     </div>
     <form method="post" action="{% url 'school_calendar:official_publish' year.pk %}">
       {% csrf_token %}

@@ -26,7 +26,7 @@
       <tbody>
         {% for g in class_groups %}
         <tr>
-          <td class="fw-semibold">{% if user_is_staff and user_role != ROLE_PROFESSOR %}<a href="{% url 'analytics:class_dashboard' g.pk %}" title="Painel da turma">{{ g.name }}</a>{% else %}{{ g.name }}{% endif %}</td>
+          <td class="fw-semibold">{% if user_is_staff and user_role != ROLE_PROFESSOR and dashboard_ids is None or g.pk in dashboard_ids %}<a href="{% url 'analytics:class_dashboard' g.pk %}" title="Painel da turma">{{ g.name }}</a>{% else %}{{ g.name }}{% endif %}</td>
           <td>{{ g.grade|default:"—" }}</td>
           <td>{{ g.get_turn_display }}</td>
           <td>{{ g.school_year.name }}</td>

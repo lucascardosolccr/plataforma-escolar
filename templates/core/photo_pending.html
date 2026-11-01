@@ -8,7 +8,7 @@
     <h1>Fotografias pendentes</h1>
     <p>Quem ainda não tem foto de identificação. A falta de foto nunca bloqueia o acesso: é uma pendência cadastral.</p>
   </div>
-  {% if tab == "estudantes" %}<a href="{% url 'student_photo_batch' %}" class="btn btn-outline-secondary">{% icon "user-round" %}Enviar fotos em lote</a>{% endif %}
+  {% can "import_students" as can_imp %}{% if tab == "estudantes" and can_imp %}<a href="{% url 'student_photo_batch' %}" class="btn btn-outline-secondary">{% icon "user-round" %}Enviar fotos em lote</a>{% endif %}
 </div>
 
 <nav aria-label="Grupo" class="d-flex flex-wrap gap-2 mb-3">

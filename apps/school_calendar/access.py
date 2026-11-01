@@ -196,11 +196,29 @@ class CalendarScope:
         self._load_assignments()
         return bool(self._active_class_ids(student) & self._assigned_class_ids)
 
+    # ---------- escopo da coordenação ----------
+
+    def _coord_scope(self):
+        """Turmas que o coordenador alcança (None = sem restrição, como nas demais telas da coordenação)."""
+        if not hasattr(self, "_coord_classes"):
+            from apps.coordination.scope import class_scope
+
+            self._coord_classes = class_scope(self.user)
+        return self._coord_classes
+
+    def _staff_reaches_class(self, class_group_id):
+        scope = self._coord_scope()
+        return scope is None or class_group_id in scope
+
+    def _staff_reaches_student(self, student):
+        scope = self._coord_scope()
+        return scope is None or bool(self._active_class_ids(student) & scope)
+
     # ---------- visibilidade por origem ----------
 
     def activity_visible(self, act):
         if self.staff:
-            return True
+            return self._staff_reaches_class(act.class_group_id)
         if self.role == Role.PROFESSOR.value:
             return self._teaches(act)
         if self.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
@@ -213,7 +231,7 @@ class CalendarScope:
 
     def group_work_visible(self, gw):
         if self.staff:
-            return True
+            return self._staff_reaches_class(gw.class_group_id)
         if self.role == Role.PROFESSOR.value:
             return self._teaches(gw)
         if self.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
@@ -229,7 +247,7 @@ class CalendarScope:
         if ev.status != Evaluation.Status.PUBLISHED and not ev.announced:
             return False
         if self.staff:
-            return True
+            return self._staff_reaches_class(ev.class_group_id)
         if self.role == Role.PROFESSOR.value:
             return self._teaches(ev)
         if self.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value):
@@ -241,7 +259,7 @@ class CalendarScope:
         if not self.user.is_authenticated:
             return False
         if self.staff:
-            return True
+            return self._staff_reaches_student(student)
         if self.role == Role.PROFESSOR.value:
             return self._teacher_of_student(student)
         if self.role == Role.RESPONSAVEL.value:

@@ -8,7 +8,7 @@
     <h1>Designação da coordenação pedagógica</h1>
     <p>Defina o que cada coordenador acompanha. Ele só alcança os dados das turmas, disciplinas e professores designados.</p>
   </div>
-  <a class="btn btn-outline-secondary" href="{% url 'user_create' %}">{% icon "plus" %}Cadastrar coordenador</a>
+  {% can "manage_users" as can_users %}{% if can_users %}<a class="btn btn-outline-secondary" href="{% url 'user_create' %}">{% icon "plus" %}Cadastrar coordenador</a>{% endif %}
 </div>
 {% if without %}<div class="callout mb-3">{% icon "triangle-alert" %}<div>Sem designação vigente: {% for u in without %}<strong>{{ u.get_full_name|default:u.username }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}. Enquanto isso, não veem dados de estudantes.</div></div>{% endif %}
 <div class="row g-3">

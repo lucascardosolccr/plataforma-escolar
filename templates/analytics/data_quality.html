@@ -67,9 +67,9 @@
 
 <section class="bi-section" id="rotina"><h2>Cadastro e rotina</h2>
   <ul class="rule-list">
-    <li><strong>{{ ops.photo_missing }}</strong> estudante(s) ativo(s) sem foto{% if ops.photo_exempt %} e {{ ops.photo_exempt }} com dispensa justificada{% endif %}. <a href="{% url 'photo_pending' %}">Ver pendências de foto</a></li>
-    <li><strong>{{ ops.applications_open }}</strong> pré-cadastro(s) aguardando a secretaria. <a href="{% url 'application_review_list' %}">Analisar</a></li>
-    <li>Calendário: {% if ops.calendar_reason %}{{ ops.calendar_reason }} <a href="{% url 'school_calendar:official' %}">Cadastrar</a>{% else %}publicado; {{ ops.school_days_left }} dia(s) letivo(s) até o fim do ano.{% endif %}</li>
+    <li><strong>{{ ops.photo_missing }}</strong> estudante(s) ativo(s) sem foto{% if ops.photo_exempt %} e {{ ops.photo_exempt }} com dispensa justificada{% endif %}.{% can "manage_photos" as can_ph %}{% if can_ph %} <a href="{% url 'photo_pending' %}">Ver pendências de foto</a>{% endif %}</li>
+    <li><strong>{{ ops.applications_open }}</strong> pré-cadastro(s) aguardando a secretaria.{% can "review_applications" as can_ap %}{% if can_ap %} <a href="{% url 'application_review_list' %}">Analisar</a>{% endif %}</li>
+    <li>Calendário: {% if ops.calendar_reason %}{{ ops.calendar_reason }}{% can "manage_calendar" as can_cal %}{% if can_cal %} <a href="{% url 'school_calendar:official' %}">Cadastrar</a>{% endif %}{% else %}publicado; {{ ops.school_days_left }} dia(s) letivo(s) até o fim do ano.{% endif %}</li>
   </ul>
 </section>
 

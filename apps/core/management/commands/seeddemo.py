@@ -263,6 +263,15 @@ class Command(BaseCommand):
                 equipe[papel] = self._user(
                     usuario, nome, sobrenome, papel, school
                 )
+            # Sem designação, o coordenador não alcança turma nenhuma (regra de
+            # coordination.scope) e a demonstração mostrava telas vazias.
+            from apps.coordination.models import CoordinatorAssignment
+
+            CoordinatorAssignment.objects.create(
+                school=school, coordinator=equipe[Role.COORDENACAO], all_school=True,
+                starts_on=ano.start_date, created_by=equipe[Role.DIRECAO],
+                area="Escola toda (demonstração)",
+            )
 
             professores = []
             for i, (nome, sobrenome) in enumerate(

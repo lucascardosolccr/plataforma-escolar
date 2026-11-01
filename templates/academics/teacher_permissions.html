@@ -5,7 +5,7 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <a href="{% url 'assignment_list' %}" class="back-link">{% icon "arrow-left" %}Atribuições</a>
+    {% can "manage_academics" as can_ac %}{% if can_ac %}<a href="{% url 'assignment_list' %}" class="back-link">{% icon "arrow-left" %}Atribuições</a>{% endif %}
     <h1>Permissões adicionais de professores</h1>
     <p>Por padrão, cada professor vê só as disciplinas atribuídas a ele. Aqui a escola concede acesso extra, com prazo e justificativa.</p>
   </div>

@@ -181,14 +181,14 @@
               <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:evaluation_list' %}?estudante={{ student.pk }}">Avaliações e notas</a>
               <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:activity_list' %}?estudante={{ student.pk }}">Atividades de casa</a>
               <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:attendance_list' %}?estudante={{ student.pk }}">Frequência</a>
-              <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:occurrence_list' %}?estudante={{ student.pk }}">Ocorrências</a>
+              {% can "view_occurrences" student as can_occ %}{% if can_occ %}<a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:occurrence_list' %}?estudante={{ student.pk }}">Ocorrências</a>{% endif %}
               {% if user_role == ROLE_COORDENACAO or user_role == ROLE_DIRECAO or user_role == ROLE_PROFESSOR %}
                 <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:observation_list' %}?estudante={{ student.pk }}">Observações pedagógicas</a>
               {% endif %}
               {% if user_role == ROLE_COORDENACAO or user_role == ROLE_DIRECAO or user_role == ROLE_ADMIN or user_role == ROLE_PROFESSOR %}
                 <a class="btn btn-outline-primary btn-sm" href="{% url 'pedagogy:plan_list' %}?estudante={{ student.pk }}">Plano de acompanhamento</a>
               {% endif %}
-              <a class="btn btn-outline-secondary btn-sm" href="{% url 'pedagogy:justification_list' %}?estudante={{ student.pk }}">Justificativas de falta</a>
+              {% can "view_justifications" student as can_just %}{% if can_just %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'pedagogy:justification_list' %}?estudante={{ student.pk }}">Justificativas de falta</a>{% endif %}
               {% if user_role == ROLE_COORDENACAO or user_role == ROLE_DIRECAO or user_role == ROLE_PROFESSOR or user_role == ROLE_SECRETARIA %}
                 <a class="btn btn-outline-secondary btn-sm" href="{% url 'inclusion:student_entry' student.pk %}">{% if user_role == ROLE_PROFESSOR %}Orientações de apoio{% elif user_role == ROLE_SECRETARIA %}Apoio à inclusão (situação){% else %}Apoio à inclusão{% endif %}</a>
               {% endif %}
@@ -353,7 +353,7 @@
             <a class="btn btn-outline-primary btn-sm" href="{% url 'communication:thread_create' %}?estudante={{ student.pk }}">Nova conversa sobre este estudante</a>
             {% endif %}
             <a class="btn btn-outline-secondary btn-sm" href="{% url 'communication:announcement_list' %}?estudante={{ student.pk }}">Ver comunicados relacionados</a>
-            <a class="btn btn-outline-secondary btn-sm" href="{% url 'communication:request_list' %}">Solicitações de atendimento</a>
+            {% can "view_requests" as can_req %}{% if can_req %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'communication:request_list' %}">Solicitações de atendimento</a>{% endif %}
           </div>
         </div></div>
       </div>

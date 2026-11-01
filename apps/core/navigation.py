@@ -325,8 +325,15 @@ def _family_registration_on(user):
     return bool(cfg and cfg.family_mode == RegistrationSettings.MODE_FULL)
 
 
-# Itens que só aparecem quando a escola liga a função (a view também confere).
-CONDITIONS = {"fam_applications": _family_registration_on}
+def _institutional(user):
+    """Coordenação restrita a algumas turmas usa o painel da coordenação, não a visão da escola toda."""
+    from apps.analytics.access import can_view_institutional_dashboard
+
+    return can_view_institutional_dashboard(user)
+
+
+# Itens que só aparecem quando a escola liga a função ou o perfil alcança a tela (a view também confere).
+CONDITIONS = {"fam_applications": _family_registration_on, "institutional": _institutional, "goals": _institutional}
 
 
 def build(user, view_name=None):

@@ -37,10 +37,14 @@ def class_group_list(request):
     sort = Sort(request, {"turma": "name", "serie": ("grade", "name"), "turno": ("turn", "name"),
                           "ano": ("school_year__name", "name")}, "turma")
     page = paginate(request, sort.apply(qs))
+    from apps.coordination.scope import class_scope
+
+    scope = class_scope(request.user)  # coordenação restrita: painel só das turmas que acompanha
     return render(
         request,
         "academics/classgroup_list.html",
         {
+            "dashboard_ids": scope,
             "class_groups": page,
             "page": page,
             "sort": sort,

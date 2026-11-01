@@ -235,7 +235,11 @@ def class_view(request, class_id):
                    and a.state in ("dificuldade", "desenvolvimento")]
         if len(members) >= 2:
             groups.append({"item": s["item"], "students": members})
+    from .gaps import class_prerequisite_needs
+
+    needs = class_prerequisite_needs(cg, subject, user.school, students) if subject else None
     return render(request, "cognitio/class_view.html", {
+        "needs": needs,
         "cg": cg, "subject": subject, "subjects": [(s.pk, s.name) for s in subjects], "items": items,
         "matrix": matrix, "summary": summary, "retake": retake, "strong": strong, "focus": focus, "groups": groups,
         "states": STATES, "period_options": period_options, "period": period, "period_label": period_label,

@@ -147,6 +147,23 @@ def dashboard(request):
     ctx["worked_count"], ctx["not_evaluated"] = len(worked), len(worked - evaluated)
     if user.role == Role.PROFESSOR.value:
         ctx["next_lessons"] = [d for d in attention if d["diff"] >= 2][:5]
+        # Prompt 17, §13.2: pré-requisitos críticos para o conteúdo das próximas semanas, por turma
+        from apps.academics.models import Subject
+        from apps.registry.models import Enrollment
+
+        from .gaps import class_prerequisite_needs
+
+        critical = []
+        for c, s in pairs or []:
+            cg, subject = ClassGroup.objects.filter(pk=c).first(), Subject.objects.filter(pk=s).first()
+            if not (cg and subject):
+                continue
+            studs = [e.student for e in Enrollment.objects.filter(class_group=cg, status="ativo")
+                     .select_related("student")]
+            for r in class_prerequisite_needs(cg, subject, user.school, studs, today)["rows"]:
+                if r["weak"]:
+                    critical.append({"cg": cg, "subject": subject, **r})
+        ctx["critical"] = sorted(critical, key=lambda r: -len(r["weak"]))[:8]
     if user.role in (Role.COORDENACAO.value, Role.DIRECAO.value):
         classes = []
         for cg in ClassGroup.objects.filter(pk__in=class_ids).order_by("name"):
@@ -158,6 +175,20 @@ def dashboard(request):
                             "alerts": alerts.filter(class_group=cg).count()})
         ctx["classes"] = classes
         ctx["articulation"] = [d for d in attention if len(d["classes"]) >= 2]
+        # Prompt 17, §13.3: estudantes com dificuldade em mais de um componente pedem conversa entre professores
+        comps_by_student = {}
+        for (sid, iid), a in assessments.items():
+            if a.state == "dificuldade" and a.evidence:
+                comps_by_student.setdefault(sid, set()).add(a.evidence[0].item.component)
+        if user.role == Role.COORDENACAO.value:
+            from apps.registry.models import Student
+
+            multi = {sid: c for sid, c in comps_by_student.items() if len(c) >= 2}
+            names = {s.pk: s for s in Student.objects.filter(pk__in=multi)}
+            ctx["cross_component"] = sorted([(names[sid], sorted(c)) for sid, c in multi.items() if sid in names],
+                                            key=lambda t: (-len(t[1]), t[0].full_name))[:10]
+        else:
+            ctx["cross_component_count"] = sum(1 for c in comps_by_student.values() if len(c) >= 2)
         from apps.pedagogy.models import LessonPlan as LP
 
         ctx["plans_count"] = LP.objects.filter(class_group_id__in=class_ids,

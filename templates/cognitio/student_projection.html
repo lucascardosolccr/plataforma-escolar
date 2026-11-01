@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Mapa de aprendizagem — {{ student.first_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">EIA-Cognitio</span>
+    <h1>Mapa de Aprendizagem e Projeção de Competências</h1>
+    <p><strong>{{ student }}</strong> · onde está, aonde precisa chegar, o que sustenta esse caminho, o que pode acontecer se uma lacuna persistir e o que fazer agora.{% if subject_limited %} Você vê só as disciplinas que leciona a este estudante.{% endif %}</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'cognitio:student_map' student.pk %}">{% icon "chart-line" %}Mapa detalhado e trajetória</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'analytics:student_dashboard' student.pk %}">{% icon "layout-dashboard" %}Painel do estudante</a>
+  </div>
+</div>
+<div class="alert alert-info" role="note"><div class="small">Sem índice global do estudante: tudo é por habilidade. Cada parte informa o nível de maturidade da análise (1 = regras curriculares e pedagógicas; 2 = estatística descritiva). Nenhuma probabilidade aparece sem modelo validado. Ausência de registro não é ausência de conhecimento, e uma lacuna não é destino.</div></div>
+
+{# 1 #}
+<section class="card mb-3" aria-labelledby="q1"><div class="card-body">
+  <h2 id="q1" class="h6">1. Onde o estudante está? <span class="chip">Nível 1</span></h2>
+  {% for c in components %}
+  <div class="d-flex flex-wrap align-items-center gap-2 py-1"><strong class="small me-1">{{ c.component }}</strong><span class="small text-secondary">{{ c.total }} habilidade{{ c.total|pluralize }}:</span>{% for key, label, css, n in c.counts %}<span class="chip {{ css }}">{{ label }}: {{ n }}</span>{% endfor %}</div>
+  {% empty %}<p class="small text-secondary">Ainda não há evidências por habilidade.</p>{% endfor %}
+  {% if timeline %}
+  <details class="mt-2"><summary class="small fw-semibold">Linha do tempo das evidências mais recentes ({{ timeline|length }})</summary>
+    <ul class="list-unstyled small mt-2 mb-0">{% for e, url in timeline %}<li class="py-1 border-bottom">{{ e.observed_on|date:"d/m/Y" }} · <a href="{% url 'cognitio:skill_graph' e.item.pk %}">{{ e.item.code }}</a> · {{ e.get_source_type_display }}: {{ e.source_label }}{% if e.ratio is not None %} · {% widthratio e.ratio 1 100 %}% de acerto{% else %} · sem resposta (não conta){% endif %}{% if url %} · <a href="{{ url }}">abrir o registro</a>{% endif %}</li>{% endfor %}</ul>
+  </details>{% endif %}
+</div></section>
+
+{# 2 #}
+<section class="card mb-3" aria-labelledby="q2"><div class="card-body">
+  <h2 id="q2" class="h6">2. Aonde precisa chegar? <span class="chip">Nível 1</span></h2>
+  <p class="small text-secondary">Habilidades ligadas às atividades e avaliações planejadas para as turmas do estudante nas próximas semanas.</p>
+  {% for u in upcoming %}
+  <div class="d-flex flex-wrap align-items-center gap-2 py-1 border-bottom small">
+    <a class="fw-semibold" href="?habilidade={{ u.item.pk }}">{{ u.item.code }}</a>
+    <span class="chip {{ u.a.css }}">{% if u.a.judgment and not u.a.newer_evidence %}Decisão do professor{% else %}{{ u.a.label }}{% endif %}</span>
+    <span class="text-secondary">{{ u.item.text|truncatechars:90 }}</span>
+    <span>· {% for kind, title, when in u.uses|slice:":2" %}{{ kind }} “{{ title }}” em {{ when|date:"d/m" }}{% if not forloop.last %}; {% endif %}{% endfor %}</span>
+  </div>
+  {% empty %}<p class="small text-secondary mb-0">Nenhuma atividade ou avaliação planejada ligada a habilidades nas próximas semanas.</p>{% endfor %}
+</div></section>
+
+{# 3 #}
+<section class="card mb-3" aria-labelledby="q3"><div class="card-body">
+  <h2 id="q3" class="h6">3. O que precisa desenvolver para chegar lá? <span class="chip">Nível 1</span></h2>
+  {% if analysis %}
+  <p class="mb-1"><a class="fw-semibold" href="{% url 'cognitio:skill_graph' target.pk %}">{{ target.code }}</a> {{ target.text|truncatechars:160 }}</p>
+  <p class="small">Estado atual: <span class="chip {{ analysis.target_state.css }}">{{ analysis.target_state.label }}</span>{% if analysis.target_state.judgment %} · decisão do professor em {{ analysis.target_state.judgment.decided_on|date:"d/m/Y" }}: {{ analysis.target_state.judgment.get_state_display|lower }}{% if analysis.target_state.newer_evidence %} <strong>(há evidência mais nova: revise a decisão)</strong>{% endif %}{% endif %}</p>
+  <p class="callout small">{{ analysis.summary }}</p>
+  {% if estimate %}<p class="small"><span class="chip">Nível 3 · BKT aprovado</span> Probabilidade estimada de acerto na próxima evidência de {{ target.code }}: <strong>{% widthratio estimate.p 1 100 %}%</strong>, a partir de {{ estimate.n }} evidência{{ estimate.n|pluralize }} do estudante. Modelo validado com corte temporal em {{ estimate.run.cutoff|date:"d/m/Y" }} (AUC {{ estimate.run.metrics.auc|floatformat:2 }}) e aprovado pela direção em {{ estimate.run.decided_at|date:"d/m/Y" }}. É uma estimativa com incerteza, não uma decisão; contradiga-a com evidência.</p>
+  {% else %}<p class="small text-secondary">Nível 3 indisponível: não há modelo probabilístico validado e aprovado nesta escola, então a análise é qualitativa (hipótese pedagógica).</p>{% endif %}
+  {% if analysis.rows %}
+  <div class="table-responsive"><table class="table table-sm align-middle small mb-0 table-stack">
+    <thead><tr><th scope="col">Pré-requisito</th><th scope="col">Relação</th><th scope="col">Situação do estudante</th><th scope="col">Lacuna</th><th scope="col">Como confirmar</th></tr></thead>
+    <tbody>{% for r in analysis.rows %}<tr>
+      <td data-label="Pré-requisito"><a href="?habilidade={{ r.item.pk }}" class="fw-semibold">{{ r.item.code }}</a><span class="d-block text-secondary">{{ r.item.text|truncatechars:80 }}</span></td>
+      <td data-label="Relação">{{ r.relation.get_kind_display }}<span class="d-block text-secondary">{{ r.relation.get_status_display }}</span></td>
+      <td data-label="Situação">{{ r.state_label }}{% if r.days is not None %}<span class="d-block text-secondary">última evidência há {{ r.days }} dia{{ r.days|pluralize }}</span>{% endif %}</td>
+      <td data-label="Lacuna">{% if r.kind %}<span class="chip chip-state state-ajustes">{{ r.kind_label }}</span>{% else %}<span class="chip chip-state state-validado">Sem lacuna</span>{% endif %}<span class="d-block text-secondary">{{ r.why }}</span></td>
+      <td data-label="Como confirmar">{{ r.verify|default:"—" }}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+  {% else %}
+  <p class="small text-secondary mb-0">Escolha uma habilidade-alvo em “Aonde precisa chegar?” ou nas prioridades abaixo para ver os pré-requisitos e o que o estudante já demonstrou em cada um.</p>
+  {% endif %}
+</div></section>
+
+{# 4 #}
+{% if prop %}
+<section class="card mb-3" aria-labelledby="q4"><div class="card-body">
+  <h2 id="q4" class="h6">4. O que pode acontecer se a lacuna persistir? <span class="chip">Nível 1 · sem probabilidade</span></h2>
+  <p class="small text-secondary">A partir de <strong>{{ prop.origin.code }}</strong>{% if prop.origin != target %} (pré-requisito em aberto de {{ target.code }}){% endif %}, para a frente no grafo. A confiança é a da relação mais fraca do caminho, menor a cada passo e baixa enquanto alguma relação não estiver validada. Nada é multiplicado e o número de conexões não aumenta o "risco".</p>
+  {% if prop.rows %}
+  <div class="table-responsive"><table class="table table-sm align-middle small table-stack">
+    <thead><tr><th scope="col">Habilidade</th><th scope="col">Relação</th><th scope="col">Estudante nesta habilidade</th><th scope="col">Possível impacto</th><th scope="col">Confiança</th><th scope="col">Sugestão</th></tr></thead>
+    <tbody>{% for r in prop.rows %}<tr>
+      <td data-label="Habilidade"><a class="fw-semibold" href="{% url 'cognitio:skill_graph' r.item.pk %}">{{ r.item.code }}</a> <span class="text-secondary">· {{ r.distance }} passo{{ r.distance|pluralize }}</span><span class="d-block text-secondary">{{ r.item.text|truncatechars:70 }}</span></td>
+      <td data-label="Relação">{{ r.nature }}</td>
+      <td data-label="Estudante">{{ r.state_label }}{% if r.needs_check %}<span class="d-block text-secondary">vale verificar quando for trabalhada</span>{% endif %}</td>
+      <td data-label="Impacto">{{ r.impact }}</td>
+      <td data-label="Confiança">{{ r.confidence_label }}{% if not r.validated %}<span class="d-block text-secondary">relação não validada</span>{% endif %}</td>
+      <td data-label="Sugestão">{% if r.strategy %}{{ r.strategy.strategy.title }}{% else %}—{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="small text-secondary">Nenhuma habilidade posterior documentada a partir de {{ prop.origin.code }}.</p>{% endif %}
+  <h3 class="h6 mt-3">Horizonte no planejamento</h3>
+  {% for w in horizon %}<p class="small mb-1"><strong>{{ w.label }}:</strong> {% for r in w.rows %}{{ r.item.code }} em {{ r.kind }} “{{ r.title }}” ({{ r.date|date:"d/m" }}){% if not forloop.last %}; {% endif %}{% empty %}nenhuma atividade ou avaliação planejada com estas habilidades.{% endfor %}</p>{% endfor %}
+  <div class="row g-2 mt-2">{% for key, sc in scenarios.items %}<div class="col-md-4"><div class="border rounded p-2 h-100 small"><strong>{{ sc.title }}</strong><p class="mb-1">{{ sc.text }}</p>{% if sc.monitor %}<p class="mb-0 text-secondary">Acompanhar: {% for r in sc.monitor %}{{ r.item.code }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}</div></div>{% endfor %}</div>
+</div></section>
+{% endif %}
+
+{# 5 #}
+<section class="card mb-3" aria-labelledby="q5"><div class="card-body">
+  <h2 id="q5" class="h6">5. O que fazer agora?</h2>
+  {% if target %}
+  <div class="mb-3">
+    {% for cg, subject in pairs %}<a class="btn btn-sm btn-primary me-1 mb-1" href="{% url 'cognitio:intervention_create' %}?turma={{ cg.pk }}&disciplina={{ subject.pk }}&habilidade={{ prop.origin.pk }}&estudante={{ student.pk }}{% if prop.origin != target %}&alvo={{ target.pk }}{% endif %}">{% icon "plus" %}Planejar recuperação em {{ prop.origin.code }} · {{ cg.name }}</a>
+    <a class="btn btn-sm btn-outline-primary me-1 mb-1" href="{% url 'cognitio:observation_create' cg.pk subject.pk %}?item={{ target.pk }}">Registrar verificação de {{ target.code }}</a>{% endfor %}
+  </div>
+  {% if can_judge %}
+  <details class="mb-3"><summary class="small fw-semibold">Registrar a minha decisão sobre {{ target.code }} (com fundamento)</summary>
+    <form method="post" action="{% url 'cognitio:judgment_save' student.pk %}" class="row g-2 mt-1">{% csrf_token %}
+      <input type="hidden" name="habilidade" value="{{ target.pk }}"><input type="hidden" name="alvo" value="{{ target.pk }}">
+      <div class="col-md-4"><label class="form-label small" for="jst">Decisão</label><select id="jst" name="estado" class="form-select form-select-sm">{% for k, label in judgment_states %}<option value="{{ k }}">{{ label }}</option>{% endfor %}</select></div>
+      <div class="col-md-8"><label class="form-label small" for="jfu">Fundamento (que evidências sustentam)</label><textarea id="jfu" name="fundamento" rows="2" class="form-control form-control-sm" minlength="10" required></textarea></div>
+      <div class="col-12 d-flex flex-wrap gap-2"><button class="btn btn-sm btn-outline-primary">Registrar decisão</button>{% if analysis.target_state.judgment %}<button class="btn btn-sm btn-outline-secondary" name="acao" value="retirar" formnovalidate>Retirar a decisão atual</button>{% endif %}</div>
+      <p class="small text-secondary col-12 mb-0">A decisão vale até surgir evidência nova; aí a análise volta a pedir revisão. Fica registrada com seu nome.</p>
+    </form>
+  </details>
+  {% endif %}
+  {% endif %}
+  <form method="get" class="d-flex flex-wrap align-items-end gap-2 mb-2">{% if target %}<input type="hidden" name="habilidade" value="{{ target.pk }}">{% endif %}
+    <div><label class="form-label small mb-0" for="ord">Priorizar lacunas por</label><select id="ord" name="ordem" class="form-select form-select-sm" data-autosubmit>{% for k, label in criteria.items %}<option value="{{ k }}"{% if k == order %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <button class="btn btn-sm btn-outline-secondary js-hide">Ordenar</button>
+  </form>
+  {% for p in priorities %}
+  <div class="py-2 border-bottom small">
+    <div class="d-flex flex-wrap align-items-center gap-2"><a class="fw-semibold" href="?habilidade={{ p.item.pk }}&ordem={{ order }}">{{ p.item.code }}</a><span class="chip chip-state state-ajustes">{{ p.kind_label }}</span><span class="text-secondary">{{ p.item.text|truncatechars:90 }}</span></div>
+    <span class="d-block">{{ p.verify }}</span>
+    <details><summary class="text-secondary">Por que nesta posição ({{ p.score }} ponto{{ p.score|pluralize }})</summary><ul class="mb-0">{% for label, pts in p.parts %}<li>{{ label }}: {{ pts }}</li>{% endfor %}</ul></details>
+  </div>
+  {% empty %}<p class="small text-secondary">Nenhuma lacuna sustentada por evidência nas disciplinas que você acompanha.</p>{% endfor %}
+  <p class="small text-secondary mt-2 mb-0">A ordem é só para este estudante e para a equipe: não é classificação entre estudantes. Os pontos de cada critério ficam à vista e a ordem pode ser trocada.</p>
+  {% if history %}
+  <h3 class="h6 mt-3">Histórico de intervenções <span class="chip">Nível 5 · antes e depois</span></h3>
+  <ul class="list-unstyled small mb-0">{% for h in history %}<li class="py-1 border-bottom"><a href="{% url 'cognitio:intervention_detail' h.iv.pk %}">{{ h.iv.title }}</a> · {{ h.iv.item.code }}{% if h.iv.target_item %} (alvo {{ h.iv.target_item.code }}){% endif %} · {{ h.iv.get_status_display }}{% if h.result %} · {% for k, v in labels.items %}{% if k == h.result.result %}{{ v }}{% endif %}{% endfor %} (antes: {{ h.result.before.label|lower }}{% if h.result.after %}; depois: {{ h.result.after.label|lower }}{% endif %}){% endif %}</li>{% endfor %}</ul>
+  {% endif %}
+</div></section>
+{% endblock %}

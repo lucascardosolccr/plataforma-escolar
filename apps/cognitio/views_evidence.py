@@ -179,13 +179,22 @@ def observation_create(request, class_id, subject_id):
                 SkillObservation.objects.create(
                     school=user.school, student_id=int(sid), item=d["item"], class_group=cg, subject=subject,
                     teacher=user, observed_on=d["observed_on"], level=d["level"], context=d["context"],
-                    note=d["note"])
+                    note=d["note"], activity=d.get("activity"), evaluation=d.get("evaluation"),
+                    recheck_on=d.get("recheck_on"))
             create_audit_log(user=user, action="create", request=request, target=cg,
                              detail=f"Registrou observação de {d['item'].code} para {len(d['students'])} estudante(s)")
         rebuild_class(cg)
         messages.success(request, "Observação registrada como evidência.")
         return redirect(f"{_class_url(cg)}?disciplina={subject.pk}&habilidade={d['item'].pk}")
-    return render(request, "cognitio/observation_form.html", {"form": form, "cg": cg, "subject": subject})
+    levels = [
+        ("Dificuldade observada", "Nesta situação, ainda não conseguiu realizar a tarefa da habilidade, mesmo com apoio."),
+        ("Em desenvolvimento inicial", "Realizou partes da tarefa, com muito apoio ou com erros frequentes."),
+        ("Em desenvolvimento", "Acertos parciais: realizou a tarefa com algum apoio ou com erros pontuais."),
+        ("Em consolidação", "Realizou a tarefa quase sempre sem apoio; ainda oscila em situações novas."),
+        ("Consolidada na situação observada", "Realizou com autonomia e consistência nesta situação."),
+    ]
+    return render(request, "cognitio/observation_form.html",
+                  {"form": form, "cg": cg, "subject": subject, "levels": levels})
 
 
 def _class_url(cg):

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Assistente analítico — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'cognitio:home' %}" class="back-link">{% icon "arrow-left" %}EIA-Cognitio</a>
+    <h1>Assistente analítico</h1>
+    <p>Perguntas sobre pré-requisitos, lacunas, evidências e intervenções, respondidas só com os dados da plataforma. Funciona por regras, sem modelo de linguagem e sem custo: entende perguntas parecidas com os exemplos. Quando falta dado, diz o que falta.</p>
+  </div>
+</div>
+
+<form method="get" class="card mb-3"><div class="card-body row g-2 align-items-end">
+  <div class="col-12"><label class="form-label" for="pq">Pergunta</label><input id="pq" name="pergunta" class="form-control" value="{{ question }}" maxlength="400" placeholder="Quais pré-requisitos o aluno precisa desenvolver para alcançar EF06MA07?"></div>
+  <div class="col-md-4"><label class="form-label small" for="pt">Turma (opcional)</label><select id="pt" name="turma" class="form-select form-select-sm"><option value="">—</option>{% for c in classes %}<option value="{{ c.pk }}"{% if cg.pk == c.pk %} selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+  <div class="col-md-4"><label class="form-label small" for="ps">Estudante (opcional)</label><select id="ps" name="estudante" class="form-select form-select-sm"><option value="">{% if cg %}—{% else %}escolha a turma e envie para listar{% endif %}</option>{% for s in students %}<option value="{{ s.pk }}"{% if student.pk == s.pk %} selected{% endif %}>{{ s.full_name }}</option>{% endfor %}</select></div>
+  <div class="col-md-4"><button class="btn btn-primary w-100">{% icon "search" %}Perguntar</button></div>
+</div></form>
+
+{% if result %}
+<section class="card mb-3" aria-labelledby="resp"><div class="card-body">
+  <p class="small text-secondary mb-1">Entendi como: <strong>{{ result.intent_label|default:"—" }}</strong> · {{ result.maturity }}</p>
+  <h2 id="resp" class="h5">{{ result.title|default:"Resposta" }}</h2>
+  {% if result.missing %}<div class="alert alert-warning small mb-2" role="status">{{ result.missing }}</div>{% endif %}
+  {% for p in result.paragraphs %}<p class="mb-2">{{ p }}</p>{% endfor %}
+  {% if result.items %}<ul class="small">{% for text, url in result.items %}<li class="py-1">{% if url %}<a href="{{ url }}">{{ text }}</a>{% else %}{{ text }}{% endif %}</li>{% endfor %}</ul>{% endif %}
+  {% if result.sources %}<p class="small text-secondary mb-1"><strong>Fontes:</strong> {{ result.sources|join:" · " }}</p>{% endif %}
+  {% if result.limits %}<p class="small text-secondary mb-0"><strong>Limitações:</strong> {{ result.limits|join:" " }}</p>{% endif %}
+</div></section>
+{% endif %}
+
+<section class="card" aria-labelledby="ex"><div class="card-body">
+  <h2 id="ex" class="h6">Exemplos de perguntas</h2>
+  <ul class="small mb-0">{% for e in examples %}<li class="py-1"><a href="?pergunta={{ e|urlencode }}{% if cg %}&turma={{ cg.pk }}{% endif %}{% if student %}&estudante={{ student.pk }}{% endif %}">{{ e }}</a></li>{% endfor %}</ul>
+  <p class="small text-secondary mt-2 mb-0">Cada pergunta fica registrada na auditoria. As respostas só mostram estudantes e turmas que você pode ver.</p>
+</div></section>
+{% endblock %}

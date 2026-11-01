@@ -209,3 +209,30 @@ def due_reviews(school, today=None):
     today = today or timezone.localdate()
     return LearningIntervention.objects.filter(school=school, review_on__lte=today,
                                                status__in=["aceita", "andamento"])
+
+
+def next_step(intervention, results=None):
+    """Continuar, adaptar ou encerrar (Prompt 17, §10.2), pelas evidências posteriores ao início.
+
+    Nunca considera a intervenção bem-sucedida só por estar registrada como concluída.
+    """
+    results = results if results is not None else outcomes(intervention)
+    judged = [r for r in results if r["result"] in ("melhorou", "estavel", "piorou")]
+    if not judged:
+        return {"decision": "verificar", "label": "Verificar antes de decidir",
+                "why": "Ainda não há evidência desta habilidade depois do início. Registre uma verificação curta "
+                       "(questões ou observação) para saber se houve avanço."}
+    improved = [r for r in judged if r["result"] == "melhorou"]
+    consolidated = [r for r in improved if r["after"] and r["after"].state in ("consolidacao", "consolidada")]
+    n = len(judged)
+    if len(consolidated) == n:
+        return {"decision": "encerrar", "label": "Encerrar e acompanhar",
+                "why": f"Os {n} estudante(s) com evidência posterior chegaram a consolidação ou consolidada. "
+                       "Acompanhe nas próximas atividades se o resultado se mantém."}
+    if len(improved) * 2 >= n:
+        return {"decision": "continuar", "label": "Continuar",
+                "why": f"{len(improved)} de {n} estudante(s) melhoraram nas evidências posteriores, mas nem todos "
+                       "consolidaram. Mantenha a estratégia e programe nova verificação."}
+    return {"decision": "adaptar", "label": "Adaptar a estratégia",
+            "why": f"Só {len(improved)} de {n} estudante(s) melhoraram nas evidências posteriores. Vale trocar a "
+                   "estratégia ou verificar um pré-requisito antes de insistir."}

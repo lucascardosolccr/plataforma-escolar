@@ -161,7 +161,7 @@
   <div class="card mt-3" id="habilidades">
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
       <span>Habilidades da BNCC no período (EIA-Cognitio)</span>
-      <a class="small" href="{% url 'cognitio:student_map' student.pk %}">{% icon "chart-line" %}Abrir o mapa do estudante</a>
+      <span class="d-flex flex-wrap gap-3"><a class="small" href="{% url 'cognitio:student_projection' student.pk %}">{% icon "chart-line" %}Mapa de aprendizagem e projeção</a><a class="small" href="{% url 'cognitio:student_map' student.pk %}">Abrir o mapa do estudante</a></span>
     </div>
     <div class="card-body small">
       {% for c in cognitio %}

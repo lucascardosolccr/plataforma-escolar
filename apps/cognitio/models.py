@@ -154,6 +154,11 @@ class SkillObservation(models.Model):
     context = models.CharField("situação observada", max_length=200,
                                help_text="Ex.: leitura compartilhada, resolução no quadro, experimento em grupo.")
     note = models.TextField("registro", blank=True)
+    activity = models.ForeignKey("pedagogy.Activity", on_delete=models.SET_NULL, null=True, blank=True,
+                                 verbose_name="atividade relacionada", related_name="+")
+    evaluation = models.ForeignKey("pedagogy.Evaluation", on_delete=models.SET_NULL, null=True, blank=True,
+                                   verbose_name="avaliação relacionada", related_name="+")
+    recheck_on = models.DateField("reavaliar em", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -258,10 +263,15 @@ class SkillRelation(models.Model):
     """
 
     class Kind(models.TextChoices):
-        PROGRESSION = "progressao", "Progressão curricular (mesma unidade, ano seguinte)"
-        CONCEPTUAL = "conceitual", "Relação conceitual"
-        HYPOTHESIS = "hipotese", "Hipótese de dependência"
-        STATISTICAL = "estatistica", "Associação estatística observada"
+        PEDAGOGICAL = "prerequisito", "Pré-requisito pedagógico"
+        FACILITATOR = "facilitador", "Conhecimento facilitador"
+        COMPLEMENTARY = "complementar", "Habilidade complementar"
+        CONCEPTUAL = "conceitual", "Dependência conceitual"
+        MOBILIZES = "mobiliza", "Habilidade que mobiliza outra"
+        TRANSVERSAL = "transversal", "Relação transversal entre disciplinas"
+        PROGRESSION = "progressao", "Progressão curricular prevista (mesma unidade, ano seguinte)"
+        STATISTICAL = "estatistica", "Possível dependência empírica identificada nos dados"
+        HYPOTHESIS = "hipotese", "Relação hipotética, aguardando validação"
 
     class Status(models.TextChoices):
         PROPOSED = "proposta", "Proposta (a validar)"
@@ -279,6 +289,9 @@ class SkillRelation(models.Model):
     status = models.CharField("situação", max_length=10, choices=Status.choices, default=Status.PROPOSED)
     origin = models.CharField("origem", max_length=12, default="automatica")
     rationale = models.CharField("justificativa", max_length=400, blank=True)
+    reference = models.CharField("fonte curricular ou científica", max_length=300, blank=True)
+    stage_year = models.CharField("etapa e ano de referência", max_length=40, blank=True)
+    evidence_note = models.TextField("evidências que sustentam a relação", blank=True)
     validated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     validated_at = models.DateTimeField(null=True, blank=True)
 
@@ -286,6 +299,50 @@ class SkillRelation(models.Model):
         constraints = [models.UniqueConstraint(fields=["school", "source", "target"], name="uniq_skill_relation")]
         verbose_name = "relação entre habilidades"
         verbose_name_plural = "relações entre habilidades"
+
+
+class SkillRelationChange(models.Model):
+    """Histórico de alterações de uma relação (quem, quando, o quê)."""
+
+    relation = models.ForeignKey(SkillRelation, on_delete=models.CASCADE, related_name="changes")
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="+")
+    changed_at = models.DateTimeField(auto_now_add=True)
+    action = models.CharField(max_length=20)
+    detail = models.CharField(max_length=400, blank=True)
+
+    class Meta:
+        ordering = ["-changed_at", "-pk"]
+
+
+class SkillJudgment(models.Model):
+    """Decisão do professor sobre o estado de uma habilidade, com fundamento (§6.1).
+
+    Prevalece sobre o estado calculado até surgir evidência nova; aí a tela pede revisão.
+    Desativar não apaga: o histórico das decisões fica.
+    """
+
+    class State(models.TextChoices):
+        CONSOLIDATED = "consolidada", "Consolidada nas situações avaliadas"
+        CONSOLIDATING = "consolidacao", "Em consolidação"
+        DEVELOPING = "desenvolvimento", "Em desenvolvimento"
+        INITIAL = "dificuldade", "Em desenvolvimento inicial"
+        RECHECK = "reverificar", "Necessita de nova verificação"
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE)
+    student = models.ForeignKey("registry.Student", on_delete=models.CASCADE, related_name="skill_judgments")
+    item = models.ForeignKey("curriculum.CurriculumItem", on_delete=models.PROTECT, verbose_name="habilidade")
+    state = models.CharField("decisão", max_length=16, choices=State.choices)
+    rationale = models.TextField("fundamento da decisão",
+                                 help_text="Que evidências sustentam esta decisão (atividade, observação, conversa).")
+    decided_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="+")
+    decided_on = models.DateField("data", default=timezone.localdate)
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-decided_on", "-pk"]
+        verbose_name = "decisão do professor sobre habilidade"
+        verbose_name_plural = "decisões do professor sobre habilidades"
 
 
 class LearningAlert(models.Model):
@@ -452,6 +509,12 @@ class LearningIntervention(models.Model):
     methodology = models.TextField("estratégia metodológica", blank=True)
     criteria = models.TextField("critérios de avaliação", blank=True)
     expected_evidence = models.TextField("evidência esperada", blank=True)
+    target_item = models.ForeignKey("curriculum.CurriculumItem", on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name="+", verbose_name="competência-alvo",
+                                    help_text="A habilidade que se quer alcançar, quando a intervenção trabalha um "
+                                              "pré-requisito dela.")
+    prereqs_to_check = models.TextField("pré-requisitos a verificar", blank=True)
+    evidence_basis = models.TextField("evidências que fundamentam a análise", blank=True)
     starts_on = models.DateField("início", default=timezone.localdate)
     review_on = models.DateField("data de revisão")
     status = models.CharField("situação", max_length=10, choices=Status.choices, default=Status.ACCEPTED)

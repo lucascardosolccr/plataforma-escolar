@@ -17,7 +17,7 @@ from apps.registry.models import Enrollment, Student
 
 from . import access
 from .models import InterventionStrategy, LearningAlert, LearningIntervention, LearningTrail
-from .recommend import (RESULT_LABELS, build_trail, comparison, error_types_for, outcomes, recommend,
+from .recommend import (RESULT_LABELS, build_trail, comparison, error_types_for, next_step, outcomes, recommend,
                         strategy_history)
 
 DATE = forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"})
@@ -29,10 +29,11 @@ class InterventionForm(forms.ModelForm):
     class Meta:
         model = LearningIntervention
         fields = ["title", "objective", "activity", "complexity", "materials", "minutes", "methodology", "criteria",
-                  "expected_evidence", "starts_on", "review_on"]
+                  "expected_evidence", "prereqs_to_check", "evidence_basis", "starts_on", "review_on"]
         widgets = {"starts_on": DATE, "review_on": DATE,
                    **{f: forms.Textarea(attrs={"rows": 3}) for f in ("objective", "activity", "materials",
-                                                                     "methodology", "criteria", "expected_evidence")}}
+                                                                     "methodology", "criteria", "expected_evidence",
+                                                                     "prereqs_to_check", "evidence_basis")}}
 
     def __init__(self, *args, students=(), **kwargs):
         super().__init__(*args, **kwargs)
@@ -122,11 +123,26 @@ def intervention_create(request):
                        activity=strategy.procedures, materials=strategy.materials, minutes=strategy.minutes,
                        methodology=strategy.title, criteria=strategy.follow_up,
                        expected_evidence=strategy.expected_evidence)
+    # Plano de recuperação a partir da análise de lacunas (Prompt 17, §10): competência-alvo, pré-requisitos a
+    # verificar e evidências que fundamentam, calculados dos dados (nunca digitados pela URL).
+    target = None
+    if (request.GET.get("alvo") or "").isdigit():
+        target = CurriculumItem.objects.filter(CurriculumItem.visible_q(user.school),
+                                               pk=int(request.GET["alvo"])).first()
+    if target and len(chosen) == 1 and target.pk != item.pk:
+        from .gaps import gap_analysis
+
+        g = gap_analysis(chosen[0], target, user.school)
+        initial["prereqs_to_check"] = "\n".join(f"{r['item'].code}: {r['kind_label']} — {r['verify']}"
+                                                for r in g["rows"] if r["kind"] not in (None, "superada"))
+        initial["evidence_basis"] = g["summary"] + "\n" + "\n".join(
+            f"{r['item'].code}: {r['why']}" for r in g["rows"] if r["why"])
     form = InterventionForm(request.POST or None, students=students, initial=initial)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             iv = form.save(commit=False)
             iv.school, iv.class_group, iv.subject, iv.item = user.school, cg, subject, item
+            iv.target_item = target
             iv.strategy, iv.alert, iv.created_by = strategy, alert, user
             iv.status = LearningIntervention.Status.ACCEPTED
             iv.save()
@@ -158,8 +174,10 @@ def intervention_detail(request, pk):
                              detail=f"Intervenção {iv.get_status_display().lower()}: {iv.title}")
             messages.success(request, "Situação atualizada.")
         return redirect("cognitio:intervention_detail", pk=iv.pk)
+    results = outcomes(iv)
     return render(request, "cognitio/intervention_detail.html", {
-        "iv": iv, "results": outcomes(iv), "labels": RESULT_LABELS, "can_edit": can_edit, "cmp": comparison(iv),
+        "iv": iv, "results": results, "labels": RESULT_LABELS, "can_edit": can_edit, "cmp": comparison(iv),
+        "next": next_step(iv, results),
         "status_choices": LearningIntervention.Status.choices,
         "history": strategy_history(iv.strategy, user.school) if iv.strategy else None})
 

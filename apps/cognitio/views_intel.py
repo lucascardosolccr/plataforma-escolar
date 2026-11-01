@@ -7,13 +7,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from apps.academics.models import ClassGroup
+from apps.academics.models import ClassGroup, Subject
 from apps.core.models import Role, create_audit_log
 from apps.curriculum.models import CurriculumItem
 
 from . import access, alerts, graph, predictive
 from .mastery import assess, group_evidence
-from .models import LearningAlert, MasteryScale, ModelRun, SkillEvidence, SkillRelation
+from .models import LearningAlert, MasteryScale, ModelRun, SkillEvidence, SkillRelation, SkillRelationChange
 
 
 def _staff_team(user):
@@ -64,10 +64,34 @@ def skill_graph(request, item_id):
     if _staff_team(user):
         candidates = CurriculumItem.objects.filter(school__isnull=True, kind="habilidade", component=item.component,
                                                    active=True).exclude(pk=item.pk).order_by("code")
+    from apps.academics.permissions import teacher_pairs
+    from apps.curriculum.models import component_for
+    from apps.registry.models import Enrollment
+
+    from .structure import structure
+
+    struct = structure(item, user.school)
+    for r in struct["prereqs"]:
+        r.ctx, r.assoc = states.get(r.source_id), assoc.get(r.pk)
+    obs_links = []
+    if user.role == Role.PROFESSOR.value:
+        for c, s in teacher_pairs(user):
+            subject = Subject.objects.filter(pk=s, school=user.school).first()
+            if subject and component_for(subject) == item.component:
+                cg = ClassGroup.objects.filter(pk=c).first()
+                obs_links.append((cg, subject))
+    class_options = [cg for cg in ClassGroup.objects.filter(school=user.school, school_year__is_current=True)
+                     .order_by("name") if access.can_view_class(user, cg)]
+    students = []
+    if context_class:
+        students = [e.student for e in Enrollment.objects.filter(class_group=context_class, status="ativo")
+                    .select_related("student").order_by("student__first_name")]
     return render(request, "cognitio/skill_graph.html", {
-        "item": item, "prereqs": prereqs, "deps": deps, "second": [r for r, _ in second if r.target_id != item.pk],
+        "item": item, "prereqs": struct["prereqs"], "deps": deps,
+        "second": [r for r, _ in second if r.target_id != item.pk],
         "context_class": context_class, "item_ctx": states.get(item.pk), "can_curate": _staff_team(user),
-        "candidates": candidates, "kinds": SkillRelation.Kind.choices,
+        "candidates": candidates, "kinds": [k for k in SkillRelation.Kind.choices if k[0] != "estatistica"],
+        "s": struct, "obs_links": obs_links, "class_options": class_options, "students": students,
     })
 
 
@@ -79,17 +103,29 @@ def relation_curate(request, item_id):
     item = get_object_or_404(CurriculumItem, pk=item_id)
     action = request.POST.get("acao")
     if action == "nova":
-        src = get_object_or_404(CurriculumItem, pk=request.POST.get("prerequisito"))
+        code = (request.POST.get("codigo") or "").strip().upper()
+        if code:  # qualquer disciplina (relação transversal), pelo código
+            src = CurriculumItem.objects.filter(CurriculumItem.visible_q(user.school), code=code, active=True).first()
+            if src is None or src.pk == item.pk:
+                messages.error(request, f"Código não encontrado: {code}.")
+                return redirect("cognitio:skill_graph", item_id=item.pk)
+        else:
+            src = get_object_or_404(CurriculumItem, pk=request.POST.get("prerequisito"))
         kind = request.POST.get("tipo") if request.POST.get("tipo") in dict(SkillRelation.Kind.choices) else "hipotese"
         if kind == "estatistica":
             kind = "hipotese"  # associação estatística é calculada, não digitada
-        SkillRelation.objects.update_or_create(
+        rel, created = SkillRelation.objects.update_or_create(
             school=user.school, source=src, target=item,
             defaults={"kind": kind, "confidence": request.POST.get("confianca") or "media", "status": "validada",
                       "origin": "manual", "validated_by": user, "validated_at": timezone.now(),
                       "rationale": (request.POST.get("justificativa") or "").strip()[:400]
-                      or "Registrada pela equipe pedagógica."})
-        detail = f"Registrou relação {src.code} → {item.code}"
+                      or "Registrada pela equipe pedagógica.",
+                      "reference": (request.POST.get("fonte") or "").strip()[:300],
+                      "stage_year": (request.POST.get("ano_ref") or "").strip()[:40],
+                      "evidence_note": (request.POST.get("evidencias") or "").strip()[:2000]})
+        detail = f"Registrou relação {src.code} → {item.code} ({rel.get_kind_display().lower()})"
+        SkillRelationChange.objects.create(relation=rel, user=user, action="criou" if created else "editou",
+                                           detail=detail)
     else:
         rel = get_object_or_404(SkillRelation, pk=request.POST.get("id"))
         if rel.school_id not in (None, user.school_id):
@@ -100,11 +136,14 @@ def relation_curate(request, item_id):
             rel, _ = SkillRelation.objects.update_or_create(
                 school=user.school, source=rel.source, target=rel.target,
                 defaults={"kind": rel.kind, "confidence": rel.confidence, "origin": rel.origin,
-                          "rationale": rel.rationale})
+                          "rationale": rel.rationale, "reference": rel.reference, "stage_year": rel.stage_year,
+                          "evidence_note": rel.evidence_note})
         rel.status = "validada" if decision == "validar" else "rejeitada"
         rel.validated_by, rel.validated_at = user, timezone.now()
         rel.save()
         detail = f"{'Validou' if decision == 'validar' else 'Rejeitou'} relação {rel.source.code} → {rel.target.code}"
+        SkillRelationChange.objects.create(relation=rel, user=user,
+                                           action="validou" if decision == "validar" else "rejeitou", detail=detail)
     create_audit_log(user=user, action="update", request=request, target=item, detail=detail)
     messages.success(request, "Relação registrada.")
     return redirect("cognitio:skill_graph", item_id=item.pk)
@@ -211,8 +250,10 @@ def models_page(request):
         raise PermissionDenied
     if request.method == "POST":
         action = request.POST.get("acao")
-        if action == "treinar":
-            run = predictive.train_and_validate(user.school, user)
+        if action in ("treinar", "treinar_bkt"):
+            from . import bkt
+
+            run = (bkt if action == "treinar_bkt" else predictive).train_and_validate(user.school, user)
             create_audit_log(user=user, action="create", request=request, target=run,
                              detail=f"Executou validação do modelo {run.name}: {run.get_status_display()}")
             messages.success(request, f"Validação executada: {run.get_status_display()}.")

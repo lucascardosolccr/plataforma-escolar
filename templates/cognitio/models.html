@@ -9,8 +9,19 @@
     <h1>Modelos e validação</h1>
     <p>Transparência algorítmica: o que roda, com que dados e com que resultado. Um modelo só sai do modo exploratório com dados reais suficientes (pelo menos {{ mins.0 }} exemplos de treino, {{ mins.2 }} de teste e {{ mins.1 }} casos de dificuldade), validação com separação temporal e aprovação registrada pela direção. Dados de demonstração ou sintéticos não demonstram eficácia.</p>
   </div>
-  <form method="post">{% csrf_token %}<button class="btn btn-outline-primary" name="acao" value="treinar">{% icon "chart-line" %}Executar validação agora</button></form>
+  <form method="post" class="d-flex flex-wrap gap-2">{% csrf_token %}<button class="btn btn-outline-primary" name="acao" value="treinar">{% icon "chart-line" %}Validar o modelo de risco</button><button class="btn btn-outline-primary" name="acao" value="treinar_bkt">{% icon "chart-line" %}Validar o BKT</button></form>
 </div>
+
+<section class="card mb-3" aria-labelledby="niveis"><div class="card-body">
+  <h2 id="niveis" class="h6">Níveis de maturidade analítica</h2>
+  <ol class="small mb-0">
+    <li><strong>Regras curriculares e pedagógicas</strong>: estados das habilidades, lacunas, propagação no grafo, alertas. Em uso.</li>
+    <li><strong>Estatística descritiva</strong>: associações no grafo (mínimo 20 estudantes), comparação de intervenções, metas. Em uso, sem causalidade.</li>
+    <li><strong>Modelos probabilísticos</strong>: BKT (probabilidade de acerto na próxima evidência). Experimental; nada aparece aos professores sem validação e aprovação.</li>
+    <li><strong>Modelos preditivos validados</strong>: só com dados reais suficientes, corte temporal e aprovação registrada pela direção. Nenhum validado nesta escola até agora{% for r in runs %}{% if r.status == 'aprovado' %} (há modelo aprovado abaixo){% endif %}{% endfor %}.</li>
+    <li><strong>Avaliação contínua das intervenções</strong>: antes e depois, comparação com colegas e recomendação de continuar, adaptar ou encerrar. Em uso, sem causalidade.</li>
+  </ol>
+</div></section>
 
 <section class="card mb-3" aria-labelledby="regras"><div class="card-body">
   <h2 id="regras" class="h6">Regras de alerta em uso (sinalização exploratória)</h2>
@@ -29,10 +40,11 @@
 </div></section>
 
 <section class="card" aria-labelledby="runs"><div class="card-body">
-  <h2 id="runs" class="h6">Execuções do modelo “risco de dificuldade em habilidade subsequente”</h2>
+  <h2 id="runs" class="h6">Execuções dos modelos</h2>
+  <p class="small text-secondary">“risco_dificuldade_subsequente”: regressão logística sobre pré-requisitos. “bkt_proximo_acerto”: Bayesian Knowledge Tracing, probabilidade de acerto na próxima evidência de uma habilidade.</p>
   {% for r in runs %}
   <article class="border rounded p-2 mb-2">
-    <div class="d-flex flex-wrap justify-content-between gap-2"><strong>v{{ r.version }} · {{ r.created_at|date:"d/m/Y H:i" }}</strong><span class="chip chip-state state-{% if r.status == 'aprovado' %}validado{% elif r.status == 'experimental' %}aguardando{% else %}rascunho{% endif %}">{{ r.get_status_display }}</span></div>
+    <div class="d-flex flex-wrap justify-content-between gap-2"><strong>{{ r.name }} v{{ r.version }} · {{ r.created_at|date:"d/m/Y H:i" }}</strong><span class="chip chip-state state-{% if r.status == 'aprovado' %}validado{% elif r.status == 'experimental' %}aguardando{% else %}rascunho{% endif %}">{{ r.get_status_display }}</span></div>
     <p class="small mb-1">{{ r.notes }}</p>
     {% if r.metrics %}
     <div class="table-responsive"><table class="table table-sm small mb-1"><thead><tr><th scope="col">Métrica (teste, período posterior)</th><th scope="col">Modelo</th><th scope="col">Regra simples</th><th scope="col">Taxa base</th></tr></thead>

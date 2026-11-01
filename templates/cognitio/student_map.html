@@ -9,6 +9,7 @@
     <h1>{{ student }}</h1>
     <p>Mapa de competências{% for c in classes %} · {{ c.name }}{% endfor %} · {{ period_label }}. Cada estado mostra as evidências que o sustentam. Dificuldade momentânea não é incapacidade; ausência de registro não é dificuldade.</p>
   </div>
+  <a class="btn btn-primary btn-sm" href="{% url 'cognitio:student_projection' student.pk %}">{% icon "chart-line" %}Mapa de aprendizagem e projeção</a>
 </div>
 
 <form method="get" class="filter-bar" aria-label="Filtrar o mapa">

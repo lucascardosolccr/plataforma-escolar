@@ -85,15 +85,31 @@ class ObservationForm(forms.Form):
     context = forms.CharField(label="Situação observada", max_length=200,
                               help_text="Ex.: leitura compartilhada, resolução no quadro, experimento em grupo.")
     observed_on = forms.DateField(label="Data", widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}))
-    note = forms.CharField(label="Registro (opcional)", required=False, widget=forms.Textarea(attrs={"rows": 2}))
+    note = forms.CharField(label="Comentário pedagógico (opcional)", required=False,
+                           widget=forms.Textarea(attrs={"rows": 2}))
     students = forms.MultipleChoiceField(label="Estudantes", widget=forms.CheckboxSelectMultiple)
+    activity = forms.ModelChoiceField(queryset=None, required=False, label="Atividade relacionada (opcional)")
+    evaluation = forms.ModelChoiceField(queryset=None, required=False, label="Avaliação relacionada (opcional)")
+    recheck_on = forms.DateField(label="Reavaliar em (opcional)", required=False,
+                                 widget=forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
+                                 help_text="Aparece nas pendências nesse dia, se não houver evidência nova até lá.")
 
     def __init__(self, *args, pair=None, students=(), **kwargs):
+        from apps.pedagogy.models import Activity, Evaluation
+
         super().__init__(*args, **kwargs)
         items = skill_choices(pair)
         self.fields["item"].queryset = CurriculumItem.objects.filter(pk__in=[i.pk for i in items])
         self.fields["item"].label_from_instance = lambda i: f"{i.code} — {i.text[:110]}"
         self.fields["students"].choices = [(str(s.pk), s.full_name) for s in students]
+        cg, subject = pair
+        # as 60 mais recentes; o filtro por ids mantém o queryset filtrável (validação do ModelChoiceField)
+        acts = Activity.objects.filter(class_group=cg, subject=subject).exclude(status="cancelada")
+        evals = Evaluation.objects.filter(class_group=cg, subject=subject)
+        self.fields["activity"].queryset = acts.filter(
+            pk__in=list(acts.order_by("-class_date").values_list("pk", flat=True)[:60])).order_by("-class_date")
+        self.fields["evaluation"].queryset = evals.filter(
+            pk__in=list(evals.order_by("-date").values_list("pk", flat=True)[:60])).order_by("-date")
 
     def clean_observed_on(self):
         from django.utils import timezone
@@ -102,6 +118,12 @@ class ObservationForm(forms.Form):
         if d > timezone.localdate():
             raise ValidationError("A data não pode estar no futuro.")
         return d
+
+    def clean(self):
+        data = super().clean()
+        if data.get("recheck_on") and data.get("observed_on") and data["recheck_on"] <= data["observed_on"]:
+            self.add_error("recheck_on", "A reavaliação precisa ser depois da data da observação.")
+        return data
 
 
 class ScaleForm(forms.ModelForm):

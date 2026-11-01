@@ -14,6 +14,9 @@
   <div class="col-lg-7">
     <section class="card"><div class="card-body">
       <dl class="review-list mb-0">
+        {% if iv.target_item %}<dt>Competência-alvo</dt><dd><a href="{% url 'cognitio:skill_graph' iv.target_item.pk %}">{{ iv.target_item.code }}</a> {{ iv.target_item.text|truncatechars:140 }}<span class="d-block small text-secondary">Esta intervenção trabalha {{ iv.item.code }}, pré-requisito dela.</span></dd>{% endif %}
+        {% if iv.prereqs_to_check %}<dt>Pré-requisitos a verificar</dt><dd>{{ iv.prereqs_to_check|linebreaksbr }}</dd>{% endif %}
+        {% if iv.evidence_basis %}<dt>Evidências que fundamentam</dt><dd class="small">{{ iv.evidence_basis|linebreaksbr }}</dd>{% endif %}
         <dt>Objetivo</dt><dd>{{ iv.objective|linebreaksbr }}</dd>
         <dt>Atividade</dt><dd>{{ iv.activity|linebreaksbr }}</dd>
         {% if iv.methodology %}<dt>Estratégia</dt><dd>{{ iv.methodology }}{% if iv.strategy %} <span class="chip">{{ iv.strategy.get_evidence_level_display }}</span>{% endif %}</dd>{% endif %}
@@ -27,6 +30,12 @@
     </div></section>
   </div>
   <div class="col-lg-5 d-grid gap-3 align-content-start">
+    <section class="card" aria-labelledby="next"><div class="card-body">
+      <h2 id="next" class="h6">Recomendação depois das evidências</h2>
+      <p class="mb-1"><span class="chip chip-state {% if next.decision == 'encerrar' %}state-validado{% else %}state-ajustes{% endif %}">{{ next.label }}</span></p>
+      <p class="small mb-0">{{ next.why }}</p>
+      <p class="small text-secondary mt-1 mb-0">Calculada a partir das evidências registradas depois do início, não da situação "concluída". A decisão é do professor.</p>
+    </div></section>
     <section class="card" aria-labelledby="res"><div class="card-body">
       <h2 id="res" class="h6">Resultado posterior por estudante</h2>
       <p class="small text-secondary">Compara as evidências desta habilidade antes e depois do início. Associação no tempo, sem grupo de comparação: não prova que a intervenção causou a mudança.</p>

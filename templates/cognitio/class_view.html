@@ -46,6 +46,22 @@
   </div></div></section>
 </div>
 
+{% if needs %}
+<section class="card mt-3" aria-labelledby="pre-next"><div class="card-body">
+  <h2 id="pre-next" class="h6">{% icon "layers" %}Pré-requisitos das próximas habilidades <span class="chip">Nível 1</span></h2>
+  {% if needs.targets %}
+  <p class="small text-secondary">Habilidades das atividades e avaliações planejadas para as próximas semanas: {% for t in needs.targets %}<a href="{% url 'cognitio:skill_graph' t.pk %}?turma={{ cg.pk }}">{{ t.code }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}. Para cada pré-requisito documentado no grafo, quem ainda não demonstrou. Sem evidência não quer dizer que não sabe: pode valer uma verificação rápida antes de retomar.</p>
+  {% for r in needs.rows %}
+  <div class="py-2 border-bottom small">
+    <div class="d-flex flex-wrap align-items-center gap-2"><a class="fw-semibold" href="{% url 'cognitio:skill_graph' r.item.pk %}?turma={{ cg.pk }}">{{ r.item.code }}</a><span class="text-secondary">sustenta {% for t in r.targets %}{{ t.code }}{% if not forloop.last %}, {% endif %}{% endfor %} · {{ r.relations.0.get_kind_display|lower }}{% if r.relations.0.status != 'validada' %} (não validada){% endif %}</span></div>
+    <span class="d-block">{{ r.weak|length }} ainda não consolidaram{% if r.weak %}: {% for st in r.weak %}{{ st.first_name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %} · {{ r.missing|length }} sem evidência · {{ r.ok|length }} já demonstraram</span>
+    {% if can_record and r.weak|length >= 2 %}<a class="small" href="{% url 'cognitio:intervention_create' %}?turma={{ cg.pk }}&disciplina={{ subject.pk }}&habilidade={{ r.item.pk }}{% for st in r.weak %}&estudante={{ st.pk }}{% endfor %}">Planejar intervenção para este grupo</a>{% endif %}
+  </div>
+  {% empty %}<p class="small text-secondary mb-0">As habilidades planejadas não têm pré-requisitos documentados no grafo.</p>{% endfor %}
+  {% else %}<p class="small text-secondary mb-0">Nenhuma atividade ou avaliação planejada com habilidades ligadas nas próximas semanas. Ligue as habilidades ao criar a atividade ou a avaliação.</p>{% endif %}
+</div></section>
+{% endif %}
+
 <section class="card mt-3" aria-labelledby="dist"><div class="card-body">
   <h2 id="dist" class="h6">Distribuição de domínio por habilidade</h2>
   {% if summary %}

@@ -99,13 +99,24 @@ def _cognitio(user):
     from apps.cognitio.views_intel import _alerts_visible
     from apps.cognitio.views_prescriptive import _visible as interventions_visible
 
+    from django.db.models import Exists, OuterRef
+
+    from apps.cognitio.models import SkillEvidence, SkillObservation
+
     today = timezone.localdate()
     alerts = _alerts_visible(user).filter(active=True, level="importante", status="novo").count()
     due = interventions_visible(user).filter(status__in=["aceita", "andamento"], review_on__lte=today).count()
+    # reavaliação programada pelo próprio professor, ainda sem evidência nova da habilidade depois da observação
+    newer = SkillEvidence.objects.filter(student=OuterRef("student"), item=OuterRef("item"),
+                                         observed_on__gt=OuterRef("observed_on"))
+    rechecks = (SkillObservation.objects.filter(teacher=user, recheck_on__lte=today)
+                .exclude(Exists(newer)).count())
     return [
         _item("Alertas pedagógicos importantes para revisar", alerts, reverse("cognitio:alerts"),
               "Sinais por regra explícita; você decide o que fazer."),
         _item("Intervenções com data de revisão vencida", due, reverse("cognitio:interventions")),
+        _item("Reavaliações de habilidade programadas", rechecks, reverse("cognitio:home"),
+              "Você marcou uma data para verificar de novo; registre a nova evidência."),
     ]
 
 

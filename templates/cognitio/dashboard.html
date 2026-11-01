@@ -42,6 +42,24 @@
     <p class="small text-secondary">Retomar habilidades com dificuldade em 2 ou mais estudantes. Use o mapa da turma para gerar uma trilha.</p>
     <ul class="list-unstyled small mb-0">{% for d in next_lessons %}<li class="py-1">Retomar <strong>{{ d.item.code }}</strong> ({{ d.diff }} estudante{{ d.diff|pluralize }})</li>{% empty %}<li class="text-secondary">Nada a sugerir com os dados atuais.</li>{% endfor %}</ul>
   </div></div></section>
+  <section class="col-lg-6" aria-labelledby="crit"><div class="card h-100"><div class="card-body">
+    <h2 id="crit" class="h6">{% icon "layers" %}Pré-requisitos críticos para o conteúdo atual</h2>
+    <p class="small text-secondary">Pré-requisitos (grafo) das habilidades das suas atividades e avaliações das próximas semanas que ainda não foram demonstrados.</p>
+    <ul class="list-unstyled small mb-0">{% for r in critical %}<li class="py-1"><a href="{% url 'cognitio:class_view' r.cg.pk %}?disciplina={{ r.subject.pk }}#pre-next"><strong>{{ r.item.code }}</strong></a> · {{ r.cg.name }} · sustenta {% for t in r.targets %}{{ t.code }}{% if not forloop.last %}, {% endif %}{% endfor %} · {{ r.weak|length }} ainda não consolidaram, {{ r.missing|length }} sem evidência</li>{% empty %}<li class="text-secondary">Nada a apontar: sem conteúdo planejado com habilidades ligadas ou sem pré-requisito em aberto.</li>{% endfor %}</ul>
+  </div></div></section>
+  {% endif %}
+
+  {% if cross_component %}
+  <section class="col-lg-6" aria-labelledby="cross"><div class="card h-100"><div class="card-body">
+    <h2 id="cross" class="h6">Articulação entre professores</h2>
+    <p class="small text-secondary">Estudantes com dificuldade observada em mais de um componente: conversar com os professores envolvidos antes de planejar cada intervenção separadamente.</p>
+    <ul class="list-unstyled small mb-0">{% for st, comps in cross_component %}<li class="py-1"><a href="{% url 'cognitio:student_projection' st.pk %}">{{ st }}</a> · {{ comps|join:", " }}</li>{% endfor %}</ul>
+  </div></div></section>
+  {% elif cross_component_count %}
+  <section class="col-lg-6" aria-labelledby="cross"><div class="card h-100"><div class="card-body">
+    <h2 id="cross" class="h6">Articulação entre professores</h2>
+    <p class="small mb-0">{{ cross_component_count }} estudante(s) com dificuldade observada em mais de um componente. A lista nominal fica com a coordenação.</p>
+  </div></div></section>
   {% endif %}
 
   {% if classes %}

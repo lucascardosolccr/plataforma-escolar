@@ -43,9 +43,14 @@ def content_words(text):
     return {_stem(w) for w in _norm(text) if w not in STOP}
 
 
+PROGRESSION_SOURCE = ("BNCC (MEC, 2018): mesma unidade temática no ano seguinte; proposta automática por semelhança "
+                      "do texto oficial, a validar pela equipe")
+
+
 def build_progressions(CurriculumItem, SkillRelation, threshold=0.20, per_target=2):
     """Cria relações propostas de progressão curricular. Idempotente; não toca nas
     relações já validadas ou rejeitadas. Devolve quantas criou."""
+    has_source = "reference" in {f.name for f in SkillRelation._meta.get_fields()}
     skills = list(CurriculumItem.objects.filter(school__isnull=True, kind="habilidade", active=True)
                   .exclude(thematic_unit=""))
     by_key = defaultdict(list)
@@ -76,7 +81,10 @@ def build_progressions(CurriculumItem, SkillRelation, threshold=0.20, per_target
                     defaults={"kind": "progressao", "confidence": "media" if sim >= 0.35 else "baixa",
                               "status": "proposta", "origin": "automatica",
                               "rationale": f"Mesma unidade temática ({unit}), ano seguinte; similaridade "
-                                           f"{sim:.2f}; termos em comum: {common}."})
+                                           f"{sim:.2f}; termos em comum: {common}.",
+                              # campos do Prompt 17; as migrações antigas usam o modelo sem eles
+                              **({"reference": PROGRESSION_SOURCE, "stage_year": f"{s.years}º → {t.years}º ano"[:40]}
+                                 if has_source else {})})
                 created += new
     return created
 

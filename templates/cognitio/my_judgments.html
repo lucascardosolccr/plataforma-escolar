@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Minhas decisões sobre habilidades — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'cognitio:home' %}" class="back-link">{% icon "arrow-left" %}EIA-Cognitio</a>
+    <h1>Minhas decisões sobre habilidades</h1>
+    <p>As decisões que você registrou, com fundamento. Quando surge evidência mais nova, ela volta a valer no lugar da decisão: confirme registrando de novo, ou retire.</p>
+  </div>
+</div>
+<div class="card"><div class="table-responsive"><table class="table table-sm align-middle small mb-0 table-stack">
+  <thead><tr><th scope="col">Estudante</th><th scope="col">Habilidade</th><th scope="col">Decisão</th><th scope="col">Situação</th></tr></thead>
+  <tbody>{% for r in rows %}<tr>
+    <td data-label="Estudante">{{ r.j.student.full_name }}</td>
+    <td data-label="Habilidade"><strong>{{ r.j.item.code }}</strong> <span class="text-secondary">{{ r.j.item.text|truncatechars:70 }}</span></td>
+    <td data-label="Decisão">{{ r.j.get_state_display }} em {{ r.j.decided_on|date:"d/m/Y" }}<span class="d-block text-secondary">“{{ r.j.rationale|truncatechars:120 }}”</span></td>
+    <td data-label="Situação">{% if r.stale %}<span class="chip chip-state state-ajustes">Há evidência de {{ r.last|date:"d/m/Y" }}</span>{% else %}<span class="chip chip-state state-validado">Valendo</span>{% endif %}
+      <a class="d-block" href="{% url 'cognitio:student_projection' r.j.student.pk %}?habilidade={{ r.j.item.pk }}">Revisar</a></td>
+  </tr>{% empty %}<tr><td colspan="4"><div class="empty-state py-4">{% icon "circle-check" %}<strong>Nenhuma decisão registrada</strong><span>Registre decisões no mapa de aprendizagem de cada estudante, sempre com o fundamento.</span></div></td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

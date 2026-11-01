@@ -83,3 +83,69 @@ class PendingTests(Base):
         self.assertContains(r, "Alertas pedagógicos importantes para revisar")
         self.login(self.prof_b)
         self.assertNotContains(self.client.get(reverse("pending_center")), "Alertas pedagógicos importantes")
+
+
+class FamilyUpcomingAndConsistencyTests(Base):
+    def test_only_what_the_family_can_already_see_and_teacher_decision_applies(self):
+        from datetime import timedelta
+
+        from apps.cognitio.models import SkillJudgment
+        from apps.pedagogy.models import Evaluation
+
+        MasteryScale.objects.create(school=self.school, share_with_family=True)
+        announced = Evaluation.objects.create(school=self.school, class_group=self.cg, subject=self.mat,
+                                              title="Prova divulgada", date=self.today + timedelta(days=5),
+                                              created_by=self.prof, announced=True)
+        announced.curriculum.add(self.h2)
+        hidden = Evaluation.objects.create(school=self.school, class_group=self.cg, subject=self.mat,
+                                           title="Prova surpresa", date=self.today + timedelta(days=6),
+                                           created_by=self.prof, announced=False)
+        hidden.curriculum.add(self.h1)
+        for lvl in (1, 1):
+            SkillObservation.objects.create(school=self.school, student=self.ana, item=self.h1, class_group=self.cg,
+                                            subject=self.mat, teacher=self.prof, level=lvl, context="Sala")
+        rebuild_class(self.cg)
+        SkillJudgment.objects.create(school=self.school, student=self.ana, item=self.h1, state="consolidada",
+                                     rationale="Demonstrou com autonomia na aula de hoje.", decided_by=self.prof,
+                                     decided_on=self.today)
+        self.login(self.fam)
+        r = self.client.get(reverse("cognitio:family_summary", args=[self.ana.pk]))
+        self.assertEqual([u["item"] for u in r.context["upcoming"]], [self.h2])
+        self.assertNotContains(r, "Prova surpresa")
+        self.assertEqual([i.code for i in r.context["comps"]["Matemática"]["done"]], [self.h1.code])
+
+
+class JudgmentReviewTests(Base):
+    def test_stale_decision_in_pending_and_my_decisions(self):
+        from datetime import timedelta
+
+        from apps.cognitio.models import SkillJudgment
+
+        SkillJudgment.objects.create(school=self.school, student=self.ana, item=self.h1, state="consolidada",
+                                     rationale="Resolveu sozinha.", decided_by=self.prof,
+                                     decided_on=self.today - timedelta(days=5))
+        SkillObservation.objects.create(school=self.school, student=self.ana, item=self.h1, class_group=self.cg,
+                                        subject=self.mat, teacher=self.prof, level=2, context="Sala",
+                                        observed_on=self.today - timedelta(days=1))
+        rebuild_class(self.cg)
+        self.login(self.prof)
+        self.assertContains(self.client.get(reverse("pending_center")), "Decisões suas com evidência mais nova")
+        r = self.client.get(reverse("cognitio:my_judgments"))
+        self.assertTrue(r.context["rows"][0]["stale"])
+        for user in (self.sec, self.fam):
+            self.login(user)
+            self.assertEqual(self.client.get(reverse("cognitio:my_judgments")).status_code, 403)
+
+    def test_coordination_sees_curation_backlog(self):
+        from apps.curriculum.models import CurriculumCorrespondence, CurriculumItem
+
+        local = CurriculumItem.objects.create(school=self.school, kind="objetivo_df", code="CMDF-MA06-O900",
+                                              text="Objetivo local", component="Matemática", years="6",
+                                              source="teste", needs_review=True)
+        CurriculumCorrespondence.objects.create(school=self.school, source=local, target=self.h1, origin="automatica")
+        self.login(self.coord)
+        r = self.client.get(reverse("pending_center"))
+        self.assertContains(r, "Correspondências curriculares aguardando decisão")
+        self.assertContains(r, "Textos curriculares da escola a conferir")
+        self.login(self.prof)
+        self.assertNotContains(self.client.get(reverse("pending_center")), "Correspondências curriculares")

@@ -356,3 +356,51 @@ class CouncilTests(P17Base):
         for user in (self.prof_b, self.fam, self.sec):
             self.login(user)
             self.assertEqual(self.client.get(url).status_code, 403, user.username)
+
+
+class AccessibilityTests(P17Base):
+    """Campos de formulário com rótulo e botões e links com nome nas telas novas (inclui a busca do layout)."""
+
+    def audit(self, html):
+        from html.parser import HTMLParser
+
+        class P(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.fors, self.fields, self.depth, self.open, self.bad = set(), [], 0, None, []
+
+            def handle_starttag(self, tag, attrs):
+                a = dict(attrs)
+                if tag == "label":
+                    self.depth += 1
+                    self.fors.add(a.get("for"))
+                if tag in ("input", "select", "textarea") and a.get("type") not in ("hidden", "submit", "button"):
+                    self.fields.append((a.get("id"), bool(a.get("aria-label")), self.depth > 0, a.get("name")))
+                if tag in ("a", "button"):
+                    self.open = [tag, "", a.get("aria-label") or a.get("title")]
+
+            def handle_endtag(self, tag):
+                if tag == "label":
+                    self.depth -= 1
+                if tag in ("a", "button") and self.open:
+                    if not self.open[1].strip() and not self.open[2]:
+                        self.bad.append(f"{tag} sem nome")
+                    self.open = None
+
+            def handle_data(self, data):
+                if self.open:
+                    self.open[1] += data
+
+        p = P()
+        p.feed(html)
+        return p.bad + [f"campo sem rótulo: {n or i}" for i, aria, wrapped, n in p.fields
+                        if not (aria or wrapped or (i and i in p.fors))]
+
+    def test_new_screens_have_labels_and_names(self):
+        self.login(self.prof)
+        for url in (reverse("cognitio:student_projection", args=[self.ana.pk]) + f"?habilidade={self.h2.pk}",
+                    reverse("cognitio:assistant") + f"?turma={self.cg.pk}",
+                    reverse("cognitio:class_council", args=[self.cg.pk]),
+                    reverse("cognitio:skill_graph", args=[self.h2.pk]) + f"?turma={self.cg.pk}",
+                    reverse("cognitio:my_judgments")):
+            self.assertEqual(self.audit(self.client.get(url).content.decode()), [], url)

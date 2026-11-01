@@ -154,7 +154,7 @@
 <dialog class="cmdk" id="cmdk" aria-label="Buscar ou ir para">
   <div class="cmdk-head">
     {% icon "search" "ds-icon-lg" %}
-    <input class="cmdk-input" id="cmdk-input" type="text" role="combobox" aria-expanded="true"
+    <input class="cmdk-input" id="cmdk-input" type="text" role="combobox" aria-expanded="true" aria-label="Buscar ou ir para"
            aria-controls="cmdk-list" aria-autocomplete="list" autocomplete="off" spellcheck="false"
            placeholder="{% if user_role == ROLE_RESPONSAVEL or user_role == ROLE_ESTUDANTE %}Buscar páginas e ações{% else %}Buscar páginas, ações, estudantes e turmas{% endif %}">
     <kbd>Esc</kbd>

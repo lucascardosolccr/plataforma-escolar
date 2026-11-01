@@ -28,6 +28,13 @@
   {% empty %}
   <div class="card"><div class="empty-state py-5">{% icon "book-open" %}<strong>Ainda não há registros por habilidade</strong><span>Eles aparecem quando os professores ligam as avaliações e atividades às habilidades da BNCC.</span></div></div>
   {% endfor %}
+  {% if upcoming %}
+  <section class="card" aria-labelledby="prox"><div class="card-body">
+    <h2 id="prox" class="h6 d-flex align-items-center gap-2">{% icon "calendar-check" %}Nas próximas semanas</h2>
+    <p class="small text-secondary">O que a turma vai trabalhar nas atividades e avaliações já divulgadas. Conversar em casa sobre esses temas ajuda.</p>
+    <ul class="list-unstyled small mb-0">{% for u in upcoming %}<li class="py-1"><strong>{{ u.subject.name }}</strong> · {{ u.what }} em {{ u.when|date:"d/m" }}: {{ u.item.text|truncatechars:160 }}</li>{% endfor %}</ul>
+  </div></section>
+  {% endif %}
   {% if feedback %}
   <section class="card" aria-labelledby="dev"><div class="card-body">
     <h2 id="dev" class="h6 d-flex align-items-center gap-2">{% icon "message-circle" %}Devolutivas dos professores</h2>

@@ -96,12 +96,11 @@ def _teacher(user):
 def _cognitio(user):
     """Alertas pedagógicos importantes ainda não revisados e intervenções com revisão vencida
     (mesmo recorte das telas do EIA-Cognitio)."""
-    from apps.cognitio.views_intel import _alerts_visible
-    from apps.cognitio.views_prescriptive import _visible as interventions_visible
-
     from django.db.models import Exists, OuterRef
 
-    from apps.cognitio.models import SkillEvidence, SkillObservation
+    from apps.cognitio.models import SkillEvidence, SkillJudgment, SkillObservation
+    from apps.cognitio.views_intel import _alerts_visible
+    from apps.cognitio.views_prescriptive import _visible as interventions_visible
 
     today = timezone.localdate()
     alerts = _alerts_visible(user).filter(active=True, level="importante", status="novo").count()
@@ -111,12 +110,35 @@ def _cognitio(user):
                                          observed_on__gt=OuterRef("observed_on"))
     rechecks = (SkillObservation.objects.filter(teacher=user, recheck_on__lte=today)
                 .exclude(Exists(newer)).count())
+    # decisões do próprio professor que deixaram de valer porque surgiu evidência mais nova
+    after = SkillEvidence.objects.filter(student=OuterRef("student"), item=OuterRef("item"),
+                                         observed_on__gt=OuterRef("decided_on"))
+    stale = SkillJudgment.objects.filter(decided_by=user, active=True).filter(Exists(after)).count()
     return [
         _item("Alertas pedagógicos importantes para revisar", alerts, reverse("cognitio:alerts"),
               "Sinais por regra explícita; você decide o que fazer."),
         _item("Intervenções com data de revisão vencida", due, reverse("cognitio:interventions")),
         _item("Reavaliações de habilidade programadas", rechecks, reverse("cognitio:home"),
               "Você marcou uma data para verificar de novo; registre a nova evidência."),
+        _item("Decisões suas com evidência mais nova", stale, reverse("cognitio:my_judgments"),
+              "A evidência nova voltou a valer no lugar da decisão; confirme ou retire."),
+    ] + _curation(user)
+
+
+def _curation(user):
+    """Coordenação e direção: o que espera curadoria no currículo da escola (só se a escola importou)."""
+    from apps.curriculum import services as curriculum_services
+    from apps.curriculum.models import CurriculumCorrespondence, CurriculumItem
+
+    if not curriculum_services.can_manage_items(user):
+        return []
+    corr = CurriculumCorrespondence.objects.filter(school=user.school, validated=False, rejected=False).count()
+    texts = CurriculumItem.objects.filter(school=user.school, needs_review=True, active=True).count()
+    return [
+        _item("Correspondências curriculares aguardando decisão", corr, reverse("curriculum:curation"),
+              "Valide ou rejeite em lote; comece pela confiança média.", "info"),
+        _item("Textos curriculares da escola a conferir", texts, reverse("curriculum:catalog") + "?situacao=a_conferir",
+              "Confira com o documento oficial e marque como conferido.", "info"),
     ]
 
 

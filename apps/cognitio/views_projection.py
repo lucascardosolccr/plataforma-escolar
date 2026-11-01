@@ -308,3 +308,18 @@ def class_council(request, class_id):
         "cg": cg, "rows": rows, "summary": summary, "retake": retake, "periods": periods, "period": period,
         "start": start, "end": end, "subject_limited": subjects is not None, "labels": RESULT_LABELS,
     })
+
+
+def my_judgments(request):
+    """Decisões registradas pela pessoa: as que perderam a vez para evidência mais nova vêm primeiro."""
+    user = request.user
+    if user.role not in (Role.PROFESSOR.value, Role.COORDENACAO.value):
+        raise PermissionDenied
+    rows = []
+    for j in (SkillJudgment.objects.filter(decided_by=user, active=True, school=user.school)
+              .select_related("student", "item").order_by("-decided_on", "-pk")):
+        last = (SkillEvidence.objects.filter(student=j.student, item=j.item).order_by("-observed_on")
+                .values_list("observed_on", flat=True).first())
+        rows.append({"j": j, "last": last, "stale": bool(last and last > j.decided_on)})
+    rows.sort(key=lambda r: (not r["stale"], -r["j"].decided_on.toordinal()))
+    return render(request, "cognitio/my_judgments.html", {"rows": rows})

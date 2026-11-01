@@ -9,6 +9,7 @@ Sem alertas, sem porcentagens, sem tipos de erro, sem comparação com colegas.
 Inclui as devolutivas escritas que o professor registrou nas produções revisadas.
 """
 
+import datetime
 from collections import OrderedDict
 
 from django.core.exceptions import PermissionDenied
@@ -17,7 +18,7 @@ from django.shortcuts import get_object_or_404, render
 from apps.core.models import Role, create_audit_log
 from apps.registry.models import Student
 
-from .mastery import assess
+from .mastery import apply_judgments, assess
 from .models import MasteryScale, SkillEvidence, TextAnalysis
 
 
@@ -44,12 +45,14 @@ def learning_summary(request, student_id):
     for e in SkillEvidence.objects.filter(student=student).select_related("item").order_by("observed_on"):
         by_item.setdefault(e.item_id, []).append(e)
     comps = OrderedDict()
-    for evs in by_item.values():
+    # decisão do professor vale aqui também (mesmo estado das telas da equipe)
+    assessed = apply_judgments({(student.pk, iid): assess(evs, scale) for iid, evs in by_item.items()})
+    for iid, evs in by_item.items():
         item = evs[0].item
-        a = assess(evs, scale)
+        a = assessed[(student.pk, iid)]
         if a.state in ("consolidada", "consolidacao"):
             key = "done"
-        elif a.state in ("desenvolvimento", "dificuldade", "contraditoria"):
+        elif a.state in ("desenvolvimento", "dificuldade", "contraditoria", "reverificar"):
             key = "developing"
         else:
             key = "pending"
@@ -63,4 +66,32 @@ def learning_summary(request, student_id):
     create_audit_log(user=request.user, action="view", request=request, target=student,
                      detail=f"Família/estudante consultou o resumo de aprendizagens de {student}")
     return render(request, "cognitio/family_summary.html", {
-        "student": student, "comps": comps, "feedback": feedback, "is_student": request.user.role == Role.ESTUDANTE.value})
+        "student": student, "comps": comps, "feedback": feedback, "upcoming": upcoming_for_family(student),
+        "is_student": request.user.role == Role.ESTUDANTE.value})
+
+
+def upcoming_for_family(student, today=None, days=30):
+    """Habilidades das próximas semanas, só do que a família já pode ver: atividades publicadas (mesma regra
+    das telas da família) e avaliações publicadas ou com data divulgada. Prova não divulgada nunca aparece."""
+    from django.db.models import Q
+    from django.utils import timezone
+
+    from apps.pedagogy.models import Activity, Evaluation
+    from apps.registry.models import Enrollment
+
+    today = today or timezone.localdate()
+    end = today + datetime.timedelta(days=days)
+    classes = Enrollment.objects.filter(student=student, status="ativo").values("class_group_id")
+    out = OrderedDict()
+    acts = (Activity.objects.filter(Activity.family_visible_q(today=today), class_group_id__in=classes,
+                                    status=Activity.Status.PUBLISHED, deadline__gte=today, deadline__lte=end)
+            .select_related("subject").prefetch_related("curriculum").order_by("deadline"))
+    evals = (Evaluation.objects.filter(Q(announced=True) | Q(status=Evaluation.Status.PUBLISHED),
+                                       class_group_id__in=classes, date__gte=today, date__lte=end)
+             .select_related("subject").prefetch_related("curriculum").order_by("date"))
+    dated = [(a.deadline, "atividade", a) for a in acts] + [(e.date, "avaliação", e) for e in evals]
+    for when, what, obj in sorted(dated, key=lambda t: t[0]):
+        for it in obj.curriculum.all():
+            if it.kind in ("habilidade", "objetivo_df", "proprio"):
+                out.setdefault(it.pk, {"item": it, "when": when, "what": what, "subject": obj.subject})
+    return list(out.values())[:12]

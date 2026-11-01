@@ -55,12 +55,15 @@ class Period:
     end: date
     preset: str
     label: str
+    prev: tuple = None  # (início, fim, rótulo) do período anterior do calendário, quando houver
 
     @property
     def days(self):
         return (self.end - self.start).days + 1
 
     def previous(self):
+        if self.prev:
+            return Period(self.prev[0], self.prev[1], "anterior", self.prev[2])
         end = self.start - timedelta(days=1)
         start = end - timedelta(days=self.days - 1)
         return Period(start, end, "anterior", f"{start:%d/%m/%Y} a {end:%d/%m/%Y}")
@@ -81,6 +84,23 @@ PRESETS = [
     ("mes", "Mês atual"),
     ("personalizado", "Personalizado"),
 ]
+
+
+def _calendar_periods(school):
+    """Bimestres (ou trimestres, semestres) do ano letivo atual, cadastrados no calendário."""
+    from apps.school_calendar.models import CalendarPeriod
+    from apps.school_calendar.services import current_year
+
+    year = current_year(school)
+    if not year:
+        return []
+    return list(CalendarPeriod.objects.filter(school=school, school_year=year).order_by("start"))
+
+
+def presets_for(school):
+    """Opções do seletor de período: as fixas e, antes de "Personalizado", os períodos do calendário."""
+    periods = [(f"p{p.pk}", f"{p.name} ({p.start:%d/%m} a {p.end:%d/%m})") for p in _calendar_periods(school)]
+    return PRESETS[:-1] + periods + PRESETS[-1:]
 
 
 def _school_year_dates(school, today):
@@ -128,6 +148,14 @@ def resolve_period(params, school):
         )
         start = min(first, today) if first else today.replace(year=today.year - 5)
         return Period(start, today, preset, "Todo o histórico")
+    if preset.startswith("p") and preset[1:].isdigit():
+        periods = _calendar_periods(school)
+        for i, p in enumerate(periods):
+            if p.pk == int(preset[1:]):
+                before = periods[i - 1] if i else None
+                return Period(p.start, p.end, preset, p.name,
+                              prev=(before.start, before.end, before.name) if before else None)
+        preset = "ano"
     if preset == "mes":
         start = today.replace(day=1)
         return Period(start, today, preset, f"{MONTHS[today.month - 1]}/{today.year}")
@@ -1241,10 +1269,11 @@ def data_quality(school, period):
         "not_computable": [
             ("Frequência por disciplina", "A chamada é diária por turma, não por aula."),
             ("Aulas previstas", "A carga horária planejada não é registrada; o divisor são os dias com chamada."),
-            ("Habilidades por estudante", "As evidências de aprendizagem são registradas por turma, de propósito: "
-             "a plataforma não classifica estudantes por habilidade."),
             ("Metas de aprendizagem", "Não são cadastradas."),
-            ("Bimestres", "O ano letivo não tem divisão em períodos cadastrada; use o seletor de datas."),
+        ] + ([] if _calendar_periods(school) else [
+            ("Bimestres", "O ano letivo não tem bimestres cadastrados. Cadastre-os no calendário oficial para "
+             "escolher um bimestre no seletor de período; até lá, use o seletor de datas."),
+        ]) + [
             ("Entregas no prazo antes de 30/10/2026", "A situação \"com atraso\" não existia; entregas antigas contam como no prazo."),
         ],
     }

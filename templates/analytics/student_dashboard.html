@@ -157,6 +157,25 @@
         <span>antes {{ r.before|num:2 }} → recuperação <strong>{{ r.value|num:2 }}</strong> {% if r.reached %}<span class="chip chip-state state-pendente">atingiu a aprovação</span>{% else %}<span class="chip chip-state state-a_vencer">abaixo da aprovação</span>{% endif %}</span></li>
     {% endfor %}</ul></div>
   {% endif %}
+  {% if cognitio is not None %}
+  <div class="card mt-3" id="habilidades">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <span>Habilidades da BNCC no período (EIA-Cognitio)</span>
+      <a class="small" href="{% url 'cognitio:student_map' student.pk %}">{% icon "chart-line" %}Abrir o mapa do estudante</a>
+    </div>
+    <div class="card-body small">
+      {% for c in cognitio %}
+      <div class="d-flex flex-wrap align-items-center gap-2 py-1{% if not forloop.last %} border-bottom{% endif %}">
+        <strong class="me-1">{{ c.component }}</strong><span class="text-secondary">{{ c.total }} habilidade{{ c.total|pluralize }}:</span>
+        {% for key, label, css, n in c.counts %}<span class="chip {{ css }}">{{ label }}: {{ n }}</span>{% endfor %}
+      </div>
+      {% empty %}
+      <p class="text-secondary mb-0">Ainda não há evidências por habilidade neste período. Elas aparecem quando as avaliações, atividades e observações são ligadas às habilidades.</p>
+      {% endfor %}
+      {% if cognitio %}<p class="text-secondary mb-0 mt-2">Estados calculados por regras explícitas sobre as evidências do período{% if subject_limited %}, só nas disciplinas que você leciona{% endif %}. Não é nota nem diagnóstico: o detalhe, as evidências e a trajetória estão no mapa.</p>{% endif %}
+    </div>
+  </div>
+  {% endif %}
 </section>
 
 {# ================= Frequência ================= #}

@@ -173,6 +173,7 @@ def _teacher_only_subjects(user, student=None, class_group=None):
 
 
 def student_dashboard(request, student_id):
+    from apps.cognitio.summary import student_components
     from apps.pedagogy.access import can_view_justifications
     from apps.registry.access import ADMIN_RECORD_ROLES, can_view_birth_date
 
@@ -213,7 +214,7 @@ def student_dashboard(request, student_id):
         "student": student,
         "report": report,
         "period": period,
-        "presets": bi.PRESETS,
+        "presets": bi.presets_for(request.user.school),
         "is_team": is_team,
         "subject_limited": only_subjects is not None,
         "can_view_occ": can_view_occ,
@@ -225,6 +226,8 @@ def student_dashboard(request, student_id):
         "difficulties": services.difficulty_contents(student) if can_view_obs else [],
         "skills": skills,
         "strategies": strategies,
+        # Mapa do EIA-Cognitio resumido; None para quem não tem acesso ao mapa (família, secretaria...)
+        "cognitio": student_components(user, student, period.start, period.end) if is_team else None,
         # Compatibilidade: lista de médias por disciplina do período.
         "subject_averages": acad["subjects"],
         "evaluations": evaluations,
@@ -322,7 +325,7 @@ def class_dashboard(request, class_group_id):
         "rows": rows,
         "only_follow": only_follow,
         "period": period,
-        "presets": bi.PRESETS,
+        "presets": bi.presets_for(request.user.school),
         "qs": qs,
         "extra_filters": [
             {"name": "disciplinas", "label": "Acompanhamento: disciplinas abaixo", "selected": n_below,
@@ -396,7 +399,7 @@ def institutional_dashboard(request):
         "report": r,
         "ops": bi.operational_indicators(school, period),
         "period": period,
-        "presets": bi.PRESETS,
+        "presets": bi.presets_for(request.user.school),
         # Chaves mantidas por compatibilidade com telas e testes anteriores.
         "total_students": r["students_active"],
         "active_enrollments": r["enrollments_active"],
@@ -738,7 +741,8 @@ def subject_dashboard(request, subject_id=None):
     r = bi.subject_report(subject, chosen, period)
     qs = period.querystring() + (f"&turma={turma}" if turma else "")
     return render(request, "analytics/subject_dashboard.html", {
-        "subject": subject, "report": r, "period": period, "presets": bi.PRESETS, "qs": qs,
+        "subject": subject, "report": r, "period": period, "qs": qs,
+        "presets": bi.presets_for(request.user.school),
         "subject_options": [
             (reverse("analytics:subject_dashboard", args=[sj.pk]) + "?" + period.querystring(), sj.name, sj.pk)
             for sj in _subject_options(request.user)
@@ -810,7 +814,7 @@ def teacher_dashboard(request):
     turmas = sorted({(a.class_group_id, a.class_group.name) for a in todas}, key=lambda t: t[1])
     disciplinas = sorted({(a.subject_id, a.subject.name) for a in todas}, key=lambda t: t[1])
     return render(request, "analytics/teacher_dashboard.html", {
-        "report": r, "period": period, "presets": bi.PRESETS,
+        "report": r, "period": period, "presets": bi.presets_for(request.user.school),
         "extra_filters": [
             {"name": "turma", "label": "Turma", "empty_label": "Todas", "selected": turma or "", "options": turmas},
             {"name": "disciplina", "label": "Disciplina", "empty_label": "Todas", "selected": disciplina or "",
@@ -841,6 +845,7 @@ def data_quality_dashboard(request):
         raise PermissionDenied("Painel restrito à gestão da escola.")
     period = bi.resolve_period(request.GET, request.user.school)
     return render(request, "analytics/data_quality.html", {
-        "q": bi.data_quality(request.user.school, period), "period": period, "presets": bi.PRESETS,
+        "q": bi.data_quality(request.user.school, period), "period": period,
+        "presets": bi.presets_for(request.user.school),
         "ops": bi.operational_indicators(request.user.school, period),
     })

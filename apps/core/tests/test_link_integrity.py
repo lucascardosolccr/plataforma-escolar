@@ -24,6 +24,8 @@ def _pattern(path):
 
 @override_settings(DEBUG=False, ALLOWED_HOSTS=["testserver"])
 class LinkIntegrityTests(TestCase):
+    coordenacao_restrita = True  # conftest: a coordenadora restrita fica mesmo restrita
+
     @classmethod
     def setUpTestData(cls):
         from apps.academics.models import ClassGroup

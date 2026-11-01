@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Busca ativa — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Busca ativa</h1>
+    <p>Estudantes com muitas faltas no ano letivo, para a escola agir antes e, quando for o caso, notificar o Conselho Tutelar.</p>
+  </div>
+  <button type="button" class="btn btn-outline-secondary d-print-none" data-print>{% icon "printer" %}Imprimir relação</button>
+</div>
+
+<div class="callout mb-3">{% icon "info" %}<span>
+  <strong>Limite para notificar: mais de {{ data.limit_display }} falta{{ data.limit|pluralize }}</strong> no ano.
+  A LDB (art. 12, VIII) manda notificar ao Conselho Tutelar a relação dos alunos com faltas acima de 30% do percentual permitido em lei (25%, art. 24, VI).
+  Conta: {{ data.n_days }} dias letivos ({{ data.source }}) × 25% × 30%.
+  Faltas contadas desde {{ data.start|date:"d/m/Y" }}. O ECA (art. 56, II) pede que a escola esgote os próprios recursos antes: registre cada contato na página do estudante.
+</span></div>
+
+<section class="card mb-3" aria-labelledby="notify">
+  <div class="card-body pb-0">
+    <h2 id="notify" class="h5">Relação para notificar o Conselho Tutelar</h2>
+    <p class="small text-body-secondary">Acima do limite e ainda sem notificação registrada neste ano. A decisão e o envio são da direção.</p>
+  </div>
+  <div class="table-responsive"><table class="table align-middle mb-0 table-stack">
+    <thead><tr><th scope="col">Estudante</th><th scope="col">Turma</th><th scope="col" class="text-end">Faltas</th>
+      <th scope="col" class="text-end">Sem justificativa aprovada</th><th scope="col">Ações da escola</th></tr></thead>
+    <tbody>
+      {% for r in data.notify %}
+      <tr>
+        <td data-label="Estudante" class="fw-semibold"><a href="{% url 'pedagogy:active_search_student' r.student.pk %}">{{ r.student.full_name }}</a></td>
+        <td data-label="Turma">{{ r.class_group.name }}</td>
+        <td data-label="Faltas" class="text-end">{{ r.absences }}</td>
+        <td data-label="Sem justificativa aprovada" class="text-end">{{ r.unjustified }}</td>
+        <td data-label="Ações da escola">{% if r.school_actions %}{{ r.school_actions }} registrada{{ r.school_actions|pluralize }}; a última em {{ r.last_action.date|date:"d/m" }}{% else %}<span class="text-warning">Nenhuma ação registrada</span>{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5"><div class="empty-state py-4">{% icon "circle-check" %}<strong>Ninguém acima do limite sem notificação</strong><span>A lista é refeita a cada chamada registrada.</span></div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+{% if data.notified %}
+<section class="card mb-3" aria-labelledby="notified">
+  <div class="card-body pb-0">
+    <h2 id="notified" class="h5">Já notificados neste ano</h2>
+    <p class="small text-body-secondary">Continue acompanhando: o retorno do estudante às aulas também se registra.</p>
+  </div>
+  <div class="table-responsive"><table class="table align-middle mb-0 table-stack">
+    <thead><tr><th scope="col">Estudante</th><th scope="col">Turma</th><th scope="col" class="text-end">Faltas</th><th scope="col">Notificação</th><th scope="col">Última ação</th></tr></thead>
+    <tbody>{% for r in data.notified %}
+      <tr>
+        <td data-label="Estudante" class="fw-semibold"><a href="{% url 'pedagogy:active_search_student' r.student.pk %}">{{ r.student.full_name }}</a></td>
+        <td data-label="Turma">{{ r.class_group.name }}</td>
+        <td data-label="Faltas" class="text-end">{{ r.absences }}</td>
+        <td data-label="Notificação">{{ r.notified.date|date:"d/m/Y" }}</td>
+        <td data-label="Última ação">{{ r.last_action.get_kind_display }} ({{ r.last_action.date|date:"d/m" }})</td>
+      </tr>{% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+
+<section class="card d-print-none" aria-labelledby="attention">
+  <div class="card-body pb-0">
+    <h2 id="attention" class="h5">Atenção: agir agora evita a notificação</h2>
+    <p class="small text-body-secondary">A partir de 70% do limite ou com 3 faltas seguidas nos dias de chamada. É o momento de falar com a família.</p>
+  </div>
+  <div class="table-responsive"><table class="table align-middle mb-0 table-stack">
+    <thead><tr><th scope="col">Estudante</th><th scope="col">Turma</th><th scope="col" class="text-end">Faltas</th><th scope="col">Sinal</th><th scope="col">Ações da escola</th></tr></thead>
+    <tbody>
+      {% for r in data.attention %}
+      <tr>
+        <td data-label="Estudante" class="fw-semibold"><a href="{% url 'pedagogy:active_search_student' r.student.pk %}">{{ r.student.full_name }}</a></td>
+        <td data-label="Turma">{{ r.class_group.name }}</td>
+        <td data-label="Faltas" class="text-end">{{ r.absences }}</td>
+        <td data-label="Sinal">{% if r.at_limit %}No limite: a próxima falta entra na relação{% elif r.streak >= 3 %}{{ r.streak }} faltas seguidas{% else %}Perto do limite{% endif %}</td>
+        <td data-label="Ações da escola">{% if r.school_actions %}{{ r.school_actions }}; a última em {{ r.last_action.date|date:"d/m" }}{% else %}Nenhuma{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5"><div class="empty-state py-4">{% icon "circle-check" %}<strong>Nenhum estudante perto do limite</strong><span>Nem com faltas seguidas recentes.</span></div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endblock %}

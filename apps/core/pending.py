@@ -27,6 +27,8 @@ def for_user(user):
         items += _secretaria(user)
     if role in (Role.COORDENACAO.value, Role.DIRECAO.value):
         items += _coordination(user)
+    if role in (Role.SECRETARIA.value, Role.COORDENACAO.value, Role.DIRECAO.value):
+        items += _active_search(user)
     if role == Role.RESPONSAVEL.value:
         items += _family(user)
     if role != Role.ESTUDANTE.value:
@@ -182,6 +184,13 @@ def _coordination(user):
             school=user.school, created_by=user, follow_up_on__lt=today).count(), reverse("coordination:records"),
             tone="info"),
     ] + _support_team(user, today) + _cognitio(user)
+
+
+def _active_search(user):
+    from apps.pedagogy.active_search import notify_count
+
+    return [_item("Estudantes acima do limite de faltas sem notificação ao Conselho Tutelar", notify_count(user),
+                  reverse("pedagogy:active_search"), "LDB, art. 12, VIII. Registre antes os contatos da escola.")]
 
 
 def _support_team(user, today):

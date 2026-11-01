@@ -932,3 +932,39 @@ class LessonPlanReview(models.Model):
         ordering = ["created_at"]
         verbose_name = "devolutiva de planejamento"
         verbose_name_plural = "devolutivas de planejamento"
+
+
+class ActiveSearchAction(models.Model):
+    """Ação da escola na busca ativa de um estudante com muitas faltas.
+
+    O ECA (art. 56, II) manda comunicar ao Conselho Tutelar a reiteração de faltas injustificadas
+    "esgotados os recursos escolares": o registro destas ações mostra o que a escola já fez. A
+    notificação ao Conselho Tutelar (LDB, art. 12, VIII) também fica registrada aqui, com a data.
+    """
+
+    class Kind(models.TextChoices):
+        PHONE = "telefone", "Contato por telefone com a família"
+        MESSAGE = "mensagem", "Mensagem à família"
+        MEETING = "reuniao", "Conversa presencial com a família"
+        VISIT = "visita", "Visita domiciliar"
+        NETWORK = "rede", "Encaminhamento à rede de proteção (saúde, assistência social)"
+        COUNCIL = "conselho", "Notificação ao Conselho Tutelar"
+        RETURNED = "retorno", "Retorno do estudante às aulas"
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, verbose_name="escola")
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="active_search_actions",
+                                verbose_name="estudante")
+    date = models.DateField("data", default=timezone.localdate)
+    kind = models.CharField("ação", max_length=12, choices=Kind.choices)
+    outcome = models.TextField("o que aconteceu", help_text="Resultado do contato, combinados com a família ou "
+                               "número do ofício enviado ao Conselho Tutelar. Sem diagnóstico nem dado de saúde.")
+    recorded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-date", "-created_at"]
+        verbose_name = "ação de busca ativa"
+        verbose_name_plural = "ações de busca ativa"
+
+    def __str__(self):
+        return f"{self.get_kind_display()} — {self.student} ({self.date:%d/%m/%Y})"

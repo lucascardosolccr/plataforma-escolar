@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Busca ativa: {{ student.full_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'pedagogy:active_search' %}" class="back-link">{% icon "arrow-left" %}Busca ativa</a>
+    <h1>{{ student.full_name }}</h1>
+    <p>Faltas do ano letivo e o que a escola já fez. Registre cada contato: é o que mostra que os recursos da escola foram usados (ECA, art. 56, II).</p>
+  </div>
+</div>
+
+<div class="kpi-grid mb-3">
+  <div class="kpi{% if over %} is-attention{% endif %}"><span class="kpi-label">Faltas no ano</span><span class="kpi-value">{{ situation.absences }}</span><span class="kpi-hint">limite para notificar: mais de {{ limit_display }}</span></div>
+  <div class="kpi"><span class="kpi-label">Sem justificativa aprovada</span><span class="kpi-value">{{ situation.unjustified }}</span></div>
+  <div class="kpi"><span class="kpi-label">Faltas seguidas agora</span><span class="kpi-value">{{ situation.streak }}</span><span class="kpi-hint">nos dias de chamada</span></div>
+  <div class="kpi"><span class="kpi-label">Conselho Tutelar</span><span class="kpi-value">{% if situation.notified %}{{ situation.notified.date|date:"d/m" }}{% else %}—{% endif %}</span><span class="kpi-hint">{% if situation.notified %}notificação registrada{% else %}sem notificação{% endif %}</span></div>
+</div>
+<p class="small text-body-secondary">{{ n_days }} dias letivos ({{ source }}) × 25% × 30%.</p>
+
+<div class="row g-3">
+  <section class="col-lg-7" aria-labelledby="actions">
+    <div class="card mb-3"><div class="card-body">
+      <h2 id="actions" class="h5">Ações da escola</h2>
+      <ul class="list-unstyled mb-0">{% for a in actions %}
+        <li class="py-2 border-bottom"><strong>{{ a.date|date:"d/m/Y" }} · {{ a.get_kind_display }}</strong><span class="d-block">{{ a.outcome|linebreaksbr }}</span><span class="d-block small text-body-secondary">Registrado por {{ a.recorded_by.get_full_name|default:a.recorded_by.username|default:"—" }}</span></li>
+      {% empty %}<li class="text-body-secondary">Nenhuma ação registrada neste ano.</li>{% endfor %}</ul>
+    </div></div>
+
+    <form method="post" novalidate class="card form-card">
+      {% csrf_token %}
+      <div class="card-body">
+        <h2 class="h5">Registrar ação</h2>
+        {% include "partials/_form_fields.html" with f=form %}
+      </div>
+      {% include "partials/_form_actions.html" with submit_label="Registrar ação" %}
+    </form>
+  </section>
+
+  <section class="col-lg-5" aria-labelledby="absences">
+    <div class="card"><div class="card-body">
+      <h2 id="absences" class="h5">Faltas registradas</h2>
+      <ul class="list-unstyled small mb-0">{% for f in absences %}
+        <li class="py-1 border-bottom">{{ f.date|date:"d/m/Y (D)" }} · {{ f.class_group.name }}{% if f.justified %} · <span class="text-success">justificada</span>{% endif %}</li>
+      {% empty %}<li class="text-body-secondary">Nenhuma falta registrada neste ano.</li>{% endfor %}</ul>
+    </div></div>
+  </section>
+</div>
+{% endblock %}

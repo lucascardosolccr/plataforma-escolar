@@ -277,6 +277,12 @@ FAQ = [
     ("Quem vê o laudo que eu enviar?",
      "A coordenação que acompanha a turma e a direção. Os professores veem só as orientações de sala de aula, sem diagnóstico nem laudo; a secretaria vê só a situação da documentação. Cada consulta e cada download ficam registrados. Laudo não é obrigatório para matrícula nem para atendimento.",
      (RESPONSAVEL,)),
+    ("Quando a escola precisa avisar o Conselho Tutelar sobre faltas?",
+     "Quando o estudante passa de 30% do percentual de faltas permitido em lei (LDB, art. 12, VIII): em 200 dias "
+     "letivos, mais de 15 faltas. Em Busca ativa, a plataforma lista quem passou do limite e quem está perto. "
+     "Antes de notificar, registre os contatos com a família, porque o ECA (art. 56, II) pede que a escola esgote "
+     "os próprios recursos. A notificação também se registra lá, com a data. Nada é enviado automaticamente.",
+     (DIRECAO, COORDENACAO, SECRETARIA)),
     ("O EIA-Cognitio decide algo sobre o estudante?",
      "Não. Ele mostra evidências, sinaliza por regras explícitas e sugere estratégias. Nada reprova, classifica ou "
      "restringe direitos; laudos e diagnósticos nunca entram nos alertas. Quem interpreta e decide é o professor.",

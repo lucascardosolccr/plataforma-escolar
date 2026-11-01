@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_planning, views_reuse
+from . import views, views_active_search, views_planning, views_reuse
 
 app_name = "pedagogy"
 
@@ -71,6 +71,9 @@ urlpatterns = [
     path("planos/", views.plan_list, name="plan_list"),
     path("planos/novo/", views.plan_create, name="plan_create"),
     path("planos/<int:pk>/", views.plan_detail, name="plan_detail"),
+    path("frequencia/busca-ativa/", views_active_search.active_search, name="active_search"),
+    path("frequencia/busca-ativa/<int:student_id>/", views_active_search.active_search_student,
+         name="active_search_student"),
     path("justificativas/", views.justification_list, name="justification_list"),
     path("justificativas/nova/", views.justification_create, name="justification_create"),
     path(

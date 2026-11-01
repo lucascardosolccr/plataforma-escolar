@@ -30,6 +30,15 @@
         {% include "curriculum/_codes_dd.html" with obj=plan %}
       </dl>
     </div></div>
+    {% if prereq_needs %}
+    <section class="card mt-3" aria-labelledby="h-pre"><div class="card-body">
+      <h2 id="h-pre" class="h6">Antes de começar: pré-requisitos das habilidades deste planejamento</h2>
+      <p class="small text-secondary">Pré-requisitos documentados no grafo do EIA-Cognitio e a situação da turma em cada um, pelas evidências registradas. Sem evidência não quer dizer que não sabem: pode valer uma verificação rápida na primeira aula.</p>
+      {% for r in prereq_needs.rows %}
+      <p class="small mb-1"><a class="fw-semibold" href="{% url 'cognitio:skill_graph' r.item.pk %}?turma={{ plan.class_group.pk }}">{{ r.item.code }}</a> sustenta {% for t in r.targets %}{{ t.code }}{% if not forloop.last %}, {% endif %}{% endfor %}: {{ r.weak|length }} ainda não consolidaram{% if r.weak %} ({% for st in r.weak %}{{ st.first_name }}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %} · {{ r.missing|length }} sem evidência · {{ r.ok|length }} já demonstraram</p>
+      {% empty %}<p class="small text-secondary mb-0">As habilidades deste planejamento não têm pré-requisitos documentados no grafo.</p>{% endfor %}
+    </div></section>
+    {% endif %}
   </div>
   <div class="col-lg-4">
     {% if review_form %}

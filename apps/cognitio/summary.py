@@ -9,10 +9,11 @@ São só contagens de estados; o detalhe e as evidências ficam no mapa do EIA-C
 from collections import Counter, OrderedDict, defaultdict
 
 from . import access
-from .mastery import CSS, STATES, assess
+from .mastery import CSS, STATES, apply_judgments, assess
 from .models import MasteryScale, SkillEvidence
 
-ORDER = ["consolidada", "consolidacao", "desenvolvimento", "dificuldade", "contraditoria", "insuficiente"]
+ORDER = ["consolidada", "consolidacao", "desenvolvimento", "dificuldade", "contraditoria", "reverificar",
+         "insuficiente"]
 
 
 def student_components(user, student, start=None, end=None):
@@ -32,9 +33,10 @@ def student_components(user, student, start=None, end=None):
         by_item[e.item_id].append(e)
     scale = MasteryScale.for_school(student.school)
     comps = OrderedDict()
-    for item_evs in by_item.values():
+    assessed = apply_judgments({(student.pk, iid): assess(evs_, scale) for iid, evs_ in by_item.items()})
+    for iid, item_evs in by_item.items():
         comp = item_evs[0].item.component or "Outros"
-        comps.setdefault(comp, Counter())[assess(item_evs, scale).state] += 1
+        comps.setdefault(comp, Counter())[assessed[(student.pk, iid)].state] += 1
     return [{"component": comp, "total": sum(c.values()),
              "counts": [(s, STATES[s][0], CSS[s], c[s]) for s in ORDER if c[s]]}
             for comp, c in sorted(comps.items())]

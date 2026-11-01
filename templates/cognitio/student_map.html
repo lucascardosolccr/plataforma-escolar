@@ -31,7 +31,8 @@
 {% if detail %}
 <section class="card my-3" aria-labelledby="det"><div class="card-body">
   <div class="d-flex flex-wrap justify-content-between gap-2">
-    <h2 id="det" class="h6 mb-1"><a href="{% url 'curriculum:item_detail' detail.item.pk %}">{{ detail.item.code }}</a> — {{ detail.a.label }}</h2>
+    <h2 id="det" class="h6 mb-1"><a href="{% url 'curriculum:item_detail' detail.item.pk %}">{{ detail.item.code }}</a> — {{ detail.a.label }}{% if detail.a.computed_state %} <span class="chip">decisão do professor</span>{% endif %}</h2>
+    {% if detail.a.judgment and detail.a.newer_evidence %}<p class="small mb-1"><strong>Há evidência mais nova que a decisão do professor de {{ detail.a.judgment.decided_on|date:"d/m/Y" }}</strong>: vale o estado calculado; revise a decisão no mapa de aprendizagem e projeção.</p>{% endif %}
     <span class="small"><a href="{% url 'cognitio:skill_graph' detail.item.pk %}">Pré-requisitos</a> · <a href="?{% if period %}periodo={{ period }}&{% endif %}disciplina={{ subj }}">Fechar</a></span>
   </div>
   <p class="small mb-2">{{ detail.item.text }}</p>
@@ -62,7 +63,7 @@
       <div class="skill-row">
         <a href="?{% if period %}periodo={{ period }}&{% endif %}disciplina={{ subj }}&habilidade={{ item.pk }}" class="fw-semibold small">{{ item.code }}</a>
         <span class="small">{{ item.text|truncatechars:120 }}</span>
-        <span class="text-nowrap"><span class="mcell {{ a.css }}" title="{{ a.label }}" aria-hidden="true">{{ a.abbr }}</span><span class="visually-hidden">{{ a.label }}</span>{% if a.percent is not None %} <span class="small text-secondary">{{ a.percent }}%</span>{% endif %}</span>
+        <span class="text-nowrap"><span class="mcell {{ a.css }}" title="{{ a.label }}{% if a.computed_state %} (decisão do professor){% endif %}" aria-hidden="true">{{ a.abbr }}</span><span class="visually-hidden">{{ a.label }}{% if a.computed_state %}, decisão do professor{% endif %}</span>{% if a.computed_state %} <span class="small text-secondary" aria-hidden="true">✎</span>{% endif %}{% if a.percent is not None %} <span class="small text-secondary">{{ a.percent }}%</span>{% endif %}</span>
       </div>
       {% endfor %}
       {% endfor %}

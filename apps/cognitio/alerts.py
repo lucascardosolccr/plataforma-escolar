@@ -13,7 +13,7 @@ import datetime
 
 from django.utils import timezone
 
-from .mastery import assess, group_evidence
+from .mastery import apply_judgments, assess, group_evidence
 from .models import LearningAlert, MasteryScale, SkillEvidence
 
 METHOD = "Regra pedagógica explícita (sinalização exploratória; não é previsão estatística validada)"
@@ -67,7 +67,8 @@ def generate_for_class(class_group, today=None):
     subj_of = {}
     for e in evs:
         subj_of[e.item_id] = e.subject
-    states = {key: assess(v, scale, today) for key, v in grouped.items()}
+    # decisão do professor sem evidência mais nova vale também para os alertas
+    states = apply_judgments({key: assess(v, scale, today) for key, v in grouped.items()})
     upcoming = _upcoming_items(class_group, today)
     seen, new = set(), 0
     start = min((e.observed_on for e in evs), default=None)

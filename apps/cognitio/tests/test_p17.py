@@ -262,3 +262,62 @@ class DashboardP17Tests(P17Base):
         r = self.client.get(reverse("cognitio:dashboard"))
         self.assertEqual([(st, comps) for st, comps in r.context["cross_component"]],
                          [(self.ana, ["Geografia", "Matemática"])])
+
+
+class ConsistencyAndIntegrationTests(P17Base):
+    def test_teacher_decision_is_the_same_on_every_screen(self):
+        from apps.cognitio.alerts import generate_for_class
+        from apps.cognitio.models import LearningAlert
+        from apps.cognitio.summary import student_components
+
+        for d, ctx in ((40, "A"), (20, "B"), (2, "C")):
+            self.obs(self.ana, self.h1, 1, d, ctx)
+        rebuild_class(self.cg)
+        SkillJudgment.objects.create(school=self.school, student=self.ana, item=self.h1, state="consolidada",
+                                     rationale="Explicou e resolveu sozinha na aula de hoje.", decided_by=self.prof,
+                                     decided_on=self.today)
+        self.login(self.prof)
+        r = self.client.get(reverse("cognitio:class_view", args=[self.cg.pk]), {"disciplina": self.mat.pk})
+        cell = next(a for st, row in r.context["matrix"] if st == self.ana for it, a in row if it == self.h1)
+        self.assertEqual((cell.state, cell.computed_state), ("consolidada", "dificuldade"))
+        r = self.client.get(reverse("cognitio:student_map", args=[self.ana.pk]), {"habilidade": self.h1.pk})
+        self.assertContains(r, "decisão do professor")
+        comps = {c["component"]: dict((k, n) for k, _l, _c, n in c["counts"])
+                 for c in student_components(self.prof, self.ana)}
+        self.assertEqual(comps["Matemática"].get("consolidada"), 1)
+        generate_for_class(self.cg, self.today)
+        self.assertFalse(LearningAlert.objects.filter(student=self.ana, item=self.h1, active=True).exists())
+
+    def test_lesson_plan_shows_prerequisites_of_its_skills(self):
+        from apps.pedagogy.models import LessonPlan
+
+        self.obs(self.ana, self.h1, 1, 3, "A")
+        self.obs(self.ana, self.h1, 1, 1, "B")
+        rebuild_class(self.cg)
+        plan = LessonPlan.objects.create(school=self.school, teacher=self.prof, class_group=self.cg, subject=self.mat,
+                                         starts_on=self.today, ends_on=self.today + timedelta(days=4), title="P",
+                                         content="c", objectives="o")
+        plan.curriculum.set([self.h2])
+        self.login(self.prof)
+        r = self.client.get(reverse("pedagogy:lessonplan_detail", args=[plan.pk]))
+        self.assertContains(r, "Antes de começar: pré-requisitos das habilidades deste planejamento")
+        row = next(x for x in r.context["prereq_needs"]["rows"] if x["item"] == self.h1)
+        self.assertEqual([s.pk for s in row["weak"]], [self.ana.pk])
+
+    def test_assistant_paraphrases_and_skill_field(self):
+        probes = {
+            "O que falta para o estudante chegar em EF01MA02?": "prerequisitos",
+            "Qual o impacto se ele não aprender EF01MA01?": "dependentes",
+            "Como trabalhar EF01MA02 com a turma?": "atividades",
+            "Como saber se ele aprendeu EF01MA02?": "evidencias_coletar",
+            "A intervenção funcionou?": "depois_recuperacao",
+            "Quem ainda não foi avaliado em EF01MA02?": "sem_evidencia",
+            "O que revisar antes da próxima unidade?": "retomar",
+        }
+        for q, intent in probes.items():
+            self.assertEqual(assistant.detect(q)[0], intent, q)
+        self.login(self.prof)
+        r = self.client.get(reverse("cognitio:assistant"), {"pergunta": "O que pode depender desta habilidade?",
+                                                            "habilidade": self.h1.code, "turma": self.cg.pk})
+        self.assertContains(r, self.h2.code)
+        self.assertContains(r, '<datalist id="ph-list">')

@@ -189,14 +189,29 @@ def assistant_page(request):
         student = next((s for s in (students or assistant.visible_students(user))
                         if s.pk == int(request.GET["estudante"])), None)
     question = (request.GET.get("pergunta") or "").strip()[:400]
+    code = (request.GET.get("habilidade") or "").strip().upper()[:30]
+    item = (CurriculumItem.objects.filter(CurriculumItem.visible_q(user.school), code=code, active=True).first()
+            if code else None)
+    codes = []
+    if cg:  # sugestões do campo: habilidades das disciplinas da turma que a pessoa acompanha
+        from apps.academics.models import Subject, TeacherAssignment
+        from apps.curriculum.models import year_for
+
+        allowed = access.class_subjects(user, cg)
+        sids = set(TeacherAssignment.objects.filter(class_group=cg).values_list("subject_id", flat=True))
+        for subject in Subject.objects.filter(pk__in=sids if allowed is None else sids & allowed):
+            comp = component_for(subject)
+            if comp:
+                codes += [(i.code, i.text[:80]) for i in CurriculumItem.for_pair(user.school, comp, year_for(cg))
+                          .filter(kind="habilidade").order_by("code")]
     result = None
     if question:
-        result = assistant.answer(user, question, student=student, class_group=cg)
+        result = assistant.answer(user, question, student=student, class_group=cg, item=item)
         create_audit_log(user=user, action="view", request=request, target=student or cg,
                          target_type=None if (student or cg) else "Assistente", target_id=None if (student or cg)
                          else "pergunta",
                          detail=f"Assistente EIA-Cognitio: {question[:200]}")
     return render(request, "cognitio/assistant.html", {
         "question": question, "result": result, "examples": assistant.EXAMPLES, "classes": classes,
-        "cg": cg, "students": students, "student": student,
+        "cg": cg, "students": students, "student": student, "code": code, "codes": codes,
     })

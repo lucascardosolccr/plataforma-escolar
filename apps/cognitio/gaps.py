@@ -66,6 +66,8 @@ def item_state(student, item, scale=None, today=None, evidences=None):
     a.judgment = j
     a.newer_evidence = bool(j and a.last_date and a.last_date > j.decided_on)
     a.effective = j.state if (j and not a.newer_evidence) else a.state
+    if j and not a.newer_evidence:  # mesmo comportamento de mastery.apply_judgments: o estado exibido é o decidido
+        a.computed_state, a.state = a.state, j.state
     return a
 
 
@@ -348,11 +350,13 @@ def scenarios(student, item, school, affected):
 
 
 # --------------------------------------------------------------------- turma
-def class_prerequisite_needs(class_group, subject, school, students, today=None, days=45):
+def class_prerequisite_needs(class_group, subject, school, students, today=None, days=45, items=None):
     """Pré-requisitos das habilidades planejadas para a turma e disciplina (atividades e avaliações dos
     próximos ``days`` dias) e, em cada um, quem ainda não demonstrou: base para retomada coletiva e para
     agrupar estudantes que podem se beneficiar da mesma intervenção (§13.1). Uma consulta de evidências
-    para a turma toda; as decisões ativas dos professores prevalecem, como no mapa individual."""
+    para a turma toda; as decisões ativas dos professores prevalecem, como no mapa individual.
+
+    Com ``items`` (por exemplo, as habilidades de um planejamento), usa essas habilidades como alvo."""
     from apps.pedagogy.models import Activity, Evaluation
 
     from .mastery import group_evidence
@@ -360,13 +364,17 @@ def class_prerequisite_needs(class_group, subject, school, students, today=None,
 
     today = today or timezone.localdate()
     end = today + datetime.timedelta(days=days)
-    targets = {}
-    for ev in Evaluation.objects.filter(class_group=class_group, subject=subject, date__gte=today, date__lte=end) \
-            .prefetch_related("curriculum"):
+    targets = {it.pk: (it, today) for it in (items or [])}
+    if items is None:
+        evals = Evaluation.objects.filter(class_group=class_group, subject=subject, date__gte=today, date__lte=end)
+        acts = Activity.objects.filter(class_group=class_group, subject=subject, deadline__gte=today,
+                                       deadline__lte=end).exclude(status="cancelada")
+    else:
+        evals, acts = Evaluation.objects.none(), Activity.objects.none()
+    for ev in evals.prefetch_related("curriculum"):
         for it in ev.curriculum.all():
             targets.setdefault(it.pk, (it, ev.date))
-    for act in Activity.objects.filter(class_group=class_group, subject=subject, deadline__gte=today,
-                                       deadline__lte=end).exclude(status="cancelada").prefetch_related("curriculum"):
+    for act in acts.prefetch_related("curriculum"):
         for it in act.curriculum.all():
             if it.pk not in targets or act.deadline < targets[it.pk][1]:
                 targets[it.pk] = (it, act.deadline)

@@ -31,28 +31,34 @@ def _plain(t):
 INTENTS = [
     ("depois_recuperacao", "O que mudou depois da recuperação", ["mudou depois", "depois da recuperacao",
                                                                 "depois da intervencao", "apos a recuperacao",
-                                                                "resultado da intervencao", "avancou depois"]),
+                                                                "resultado da intervencao", "avancou depois",
+                                                                "funcionou", "deu resultado", "melhorou depois"]),
     ("evidencias_coletar", "Que evidências coletar", ["que evidencias", "quais evidencias devo", "coletar",
                                                       "verificar se o estudante avancou", "verificar se avancou",
-                                                      "como verificar"]),
+                                                      "como verificar", "como avaliar", "como saber se"]),
     ("sem_evidencia", "Quem não tem evidências suficientes", ["sem evidencias suficientes", "nao possuem evidencias",
                                                               "sem evidencia", "evidencias suficientes para uma",
-                                                              "nao foram avaliados", "ainda nao avaliad"]),
+                                                              "nao foram avaliados", "ainda nao avaliad",
+                                                              "nao foi avaliado", "falta avaliar"]),
     ("intervencao_semelhante", "Quem precisa de intervenção semelhante", ["intervencao semelhante",
                                                                           "intervencao parecida",
                                                                           "precisam de uma intervencao",
                                                                           "precisam de intervencao",
                                                                           "quais estudantes precisam"]),
     ("retomar", "O que retomar antes do próximo conteúdo", ["retomad", "retomar", "antes de iniciar",
-                                                            "proximo conteudo", "antes do proximo"]),
+                                                            "proximo conteudo", "antes do proximo",
+                                                            "revisar antes", "rever antes"]),
     ("atividades", "Atividades que podem ajudar", ["atividades podem ajudar", "que atividade", "estrategia",
-                                                   "o que fazer", "como ajudar", "atividades para"]),
+                                                   "o que fazer", "como ajudar", "atividades para", "como trabalhar",
+                                                   "sugestao de atividade", "o que posso fazer"]),
     ("dependentes", "Competências posteriores", ["posteriores", "dependem", "depender", "depende dessa",
-                                                 "competencias seguintes", "o que vem depois", "afetar"]),
+                                                 "competencias seguintes", "o que vem depois", "afetar",
+                                                 "consequencia", "impacto", "proximas habilidades"]),
     ("evidencias_lacuna", "Por que ainda não consolidou", ["quais evidencias indicam", "evidencias indicam",
                                                            "nao consolidou", "por que", "ainda nao consolid"]),
     ("prerequisitos", "Pré-requisitos", ["pre-requisito", "pre requisito", "prerequisito", "precisa desenvolver",
-                                         "para alcancar", "sustenta", "base para"]),
+                                         "para alcancar", "sustenta", "base para", "o que falta",
+                                         "falta para", "precisa saber antes", "antes de aprender"]),
 ]
 
 EXAMPLES = [
@@ -141,7 +147,7 @@ def _subject_for(user, class_group, item):
     return subjects[0] if len(subjects) == 1 else None
 
 
-def answer(user, question, student=None, class_group=None):
+def answer(user, question, student=None, class_group=None, item=None):
     det = detect(question)
     a = Answer()
     if det is None:
@@ -150,7 +156,7 @@ def answer(user, question, student=None, class_group=None):
                             "Inclua o código da habilidade (por exemplo, EF06MA07) e escolha o estudante ou a turma.")
         return a
     a.intent, a.intent_label = det
-    item = _item(user, question)
+    item = _item(user, question) or item
     if student is None:
         student = _student_from_text(user, question, visible_students(user, class_group))
     a.sources.append("Dados registrados na plataforma (evidências, grafo de pré-requisitos, intervenções).")

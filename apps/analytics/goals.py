@@ -17,7 +17,7 @@ UNITS = {"frequencia": "%", "media_geral": "", "entregas": "%", "habilidades": "
 
 
 def _skills_share(school, class_group, start, end):
-    from apps.cognitio.mastery import assess, group_evidence
+    from apps.cognitio.mastery import apply_judgments, assess, group_evidence
     from apps.cognitio.models import MasteryScale, SkillEvidence
 
     evs = SkillEvidence.objects.filter(school=school, observed_on__gte=start, observed_on__lte=end)
@@ -27,8 +27,8 @@ def _skills_share(school, class_group, start, end):
     if not groups:
         return None
     scale = MasteryScale.for_school(school)
-    states = [assess(e, scale, today=end).state for e in groups.values()]
-    judged = [s for s in states if s not in ("insuficiente", "nao_avaliado")]
+    states = [a.state for a in apply_judgments({k: assess(e, scale, today=end) for k, e in groups.items()}).values()]
+    judged = [s for s in states if s not in ("insuficiente", "nao_avaliado", "reverificar")]
     if not judged:
         return None
     return bi.pct(sum(1 for s in judged if s in ("consolidada", "consolidacao")), len(judged))

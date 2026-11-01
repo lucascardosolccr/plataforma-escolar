@@ -23,6 +23,7 @@ STATES = OrderedDict([
     ("nao_avaliado", ("Não avaliada", 1, "Nenhum registro ligado a esta habilidade.")),
     ("insuficiente", ("Sem evidência suficiente", 1, "Há registros, mas poucos para concluir.")),
     ("contraditoria", ("Evidência contraditória", 1, "Resultados muito diferentes entre si: vale uma nova verificação.")),
+    ("reverificar", ("Necessita de nova verificação", 1, "O professor pediu nova verificação, com fundamento registrado.")),
     ("dificuldade", ("Dificuldade observada", 2, "Em desenvolvimento inicial nas situações avaliadas.")),
     ("desenvolvimento", ("Em desenvolvimento", 3, "Acertos parciais nas situações avaliadas.")),
     ("consolidacao", ("Em consolidação", 4, "Bons resultados, ainda não estáveis.")),
@@ -35,9 +36,11 @@ TRENDS = {
     "queda": "Queda persistente — confirmar com nova evidência",
     "": "Sem dados para tendência",
 }
-ABBR = {"nao_avaliado": "—", "insuficiente": "?", "contraditoria": "≠", "dificuldade": "D", "desenvolvimento": "E",
+ABBR = {"nao_avaliado": "—", "insuficiente": "?", "contraditoria": "≠", "reverificar": "↻", "dificuldade": "D",
+        "desenvolvimento": "E",
         "consolidacao": "C", "consolidada": "✓"}
-CSS = {"nao_avaliado": "st-none", "insuficiente": "st-insuf", "contraditoria": "st-contra", "dificuldade": "st-1",
+CSS = {"nao_avaliado": "st-none", "insuficiente": "st-insuf", "contraditoria": "st-contra", "reverificar": "st-contra",
+       "dificuldade": "st-1",
        "desenvolvimento": "st-2", "consolidacao": "st-3", "consolidada": "st-4"}
 
 
@@ -56,6 +59,14 @@ class Assessment:
     sources: dict = field(default_factory=dict)
     evidence: list = field(default_factory=list)
     reasons: list = field(default_factory=list)
+    judgment: object = None  # decisão do professor aplicada (apply_judgments)
+    newer_evidence: bool = False
+    computed_state: str = ""
+
+    @property
+    def computed_label(self):
+        """Estado pelas evidências quando uma decisão do professor está sendo exibida no lugar dele."""
+        return STATES[self.computed_state][0] if self.computed_state in STATES else ""
 
     @property
     def label(self):
@@ -173,3 +184,31 @@ def trajectory(evidences, scale, cutoffs):
         upto = [e for e in evidences if e.observed_on <= end]
         out.append((label, assess(upto, scale, today=end)))
     return out
+
+
+def apply_judgments(assessments):
+    """Aplica as decisões ativas dos professores (``SkillJudgment``) a {(estudante, habilidade): Assessment}.
+
+    Sem evidência mais nova que a decisão, o estado exibido passa a ser o decidido (``a.computed_state``
+    guarda o calculado) e o fundamento entra nas razões. Com evidência mais nova, o estado calculado vale e
+    ``a.newer_evidence`` pede revisão. Uma consulta para o conjunto todo.
+    """
+    from .models import SkillJudgment
+
+    if not assessments:
+        return assessments
+    keys = list(assessments)
+    found = SkillJudgment.objects.filter(student_id__in={k[0] for k in keys}, item_id__in={k[1] for k in keys},
+                                         active=True).order_by("decided_on", "pk")
+    by_key = {(j.student_id, j.item_id): j for j in found}
+    for key, a in assessments.items():
+        j = by_key.get(key)
+        if j is None:
+            continue
+        a.judgment = j
+        a.newer_evidence = bool(a.last_date and a.last_date > j.decided_on)
+        if not a.newer_evidence:
+            a.computed_state = a.state
+            a.state = j.state
+            a.reasons = [f"Decisão do professor em {j.decided_on:%d/%m/%Y}: {j.rationale}"] + list(a.reasons)
+    return assessments

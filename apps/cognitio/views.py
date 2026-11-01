@@ -16,7 +16,7 @@ from apps.registry.models import Enrollment, Student
 
 from . import access
 from .forms import ScaleForm
-from .mastery import CSS, STATES, assess, group_evidence, trajectory
+from .mastery import CSS, STATES, apply_judgments, assess, group_evidence, trajectory
 from .models import MasteryScale, SkillEvidence
 
 
@@ -112,10 +112,12 @@ def student_map(request, student_id):
     items = {i.pk: i for i in CurriculumItem.objects.filter(pk__in=set(grouped) | linked)}
     comps = OrderedDict()
     counts = Counter()
+    # decisões dos professores valem aqui também, como no mapa de aprendizagem e projeção
+    assessed = apply_judgments({(student.pk, pk): assess(grouped.get(pk, []), scale) for pk in items})
     for pk, item in sorted(items.items(), key=lambda kv: (kv[1].component, kv[1].thematic_unit, kv[1].code)):
         if subj.isdigit() and pk not in grouped:
             continue
-        a = assess(grouped.get(pk, []), scale)
+        a = assessed[(student.pk, pk)]
         counts[a.state] += 1
         comps.setdefault(item.component or item.area or "Outros", OrderedDict()).setdefault(
             item.thematic_unit or "Sem unidade identificada", []).append((item, a))
@@ -128,7 +130,8 @@ def student_map(request, student_id):
 
         cutoffs = [(p.name, p.end) for p in CalendarPeriod.objects.filter(
             school=user.school, school_year__is_current=True).order_by("start") if p.start <= timezone.localdate()]
-        detail = {"item": it, "a": assess(ev_list, scale), "traj": trajectory(ev_list, scale, cutoffs) if cutoffs else []}
+        detail = {"item": it, "a": assessed[(student.pk, it.pk)],
+                  "traj": trajectory(ev_list, scale, cutoffs) if cutoffs else []}
     create_audit_log(user=user, action="view", request=request, target=student,
                      detail=f"Consultou o mapa de competências de {student}")
     from .models import LearningAlert, LearningIntervention
@@ -204,10 +207,12 @@ def class_view(request, class_id):
     matrix, dist = [], OrderedDict()
     for it in items:
         dist[it.pk] = Counter()
+    assessed = apply_judgments({(st.pk, it.pk): assess(grouped.get((st.pk, it.pk), []), scale)
+                                for st in students for it in items})
     for st in students:
         row = []
         for it in items:
-            a = assess(grouped.get((st.pk, it.pk), []), scale)
+            a = assessed[(st.pk, it.pk)]
             dist[it.pk][a.state] += 1
             row.append((it, a))
         matrix.append((st, row))

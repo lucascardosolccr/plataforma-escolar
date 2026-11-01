@@ -18,7 +18,7 @@ from apps.core.models import Role
 from apps.curriculum.models import COMPONENTS, ItemDimension, component_for
 
 from . import access
-from .mastery import CSS, STATES, assess, group_evidence
+from .mastery import CSS, STATES, apply_judgments, assess, group_evidence
 from .models import LearningAlert, LearningIntervention, MasteryScale, SkillEvidence, TextAnalysis
 from .recommend import outcomes
 from .taxonomy import NO_ERROR_TYPING, error_label
@@ -85,7 +85,7 @@ def dashboard(request):
     class_ids, pairs = _scope(user)
     evs = list(_evidence_qs(user, class_ids, pairs).select_related("item", "class_group", "subject"))
     grouped = group_evidence(evs)
-    assessments = {k: assess(v, scale, today) for k, v in grouped.items()}
+    assessments = apply_judgments({k: assess(v, scale, today) for k, v in grouped.items()})
     ctx = {"role": user.role, "dist": _dist([a.state for a in assessments.values()]),
            "n_students": len({k[0] for k in grouped}), "n_items": len({k[1] for k in grouped}), "n_evidence": len(evs)}
     # Evolução por período (estado acumulado no fim de cada período).

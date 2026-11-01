@@ -210,6 +210,21 @@ def lessonplan_edit(request, pk):
     return render(request, "pedagogy/lessonplan_form.html", {"form": form, "obj": plan})
 
 
+def _plan_prerequisites(user, plan):
+    """Pré-requisitos (grafo do EIA-Cognitio) das habilidades do planejamento e a situação da turma em cada um.
+    Só para quem pode ver a turma no EIA-Cognitio; ``None`` para os demais ou sem habilidades ligadas."""
+    from apps.cognitio import access
+    from apps.cognitio.gaps import class_prerequisite_needs
+    from apps.registry.models import Enrollment
+
+    items = list(plan.curriculum.all())
+    if not items or not access.can_view_class(user, plan.class_group):
+        return None
+    students = [e.student for e in Enrollment.objects.filter(class_group=plan.class_group, status="ativo")
+                .select_related("student")]
+    return class_prerequisite_needs(plan.class_group, plan.subject, plan.school, students, items=items)
+
+
 def lessonplan_detail(request, pk):
     plan = get_object_or_404(LessonPlan.objects.select_related("teacher", "class_group", "subject"),
                              pk=pk, school=request.user.school)
@@ -217,6 +232,7 @@ def lessonplan_detail(request, pk):
         raise PermissionDenied
     reviewing = plan.status == LessonPlan.Status.SUBMITTED and can_review(request.user, plan)
     return render(request, "pedagogy/lessonplan_detail.html", {
+        "prereq_needs": _plan_prerequisites(request.user, plan),
         "plan": plan, "reviews": plan.reviews.select_related("author"),
         "is_owner": plan.teacher_id == request.user.pk,
         "review_form": ReviewForm() if reviewing else None,

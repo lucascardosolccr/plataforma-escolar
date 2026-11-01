@@ -75,12 +75,26 @@ class EvidenceForm(forms.ModelForm):
 
         self.fields["pair"].choices = [(f"{cg.pk}:{s.pk}", f"{cg.name} — {s.name}") for cg, s in pairs]
         self.order_fields(["pair", "item", "observed_on", "judgement", "description", "activity", "evaluation"])
-        self.fields["item"].queryset = item_qs if item_qs is not None else CurriculumItem.objects.none()
+        item_qs = item_qs if item_qs is not None else CurriculumItem.objects.none()
+        # Mesmos grupos dos formulários de atividade, prova e plano: só o componente e o ano das turmas do
+        # professor, mais o item já escolhido. Antes eram todos os itens visíveis (milhares de opções,
+        # 737 KB de HTML e quase 1 s para desenhar o formulário).
+        chosen = [v for v in (self.data.get("item") if self.is_bound else self.initial.get("item"),)
+                  if str(v or "").isdigit()]
+        groups = picker_groups(user, chosen) if user is not None else []
+        visible = set(item_qs.filter(pk__in={i.pk for _, items in groups for i in items})
+                      .values_list("pk", flat=True))
+        self.fields["item"].queryset = item_qs.filter(pk__in=visible)
+        self.fields["item"].choices = [("", "---------")] + [
+            (label, [(i.pk, str(i)) for i in items if i.pk in visible]) for label, items in groups
+            if any(i.pk in visible for i in items)]
         self.fields["item"].label = "Habilidade ou objetivo"
         self.fields["observed_on"].initial = timezone.localdate()
         class_ids = {cg.pk for cg, _ in pairs}
-        self.fields["activity"].queryset = Activity.objects.filter(class_group_id__in=class_ids, created_by=user)
-        self.fields["evaluation"].queryset = Evaluation.objects.filter(class_group_id__in=class_ids, created_by=user)
+        self.fields["activity"].queryset = Activity.objects.filter(
+            class_group_id__in=class_ids, created_by=user).select_related("class_group__school_year")
+        self.fields["evaluation"].queryset = Evaluation.objects.filter(
+            class_group_id__in=class_ids, created_by=user).select_related("class_group__school_year")
         self.fields["activity"].required = self.fields["evaluation"].required = False
         self.pairs = {f"{cg.pk}:{s.pk}": (cg, s) for cg, s in pairs}
 

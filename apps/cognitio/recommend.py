@@ -35,12 +35,21 @@ def load_strategies(Strategy, Dimension):
 
 def strategy_history(strategy, school):
     """Uso e resultado da estratégia na escola (contagem simples, sem inferência causal)."""
-    out = {"uses": 0, "improved": 0, "unchanged": 0, "no_data": 0}
-    for iv in LearningIntervention.objects.filter(school=school, strategy=strategy).prefetch_related("students"):
-        for r in outcomes(iv):
-            out["uses"] += 1
-            key = {"melhorou": "improved", "sem_evidencia": "no_data"}.get(r["result"], "unchanged")
-            out[key] += 1
+    return strategy_histories([strategy], school)[strategy.pk]
+
+
+def strategy_histories(strategies, school):
+    """``strategy_history`` de várias estratégias com uma consulta de intervenções (antes, uma por estratégia:
+    29 no banco de estratégias). O custo que sobra é o das intervenções que existem, não o do catálogo."""
+    out = {s.pk: {"uses": 0, "improved": 0, "unchanged": 0, "no_data": 0} for s in strategies}
+    if not out:
+        return out
+    scale = MasteryScale.for_school(school)
+    for iv in LearningIntervention.objects.filter(school=school, strategy_id__in=out).prefetch_related("students"):
+        for r in outcomes(iv, scale):
+            h = out[iv.strategy_id]
+            h["uses"] += 1
+            h[{"melhorou": "improved", "sem_evidencia": "no_data"}.get(r["result"], "unchanged")] += 1
     return out
 
 
@@ -58,7 +67,10 @@ def recommend(item, school, component="", error_types=(), students=(), limit=5, 
                 if r["result"] != "melhorou" and iv.strategy_id:
                     used[iv.strategy_id] = r["result"]
     ranked = []
-    for s in qs.select_related("dimension"):
+    strategies = list(qs.select_related("dimension"))
+    history = {} if history is None else history
+    history.update(strategy_histories([s for s in strategies if s.pk not in history], school))
+    for s in strategies:
         score, reasons = 0, []
         if s.component == component:
             score += 3
@@ -79,12 +91,7 @@ def recommend(item, school, component="", error_types=(), students=(), limit=5, 
         if s.pk in used:
             score -= 3
             reasons.append("já usada com estes estudantes nesta habilidade sem melhora registrada")
-        if history is None:
-            hist = strategy_history(s, school)
-        else:
-            if s.pk not in history:
-                history[s.pk] = strategy_history(s, school)
-            hist = history[s.pk]
+        hist = history[s.pk]
         if hist["uses"] >= 3 and hist["improved"] / hist["uses"] >= 0.5:
             score += 1
             reasons.append(f"melhora registrada em {hist['improved']} de {hist['uses']} usos nesta escola")

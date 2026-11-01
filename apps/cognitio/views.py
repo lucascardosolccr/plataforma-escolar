@@ -66,18 +66,35 @@ def home(request):
     classes = {c.pk: c for c in ClassGroup.objects.filter(pk__in={c for c, _ in pairs})}
     subjects = {s.pk: s for s in Subject.objects.filter(pk__in={s for _, s in pairs})}
     scale = MasteryScale.for_school(user.school)
+    # Uma consulta para todas as turmas e disciplinas (antes, duas por cartão).
+    by_pair = {}
+    for e in SkillEvidence.objects.filter(class_group_id__in=classes, subject_id__in=subjects).order_by("observed_on"):
+        if (e.class_group_id, e.subject_id) in pairs:
+            by_pair.setdefault((e.class_group_id, e.subject_id), []).append(e)
+    assessed = {p: {k: assess(v, scale) for k, v in group_evidence(evs).items()} for p, evs in by_pair.items()}
+    # A decisão do professor vale aqui também, como no mapa da turma e nos painéis. O mesmo par estudante ×
+    # habilidade em duas disciplinas (raro) vai numa chamada seguinte, para não ser sobrescrito.
+    pending = [(k, a) for d in assessed.values() for k, a in d.items()]
+    while pending:
+        batch, rest = {}, []
+        for k, a in pending:
+            if k in batch:
+                rest.append((k, a))
+            else:
+                batch[k] = a
+        apply_judgments(batch)
+        pending = rest
     cards = []
     for cg_id, s_id in sorted(pairs, key=lambda p: (classes[p[0]].name if p[0] in classes else "",
                                                      subjects[p[1]].name if p[1] in subjects else "")):
         if cg_id not in classes or s_id not in subjects:
             continue
-        evs = SkillEvidence.objects.filter(class_group_id=cg_id, subject_id=s_id)
-        grouped = group_evidence(evs)
-        states = Counter(assess(v, scale).state for v in grouped.values())
+        grouped = assessed.get((cg_id, s_id), {})
+        states = Counter(a.state for a in grouped.values())
         chips = [(STATES[k][0], CSS[k], states[k]) for k in STATES if states[k]]
         cards.append({"cg": classes[cg_id], "subject": subjects[s_id], "states": states, "chips": chips,
                       "items": len({k[1] for k in grouped}), "students": len({k[0] for k in grouped}),
-                      "evidence": evs.count()})
+                      "evidence": len(by_pair.get((cg_id, s_id), []))})
     return render(request, "cognitio/home.html", {"cards": cards, "states": STATES, "scale": scale,
                                                    "can_configure": user.role in (Role.COORDENACAO.value,
                                                                                   Role.DIRECAO.value)})

@@ -18,7 +18,7 @@ from apps.registry.models import Enrollment, Student
 from . import access
 from .models import InterventionStrategy, LearningAlert, LearningIntervention, LearningTrail
 from .recommend import (RESULT_LABELS, build_trail, comparison, error_types_for, next_step, outcomes, recommend,
-                        strategy_history)
+                        strategy_histories, strategy_history)
 
 DATE = forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"})
 
@@ -262,6 +262,8 @@ def strategy_bank(request):
     if comp:
         qs = qs.filter(component=comp)
     comps = sorted({c for c in InterventionStrategy.objects.values_list("component", flat=True) if c})
-    rows = [(s, strategy_history(s, user.school)) for s in qs]
+    strategies = list(qs)
+    hist = strategy_histories(strategies, user.school)
+    rows = [(s, hist[s.pk]) for s in strategies]
     return render(request, "cognitio/strategies.html", {"rows": rows, "form": form, "comp": comp,
                                                         "comp_choices": [(c, c) for c in comps]})

@@ -211,6 +211,25 @@ class CoverageTests(Base):
         self.login(self.coord)
         self.assertEqual(self.client.get(url).status_code, 403)
 
+    def test_evidence_form_lists_only_the_teachers_components_and_the_chosen_item(self):
+        """Antes eram todas as habilidades visíveis (milhares de opções); agora, os grupos do componente e do
+        ano das turmas do professor, como nos formulários de atividade e prova."""
+        other_year = CurriculumItem.objects.get(school__isnull=True, code="EF09MA01")
+        self.login(self.prof)
+        url = reverse("curriculum:evidence_create")
+        form = self.client.get(url).context["form"]
+        ids = set(form.fields["item"].queryset.values_list("pk", flat=True))
+        self.assertIn(self.h1.pk, ids)
+        self.assertNotIn(other_year.pk, ids)
+        self.assertFalse(CurriculumItem.objects.filter(pk__in=ids, component="Geografia").exists())
+        # vindo de um link com a habilidade escolhida, ela aparece mesmo fora dos grupos
+        form = self.client.get(url, {"item": other_year.pk}).context["form"]
+        self.assertIn(other_year.pk, set(form.fields["item"].queryset.values_list("pk", flat=True)))
+        r = self.client.post(url, {"pair": f"{self.a.pk}:{self.mat.pk}", "item": other_year.pk,
+                                   "observed_on": self.today.isoformat(), "judgement": "desenvolvimento",
+                                   "description": "Retomada com o 9º ano."})
+        self.assertEqual(r.status_code, 302)
+
 
 class LocalItemsAndReferencesTests(Base):
     def test_import_csv_by_coordination(self):

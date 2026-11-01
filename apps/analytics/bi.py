@@ -14,7 +14,7 @@ de registros reais, seguindo a definição em ``metrics.py``. Regras gerais:
 """
 
 import statistics
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import date, timedelta
 
@@ -1011,42 +1011,68 @@ def subject_report(subject, class_groups, period):
 # Painel do professor
 # --------------------------------------------------------------------------- #
 def teacher_report(teacher, period, assignments):
+    """Uma linha por turma e disciplina. As contagens saem de consultas únicas para todas as linhas
+    (antes eram cerca de 11 consultas por linha); só as notas continuam por linha, como antes."""
     today = timezone.localdate()
     rules = rules_by_subject(teacher.school)
+    assignments = list(assignments)
+    class_ids = {a.class_group_id for a in assignments}
+    subject_ids = {a.subject_id for a in assignments}
+    enrolled = defaultdict(list)
+    for cid, sid in Enrollment.objects.filter(class_group_id__in=class_ids, status="ativo") \
+            .values_list("class_group_id", "student_id"):
+        enrolled[cid].append(sid)
+    published, drafts = Counter(), Counter()
+    for cid, subj_id, status, when in Evaluation.objects.filter(class_group_id__in=class_ids,
+                                                                 subject_id__in=subject_ids) \
+            .values_list("class_group_id", "subject_id", "status", "date"):
+        if status == PUBLISHED and when and period.start <= when <= period.end:
+            published[(cid, subj_id)] += 1
+        elif status == Evaluation.Status.DRAFT:
+            drafts[(cid, subj_id)] += 1
+    acts_by_pair = defaultdict(list)
+    for act in Activity.objects.filter(class_group_id__in=class_ids, subject_id__in=subject_ids,
+                                       status=Activity.Status.PUBLISHED, published_date__lte=today,
+                                       deadline__gte=period.start, deadline__lte=period.end):
+        acts_by_pair[(act.class_group_id, act.subject_id)].append(act)
+    subs_by_activity = defaultdict(list)
+    for act_id, sid, status in Submission.objects.filter(
+            activity_id__in=[x.pk for acts in acts_by_pair.values() for x in acts]) \
+            .values_list("activity_id", "student_id", "status"):
+        subs_by_activity[act_id].append((sid, status))
+    last_att = dict(AttendanceRecord.objects.filter(class_group_id__in=class_ids).values("class_group_id")
+                    .annotate(last=Max("date")).values_list("class_group_id", "last"))
+    observed = Counter(PedagogicalObservation.objects.filter(
+        teacher=teacher, subject_id__in=subject_ids, observed_at__gte=period.start, observed_at__lte=period.end)
+        .values_list("subject_id", "student_id"))
     out = []
     for a in assignments:
         cg, subj = a.class_group, a.subject
-        ids = list(Enrollment.objects.filter(class_group=cg, status="ativo").values_list("student_id", flat=True))
+        ids = enrolled.get(cg.pk, [])
+        id_set = set(ids)
         grades = load_grades(ids, period.start, period.end, class_group=cg, subject=subj)
         vals = []
         for sid in ids:
             r = _subject_rows(grades.get(sid, []), rules).get(subj.pk)
             if r and r["average"] is not None:
                 vals.append((float(r["average"]), r["below"]))
-        evals = Evaluation.objects.filter(class_group=cg, subject=subj)
-        acts = list(Activity.objects.filter(class_group=cg, subject=subj, status=Activity.Status.PUBLISHED,
-                                            published_date__lte=today, deadline__gte=period.start,
-                                            deadline__lte=period.end))
-        subs = Submission.objects.filter(activity__in=acts, student_id__in=ids)
-        registered = subs.count()
-        done = subs.filter(status__in=Submission.DELIVERED_STATUSES).count()
-        overdue = [x for x in acts if x.deadline < today]
+        acts = acts_by_pair.get((cg.pk, subj.pk), [])
+        subs = [(act.pk, sid, st) for act in acts for sid, st in subs_by_activity.get(act.pk, []) if sid in id_set]
+        registered = len(subs)
+        done = sum(1 for _, _, st in subs if st in Submission.DELIVERED_STATUSES)
+        overdue = {x.pk for x in acts if x.deadline < today}
         expected = len(overdue) * len(ids)
-        recorded_overdue = subs.filter(activity__in=overdue).count()
-        last_att = (AttendanceRecord.objects.filter(class_group=cg).order_by("-date")
-                    .values_list("date", flat=True).first())
+        recorded_overdue = sum(1 for act_id, _, _ in subs if act_id in overdue)
         out.append({
             "assignment": a, "class_group": cg, "subject": subj, "students": len(ids),
             "average": round(statistics.fmean(v for v, _ in vals), 2) if vals else None,
             "n_with_average": len(vals), "below": sum(1 for _, b in vals if b),
-            "evaluations_published": evals.filter(status=PUBLISHED, date__gte=period.start, date__lte=period.end).count(),
-            "evaluations_draft": evals.filter(status=Evaluation.Status.DRAFT).count(),
+            "evaluations_published": published[(cg.pk, subj.pk)],
+            "evaluations_draft": drafts[(cg.pk, subj.pk)],
             "activities": len(acts), "delivery_rate": pct(done, registered),
             "records_pending": max(expected - recorded_overdue, 0),
-            "last_attendance": last_att,
-            "observations": PedagogicalObservation.objects.filter(
-                teacher=teacher, subject=subj, student_id__in=ids,
-                observed_at__gte=period.start, observed_at__lte=period.end).count(),
+            "last_attendance": last_att.get(cg.pk),
+            "observations": sum(n for (subj_id, sid), n in observed.items() if subj_id == subj.pk and sid in id_set),
         })
     return {"period": period, "rows": out}
 

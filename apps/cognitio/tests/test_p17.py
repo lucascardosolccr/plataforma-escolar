@@ -287,6 +287,11 @@ class ConsistencyAndIntegrationTests(P17Base):
         self.assertEqual(comps["Matemática"].get("consolidada"), 1)
         generate_for_class(self.cg, self.today)
         self.assertFalse(LearningAlert.objects.filter(student=self.ana, item=self.h1, active=True).exists())
+        # cartões da entrada do EIA-Cognitio (antes contavam o estado calculado, sem a decisão)
+        card = next(c for c in self.client.get(reverse("cognitio:home")).context["cards"]
+                    if c["cg"] == self.cg and c["subject"] == self.mat)
+        self.assertEqual((card["states"]["consolidada"], card["states"]["dificuldade"]), (1, 0))
+        self.assertEqual(card["evidence"], 3)
 
     def test_lesson_plan_shows_prerequisites_of_its_skills(self):
         from apps.pedagogy.models import LessonPlan

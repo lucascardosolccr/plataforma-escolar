@@ -93,6 +93,7 @@
   --ds-success: #17663f;  --ds-success-bg: #e3f3ea;  --ds-success-line: #a9d8be;
   --ds-warning: #7a4e00;  --ds-warning-bg: #fcf1d6;  --ds-warning-line: #ecd08a;
   --ds-danger: #a3261c;   --ds-danger-bg: #fbe6e3;   --ds-danger-line: #efb3ab;
+  --ds-on-danger: #ffffff;    /* texto sobre fundo --ds-danger: 7,4:1 */
   --ds-info: #1f5e80;     --ds-info-bg: #e2f0f7;     --ds-info-line: #a7cfe3;
 
   /* Moldura (barra lateral): azul-noite com marca-texto no item ativo */
@@ -194,6 +195,7 @@
   --ds-success: #7bd3a5;  --ds-success-bg: #13291f;  --ds-success-line: #2b5a43;
   --ds-warning: #f1c76a;  --ds-warning-bg: #2d2512;  --ds-warning-line: #5e4c1f;
   --ds-danger: #f4a39b;   --ds-danger-bg: #331a18;   --ds-danger-line: #6b3530;
+  --ds-on-danger: #0f131b;    /* o vermelho do escuro é claro: branco por cima dava 2:1; escuro dá 9,4:1 */
   --ds-info: #8cc8ea;     --ds-info-bg: #12242f;     --ds-info-line: #2b4f63;
 
   --ds-frame: #0b0f17;

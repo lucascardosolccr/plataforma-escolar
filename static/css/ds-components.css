@@ -205,7 +205,7 @@ a:hover { color: var(--ds-primary-hover); }
 /* O atalho de padding acima apagava o espaço da seta do select: texto longo passava por baixo dela. */
 .form-select { padding-right: 2.25rem; }
 .form-select-sm { padding-right: 2rem; }
-.form-control::placeholder { color: var(--ds-text-muted); opacity: .8; }
+.form-control::placeholder { color: var(--ds-text-muted); opacity: 1; } /* com .8 caía para 3,8:1 */
 .form-control:hover, .form-select:hover { border-color: var(--ds-text-muted); }
 .form-control:focus, .form-select:focus {
   border-color: var(--ds-primary);
@@ -899,7 +899,7 @@ th[aria-sort] .th-sort .ds-icon { opacity: 1; color: var(--ds-primary); }
 .seg-input:focus-visible + .seg-btn { outline: 2px solid var(--ds-focus); outline-offset: 1px; }
 .seg-input:checked + .seg-presente { background: var(--ds-success-bg); color: var(--ds-success); }
 .seg-input:checked + .seg-atraso { background: var(--ds-warning-bg); color: var(--ds-warning); }
-.seg-input:checked + .seg-falta { background: var(--ds-danger); color: #fff; }
+.seg-input:checked + .seg-falta { background: var(--ds-danger); color: var(--ds-on-danger); }
 @media (max-width: 575.98px) { .seg { width: 100%; } .seg-btn { flex: 1; justify-content: center; } }
 
 /* ---------- Páginas de erro (403, 404, 500, formulário expirado) ---------- */

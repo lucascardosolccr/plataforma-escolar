@@ -1,6 +1,6 @@
 """Lembretes acadêmicos com antecedência configurável, provas e central (Prompt 15)."""
 
-from datetime import timedelta
+from datetime import date, timedelta
 from unittest import mock
 
 from django.urls import reverse
@@ -46,6 +46,7 @@ class StageTests(Base):
         self.assertEqual([reminders.stage_after(d, [1, 3]) for d in (0, 1, 2, 3, 9)], [None, 1, 1, 3, 3])
 
     def test_each_configured_stage_reminds_once_and_missed_days_collapse(self):
+        self.today = date(2026, 11, 4)  # quarta-feira; prazo na quarta seguinte
         self.policy(activity_days="7,3,1,0")
         act = self.act(self.today + timedelta(days=7))
         for offset in range(0, 8):  # roda todos os dias, duas vezes por dia
@@ -53,13 +54,55 @@ class StageTests(Base):
             reminders.activity_reminders(day)
             reminders.activity_reminders(day)
         titles = sorted(self.notes(dedupe_key__startswith=f"prazo:{act.pk}:").values_list("title", flat=True))
-        self.assertEqual(titles, ["Prazo amanhã: Mapa", "Prazo em 3 dias: Mapa", "Prazo em 7 dias: Mapa",
-                                  "Prazo hoje: Mapa"])
+        # a etapa de 3 dias cairia no domingo: sai na sexta, último dia letivo antes
+        self.assertEqual(titles, ["Prazo amanhã: Mapa", "Prazo em 7 dias: Mapa", "Prazo hoje: Mapa",
+                                  "Prazo na quarta-feira: Mapa"])
         # Servidor desligado entre a etapa 7 e o dia 2: sai só a etapa vigente (3).
         Notification.objects.all().delete()
         act2 = self.act(self.today + timedelta(days=2), title="Resumo")
         reminders.activity_reminders(self.today)
         self.assertEqual(self.notes(dedupe_key__startswith=f"prazo:{act2.pk}:").count(), 1)
+
+    def test_stage_moves_to_last_school_day_before_weekend_or_holiday(self):
+        from apps.academics.models import SchoolYear
+        from apps.school_calendar.models import CalendarEvent, CalendarPublication
+
+        fri, sat, mon = date(2026, 11, 6), date(2026, 11, 7), date(2026, 11, 9)
+        letivo = lambda d: d.weekday() < 5  # noqa: E731
+        # prova na segunda, "7,1,0": a véspera (domingo) sai na sexta
+        self.assertEqual([reminders.school_stage_before(d, mon, [7, 1, 0], letivo)
+                          for d in (date(2026, 11, 5), fri, sat, mon)], [7, 1, 1, 0])
+        # atraso de 1 dia de um prazo na sexta: sai na segunda, não no sábado
+        self.assertEqual([reminders.school_stage_after(d, fri, [1], letivo) for d in (sat, mon)], [None, 1])
+        self.assertEqual(reminders.when_text(3, mon), "na segunda-feira")
+        self.assertEqual(reminders.when_text(9, mon), "em 9 dias")
+        # prazo no domingo: "amanhã" sai no sábado ou antes, "hoje" continua no domingo
+        sun = date(2026, 11, 8)
+        self.assertEqual([reminders.school_stage_before(d, sun, [1, 0], letivo) for d in (fri, sat, sun)], [1, 1, 0])
+        # com o calendário publicado: feriado na sexta leva a véspera para a quinta; sábado letivo conta
+        year = SchoolYear.objects.get(school=self.school)
+        CalendarPublication.objects.create(school_year=year)
+        CalendarEvent.objects.create(school=self.school, school_year=year, kind="feriado", title="Feriado",
+                                     start=fri, no_classes=True)
+        cal = reminders._school_days()
+        is_day = lambda d: cal(self.school, d)  # noqa: E731
+        self.assertEqual(reminders.school_stage_before(date(2026, 11, 5), mon, [7, 1, 0], is_day), 1)
+        CalendarEvent.objects.create(school=self.school, school_year=year, kind="letivo_extra", title="Sábado letivo",
+                                     start=sat)
+        cal = reminders._school_days()
+        is_day = lambda d: cal(self.school, d)  # noqa: E731
+        self.assertEqual([reminders.school_stage_before(d, mon, [7, 1, 0], is_day)
+                          for d in (date(2026, 11, 5), sat)], [7, 1])
+
+    def test_exam_eve_reminder_is_not_lost_on_weekend(self):
+        self.policy(exam_days="7,1,0")
+        mon = date(2026, 11, 9)
+        ev = Evaluation.objects.create(school=self.school, class_group=self.cg, subject=self.mat, title="Prova 2",
+                                       date=mon, created_by=self.prof, announced=True)
+        for d in (date(2026, 11, 2), date(2026, 11, 5), date(2026, 11, 6)):  # segunda, quinta, sexta
+            reminders.exam_reminders(d)
+        titles = list(self.notes(dedupe_key__startswith=f"prova:{ev.pk}:").order_by("pk").values_list("title", flat=True))
+        self.assertEqual(titles, ["Prova em 7 dias: Prova 2", "Prova na segunda-feira: Prova 2"])
 
     def test_priority_ref_and_due_date_and_student_account(self):
         act = self.act(self.today + timedelta(days=1))
@@ -80,6 +123,7 @@ class StageTests(Base):
         self.assertTrue(self.notes(self.outra).exists())
 
     def test_overdue_while_pending_only(self):
+        self.today = date(2026, 11, 4)  # quarta-feira: prazo na terça, etapas sem fim de semana
         self.policy(overdue_days="1,3")
         act = self.act(self.today - timedelta(days=1))
         Submission.objects.create(school=self.school, activity=act, student=self.bia, status="entregue")

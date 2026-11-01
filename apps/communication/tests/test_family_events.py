@@ -175,7 +175,8 @@ class DeadlineReminderTests(FamBase):
         today = timezone.localdate()
         return Activity.objects.create(school=self.school, class_group=self.cg, subject=self.mat, title="Mapa",
                                        deadline=deadline, published_date=kw.pop("published", today - timedelta(days=3)),
-                                       class_date=today, created_by=self.prof, notified_at=timezone.now(), **kw)
+                                       class_date=today, created_by=self.prof,
+                                       notified_at=kw.pop("notified_at", timezone.now()), **kw)
 
     def reminders(self, user=None):
         return self.fam_notes(user).filter(dedupe_key__startswith="prazo:")
@@ -202,12 +203,18 @@ class DeadlineReminderTests(FamBase):
     def test_ignores_far_deadlines_drafts_canceled_and_scheduled(self):
         from apps.communication.family_events import send_deadline_reminders
 
-        today = timezone.localdate()
-        self.make(today + timedelta(days=4))  # antes da primeira antecedência (3 dias)
-        self.make(today, status="rascunho")
-        self.make(today, status="cancelada", visible_before_cancel=True)
-        self.make(today + timedelta(days=1), published=today + timedelta(days=1))  # ainda agendada
-        self.make(today - timedelta(days=1))  # prazo vencido: vira "atividade pendente", não "prazo"
+        import datetime
+
+        # segunda-feira fixa: com prazo na sexta, a etapa de 3 dias (terça) ainda não chegou em nenhum dia
+        # da semana do teste; numa sexta real, a etapa de um prazo na terça seguinte já valeria (fim de semana)
+        today = datetime.date(2026, 11, 2)
+        pub = today - timedelta(days=3)
+        old = timezone.now() - timedelta(days=30)  # anúncio antigo: não silencia a etapa pelo "mesmo dia"
+        self.make(today + timedelta(days=4), published=pub, notified_at=old)  # antes da primeira antecedência
+        self.make(today, status="rascunho", published=pub, notified_at=old)
+        self.make(today, status="cancelada", visible_before_cancel=True, published=pub, notified_at=old)
+        self.make(today + timedelta(days=1), published=today + timedelta(days=1), notified_at=old)  # agendada
+        self.make(today - timedelta(days=1), published=pub, notified_at=old)  # vencido: "pendente", não "prazo"
         send_deadline_reminders(today)
         self.assertFalse(self.reminders().exists())
 

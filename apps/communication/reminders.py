@@ -15,6 +15,10 @@ Como funciona:
   ainda não tem entrega registrada. Rascunho, publicação agendada e
   atividade cancelada nunca geram lembrete.
 - Prova só gera lembrete com a data divulgada (``Evaluation.announced``).
+- Etapa antecipada que cai em dia sem aula (fim de semana; com o calendário
+  publicado, também feriado, recesso e suspensão) vale a partir do último dia
+  letivo antes; atraso que cai sem aula sai no próximo dia letivo. O aviso do
+  próprio dia não muda (``school_stage_before`` / ``school_stage_after``).
 - Não há agendador: ``run_daily`` é chamado pelo
   ``ScheduledPublicationMiddleware`` na primeira requisição do dia e grava um
   ``ReminderRun``. Uma falha fica registrada e é tentada de novo; como cada
@@ -25,6 +29,7 @@ import datetime
 import logging
 import traceback
 
+from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 
@@ -55,12 +60,79 @@ def stage_after(days_over, offsets):
     return max(reached) if reached else None
 
 
-def when_text(days_left):
+WEEKDAYS = ["na segunda-feira", "na terça-feira", "na quarta-feira", "na quinta-feira", "na sexta-feira",
+            "no sábado", "no domingo"]
+
+
+def when_text(days_left, due=None):
     if days_left == 0:
         return "hoje"
     if days_left == 1:
         return "amanhã"
+    if due is not None and days_left <= 6:
+        return WEEKDAYS[due.weekday()]
     return f"em {days_left} dias"
+
+
+def _school_days():
+    """Por escola, ``letivo(dia)``: com o calendário publicado, valem feriados, recessos e suspensões
+    ("sem aula") e os dias letivos extras (sábado letivo); sem calendário, só segunda a sexta."""
+    from apps.school_calendar.models import CalendarEvent
+    from apps.school_calendar.services import current_year, is_published
+
+    cache = {}
+
+    def letivo(school, day):
+        if school.pk not in cache:
+            events = []
+            if is_published(current_year(school)):
+                events = list(CalendarEvent.objects.filter(school=school).filter(
+                    Q(no_classes=True) | Q(kind=CalendarEvent.Kind.EXTRA_DAY)))
+            cache[school.pk] = ([e for e in events if e.no_classes],
+                                [e for e in events if e.kind == CalendarEvent.Kind.EXTRA_DAY])
+        off, extra = cache[school.pk]
+        if any(e.covers(day) for e in off):
+            return False
+        return day.weekday() < 5 or any(e.covers(day) for e in extra)
+    return letivo
+
+
+def school_stage_before(today, due, offsets, is_school_day):
+    """Etapa vigente antes da data, contando o dia de cada etapa no calendário: se ``due - o`` não é dia
+    letivo, a etapa vale a partir do último dia letivo antes dele. Assim a "véspera" de uma prova na
+    segunda-feira sai na sexta, quando a escola ainda usa a plataforma, e não se perde no domingo.
+    Sem dias sem aula no caminho, é igual a ``stage_before``."""
+    if due < today:
+        return None
+    reached = []
+    for o in offsets:
+        target = due - datetime.timedelta(days=o)
+        # o aviso do próprio dia ("hoje") fica no dia, mesmo num prazo de domingo; só antecedências mudam
+        for _ in range(21 if o > 0 else 0):  # recesso longo: no máximo três semanas para trás
+            if target <= today or is_school_day(target):
+                break
+            target -= datetime.timedelta(days=1)
+        if target <= today:
+            reached.append(o)
+    return min(reached) if reached else None
+
+
+def school_stage_after(today, due, offsets, is_school_day):
+    """Etapa depois do vencimento: o dia de cada atraso que cai sem aula passa para o próximo dia letivo."""
+    if due >= today:
+        return None
+    reached = []
+    for o in offsets:
+        if o <= 0:
+            continue
+        target = due + datetime.timedelta(days=o)
+        for _ in range(21):
+            if target > today or is_school_day(target):
+                break
+            target += datetime.timedelta(days=1)
+        if target <= today:
+            reached.append(o)
+    return max(reached) if reached else None
 
 
 def resolve(ref, reason, student=None, due_on=None):
@@ -98,7 +170,7 @@ def _enabled():
     return get
 
 
-def activity_reminders(today=None, policies=None, enabled=None):
+def activity_reminders(today=None, policies=None, enabled=None, letivo=None):
     """Atividades de casa publicadas: antes do prazo e, se configurado, depois
     do vencimento enquanto continuar pendente."""
     from apps.pedagogy.models import Activity, Submission
@@ -109,6 +181,7 @@ def activity_reminders(today=None, policies=None, enabled=None):
     today = today or timezone.localdate()
     policies = policies or _policies()
     enabled = enabled or _enabled()
+    letivo = letivo or _school_days()
     horizon = 60
     acts = (Activity.objects.filter(Activity.family_visible_q(today=today), status=Activity.Status.PUBLISHED,
                                     deadline__gte=today - datetime.timedelta(days=horizon),
@@ -118,15 +191,16 @@ def activity_reminders(today=None, policies=None, enabled=None):
     for act in acts:
         policy, before, after, _exam = policies(act.school)
         days_left = (act.deadline - today).days
+        is_school_day = lambda d, school=act.school: letivo(school, d)  # noqa: E731
         if days_left >= 0:
-            stage, key = stage_before(days_left, before), "prazo_proximo"
+            stage, key = school_stage_before(today, act.deadline, before, is_school_day), "prazo_proximo"
             # No dia em que a família recebeu "nova atividade" (que já traz o
             # prazo), o lembrete antecipado seria repetição.
             if stage is not None and days_left > 1 and act.notified_at and \
                     timezone.localdate(act.notified_at) == today:
                 stage = None
         else:
-            stage, key = stage_after(-days_left, after), "atividade_pendente"
+            stage, key = school_stage_after(today, act.deadline, after, is_school_day), "atividade_pendente"
         if stage is None or not enabled(act.school, key):
             continue
         delivered = set(Submission.objects.filter(activity=act, status__in=Submission.DELIVERED_STATUSES)
@@ -138,7 +212,7 @@ def activity_reminders(today=None, policies=None, enabled=None):
             if st.pk in delivered or not enr.covers(act.published_date, act.deadline):
                 continue
             if days_left >= 0:
-                title = f"Prazo {when_text(days_left)}: {act.title}"
+                title = f"Prazo {when_text(days_left, act.deadline)}: {act.title}"
                 body = (f"{st} — {act.subject}, entrega até {act.deadline:%d/%m/%Y}. "
                         "Se já entregou, desconsidere: o professor ainda vai registrar.")
                 dedupe = f"prazo:{act.pk}:{st.pk}:{act.deadline:%Y%m%d}:{stage}"
@@ -155,7 +229,7 @@ def activity_reminders(today=None, policies=None, enabled=None):
     return total
 
 
-def group_work_reminders(today=None, policies=None, enabled=None):
+def group_work_reminders(today=None, policies=None, enabled=None, letivo=None):
     """Trabalhos em grupo: cada integrante atual cujo grupo (ou ele, na
     entrega individual) ainda não tem entrega registrada."""
     from apps.pedagogy.models import GroupWork, GroupWorkDelivery, WorkGroupMember
@@ -165,6 +239,7 @@ def group_work_reminders(today=None, policies=None, enabled=None):
     today = today or timezone.localdate()
     policies = policies or _policies()
     enabled = enabled or _enabled()
+    letivo = letivo or _school_days()
     delivered_states = (GroupWorkDelivery.Status.DELIVERED, GroupWorkDelivery.Status.LATE)
     works = (GroupWork.objects.filter(GroupWork.family_visible_q(today=today), status=GroupWork.Status.PUBLISHED,
                                       deadline__gte=today, deadline__lte=today + datetime.timedelta(days=60))
@@ -173,7 +248,7 @@ def group_work_reminders(today=None, policies=None, enabled=None):
     for work in works:
         policy, before, _after, _exam = policies(work.school)
         days_left = (work.deadline - today).days
-        stage = stage_before(days_left, before)
+        stage = school_stage_before(today, work.deadline, before, lambda d: letivo(work.school, d))
         if stage is not None and days_left > 1 and work.notified_at and \
                 timezone.localdate(work.notified_at) == today:
             stage = None
@@ -188,7 +263,8 @@ def group_work_reminders(today=None, policies=None, enabled=None):
             if m.group_id in done_groups or m.student_id in done_students:
                 continue
             total += notify_family(
-                m.student, "prazo_proximo", f"Prazo {when_text(days_left)}: {work.title} (trabalho em grupo)",
+                m.student, "prazo_proximo",
+                f"Prazo {when_text(days_left, work.deadline)}: {work.title} (trabalho em grupo)",
                 body=f"{m.student} — {work.subject}, entrega até {work.deadline:%d/%m/%Y}. "
                      "Se o grupo já entregou, desconsidere: o professor ainda vai registrar.",
                 url=url, dedupe_key=f"prazo-trabalho:{work.pk}:{m.student_id}:{work.deadline:%Y%m%d}:{stage}",
@@ -207,7 +283,7 @@ def exam_students(ev):
             if e.covers(ev.date)]
 
 
-def exam_reminders(today=None, policies=None, enabled=None):
+def exam_reminders(today=None, policies=None, enabled=None, letivo=None):
     """Provas com data divulgada: lembretes antes da data (padrão 7, 1 e 0)."""
     from apps.pedagogy.models import Evaluation
 
@@ -216,18 +292,19 @@ def exam_reminders(today=None, policies=None, enabled=None):
     today = today or timezone.localdate()
     policies = policies or _policies()
     enabled = enabled or _enabled()
+    letivo = letivo or _school_days()
     total = 0
     evs = (Evaluation.objects.filter(announced=True, date__gte=today, date__lte=today + datetime.timedelta(days=60))
            .select_related("school", "subject", "class_group"))
     for ev in evs:
         policy, _b, _a, offsets = policies(ev.school)
         days_left = (ev.date - today).days
-        stage = stage_before(days_left, offsets)
+        stage = school_stage_before(today, ev.date, offsets, lambda d: letivo(ev.school, d))
         if stage is None or not enabled(ev.school, "prova_lembrete"):
             continue
         for st in exam_students(ev):
             total += notify_family(
-                st, "prova_lembrete", f"Prova {when_text(days_left)}: {ev.title}",
+                st, "prova_lembrete", f"Prova {when_text(days_left, ev.date)}: {ev.title}",
                 body=f"{st} — {ev.subject}, turma {ev.class_group}, em {ev.date:%d/%m/%Y}.",
                 url=agenda_url(), dedupe_key=f"prova:{ev.pk}:{st.pk}:{ev.date:%Y%m%d}:{stage}",
                 guardians=policy.include_guardians, priority=HIGH if days_left <= 1 else NORMAL,
@@ -244,12 +321,12 @@ def run_daily(today=None):
     """Processa todos os lembretes do dia e registra o resultado."""
     today = today or timezone.localdate()
     run = ReminderRun.objects.create(day=today)
-    policies, enabled = _policies(), _enabled()
+    policies, enabled, letivo = _policies(), _enabled(), _school_days()
     counts = {}
     try:
-        counts["atividades"] = activity_reminders(today, policies, enabled)
-        counts["trabalhos"] = group_work_reminders(today, policies, enabled)
-        counts["provas"] = exam_reminders(today, policies, enabled)
+        counts["atividades"] = activity_reminders(today, policies, enabled, letivo)
+        counts["trabalhos"] = group_work_reminders(today, policies, enabled, letivo)
+        counts["provas"] = exam_reminders(today, policies, enabled, letivo)
         counts["alertas_pedagogicos"] = _learning_alerts(today)
     except Exception:
         run.status = ReminderRun.Status.ERROR

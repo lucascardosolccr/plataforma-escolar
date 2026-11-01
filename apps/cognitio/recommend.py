@@ -44,8 +44,9 @@ def strategy_history(strategy, school):
     return out
 
 
-def recommend(item, school, component="", error_types=(), students=(), limit=5):
-    """Estratégias ordenadas para a habilidade, com as razões de cada uma."""
+def recommend(item, school, component="", error_types=(), students=(), limit=5, history=None):
+    """Estratégias ordenadas para a habilidade, com as razões de cada uma. ``history`` (dicionário) guarda o
+    histórico de cada estratégia entre chamadas seguidas, para não recalculá-lo a cada habilidade."""
     component = component or item.component
     dims = set(item.dimensions.values_list("pk", flat=True))
     qs = InterventionStrategy.objects.filter(Q(school__isnull=True) | Q(school=school), active=True).filter(
@@ -78,7 +79,12 @@ def recommend(item, school, component="", error_types=(), students=(), limit=5):
         if s.pk in used:
             score -= 3
             reasons.append("já usada com estes estudantes nesta habilidade sem melhora registrada")
-        hist = strategy_history(s, school)
+        if history is None:
+            hist = strategy_history(s, school)
+        else:
+            if s.pk not in history:
+                history[s.pk] = strategy_history(s, school)
+            hist = history[s.pk]
         if hist["uses"] >= 3 and hist["improved"] / hist["uses"] >= 0.5:
             score += 1
             reasons.append(f"melhora registrada em {hist['improved']} de {hist['uses']} usos nesta escola")

@@ -192,7 +192,7 @@ class BKTTests(P17Base):
 class AssistantTests(P17Base):
     def test_examples_are_understood(self):
         expected = ["prerequisitos", "evidencias_lacuna", "dependentes", "intervencao_semelhante", "retomar",
-                    "depois_recuperacao", "sem_evidencia", "atividades", "evidencias_coletar"]
+                    "depois_recuperacao", "sem_evidencia", "atividades", "evidencias_coletar", "nao_avaliadas"]
         self.assertEqual([assistant.detect(q)[0] for q in assistant.EXAMPLES], expected)
         self.assertIsNone(assistant.detect("bom dia"))
 
@@ -356,6 +356,69 @@ class CouncilTests(P17Base):
         for user in (self.prof_b, self.fam, self.sec):
             self.login(user)
             self.assertEqual(self.client.get(url).status_code, 403, user.username)
+
+
+class NotEvaluatedAndPerformanceTests(P17Base):
+    def test_worked_but_not_evaluated_listed_per_class_with_observation_link(self):
+        from apps.pedagogy.models import LessonPlan
+
+        self.login(self.prof)  # sem habilidade ligada a nada: diz o que falta, não "está tudo avaliado"
+        self.assertContains(self.client.get(reverse("cognitio:dashboard")), "Ligue as habilidades ao planejar")
+        self.assertIn("Ligue as habilidades",
+                      assistant.answer(self.prof, "Quais habilidades ainda não foram avaliadas?").missing)
+        plan = LessonPlan.objects.create(school=self.school, teacher=self.prof, class_group=self.cg, subject=self.mat,
+                                         starts_on=self.today - timedelta(days=9),
+                                         ends_on=self.today - timedelta(days=2), title="P", content="c",
+                                         objectives="o")
+        plan.curriculum.set([self.h1, self.h2])
+        self.obs(self.ana, self.h1, 4, 1)  # h1 já tem registro na turma; h2 não
+        rebuild_class(self.cg)
+        self.login(self.prof)
+        r = self.client.get(reverse("cognitio:dashboard"))
+        rows = r.context["not_evaluated_rows"]["rows"]
+        self.assertEqual([(x["item"], x["cg"], x["origin"]) for x in rows], [(self.h2, self.cg, "planejamento")])
+        link = reverse("cognitio:observation_create", args=[self.cg.pk, self.mat.pk]) + f"?item={self.h2.pk}"
+        self.assertContains(r, link)
+        self.assertContains(r, "Não quer dizer que a turma não aprendeu")
+        # a mesma resposta no assistente, só no alcance de quem pergunta
+        q = "Quais habilidades já trabalhadas ainda não foram avaliadas?"
+        self.assertEqual(assistant.detect(q)[0], "nao_avaliadas")
+        self.assertEqual(assistant.detect("Quem ainda não foi avaliado em EF01MA02?")[0], "sem_evidencia")
+        a = assistant.answer(self.prof, q, class_group=self.cg)
+        self.assertEqual([url for _, url in a.items], [link])
+        self.assertEqual(assistant.answer(self.prof_b, q).items, [])  # não leciona nesta turma
+
+    def test_propagation_same_result_and_queries_do_not_grow_with_the_graph(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        self.obs(self.ana, self.h1, 1, 3, "A")
+        self.obs(self.ana, self.h1, 1, 1, "B")
+        self.obs(self.ana, self.h2, 5, 2, "A")
+        rebuild_class(self.cg)
+        SkillJudgment.objects.create(school=self.school, student=self.ana, item=self.h2, state="reverificar",
+                                     rationale="Quero ver de novo.", decided_by=self.prof, decided_on=self.today)
+
+        def run():
+            with CaptureQueriesContext(connection) as q:
+                rows = gaps.propagation(self.ana, self.h1, self.school, today=self.today)
+            return rows, len(q.captured_queries)
+
+        rows, before = run()
+        for r in rows:  # o cálculo em lote dá o mesmo estado que habilidade por habilidade
+            one = self.state(self.ana, r["item"])
+            self.assertEqual((r["a"].effective, r["a"].state), (one.effective, one.state), r["item"].code)
+        self.assertEqual(next(r for r in rows if r["item"] == self.h2)["a"].effective, "reverificar")
+        reached = {self.h1.pk} | {r["item"].pk for r in rows}
+        extra = list(CurriculumItem.objects.filter(component="Matemática", kind="habilidade")
+                     .exclude(pk__in=reached)[:4])
+        for it in extra:
+            SkillRelation.objects.create(school=self.school, source=self.h3, target=it, kind="progressao",
+                                         confidence="media", status="validada", origin="manual")
+        n_before = len(rows)
+        rows, after = run()
+        self.assertEqual(len(rows), n_before + len(extra))
+        self.assertLessEqual(after - before, 3 * len(extra))  # antes: cerca de 15 consultas por habilidade
 
 
 class AccessibilityTests(P17Base):

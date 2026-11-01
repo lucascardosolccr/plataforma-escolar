@@ -47,6 +47,12 @@
     <p class="small text-secondary">Pré-requisitos (grafo) das habilidades das suas atividades e avaliações das próximas semanas que ainda não foram demonstrados.</p>
     <ul class="list-unstyled small mb-0">{% for r in critical %}<li class="py-1"><a href="{% url 'cognitio:class_view' r.cg.pk %}?disciplina={{ r.subject.pk }}#pre-next"><strong>{{ r.item.code }}</strong></a> · {{ r.cg.name }} · sustenta {% for t in r.targets %}{{ t.code }}{% if not forloop.last %}, {% endif %}{% endfor %} · {{ r.weak|length }} ainda não consolidaram, {{ r.missing|length }} sem evidência</li>{% empty %}<li class="text-secondary">Nada a apontar: sem conteúdo planejado com habilidades ligadas ou sem pré-requisito em aberto.</li>{% endfor %}</ul>
   </div></div></section>
+  <section class="col-lg-6" aria-labelledby="noteval"><div class="card h-100"><div class="card-body">
+    <h2 id="noteval" class="h6">{% icon "clipboard-list" %}Trabalhadas e ainda não avaliadas</h2>
+    <p class="small text-secondary">Habilidades de planejamentos encerrados ou atividades já dadas sem nenhum registro na turma. Não quer dizer que a turma não aprendeu: só que ainda não há evidência. Uma observação curta já resolve.</p>
+    <ul class="list-unstyled small mb-0">{% for r in not_evaluated_rows.rows %}<li class="py-1 border-bottom"><strong>{{ r.item.code }}</strong> · {{ r.cg.name }} · {{ r.subject.name }} · {{ r.origin }} de {{ r.when|date:"d/m" }}<span class="d-block"><a href="{% url 'cognitio:observation_create' r.cg.pk r.subject.pk %}?item={{ r.item.pk }}">Registrar observação</a></span></li>{% empty %}<li class="text-secondary">{% if not_evaluated_rows.worked %}Tudo o que foi trabalhado já tem algum registro.{% else %}Nenhum planejamento encerrado ou atividade já dada tem habilidades ligadas. Ligue as habilidades ao planejar para esta lista funcionar.{% endif %}</li>{% endfor %}</ul>
+    {% if not_evaluated_rows.total > not_evaluated_rows.rows|length %}<p class="small text-secondary mt-2 mb-0">Mostrando {{ not_evaluated_rows.rows|length }} de {{ not_evaluated_rows.total }}, as mais recentes primeiro.</p>{% endif %}
+  </div></div></section>
   {% endif %}
 
   {% if cross_component %}

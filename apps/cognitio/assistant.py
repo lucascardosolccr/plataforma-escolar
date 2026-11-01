@@ -36,6 +36,11 @@ INTENTS = [
     ("evidencias_coletar", "Que evidências coletar", ["que evidencias", "quais evidencias devo", "coletar",
                                                       "verificar se o estudante avancou", "verificar se avancou",
                                                       "como verificar", "como avaliar", "como saber se"]),
+    ("nao_avaliadas", "Habilidades trabalhadas e ainda não avaliadas", ["habilidades ainda nao",
+                                                                        "habilidades nao avaliadas",
+                                                                        "nao foram avaliadas", "trabalhadas",
+                                                                        "habilidades sem avaliacao",
+                                                                        "trabalhei e nao avaliei"]),
     ("sem_evidencia", "Quem não tem evidências suficientes", ["sem evidencias suficientes", "nao possuem evidencias",
                                                               "sem evidencia", "evidencias suficientes para uma",
                                                               "nao foram avaliados", "ainda nao avaliad",
@@ -71,6 +76,7 @@ EXAMPLES = [
     "Quais estudantes ainda não possuem evidências suficientes para uma conclusão em EF06MA07?",
     "Quais atividades podem ajudar a desenvolver EF06MA07?",
     "Que evidências devo coletar para verificar se o estudante avançou em EF06MA07?",
+    "Quais habilidades já trabalhadas ainda não foram avaliadas?",
 ]
 
 
@@ -341,7 +347,34 @@ def _h_collect(user, a, item, student, cg):
         a.limits.append("Ainda não há critérios escritos para esta habilidade; registre-os nas questões.")
 
 
+def _h_not_evaluated(user, a, item, student, cg):
+    from .views_dash import not_evaluated_for
+
+    a.title = "Habilidades trabalhadas e ainda não avaliadas" + (f" — {cg.name}" if cg else "")
+    found = not_evaluated_for(user, cg, limit=12)
+    if not found["worked"]:
+        a.paragraphs.append("Nenhum planejamento encerrado ou atividade já dada tem habilidades ligadas"
+                            + (" nesta turma." if cg else " nas suas turmas."))
+        a.missing = "Ligue as habilidades ao criar planejamentos e atividades para esta resposta funcionar."
+    elif not found["rows"]:
+        a.paragraphs.append("Tudo o que foi trabalhado (planejamentos encerrados e atividades já dadas) tem algum "
+                            "registro" + (" nesta turma." if cg else " nas suas turmas."))
+    else:
+        a.paragraphs.append(f"{found['total']} habilidade(s) trabalhada(s) sem nenhum registro de evidência na turma e "
+                            "disciplina" + (f"; aqui estão as {len(found['rows'])} mais recentes." if found["total"] >
+                                            len(found["rows"]) else "."))
+    for r in found["rows"]:
+        a.items.append((f"{r['item'].code} · {r['cg'].name} · {r['subject'].name} · {r['origin']} de "
+                        f"{r['when']:%d/%m}: registrar observação",
+                        reverse("cognitio:observation_create", args=[r["cg"].pk, r["subject"].pk])
+                        + f"?item={r['item'].pk}"))
+    a.sources.append("Planejamentos e atividades com habilidades ligadas; evidências registradas.")
+    a.limits.append("Sem registro não quer dizer que a turma não aprendeu: só que ainda não há evidência.")
+    a.limits.append("Só entram planejamentos e atividades com habilidades ligadas.")
+
+
 HANDLERS = {
+    "nao_avaliadas": _h_not_evaluated,
     "prerequisitos": _h_prereqs, "evidencias_lacuna": _h_evidence_gap, "dependentes": _h_dependents,
     "intervencao_semelhante": _h_similar, "retomar": _h_retake, "depois_recuperacao": _h_after,
     "sem_evidencia": _h_insufficient, "atividades": _h_activities, "evidencias_coletar": _h_collect,

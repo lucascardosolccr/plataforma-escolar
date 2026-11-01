@@ -76,6 +76,58 @@ def _periods(school):
     return ps
 
 
+def _worked(class_ids, pairs, today):
+    """{(turma, disciplina, habilidade): (última data, origem)} do que já foi trabalhado: planejamento
+    encerrado ou atividade com aula já dada."""
+    from apps.pedagogy.models import Activity, LessonPlan
+
+    last_worked = {}
+    for model, field, origin in ((LessonPlan, "ends_on", "planejamento"), (Activity, "class_date", "atividade")):
+        qs = model.objects.filter(class_group_id__in=class_ids, **{f"{field}__lte": today})
+        if pairs is not None:
+            q = Q(pk__in=[])
+            for c, s in pairs:
+                q |= Q(class_group_id=c, subject_id=s)
+            qs = qs.filter(q)
+        for cid, sid, iid, when in qs.values_list("class_group_id", "subject_id", "curriculum", field):
+            key = (cid, sid, iid)
+            if iid is not None and when and (key not in last_worked or when > last_worked[key][0]):
+                last_worked[key] = (when, origin)
+    return last_worked
+
+
+def not_evaluated_for(user, class_group=None, today=None, limit=8):
+    """Trabalhadas e ainda não avaliadas no alcance da pessoa (ou só na turma escolhida)."""
+    today = today or timezone.localdate()
+    class_ids, pairs = _scope(user)
+    if class_group is not None:
+        class_ids &= {class_group.pk}
+        if pairs is not None:
+            pairs = {(c, s) for c, s in pairs if c == class_group.pk}
+    evs = _evidence_qs(user, class_ids, pairs).only("class_group_id", "subject_id", "item_id", "ratio", "weight")
+    return _not_evaluated_rows(_worked(class_ids, pairs, today), evs, limit)
+
+
+def _not_evaluated_rows(last_worked, evs, limit=8):
+    """Habilidades trabalhadas sem evidência válida de nenhum estudante naquela turma e disciplina (a mesma
+    regra de ``assess``: com proporção de acerto e peso). As mais recentes primeiro: ainda dá tempo de
+    observar."""
+    from apps.academics.models import Subject
+    from apps.curriculum.models import CurriculumItem
+
+    evaluated = {(e.class_group_id, e.subject_id, e.item_id) for e in evs if e.ratio is not None and e.weight > 0}
+    open_ = sorted(((k, v) for k, v in last_worked.items() if k not in evaluated), key=lambda kv: kv[1][0],
+                   reverse=True)
+    total, open_ = len(open_), open_[:limit]
+    cgs = ClassGroup.objects.in_bulk({k[0] for k, _ in open_})
+    subjects = Subject.objects.in_bulk({k[1] for k, _ in open_})
+    items = CurriculumItem.objects.in_bulk({k[2] for k, _ in open_})
+    rows = [{"cg": cgs.get(c), "subject": subjects.get(s), "item": items.get(i), "when": when, "origin": origin}
+            for (c, s, i), (when, origin) in open_]
+    return {"rows": [r for r in rows if r["cg"] and r["subject"] and r["item"]], "total": total,
+            "worked": len(last_worked)}
+
+
 def dashboard(request):
     user = request.user
     if not access.can_use(user):
@@ -131,20 +183,13 @@ def dashboard(request):
                open_ivs=open_ivs.count(), due_ivs=open_ivs.filter(review_on__lte=today).count(),
                iv_results=[(k, v) for k, v in results.items()])
     # Habilidades trabalhadas e ainda não avaliadas (planejadas ou em atividades, sem evidência).
-    from apps.pedagogy.models import Activity, LessonPlan
-
-    worked = set()
-    for model, field in ((LessonPlan, "ends_on"), (Activity, "class_date")):
-        qs = model.objects.filter(class_group_id__in=class_ids, **{f"{field}__lte": today})
-        if pairs is not None:
-            q = Q(pk__in=[])
-            for c, s in pairs:
-                q |= Q(class_group_id=c, subject_id=s)
-            qs = qs.filter(q)
-        worked |= set(qs.values_list("curriculum", flat=True))
-    worked.discard(None)
+    last_worked = _worked(class_ids, pairs, today)
+    worked = {k[2] for k in last_worked}
     evaluated = {k[1] for k, a in assessments.items() if a.n_valid}
     ctx["worked_count"], ctx["not_evaluated"] = len(worked), len(worked - evaluated)
+    if user.role == Role.PROFESSOR.value:
+        # Prompt 17, §13.2: quais habilidades, na turma e disciplina em que foram trabalhadas
+        ctx["not_evaluated_rows"] = _not_evaluated_rows(last_worked, evs)
     if user.role == Role.PROFESSOR.value:
         ctx["next_lessons"] = [d for d in attention if d["diff"] >= 2][:5]
         # Prompt 17, §13.2: pré-requisitos críticos para o conteúdo das próximas semanas, por turma

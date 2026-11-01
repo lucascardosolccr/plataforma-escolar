@@ -61,8 +61,25 @@ def item_state(student, item, scale=None, today=None, evidences=None):
     today = today or timezone.localdate()
     evs = evidences if evidences is not None else list(
         SkillEvidence.objects.filter(student=student, item=item).order_by("observed_on"))
-    a = assess(evs, scale, today=today)
-    j = _judgment(student, item)
+    return _with_judgment(assess(evs, scale, today=today), _judgment(student, item))
+
+
+def item_states(student, items, scale=None, today=None):
+    """``item_state`` para várias habilidades com duas consultas no total: {pk: Assessment}."""
+    from .models import SkillJudgment
+
+    scale = scale or MasteryScale.for_school(student.school)
+    today = today or timezone.localdate()
+    ids = [it.pk for it in items]
+    evs, judged = {}, {}
+    for e in SkillEvidence.objects.filter(student=student, item_id__in=ids).order_by("observed_on"):
+        evs.setdefault(e.item_id, []).append(e)
+    for j in SkillJudgment.objects.filter(student=student, item_id__in=ids, active=True).order_by("decided_on", "pk"):
+        judged[j.item_id] = j  # a mais recente vale, como em _judgment
+    return {it.pk: _with_judgment(assess(evs.get(it.pk, []), scale, today=today), judged.get(it.pk)) for it in items}
+
+
+def _with_judgment(a, j):
     a.judgment = j
     a.newer_evidence = bool(j and a.last_date and a.last_date > j.decided_on)
     a.effective = j.state if (j and not a.newer_evidence) else a.state
@@ -122,8 +139,10 @@ def gap_analysis(student, target, school, subjects=None, today=None):
     scale = MasteryScale.for_school(school)
     target_state = item_state(student, target, scale, today)
     rows = []
-    for rel in graph.prerequisites(target, school):
-        a = item_state(student, rel.source, scale, today)
+    rels = list(graph.prerequisites(target, school))
+    states = item_states(student, [rel.source for rel in rels], scale, today)
+    for rel in rels:
+        a = states[rel.source_id]
         kind, why = classify(a, scale, today)
         rows.append({"relation": rel, "item": rel.source, "a": a, "kind": kind, "kind_label": GAP_KINDS.get(kind, ""),
                      "why": why, "verify": VERIFY.get(kind, ""),
@@ -250,15 +269,23 @@ def propagation(student, item, school, depth=3, today=None):
     """Habilidades potencialmente afetadas, para a frente no grafo (busca em largura)."""
     from .recommend import recommend
 
+    from .models import SkillRelation
+
     today = today or timezone.localdate()
     scale = MasteryScale.for_school(school)
     seen = {item.pk}
     frontier = [(item, [], "alta", True)]
-    out = []
+    found = []
     for dist in range(1, depth + 1):
         nxt = []
+        # uma consulta por nível do grafo, na mesma ordem de graph.dependents nó a nó
+        by_source = {}
+        if frontier:
+            for rel in graph._visible(SkillRelation.objects.filter(source_id__in=[n.pk for n, *_ in frontier]),
+                                      school).select_related("target").order_by("pk"):
+                by_source.setdefault(rel.source_id, []).append(rel)
         for node, path, conf, validated in frontier:
-            for rel in graph.dependents(node, school):
+            for rel in by_source.get(node.pk, []):
                 tgt = rel.target
                 if tgt.pk in seen:
                     continue
@@ -271,24 +298,29 @@ def propagation(student, item, school, depth=3, today=None):
                     shown = CONF[max(CONF.index(shown) - 1, 0)]
                 if not all_valid:
                     shown = "baixa"
-                a = item_state(student, tgt, scale, today)
-                if a.effective in OK:
-                    impact = ("O estudante já demonstrou esta habilidade: a lacuna não parece impedir este avanço "
-                              "(pode haver caminho alternativo ou compensação).")
-                elif a.effective in WEAK or a.effective == "contraditoria":
-                    impact = "A dificuldade já aparece também aqui: vale olhar as duas juntas."
-                else:
-                    impact = "Ainda sem evidência: observe quando esta habilidade for trabalhada."
-                rec = recommend(tgt, school, component=tgt.component, limit=1)
-                out.append({"item": tgt, "distance": dist, "relation": rel, "kind": rel.kind,
-                            "nature": NATURE.get(rel.kind, rel.get_kind_display()), "path": path + [rel],
-                            "a": a, "state_label": STATES.get(a.effective, (a.effective,))[0] if a.effective in STATES
-                            else "Nova verificação pedida", "impact": impact,
-                            "confidence": shown, "confidence_label": CONF_LABEL[shown], "validated": all_valid,
-                            "needs_check": a.effective in ("nao_avaliado", "insuficiente"),
-                            "strategy": rec[0] if rec else None})
+                found.append((tgt, dist, rel, path + [rel], shown, all_valid))
                 nxt.append((tgt, path + [rel], c, all_valid))
         frontier = nxt
+    states = item_states(student, [f[0] for f in found], scale, today)
+    history = {}  # histórico de cada estratégia calculado uma vez para todas as habilidades
+    out = []
+    for tgt, dist, rel, path, shown, all_valid in found:
+        a = states[tgt.pk]
+        if a.effective in OK:
+            impact = ("O estudante já demonstrou esta habilidade: a lacuna não parece impedir este avanço "
+                      "(pode haver caminho alternativo ou compensação).")
+        elif a.effective in WEAK or a.effective == "contraditoria":
+            impact = "A dificuldade já aparece também aqui: vale olhar as duas juntas."
+        else:
+            impact = "Ainda sem evidência: observe quando esta habilidade for trabalhada."
+        rec = recommend(tgt, school, component=tgt.component, limit=1, history=history)
+        out.append({"item": tgt, "distance": dist, "relation": rel, "kind": rel.kind,
+                    "nature": NATURE.get(rel.kind, rel.get_kind_display()), "path": path,
+                    "a": a, "state_label": STATES.get(a.effective, (a.effective,))[0] if a.effective in STATES
+                    else "Nova verificação pedida", "impact": impact,
+                    "confidence": shown, "confidence_label": CONF_LABEL[shown], "validated": all_valid,
+                    "needs_check": a.effective in ("nao_avaliado", "insuficiente"),
+                    "strategy": rec[0] if rec else None})
     return out
 
 

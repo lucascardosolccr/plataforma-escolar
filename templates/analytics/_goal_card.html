@@ -1,0 +1,17 @@
+{% load ui %}<div class="col-md-6 col-xl-4">
+  <article class="card h-100 goal-card" aria-labelledby="goal-{{ r.goal.pk }}">
+    <div class="card-body d-flex flex-column gap-2">
+      <h3 id="goal-{{ r.goal.pk }}" class="h6 mb-0">{{ r.goal.label }}</h3>
+      <div><span class="chip chip-state {% if r.status == 'atingida' %}state-validado{% elif r.status == 'sem_dados' %}{% else %}state-ajustes{% endif %}">{{ r.label }}</span></div>
+      <p class="small text-secondary mb-0">{% if r.goal.title %}{{ r.goal.get_indicator_display }} · {% endif %}{{ r.goal.class_group.name|default:"Escola toda" }}</p>
+      <div class="d-flex align-items-baseline gap-2">
+        <span class="goal-value">{% if r.value is None %}—{% else %}{{ r.value|floatformat:1 }}{{ r.unit }}{% endif %}</span>
+        <span class="small text-secondary">meta {{ r.target|floatformat:1 }}{{ r.unit }}</span>
+      </div>
+      {% if r.value is not None %}<meter class="goal-meter" min="0" max="{{ r.target|stringformat:'f' }}" low="{{ r.target|stringformat:'f' }}" high="{{ r.target|stringformat:'f' }}" optimum="{{ r.target|stringformat:'f' }}" value="{{ r.value|stringformat:'f' }}" aria-label="Progresso: {{ r.value|floatformat:1 }} de {{ r.target|floatformat:1 }}">{{ r.value|floatformat:1 }} de {{ r.target|floatformat:1 }}</meter>{% endif %}
+      <p class="small mb-0">{% if r.finished %}Prazo encerrado em {{ r.goal.deadline|date:"d/m/Y" }}{% else %}Prazo {{ r.goal.deadline|date:"d/m/Y" }} ({{ r.days_left }} dia{{ r.days_left|pluralize }}){% endif %} · desde {{ r.goal.starts_on|date:"d/m/Y" }}{% if r.gap and r.gap > 0 %} · faltam {{ r.gap|floatformat:1 }}{% if r.unit %} pontos{% endif %}{% endif %}</p>
+      {% if r.goal.notes %}<p class="small text-secondary mb-0">{{ r.goal.notes|linebreaksbr }}</p>{% endif %}
+      {% if can_manage %}<div class="mt-auto"><a class="small" href="{% url 'analytics:goal_edit' r.goal.pk %}">Editar ou desativar</a></div>{% endif %}
+    </div>
+  </article>
+</div>

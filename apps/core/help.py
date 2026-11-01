@@ -245,6 +245,14 @@ GUIDES = [
         ("Em Modelos e validação, acompanhe as regras de alerta e execute a validação do modelo.", "cognitio:models"),
         ("Nenhuma probabilidade aparece sem modelo validado e aprovado pela direção.", None),
     ]),
+    ("Definir e acompanhar metas da escola", "flag", GESTAO, [
+        ("Em Metas da escola, a direção cadastra um indicador (frequência, média, entregas ou habilidades), "
+         "o valor-alvo e o prazo, para a escola toda ou para uma turma.", "analytics:goals"),
+        ("O resultado é calculado pela plataforma, com as fórmulas do painel institucional, do início da meta "
+         "até hoje. Ninguém digita o resultado.", None),
+        ("No painel institucional, o botão Metas da escola mostra quantas estão no alvo.",
+         "analytics:institutional_dashboard"),
+    ]),
     ("Conferir o Currículo em Movimento do DF", "list-checks", GESTAO, [
         ("Em Currículo → Importar, traga o Currículo em Movimento (já incluído na plataforma). Os itens chegam "
          "marcados \"texto a conferir\".", "curriculum:item_import"),

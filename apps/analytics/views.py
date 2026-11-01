@@ -8,9 +8,10 @@ do usuário.
 import csv
 from datetime import datetime
 
+from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
@@ -395,7 +396,11 @@ def institutional_dashboard(request):
     period = bi.resolve_period(request.GET, school)
     r = bi.institutional_report(school, period)
     min_attendance = round(100 - r["limit"], 1)
+    from . import goals as goals_mod
+
+    progress = [goals_mod.progress(g) for g in goals_mod.goals_for(school) if g.deadline >= timezone.localdate()]
     return render(request, "analytics/institutional_dashboard.html", {
+        "goals_summary": {"total": len(progress), "on_track": sum(1 for p in progress if p["status"] == "atingida")},
         "report": r,
         "ops": bi.operational_indicators(school, period),
         "period": period,
@@ -849,3 +854,57 @@ def data_quality_dashboard(request):
         "presets": bi.presets_for(request.user.school),
         "ops": bi.operational_indicators(request.user.school, period),
     })
+
+
+# --------------------------------------------------------------------------- #
+# Metas da escola
+# --------------------------------------------------------------------------- #
+GOAL_MANAGERS = (Role.DIRECAO.value, Role.ADMIN.value)
+
+
+def goals(request):
+    """Metas da escola com o progresso calculado (coordenação vê; direção e administração cadastram)."""
+    from . import goals as goals_mod
+
+    user = request.user
+    if not can_view_institutional_dashboard(user):
+        raise PermissionDenied("Metas restritas à direção e à coordenação da escola toda.")
+    can_manage = user.role in GOAL_MANAGERS
+    rows = [goals_mod.progress(g) for g in goals_mod.goals_for(user.school)]
+    inactive = goals_mod.goals_for(user.school, include_inactive=True).filter(active=False) if can_manage else []
+    return render(request, "analytics/goals.html", {
+        "current": [r for r in rows if not r["finished"]], "finished": [r for r in rows if r["finished"]],
+        "inactive": inactive, "can_manage": can_manage,
+    })
+
+
+def goal_form(request, pk=None):
+    from apps.core.models import create_audit_log
+
+    from .forms import GoalForm
+    from .models import SchoolGoal
+
+    user = request.user
+    if not (can_view_institutional_dashboard(user) and user.role in GOAL_MANAGERS):
+        raise PermissionDenied("Só a direção e a administração cadastram metas.")
+    goal = get_object_or_404(SchoolGoal, pk=pk, school=user.school) if pk else None
+    if request.method == "POST" and request.POST.get("acao") in ("desativar", "reativar") and goal:
+        goal.active = request.POST["acao"] == "reativar"
+        goal.save(update_fields=["active", "updated_at"])
+        create_audit_log(user=user, action="update", request=request, target=goal,
+                         detail=f"{'Reativou' if goal.active else 'Desativou'} a meta {goal.label}")
+        messages.success(request, "Meta reativada." if goal.active else "Meta desativada; o histórico fica guardado.")
+        return redirect("analytics:goals")
+    form = GoalForm(request.POST or None, instance=goal, school=user.school)
+    if request.method == "POST" and form.is_valid():
+        obj = form.save(commit=False)
+        obj.school = user.school
+        if not obj.pk:
+            obj.created_by = user
+        obj.save()
+        create_audit_log(user=user, action="update" if goal else "create", request=request, target=obj,
+                         detail=f"{'Editou' if goal else 'Cadastrou'} a meta {obj.label}: alvo {obj.target} até "
+                                f"{obj.deadline:%d/%m/%Y}")
+        messages.success(request, "Meta salva.")
+        return redirect("analytics:goals")
+    return render(request, "analytics/goal_form.html", {"form": form, "goal": goal})

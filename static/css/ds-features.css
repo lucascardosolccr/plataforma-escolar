@@ -152,3 +152,12 @@ rect.bar.st-insuf, rect.bar.st-none { fill: var(--ds-line); }
 .mcell { line-height: 1; overflow: hidden; vertical-align: middle; flex: none; }
 .legend-stack { flex-direction: column; align-items: flex-start; gap: .35rem; }
 .legend-stack .mcell { min-width: 2.75rem; }
+
+/* Metas da escola: barra de progresso nativa (<meter>), sem estilo em linha */
+.goal-meter { width: 100%; height: .75rem; border-radius: 999px; }
+.goal-meter::-webkit-meter-bar { background: var(--ds-primary-soft); border: 1px solid var(--ds-line); border-radius: 999px; }
+.goal-meter::-webkit-meter-optimum-value { background: var(--ds-success); border-radius: 999px; }
+.goal-meter::-webkit-meter-suboptimum-value { background: var(--ds-warning); border-radius: 999px; }
+.goal-meter::-moz-meter-bar { background: var(--ds-success); border-radius: 999px; }
+.goal-meter:-moz-meter-sub-optimum::-moz-meter-bar { background: var(--ds-warning); }
+.goal-card .goal-value { font-size: 1.5rem; font-weight: 600; line-height: 1.1; }

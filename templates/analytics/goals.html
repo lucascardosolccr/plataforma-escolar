@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Metas da escola — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Metas da escola</h1>
+    <p>Indicadores que a escola escolheu acompanhar, com valor-alvo e prazo. O resultado é recalculado a cada visita, com as mesmas fórmulas do painel institucional, do início da meta até hoje. Ninguém digita o resultado.</p>
+  </div>
+  {% if can_manage %}<div><a class="btn btn-primary" href="{% url 'analytics:goal_create' %}">{% icon "plus" %}Nova meta</a></div>{% endif %}
+</div>
+
+{% if current %}
+<h2 class="h6 mt-2">Em andamento</h2>
+<div class="row g-3 mb-4">
+  {% for r in current %}{% include "analytics/_goal_card.html" %}{% endfor %}
+</div>
+{% endif %}
+{% if finished %}
+<h2 class="h6">Prazo encerrado</h2>
+<div class="row g-3 mb-4">
+  {% for r in finished %}{% include "analytics/_goal_card.html" %}{% endfor %}
+</div>
+{% endif %}
+{% if not current and not finished %}
+<div class="card"><div class="empty-state py-5">{% icon "flag" %}<strong>Nenhuma meta cadastrada</strong><span>{% if can_manage %}Escolha um indicador que a escola quer melhorar, um valor-alvo e um prazo. Por exemplo: frequência média de 92% até o fim do 2º bimestre.{% else %}A direção ainda não cadastrou metas.{% endif %}</span></div></div>
+{% endif %}
+{% if inactive %}
+<details class="card mt-3"><summary class="card-body py-2">Metas desativadas ({{ inactive|length }})</summary>
+  <ul class="list-unstyled small px-3 pb-3 mb-0">{% for g in inactive %}<li class="py-1"><a href="{% url 'analytics:goal_edit' g.pk %}">{{ g.label }}</a> · {{ g.class_group|default:"escola toda" }} · prazo {{ g.deadline|date:"d/m/Y" }}</li>{% endfor %}</ul>
+</details>
+{% endif %}
+<p class="small text-secondary mt-3">Turmas com menos de 5 estudantes ficam sem valor, pela mesma proteção de grupos pequenos dos painéis. Frequência, média e entregas seguem a página de <a href="{% url 'analytics:methodology' %}">metodologia</a>; habilidades vêm do EIA-Cognitio (pares estudante e habilidade com evidência suficiente no período).</p>
+{% endblock %}

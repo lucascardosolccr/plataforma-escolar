@@ -11,7 +11,10 @@
     <h1>Painel institucional</h1>
     <p>{{ user.school.name }} · indicadores da escola no período, com comparações entre turmas, séries e turnos.</p>
   </div>
-  <a href="{% url 'analytics:data_quality' %}?{{ period.querystring }}" class="btn btn-outline-secondary btn-sm">{% icon "check" %}Qualidade dos dados</a>
+  <div class="d-flex flex-wrap gap-2">
+    <a href="{% url 'analytics:goals' %}" class="btn btn-outline-secondary btn-sm">{% icon "flag" %}Metas da escola{% if goals_summary.total %} ({{ goals_summary.on_track }} de {{ goals_summary.total }} no alvo){% endif %}</a>
+    <a href="{% url 'analytics:data_quality' %}?{{ period.querystring }}" class="btn btn-outline-secondary btn-sm">{% icon "check" %}Qualidade dos dados</a>
+  </div>
 </div>
 
 {% include "analytics/bi/_filters.html" with presets=presets period=period %}

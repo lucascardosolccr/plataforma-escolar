@@ -1269,7 +1269,8 @@ def data_quality(school, period):
         "not_computable": [
             ("Frequência por disciplina", "A chamada é diária por turma, não por aula."),
             ("Aulas previstas", "A carga horária planejada não é registrada; o divisor são os dias com chamada."),
-            ("Metas de aprendizagem", "Não são cadastradas."),
+            ("Metas por estudante", "A plataforma acompanha metas da escola e das turmas (Metas da escola); "
+             "metas individuais de aprendizagem não são cadastradas."),
         ] + ([] if _calendar_periods(school) else [
             ("Bimestres", "O ano letivo não tem bimestres cadastrados. Cadastre-os no calendário oficial para "
              "escolher um bimestre no seletor de período; até lá, use o seletor de datas."),

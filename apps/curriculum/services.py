@@ -53,6 +53,14 @@ def pair_options(user):
     return rows
 
 
+PICKER_SOURCES = [
+    (CurriculumItem.Kind.SKILL, ""),
+    (CurriculumItem.Kind.DF_OBJECTIVE, " · Currículo em Movimento: objetivos"),
+    (CurriculumItem.Kind.DF_CONTENT, " · Currículo em Movimento: conteúdos"),
+    (CurriculumItem.Kind.OWN, " · objetivos da escola"),
+]
+
+
 def picker_groups(user, selected=()):
     """Grupos de itens para marcar no formulário (atividade, prova, plano).
 
@@ -71,11 +79,15 @@ def picker_groups(user, selected=()):
         if key in seen_keys:
             continue
         seen_keys.add(key)
-        items = list(CurriculumItem.for_pair(school, comp, year).order_by("kind", "code"))
-        if items:
-            label = f"{comp} — {year}º ano" if year else comp
-            groups.append((label, items))
-            used |= {i.pk for i in items}
+        items = list(CurriculumItem.for_pair(school, comp, year).order_by("code"))
+        label = f"{comp} — {year}º ano" if year else comp
+        # um grupo por fonte, BNCC primeiro: com o Currículo em Movimento importado, um grupo único
+        # passaria de cem itens e abriria pelos conteúdos
+        for kind, suffix in PICKER_SOURCES:
+            part = [i for i in items if i.kind == kind]
+            if part:
+                groups.append((label + suffix, part))
+                used |= {i.pk for i in part}
     general = list(CurriculumItem.objects.filter(kind=CurriculumItem.Kind.GENERAL, active=True,
                                                  school__isnull=True).order_by("code"))
     groups.append(("Competências gerais da BNCC", general))

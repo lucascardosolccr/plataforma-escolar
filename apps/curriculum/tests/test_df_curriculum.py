@@ -142,6 +142,21 @@ class ScreenTests(Base):
         self.assertEqual(CurriculumItem.objects.filter(school=self.school, code__in=self.codes).count(), 3)
         self.assertTrue(AuditLog.objects.filter(action="import", target_id="curriculo_df").exists())
 
+    def test_teacher_picker_separates_sources_bncc_first(self):
+        from apps.curriculum.services import picker_groups
+
+        df_curriculum.import_for_school(self.school, self.coord)
+        groups = picker_groups(self.prof)
+        labels = [label for label, _ in groups]
+        bncc = labels.index("Matemática — 6º ano")
+        self.assertLess(bncc, labels.index("Matemática — 6º ano · Currículo em Movimento: objetivos"))
+        self.assertLess(labels.index("Matemática — 6º ano · Currículo em Movimento: objetivos"),
+                        labels.index("Matemática — 6º ano · Currículo em Movimento: conteúdos"))
+        g = dict(groups)
+        self.assertEqual({i.kind for i in g["Matemática — 6º ano"]}, {"habilidade"})
+        self.assertEqual([i.code for i in g["Matemática — 6º ano · Currículo em Movimento: objetivos"]],
+                         ["CMDF-MA06-O001", "CMDF-MA06-O002"])
+
     def test_review_filters_and_text_check(self):
         df_curriculum.import_for_school(self.school, self.coord)
         item = CurriculumItem.objects.get(code="CMDF-MA06-O001")

@@ -231,7 +231,7 @@ class LocalItemsAndReferencesTests(Base):
         self.assertEqual(CurriculumItem.objects.filter(school=self.school).count(), 1)
         # Aparece no seletor do professor de Matemática do 6º ano.
         groups = dict(services.picker_groups(self.prof))
-        self.assertIn(item, groups["Matemática — 6º ano"])
+        self.assertIn(item, groups["Matemática — 6º ano · Currículo em Movimento: objetivos"])
         # Outra escola não vê o item local.
         other = School.objects.create(name="Outra", code="o")
         self.assertFalse(CurriculumItem.objects.filter(CurriculumItem.visible_q(other), pk=item.pk).exists())

@@ -321,3 +321,38 @@ class ConsistencyAndIntegrationTests(P17Base):
                                                             "habilidade": self.h1.code, "turma": self.cg.pk})
         self.assertContains(r, self.h2.code)
         self.assertContains(r, '<datalist id="ph-list">')
+
+
+class CouncilTests(P17Base):
+    def test_council_page_per_student_alphabetical_with_gaps_and_scope(self):
+        for d, ctx in ((10, "A"), (3, "B")):
+            self.obs(self.bia, self.h1, 1, d, ctx)
+        self.obs(self.ana, self.h2, 5, 4, "A")
+        self.obs(self.ana, self.h2, 5, 2, "B")
+        geo = CurriculumItem.objects.get(code="EF06GE01")
+        SkillObservation.objects.create(school=self.school, student=self.caio, item=geo, class_group=self.cg,
+                                        subject=self.geo, teacher=self.prof_geo, level=1, context="A",
+                                        observed_on=self.today - timedelta(days=2))
+        iv = LearningIntervention.objects.create(school=self.school, class_group=self.cg, subject=self.mat,
+                                                 item=self.h1, title="Retomada", objective="o", activity="a",
+                                                 starts_on=self.today - timedelta(days=5), review_on=self.today,
+                                                 created_by=self.prof)
+        iv.students.set([self.bia])
+        rebuild_class(self.cg)
+        url = reverse("cognitio:class_council", args=[self.cg.pk])
+        self.login(self.prof)
+        r = self.client.get(url)
+        rows = r.context["rows"]
+        self.assertEqual([x["student"] for x in rows], sorted([self.ana, self.bia, self.caio], key=lambda s: s.full_name))
+        by = {x["student"]: x for x in rows}
+        self.assertEqual(by[self.bia]["confirmed"], [self.h1])
+        self.assertTrue(by[self.caio]["no_evidence"])  # Geografia fica fora para o professor de Matemática
+        self.assertContains(r, "Não há pontuação")
+        self.assertContains(r, "Situação das intervenções pelas evidências posteriores")
+        self.assertTrue(AuditLog.objects.filter(detail__startswith="Consultou a preparação do conselho").exists())
+        self.login(self.coord)
+        by = {x["student"]: x for x in self.client.get(url).context["rows"]}
+        self.assertFalse(by[self.caio]["no_evidence"])
+        for user in (self.prof_b, self.fam, self.sec):
+            self.login(user)
+            self.assertEqual(self.client.get(url).status_code, 403, user.username)

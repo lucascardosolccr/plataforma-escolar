@@ -12,6 +12,7 @@
   <div class="d-flex flex-wrap gap-2">
     <a class="btn btn-outline-secondary btn-sm" href="{% url 'cognitio:student_map' student.pk %}">{% icon "chart-line" %}Mapa detalhado e trajetória</a>
     <a class="btn btn-outline-secondary btn-sm" href="{% url 'analytics:student_dashboard' student.pk %}">{% icon "layout-dashboard" %}Painel do estudante</a>
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-print>{% icon "printer" %}Imprimir / PDF</button>
   </div>
 </div>
 <div class="alert alert-info" role="note"><div class="small">Sem índice global do estudante: tudo é por habilidade. Cada parte informa o nível de maturidade da análise (1 = regras curriculares e pedagógicas; 2 = estatística descritiva). Nenhuma probabilidade aparece sem modelo validado. Ausência de registro não é ausência de conhecimento, e uma lacuna não é destino.</div></div>

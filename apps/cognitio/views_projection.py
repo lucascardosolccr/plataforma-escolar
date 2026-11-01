@@ -215,3 +215,96 @@ def assistant_page(request):
         "question": question, "result": result, "examples": assistant.EXAMPLES, "classes": classes,
         "cg": cg, "students": students, "student": student, "code": code, "codes": codes,
     })
+
+
+def class_council(request, class_id):
+    """Preparação do conselho de classe: por estudante, em ordem alfabética, estados por componente até o
+    fim do período, lacunas confirmadas, intervenções e seus resultados, decisões e reavaliações pendentes.
+    Sem pontuação nem ordenação por desempenho. Professor vê só as disciplinas que leciona na turma."""
+    import datetime
+    from collections import Counter
+
+    from django.db.models import Exists, OuterRef
+
+    from apps.academics.models import ClassGroup
+    from apps.school_calendar.models import CalendarPeriod
+
+    from .mastery import STATES, apply_judgments, assess, group_evidence
+    from .models import MasteryScale, SkillObservation
+    from .recommend import next_step
+
+    user = request.user
+    cg = get_object_or_404(ClassGroup, pk=class_id, school=user.school)
+    subjects = access.class_subjects(user, cg)
+    if subjects is not None and not subjects:
+        raise PermissionDenied
+    today = timezone.localdate()
+    periods = list(CalendarPeriod.objects.filter(school=user.school, school_year=cg.school_year).order_by("start"))
+    period = None
+    if (request.GET.get("periodo") or "").isdigit():
+        period = next((p for p in periods if p.pk == int(request.GET["periodo"])), None)
+    if period is None:  # o período em curso, ou o último que já começou
+        started = [p for p in periods if p.start <= today]
+        period = started[-1] if started else None
+    end = min(period.end, today) if period else today
+    start = period.start if period else end - datetime.timedelta(days=90)
+    students = sorted({e.student for e in Enrollment.objects.filter(class_group=cg, status="ativo")
+                       .select_related("student")}, key=lambda s: s.full_name)
+    evs = SkillEvidence.objects.filter(class_group=cg, student__in=students, observed_on__lte=end) \
+        .select_related("item").order_by("observed_on")
+    if subjects is not None:
+        evs = evs.filter(subject_id__in=subjects)
+    scale = MasteryScale.for_school(user.school)
+    assessed = apply_judgments({k: assess(v, scale, end) for k, v in group_evidence(evs).items()})
+    ivs = LearningIntervention.objects.filter(class_group=cg, starts_on__lte=end).prefetch_related("students") \
+        .select_related("item")
+    if subjects is not None:
+        ivs = ivs.filter(subject_id__in=subjects)
+    ivs = list(ivs)
+    iv_out = {iv.pk: outcomes(iv) for iv in ivs}
+    newer = SkillEvidence.objects.filter(student=OuterRef("student"), item=OuterRef("item"),
+                                         observed_on__gt=OuterRef("observed_on"))
+    rechecks = Counter(SkillObservation.objects.filter(class_group=cg, recheck_on__lte=today)
+                       .exclude(Exists(newer)).values_list("student_id", flat=True))
+    rows, item_diff = [], Counter()
+    for st in students:
+        mine = {iid: a for (sid, iid), a in assessed.items() if sid == st.pk}
+        comps = {}
+        confirmed = []
+        for iid, a in mine.items():
+            item = a.evidence[0].item if a.evidence else None
+            if item is None:
+                continue
+            c = comps.setdefault(item.component or "Outros", Counter())
+            c[a.state] += 1
+            if a.state == "dificuldade":
+                item_diff[item.code] += 1
+            kind, _why = gaps.classify(a, scale, end)
+            if kind == "confirmada":
+                confirmed.append(item)
+        my_ivs = []
+        for iv in ivs:
+            if st in iv.students.all():
+                res = [r for r in iv_out[iv.pk] if r["student"].pk == st.pk]
+                my_ivs.append({"iv": iv, "result": res[0] if res else None})
+        rows.append({
+            "student": st,
+            "components": [(comp, [(STATES[s][0], c[s]) for s in STATES if c[s]]) for comp, c in sorted(comps.items())],
+            "confirmed": sorted(confirmed, key=lambda i: i.code),
+            "interventions": my_ivs,
+            "judgments": sum(1 for a in mine.values() if a.computed_state),
+            "rechecks": rechecks.get(st.pk, 0),
+            "no_evidence": not mine,
+        })
+    retake = [(code, n) for code, n in item_diff.most_common() if n * 10 >= 3 * max(len(students), 1)]
+    summary = {"students": len(students), "with_evidence": sum(1 for r in rows if not r["no_evidence"]),
+               "confirmed": sum(len(r["confirmed"]) for r in rows),
+               "ivs_active": sum(1 for iv in ivs if iv.status in ("aceita", "andamento")),
+               # lista de pares: um Counter no template vira Counter["items"] == 0
+               "next": sorted(Counter(next_step(iv, iv_out[iv.pk])["label"] for iv in ivs).items())}
+    create_audit_log(user=user, action="view", request=request, target=cg,
+                     detail=f"Consultou a preparação do conselho de classe da turma {cg}")
+    return render(request, "cognitio/class_council.html", {
+        "cg": cg, "rows": rows, "summary": summary, "retake": retake, "periods": periods, "period": period,
+        "start": start, "end": end, "subject_limited": subjects is not None, "labels": RESULT_LABELS,
+    })

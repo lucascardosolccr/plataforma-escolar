@@ -13,6 +13,7 @@ urlpatterns = [
          name="student_projection"),
     path("cognitio/estudante/<int:student_id>/decisao/", views_projection.judgment_save, name="judgment_save"),
     path("cognitio/assistente/", views_projection.assistant_page, name="assistant"),
+    path("cognitio/turma/<int:class_id>/conselho/", views_projection.class_council, name="class_council"),
     path("aprendizagens/<int:student_id>/", views_family.learning_summary, name="family_summary"),
     path("cognitio/disciplina/", views_dash.discipline, name="discipline"),
     path("cognitio/estudante/<int:student_id>/", views.student_map, name="student_map"),

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Conselho de classe — {{ cg.name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'cognitio:class_view' cg.pk %}" class="back-link">{% icon "arrow-left" %}Mapa da turma</a>
+    <h1>Preparação do conselho de classe</h1>
+    <p><strong>{{ cg.name }}</strong> · evidências até {{ end|date:"d/m/Y" }}{% if period %} ({{ period.name }}){% endif %}. Por estudante, em ordem alfabética: o que as evidências mostram por componente, as lacunas confirmadas, as intervenções e os seus resultados. Não há pontuação nem comparação entre estudantes.{% if subject_limited %} Você vê só as disciplinas que leciona nesta turma.{% endif %}</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2 align-items-end">
+    {% if periods %}<form method="get"><label class="form-label small mb-0" for="cp">Período</label><select id="cp" name="periodo" class="form-select form-select-sm" data-autosubmit>{% for p in periods %}<option value="{{ p.pk }}"{% if period.pk == p.pk %} selected{% endif %}>{{ p.name }}</option>{% endfor %}</select><button class="btn btn-sm btn-outline-secondary js-hide">Ver</button></form>{% endif %}
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-print>{% icon "printer" %}Imprimir / PDF</button>
+  </div>
+</div>
+
+<section class="card mb-3" aria-labelledby="cs"><div class="card-body">
+  <h2 id="cs" class="h6">Visão da turma</h2>
+  <p class="small mb-1">{{ summary.with_evidence }} de {{ summary.students }} estudante{{ summary.students|pluralize }} com evidências por habilidade · {{ summary.confirmed }} lacuna{{ summary.confirmed|pluralize }} confirmada{{ summary.confirmed|pluralize }} por múltiplas evidências · {{ summary.ivs_active }} intervenç{{ summary.ivs_active|pluralize:"ão,ões" }} em andamento.</p>
+  {% if summary.next %}<p class="small mb-1">Situação das intervenções pelas evidências posteriores: {% for label, n in summary.next %}{{ label|lower }}: {{ n }}{% if not forloop.last %}; {% endif %}{% endfor %}.</p>{% endif %}
+  {% if retake %}<p class="small mb-0">Habilidades com dificuldade em 30% ou mais da turma (retomada coletiva): {% for code, n in retake %}<strong>{{ code }}</strong> ({{ n }}){% if not forloop.last %}, {% endif %}{% endfor %}.</p>{% endif %}
+</div></section>
+
+<div class="table-responsive card"><table class="table table-sm align-middle small mb-0 table-stack">
+  <thead><tr><th scope="col">Estudante</th><th scope="col">Por componente</th><th scope="col">Lacunas confirmadas</th><th scope="col">Intervenções</th><th scope="col">Pendências</th></tr></thead>
+  <tbody>
+    {% for r in rows %}<tr>
+      <th scope="row" data-label="Estudante"><a href="{% url 'cognitio:student_projection' r.student.pk %}">{{ r.student.full_name }}</a></th>
+      <td data-label="Por componente">{% for comp, counts in r.components %}<span class="d-block"><strong>{{ comp }}:</strong> {% for label, n in counts %}{{ label|lower }} {{ n }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% empty %}<span class="text-secondary">Sem evidência por habilidade (não quer dizer que não aprendeu)</span>{% endfor %}</td>
+      <td data-label="Lacunas confirmadas">{% for it in r.confirmed %}<a href="{% url 'cognitio:student_projection' r.student.pk %}?habilidade={{ it.pk }}">{{ it.code }}</a>{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+      <td data-label="Intervenções">{% for x in r.interventions %}<span class="d-block"><a href="{% url 'cognitio:intervention_detail' x.iv.pk %}">{{ x.iv.item.code }}</a> · {{ x.iv.get_status_display|lower }}{% if x.result %} · {% for k, v in labels.items %}{% if k == x.result.result %}{{ v|lower }}{% endif %}{% endfor %}{% endif %}</span>{% empty %}—{% endfor %}</td>
+      <td data-label="Pendências">{% if r.rechecks %}<span class="d-block">{{ r.rechecks }} reavaliação(ões) programada(s)</span>{% endif %}{% if r.judgments %}<span class="d-block">{{ r.judgments }} decisão(ões) do professor</span>{% endif %}{% if not r.rechecks and not r.judgments %}—{% endif %}</td>
+    </tr>{% empty %}<tr><td colspan="5" class="text-secondary">Nenhum estudante com matrícula ativa.</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+<p class="small text-secondary mt-2">Regras explícitas (Nível 1). Os estados consideram as decisões registradas pelos professores. Resultados de intervenções são comparações antes e depois, não prova de efeito. Documento interno da equipe pedagógica: não entregue cópias às famílias.</p>
+{% endblock %}

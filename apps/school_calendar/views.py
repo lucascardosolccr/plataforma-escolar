@@ -349,6 +349,33 @@ def _collect_events(user, start, end, class_filter=None, subject_filter=None,
                 "school_id": ev.school_id,
             })
 
+    # ---------- Reuniões (só as que a pessoa pode abrir) ----------
+    if kind_filter is None or kind_filter == "meeting":
+        from apps.meetings.access import meetings_visible_to
+
+        qs = meetings_visible_to(user).exclude(status="cancelada").select_related("student", "class_group")
+        if start:
+            qs = qs.filter(scheduled_at__date__gte=start)
+        if end:
+            qs = qs.filter(scheduled_at__date__lte=end)
+        if class_filter:
+            qs = qs.filter(class_group=class_filter)
+        if student_filter:
+            qs = qs.filter(student=student_filter)
+        for m in qs:
+            local = timezone.localtime(m.scheduled_at)
+            about = m.student.full_name if m.student else (f"Turma {m.class_group.name}" if m.class_group else "")
+            events.append({
+                "kind": "meeting",
+                "kind_label": m.get_kind_display(),
+                "title": m.title,
+                "date": local.date(),
+                "date_label": f"{local:%H:%M}" + (" · realizada" if m.status == "realizada" else ""),
+                "subtitle": " · ".join(x for x in (about, m.location) if x),
+                "url": reverse("meetings:detail", args=[m.pk]),
+                "school_id": m.school_id,
+            })
+
     # Filtro por período (um intervalo como o de uma justificativa conta se
     # encostar no período, não só se começar dentro dele).
     if start or end:
@@ -365,6 +392,7 @@ KIND_CHOICES = [
     ("evaluation", "Avaliação"),
     ("occurrence", "Ocorrência"),
     ("justification", "Justificativa de falta"),
+    ("meeting", "Reunião"),
 ]
 
 

@@ -77,6 +77,7 @@ urlpatterns = [
     path("planos/", views.plan_list, name="plan_list"),
     path("planos/novo/", views.plan_create, name="plan_create"),
     path("planos/<int:pk>/", views.plan_detail, name="plan_detail"),
+    path("planos/<int:pk>/editar/", views.plan_edit, name="plan_edit"),
     path("frequencia/busca-ativa/", views_active_search.active_search, name="active_search"),
     path("frequencia/busca-ativa/<int:student_id>/", views_active_search.active_search_student,
          name="active_search_student"),

@@ -8,6 +8,7 @@ urlpatterns = [
     path("", views.home, name="home"),
     path("busca/", views.global_search, name="global_search"),
     path("ajuda/", views.help_page, name="help"),
+    path("falhas-tecnicas/", views.error_log, name="error_log"),
     path("minha-foto/", views_photo.my_photo, name="my_photo"),
     path("pendencias/", views_photo.pending_center, name="pending_center"),
     path("fotografias/pendentes/", views_photo.photo_pending, name="photo_pending"),

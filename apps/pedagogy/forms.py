@@ -10,6 +10,7 @@ from apps.core.uploads import (
     validate_attachment,
     validate_attachment_content,
 )
+from apps.registry.choices import label_students_with_class
 
 from .models import (
     AbsenceJustification,
@@ -36,6 +37,15 @@ def _students_for(user, school):
     qs = school.students.all()
     if user and user.role == Role.PROFESSOR.value:
         qs = students_visible_to(user) or qs.none()
+    elif user and user.role == Role.COORDENACAO.value:
+        # Coordenação com designação restrita: só os estudantes do alcance.
+        # Antes a lista trazia a escola inteira e o plano de acompanhamento
+        # podia ser criado para quem a coordenadora nem consegue abrir depois.
+        from apps.coordination.scope import student_ids
+
+        ids = student_ids(user)
+        if ids is not None:
+            qs = qs.filter(pk__in=ids)
     return qs.order_by("first_name", "last_name")
 
 
@@ -594,6 +604,7 @@ class OccurrenceForm(forms.ModelForm):
         self.school = school
         if school:
             self.fields["student"].queryset = _students_for(user, school)
+            label_students_with_class(self.fields["student"])
         self.fields["status"].required = False
         self.fields["status"].initial = Occurrence.Status.OPEN
         self.fields["date"].required = False
@@ -639,6 +650,7 @@ class PedagogicalObservationForm(forms.ModelForm):
             self.fields["student"].queryset = (
                 school.students.all() if self.instance.pk else _students_for(user, school)
             )
+            label_students_with_class(self.fields["student"])
             self.fields["subject"].queryset = Subject.choices_for(school, keep=self.instance.subject_id)
             self.fields["subject"].required = False
         if student:
@@ -655,12 +667,23 @@ class PedagogicalObservationForm(forms.ModelForm):
 class InterventionPlanForm(forms.ModelForm):
     class Meta:
         model = InterventionPlan
-        fields = ["student", "title", "description", "status"]
+        fields = ["student", "title", "description", "success_criterion", "deadline", "status"]
         labels = {
             "student": "Estudante",
             "title": "Título",
             "description": "Objetivos e estratégias",
+            "success_criterion": "Critério de sucesso",
+            "deadline": "Prazo para reavaliar",
             "status": "Situação",
+        }
+        widgets = {
+            "deadline": forms.DateInput(format=r"%Y-%m-%d", attrs={"type": "date"}),
+            "success_criterion": forms.Textarea(attrs={"rows": 2}),
+        }
+        help_texts = {
+            "success_criterion": "Opcional. Como saber que o objetivo foi alcançado "
+                                 "(ex.: entregar as atividades de Matemática no prazo por um bimestre).",
+            "deadline": "Opcional. Depois desta data o plano aparece como “prazo vencido” até ser reavaliado.",
         }
 
     def __init__(self, *args, school=None, user=None, **kwargs):
@@ -668,6 +691,11 @@ class InterventionPlanForm(forms.ModelForm):
         self.school = school
         if school:
             self.fields["student"].queryset = _students_for(user, school)
+            label_students_with_class(self.fields["student"])
+        if self.instance.pk:
+            # O plano é do estudante: trocar o estudante depois mudaria de quem
+            # é o histórico de evoluções já registrado.
+            self.fields["student"].disabled = True
         self.fields["status"].required = False
         self.fields["status"].initial = InterventionPlan.Status.ACTIVE
 

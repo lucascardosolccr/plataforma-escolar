@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ meeting.title }} — Reunião — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'meetings:list' %}" class="back-link">{% icon "arrow-left" %}Reuniões</a>
+    <h1>{{ meeting.title }}</h1>
+    <p>{{ meeting.get_kind_display }} · {{ meeting.scheduled_at|date:"d/m/Y \à\s H:i" }}{% if meeting.duration_minutes %} · {{ meeting.duration_minutes }} min{% endif %}{% if meeting.location %} · {{ meeting.location }}{% endif %}</p>
+  </div>
+  <div class="page-actions">
+    <div class="d-flex flex-wrap gap-2">
+      <span class="chip chip-state {% if meeting.status == 'realizada' %}state-entregue{% elif meeting.status == 'cancelada' %}state-cancelada{% else %}state-pendente{% endif %}">{{ meeting.get_status_display }}</span>
+      {% if can_manage and meeting.status == 'agendada' %}
+        <a href="{% url 'meetings:edit' meeting.pk %}" class="btn btn-sm btn-outline-secondary">{% icon "pencil" %}Alterar</a>
+        <a href="{% url 'meetings:cancel' meeting.pk %}" class="btn btn-sm btn-outline-danger">Cancelar</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if meeting.status == 'cancelada' %}
+  <div class="alert alert-secondary" role="status"><div><strong>Reunião cancelada.</strong> {{ meeting.cancel_reason }}</div></div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <section class="card mb-3" aria-labelledby="h-pauta"><div class="card-body">
+      <h2 class="h6 text-body-secondary text-uppercase" id="h-pauta">Pauta</h2>
+      {% if meeting.agenda %}<div>{{ meeting.agenda|linebreaks }}</div>{% else %}<p class="text-body-secondary mb-0">Sem pauta registrada.</p>{% endif %}
+    </div></section>
+
+    <section class="card mb-3" aria-labelledby="h-registro"><div class="card-body">
+      <h2 class="h6 text-body-secondary text-uppercase" id="h-registro">Registro da reunião</h2>
+      {% if meeting.summary %}<div>{{ meeting.summary|linebreaks }}</div>
+      {% else %}<p class="text-body-secondary">{% if meeting.status == 'agendada' %}Depois da reunião, o que foi conversado e combinado fica registrado aqui. O registro fica disponível a partir do horário marcado.{% else %}Sem registro.{% endif %}</p>{% endif %}
+      {% if staff_view and meeting.confidential_notes %}
+        <h3 class="h6 text-body-secondary text-uppercase mt-3">Anotações da equipe <span class="chip">só equipe</span></h3>
+        <div>{{ meeting.confidential_notes|linebreaks }}</div>
+      {% endif %}
+      {% if record_form %}
+        <details class="mt-2"{% if meeting.status == 'agendada' and meeting.is_past %} open{% endif %}>
+          <summary class="fw-semibold">{% if meeting.summary %}Editar o registro{% else %}Registrar a reunião{% endif %}</summary>
+          <form method="post" action="{% url 'meetings:record' meeting.pk %}" novalidate class="mt-2">
+            {% csrf_token %}
+            {% include "partials/_form_fields.html" with f=record_form %}
+            <button type="submit" class="btn btn-primary">Salvar registro</button>
+            <span class="small text-body-secondary ms-2">Salvar marca a reunião como realizada.</span>
+          </form>
+        </details>
+      {% endif %}
+    </div></section>
+
+    <section class="card" aria-labelledby="h-enc"><div class="card-body">
+      <h2 class="h6 text-body-secondary text-uppercase" id="h-enc">Encaminhamentos</h2>
+      {% if follow_ups %}
+        <ul class="list-unstyled mb-0 d-grid gap-3">
+          {% for fu in follow_ups %}
+            <li>
+              <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="fw-semibold">{{ fu.description }}</span>
+                <span class="chip chip-state {% if fu.status == 'concluido' %}state-entregue{% elif fu.status == 'cancelado' %}state-cancelada{% elif fu.overdue %}state-encerrada{% else %}state-pendente{% endif %}">{% if fu.overdue %}Prazo vencido{% else %}{{ fu.get_status_display }}{% endif %}</span>
+                {% if fu.staff_only %}<span class="chip">só equipe</span>{% endif %}
+              </div>
+              <div class="small text-body-secondary">
+                {% if fu.responsible %}Responsável: {{ fu.responsible.get_full_name|default:fu.responsible.username }}{% else %}Sem responsável na escola{% endif %}
+                {% if fu.due_date %} · prazo {{ fu.due_date|date:"d/m/Y" }}{% endif %}
+                {% if fu.done_at %} · encerrado em {{ fu.done_at|date:"d/m/Y" }}{% if fu.done_note %}: {{ fu.done_note }}{% endif %}{% endif %}
+              </div>
+              {% if fu.can_update %}
+                <form method="post" action="{% url 'meetings:follow_up_update' meeting.pk fu.pk %}" class="d-flex flex-wrap gap-2 mt-1">
+                  {% csrf_token %}
+                  <label class="visually-hidden" for="nota-{{ fu.pk }}">Como foi resolvido</label>
+                  <input id="nota-{{ fu.pk }}" name="done_note" maxlength="300" class="form-control form-control-sm w-auto flex-grow-1" placeholder="Como foi resolvido (opcional)">
+                  <button type="submit" name="status" value="concluido" class="btn btn-sm btn-outline-success">Concluir</button>
+                  <button type="submit" name="status" value="cancelado" class="btn btn-sm btn-outline-secondary">Cancelar</button>
+                </form>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-body-secondary mb-0">Nenhum encaminhamento registrado.</p>
+      {% endif %}
+      {% if follow_up_form %}
+        <details class="mt-3">
+          <summary class="fw-semibold">Novo encaminhamento</summary>
+          <form method="post" action="{% url 'meetings:follow_up_add' meeting.pk %}" novalidate class="mt-2">
+            {% csrf_token %}
+            {% include "partials/_form_fields.html" with f=follow_up_form %}
+            <button type="submit" class="btn btn-primary">Registrar encaminhamento</button>
+          </form>
+        </details>
+      {% endif %}
+    </div></section>
+  </div>
+
+  <div class="col-lg-5">
+    <section class="card" aria-labelledby="h-part"><div class="card-body">
+      <h2 class="h6 text-body-secondary text-uppercase" id="h-part">Participantes</h2>
+      {% if meeting.student %}<p class="mb-2">Sobre <strong>{{ meeting.student.full_name }}</strong>{% if meeting.class_group %} · turma {{ meeting.class_group.name }}{% endif %}</p>
+      {% elif meeting.class_group %}<p class="mb-2">Turma <strong>{{ meeting.class_group.name }}</strong></p>{% endif %}
+      <ul class="list-unstyled mb-0 small d-grid gap-1">
+        {% for p in participants %}
+          <li>{{ p.get_full_name|default:p.username }} <span class="text-body-secondary">· {{ p.get_role_display }}</span></li>
+        {% empty %}
+          <li class="text-body-secondary">Sem participantes.</li>
+        {% endfor %}
+      </ul>
+      <p class="small text-body-secondary mt-3 mb-0">Marcada por {{ meeting.created_by.get_full_name|default:meeting.created_by.username|default:"—" }} em {{ meeting.created_at|date:"d/m/Y" }}.</p>
+    </div></section>
+  </div>
+</div>
+{% endblock %}

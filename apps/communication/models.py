@@ -28,6 +28,7 @@ class Notification(models.Model):
         PLANNING = "planejamento", "Planejamento docente"
         EXAM = "prova", "Prova ou avaliação marcada"
         SUPPORT = "apoio", "Apoio à inclusão"
+        MEETING = "reuniao", "Reunião ou atendimento"
 
     class Priority(models.TextChoices):
         NORMAL = "normal", "Informativo"

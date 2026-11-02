@@ -47,5 +47,17 @@
   </div>
 </section>
 
+{% if glossary %}
+<section class="mt-4" aria-labelledby="h-glossario">
+  <h2 id="h-glossario" class="h5 mb-3">Glossário</h2>
+  <dl class="card card-body mb-0">
+    {% for g in glossary %}
+      <dt{% if not forloop.first %} class="mt-3"{% endif %}>{{ g.term }}</dt>
+      <dd class="mb-0">{{ g.text }}</dd>
+    {% endfor %}
+  </dl>
+</section>
+{% endif %}
+
 <p class="text-body-secondary small mt-4 mb-0">Não encontrou o que procurava? Fale com a secretaria da escola.</p>
 {% endblock %}

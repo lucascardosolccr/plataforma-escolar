@@ -185,6 +185,20 @@ class ServiceTests(AnalyticsBase):
         self.assertEqual(stats["delivered"], 1)
         self.assertEqual(stats["percent"], 100.0)
 
+    def test_activity_stats_late_delivery_counts_as_delivered(self):
+        """Entregue com atraso é entrega: não pode aparecer como atrasada."""
+        activity = Activity.objects.create(
+            school=self.school, class_group=self.turma, subject=self.mat,
+            title="Tarefa", deadline="2026-01-10", created_by=self.prof,
+        )
+        Submission.objects.create(
+            school=self.school, activity=activity, student=self.ana,
+            status=Submission.Status.LATE,
+        )
+        stats = services.activity_stats(self.ana)
+        self.assertEqual(stats["delivered"], 1)
+        self.assertEqual(stats["late"], 0)
+
     def test_institutional_indicators(self):
         data = services.institutional_indicators(self.school)
         self.assertEqual(data["students"], 2)

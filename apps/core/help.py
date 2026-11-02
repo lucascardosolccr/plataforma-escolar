@@ -40,6 +40,19 @@ GUIDES = [
         ("Depois do prazo, abra a atividade e registre quem entregou.", "pedagogy:activity_list"),
         ("Editou depois de publicar? A tela da atividade guarda o histórico, e a família vê que ela mudou.", None),
     ]),
+    ("Marcar uma reunião com a família", "users-round", (PROFESSOR, COORDENACAO, DIRECAO, SECRETARIA), [
+        ("Em Reuniões, use “Marcar reunião”, escolha o estudante e marque “Convidar os responsáveis”.",
+         "meetings:create"),
+        ("A família recebe o aviso na plataforma e um lembrete na véspera. A pauta aparece para ela.", None),
+        ("Depois da conversa, registre o que foi combinado. Anotações só da equipe vão em campo próprio, "
+         "que a família nunca vê.", None),
+        ("Encaminhamentos têm responsável e prazo, e aparecem na lista de quem ficou responsável.", None),
+    ]),
+    ("Simular a média ou a frequência", "sliders-horizontal", TODOS, [
+        ("No painel do estudante, use “Simular cenários”.", None),
+        ("Digite uma nota hipotética para ver a média, ou quantas faltas, para ver a frequência do ano. "
+         "Nada é gravado.", None),
+    ]),
     ("Organizar um trabalho em grupo", "users-round", (PROFESSOR,), [
         ("Crie o trabalho em Trabalhos em grupo.", "pedagogy:group_work_create"),
         ("Em “Organizar grupos”, monte os grupos à mão ou sorteie.", "pedagogy:group_work_list"),
@@ -342,6 +355,74 @@ def _url(name):
         return None
 
 
+# Glossário (Prompt 9 §8.11). Cada definição foi conferida no código que
+# implementa a regra; mudou a regra, mude o texto. (termo, definição, perfis)
+EQUIPE = (ADMIN, DIRECAO, COORDENACAO, SECRETARIA, PROFESSOR)
+GLOSSARY = [
+    ("Ano letivo e período",
+     "O ano letivo vai do início ao fim cadastrados pela escola. Os períodos (bimestres, por exemplo) "
+     "vêm do calendário oficial publicado e aparecem no seletor de período dos painéis.", TODOS),
+    ("Avaliação publicada",
+     "Avaliação cujas notas o professor liberou. Antes disso é rascunho: a família e o estudante não "
+     "veem a nota, e ela não entra em nenhuma média ou indicador. A data da prova pode ser divulgada "
+     "antes da nota.", TODOS),
+    ("Média da disciplina",
+     "Calculada só com avaliações publicadas, pela fórmula que a escola escolheu para a disciplina: "
+     "média aritmética, ponderada (pelos pesos das avaliações), melhor nota ou soma. Sem regra "
+     "cadastrada, vale a média aritmética com aprovação em 6.", TODOS),
+    ("Frequência",
+     "Percentual dos dias com chamada em que o estudante estava presente. Atraso conta como "
+     "presença. A escola define o limite de faltas em Regras e limites (25% por padrão); a LDB "
+     "exige frequência mínima de 75% (Lei 9.394/1996, art. 24, VI).", TODOS),
+    ("Falta justificada",
+     "Falta com justificativa aceita pela secretaria. A justificativa fica registrada, mas não apaga "
+     "a falta da frequência oficial.", TODOS),
+    ("Atividade de casa",
+     "Tarefa publicada para a turma inteira: a mesma atividade vale para todos os estudantes "
+     "matriculados. Quem entra na turma recebe as que ainda estão no prazo (ou não têm prazo); quem sai conserva as do "
+     "período em que esteve lá.", TODOS),
+    ("Situação da atividade",
+     "Pendente: ainda no prazo. A vencer: o prazo termina em até 2 dias. Prazo encerrado: a data de "
+     "entrega passou. Agendada: publicada com data futura, ainda não aparece à família. Cancelada: "
+     "o professor cancelou; o registro fica no histórico.", TODOS),
+    ("Entrega registrada e “Estou ciente”",
+     "Quem registra se a tarefa foi entregue (no prazo, com atraso ou não entregue) é o professor. "
+     "“Estou ciente” é só a confirmação de que a família ou o estudante leu a tarefa.", TODOS),
+    ("Trabalho em grupo",
+     "Um único trabalho da turma, dividido em grupos. Cada família vê o grupo do próprio filho, com o "
+     "nome dos colegas daquele grupo, e nada além disso sobre eles.", TODOS),
+    ("Taxa de entrega",
+     "Entre as atividades com entrega registrada pelo professor, quantas foram entregues (no prazo ou "
+     "com atraso). Atividade sem registro não conta como não entregue.", EQUIPE + (RESPONSAVEL,)),
+    ("Cobertura de registro",
+     "Quantas das atividades com prazo vencido tiveram a entrega registrada. Mede a qualidade do dado, "
+     "não o estudante: com cobertura baixa, a taxa de entrega diz pouco.", EQUIPE),
+    ("Grupo pequeno",
+     "Nos painéis, grupos com menos de 5 estudantes não aparecem em comparações, para que ninguém "
+     "seja identificado pelo resultado do grupo.", EQUIPE),
+    ("Ocorrência",
+     "Registro de um fato (um incidente ou um comportamento), com acompanhamento até ser concluído. A "
+     "família do estudante vê; o próprio estudante, não.", EQUIPE + (RESPONSAVEL,)),
+    ("Observação pedagógica",
+     "Registro sobre a aprendizagem (dificuldades, avanços, estratégias). A equipe pedagógica e os "
+     "responsáveis do estudante veem; secretaria, administração e o próprio estudante, não.",
+     EQUIPE + (RESPONSAVEL,)),
+    ("Plano de acompanhamento",
+     "Objetivo combinado para um estudante, com estratégias, critério de sucesso, prazo e o registro "
+     "da evolução. Plano ativo sem registro há mais de 30 dias ou com prazo vencido é sinalizado.",
+     EQUIPE + (RESPONSAVEL,)),
+    ("Busca ativa",
+     "Acompanhamento de estudantes com faltas seguidas ou frequência baixa, com as ações da escola "
+     "registradas e, quando preciso, a comunicação ao Conselho Tutelar (LDB, art. 12, VIII).", EQUIPE),
+    ("Vínculo aprovado",
+     "Ligação entre a conta do responsável e o estudante, conferida pela secretaria. Sem ela, nenhum "
+     "dado do estudante aparece para o responsável.", (ADMIN, SECRETARIA, RESPONSAVEL)),
+    ("Cenário simulado",
+     "Conta do tipo “e se” feita no simulador do painel do estudante. Usa as regras reais de média e "
+     "de frequência, mas não grava nada nem muda notas ou faltas.", TODOS),
+]
+
+
 def build(user, visible_urls):
     """Guias e perguntas deste perfil, com links só para telas que ele abre."""
     visible = set(visible_urls)
@@ -355,4 +436,6 @@ def build(user, visible_urls):
             rendered.append({"text": text, "url": url if url in visible else None})
         guides.append({"title": title, "icon": icon, "steps": rendered})
     faq = [{"q": q, "a": a} for q, a, roles in FAQ if user.role in roles]
-    return {"guides": guides, "faq": faq}
+    glossary = sorted(({"term": t, "text": d} for t, d, roles in GLOSSARY if user.role in roles),
+                      key=lambda g: g["term"].lower())
+    return {"guides": guides, "faq": faq, "glossary": glossary}

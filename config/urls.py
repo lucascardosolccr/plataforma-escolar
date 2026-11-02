@@ -14,6 +14,7 @@ urlpatterns = [
     path("", include("apps.analytics.urls")),
     path("calendario/", include("apps.school_calendar.urls")),
     path("", include("apps.rotina.urls")),
+    path("", include("apps.meetings.urls")),
     path("", include("apps.coordination.urls")),
     path("", include("apps.printing.urls")),
     path("", include("apps.curriculum.urls")),

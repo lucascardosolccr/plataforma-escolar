@@ -85,6 +85,7 @@ INSTALLED_APPS = [
     "apps.curriculum",
     "apps.inclusion",
     "apps.cognitio",
+    "apps.meetings",
 ]
 
 MIDDLEWARE = [
@@ -213,3 +214,45 @@ if NOTIFY_BY_EMAIL:
     EMAIL_USE_TLS = os.environ.get("DJANGO_EMAIL_TLS", "1") == "1"
     EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = os.environ.get("DJANGO_EMAIL_FROM", "plataforma@escola.local")
+
+# --- Registro de falhas técnicas -----------------------------------------
+# Sem isto, com DEBUG desligado, um erro 500 não ficava registrado em lugar
+# nenhum (o padrão do Django manda por e-mail a ADMINS, que não existe aqui).
+# Vai para logs/erros.log, com rodízio (5 arquivos de 1 MB), e aparece ao
+# administrador em "Falhas técnicas". Grava só o caminho da página e o
+# rastreamento do erro: nem corpo da requisição nem dados de formulário.
+# Nos testes não grava nada em disco.
+import sys as _sys  # noqa: E402
+
+LOG_DIR = BASE_DIR / "logs"
+_TESTING = "pytest" in _sys.modules or "test" in _sys.argv[1:2]
+if not _TESTING:
+    LOG_DIR.mkdir(exist_ok=True)
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "padrao": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"},
+    },
+    "handlers": {
+        "arquivo": (
+            {"class": "logging.NullHandler"} if _TESTING else {
+                "class": "logging.handlers.RotatingFileHandler",
+                "filename": LOG_DIR / "erros.log",
+                "maxBytes": 1024 * 1024,
+                "backupCount": 5,
+                "encoding": "utf-8",
+                "formatter": "padrao",
+                "level": "WARNING",
+            }
+        ),
+        "console": {"class": "logging.StreamHandler", "formatter": "padrao", "level": "ERROR"},
+    },
+    "loggers": {
+        # 403/404 são WARNING aqui e seriam ruído: só erro de verdade.
+        "django.request": {"handlers": ["arquivo", "console"], "level": "ERROR", "propagate": False},
+        # CSRF recusado, host não permitido, arquivo suspeito.
+        "django.security": {"handlers": ["arquivo", "console"], "level": "WARNING", "propagate": False},
+        "apps": {"handlers": ["arquivo", "console"], "level": "WARNING", "propagate": False},
+    },
+}

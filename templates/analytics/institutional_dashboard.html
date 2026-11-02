@@ -87,7 +87,28 @@
     {% include "analytics/bi/_kpi.html" with label="Transferências no período" value=r.movement.transferred icon="arrow-right" metric="enrollment_movement" %}
     {% include "analytics/bi/_kpi.html" with label="Concluintes no período" value=r.movement.concluded icon="graduation-cap" metric="enrollment_movement" %}
   </div>
-  <p class="bi-chart-note mt-2">Metas institucionais não são cadastradas na plataforma, então o alcance de metas não pode ser medido. Ver <a href="{% url 'analytics:methodology' %}">metodologia</a>.</p>
+  <p class="bi-chart-note mt-2">{% if goals_summary.total %}Metas da escola em andamento: {{ goals_summary.on_track }} de {{ goals_summary.total }} já no alvo.{% else %}Nenhuma meta da escola em andamento.{% endif %} <a href="{% url 'analytics:goals' %}">Ver metas</a> · <a href="{% url 'analytics:methodology' %}">metodologia</a>.</p>
+</section>
+
+<section class="bi-section" id="uso" aria-labelledby="h-uso">
+  <h2 id="h-uso">Utilização da plataforma</h2>
+  <p class="bi-chart-note">O que foi registrado em cada módulo no período e quantas contas entraram, por perfil. Mede o uso da plataforma, não a qualidade do trabalho de ninguém. Só contagens: nenhum nome. {% metric_info "module_usage" %}</p>
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+        <caption class="visually-hidden">Registros por módulo no período</caption>
+        <thead><tr><th scope="col">Módulo</th><th scope="col" class="text-end">Registros no período</th></tr></thead>
+        <tbody>{% for m in usage.modules %}<tr><td>{{ m.label }}</td><td class="text-end">{{ m.count }}</td></tr>{% endfor %}</tbody>
+      </table></div>
+    </div>
+    <div class="col-lg-5">
+      <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+        <caption class="visually-hidden">Contas que entraram no período, por perfil</caption>
+        <thead><tr><th scope="col">Perfil</th><th scope="col" class="text-end">Contas que entraram</th></tr></thead>
+        <tbody>{% for l in usage.logins %}<tr><td>{{ l.role }}</td><td class="text-end">{{ l.users }}</td></tr>{% empty %}<tr><td colspan="2" class="text-body-secondary">Nenhuma entrada registrada no período.</td></tr>{% endfor %}</tbody>
+      </table></div>
+    </div>
+  </div>
 </section>
 
 <section class="bi-section" id="rotina" aria-labelledby="h-r">

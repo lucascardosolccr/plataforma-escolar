@@ -72,6 +72,7 @@
 .calendar-event.group_work { --kind: #7c5cc4; }
 .calendar-event.evaluation { --kind: var(--ds-success); }
 .calendar-event.occurrence { --kind: var(--ds-danger); }
+.calendar-event.meeting { --kind: var(--ds-info); }
 .calendar-event.justification { --kind: var(--ds-mark); }
 
 .event-chip {

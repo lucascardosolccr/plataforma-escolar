@@ -175,7 +175,8 @@ def activity_stats(student):
     """Percentual de entregas, pendentes e atrasadas.
 
     Considera as atividades das turmas com matrícula ativa do estudante.
-    Entrega = ``Submission`` com situação "entregue". Atrasada = prazo vencido
+    Entrega = ``Submission`` entregue, no prazo ou com atraso (antes só "entregue"
+    contava, e a entregue com atraso aparecia como atrasada). Atrasada = prazo vencido
     sem entrega registrada; pendente = prazo ainda por vencer sem entrega.
     """
     class_ids = list(_active_enrollments(student).values_list("class_group_id", flat=True))
@@ -190,14 +191,14 @@ def activity_stats(student):
         for s in Submission.objects.filter(student=student, activity__in=activities)
     }
     delivered = sum(
-        1 for s in submissions.values() if s.status == Submission.Status.DELIVERED
+        1 for s in submissions.values() if s.status in Submission.DELIVERED_STATUSES
     )
     today = timezone.localdate()
     pending = 0
     late = 0
     for activity in activities:
         sub = submissions.get(activity.pk)
-        ok = sub is not None and sub.status == Submission.Status.DELIVERED
+        ok = sub is not None and sub.status in Submission.DELIVERED_STATUSES
         if ok:
             continue
         if activity.deadline and activity.deadline < today:

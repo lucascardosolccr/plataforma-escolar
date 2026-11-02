@@ -2480,7 +2480,10 @@ def plan_list(request):
         qs = qs.filter(student_id__in=student_ids)
     else:
         acc.require(user.role in (Role.COORDENACAO.value, Role.DIRECAO.value, Role.ADMIN.value))
-    page = paginate(request, qs.order_by("-created_at"))
+    page = paginate(request, qs.annotate(last_note_at=Max("notes__created_at")).order_by("-created_at"))
+    today = timezone.localdate()
+    for p in page:
+        p.signals = p.follow_up(p.last_note_at, today)
     return render(
         request,
         "pedagogy/plan_list.html",
@@ -2488,6 +2491,7 @@ def plan_list(request):
             "plans": page,
             "page": page,
             "can_manage": acc.can_manage_plans(user),
+            "stale_days": InterventionPlan.STALE_DAYS,
         },
     )
 
@@ -2497,6 +2501,7 @@ def plan_create(request):
     acc.require(acc.can_manage_plans(user))
     form = InterventionPlanForm(request.POST or None, school=user.school, user=user)
     if request.method == "POST" and form.is_valid():
+        acc.require(acc.can_manage_plans(user, form.cleaned_data["student"]))
         with transaction.atomic():
             plan = form.save(commit=False)
             plan.school = user.school
@@ -2508,6 +2513,23 @@ def plan_create(request):
     return render(request, "pedagogy/plan_form.html", {"form": form, "obj": None})
 
 
+def plan_edit(request, pk):
+    """Ajusta objetivo, critério, prazo e situação do plano. O estudante e as
+    evoluções registradas não mudam."""
+    user = request.user
+    plan = get_object_or_404(InterventionPlan.objects.select_related("student"), pk=pk, school=user.school)
+    acc.require(acc.can_manage_plans(user, plan.student))
+    form = InterventionPlanForm(request.POST or None, instance=plan, school=user.school, user=user)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            form.save()
+            _log(request, "update", plan, "Editou o plano de acompanhamento: "
+                 + ", ".join(form.fields[f].label.lower() for f in form.changed_data))
+        messages.success(request, "Plano atualizado.")
+        return redirect("pedagogy:plan_detail", pk=plan.pk)
+    return render(request, "pedagogy/plan_form.html", {"form": form, "obj": plan})
+
+
 def plan_detail(request, pk):
     user = request.user
     plan = get_object_or_404(
@@ -2515,7 +2537,7 @@ def plan_detail(request, pk):
     )
     acc.require(acc.can_view_plans(user, plan.student))
     note_form = None
-    if acc.can_manage_plans(user):
+    if acc.can_manage_plans(user, plan.student):
         note_form = PlanNoteForm(request.POST or None)
         if request.method == "POST":
             action = request.POST.get("_action")
@@ -2544,6 +2566,9 @@ def plan_detail(request, pk):
             "plan": plan,
             "notes": plan.notes.all(),
             "note_form": note_form,
+            "can_manage": note_form is not None,
+            "signals": plan.follow_up(),
+            "stale_days": InterventionPlan.STALE_DAYS,
             "status_choices": InterventionPlan.Status.choices,
         },
     )

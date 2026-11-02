@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Falhas técnicas — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Falhas técnicas</h1>
+    <p>Erros do servidor e alertas de segurança (como formulário recusado por falta de
+      proteção CSRF) registrados pela plataforma. Mostra as {{ entries|length }} ocorrência{{ entries|length|pluralize }}
+      mais recentes, a primeira no topo. O registro guarda o endereço da página e o rastreamento do
+      erro, nunca o conteúdo dos formulários.</p>
+  </div>
+</div>
+
+{% if entries %}
+  <p class="small text-body-secondary">{{ errors }} erro{{ errors|pluralize }} do servidor entre as ocorrências listadas. Arquivo: <code>{{ log_path }}</code> (5 arquivos de até 1 MB, os mais antigos são descartados).</p>
+  <ol class="list-unstyled d-grid gap-2">
+    {% for e in entries %}
+      <li class="card"><div class="card-body py-2">
+        <details>
+          <summary>
+            <span class="chip chip-state {% if e.level == 'ERROR' or e.level == 'CRITICAL' %}state-encerrada{% else %}state-a_vencer{% endif %}">{% if e.level == 'ERROR' or e.level == 'CRITICAL' %}Erro{% else %}Alerta{% endif %}</span>
+            <span class="small text-body-secondary">{{ e.when }}</span>
+            <span class="d-block">{{ e.message }}</span>
+          </summary>
+          {% if e.detail %}<pre class="small mt-2 mb-0">{{ e.detail }}</pre>{% else %}<p class="small text-body-secondary mt-2 mb-0">Sem detalhes adicionais.</p>{% endif %}
+        </details>
+      </div></li>
+    {% endfor %}
+  </ol>
+{% else %}
+  <div class="card"><div class="card-body text-center text-body-secondary py-5">
+    <p class="fw-semibold mb-1">Nenhuma falha registrada.</p>
+    <p class="small mb-0">Quando o servidor tiver um erro, ele aparece aqui com data, página e detalhes técnicos.</p>
+  </div></div>
+{% endif %}
+{% endblock %}

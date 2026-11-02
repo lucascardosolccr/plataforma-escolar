@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Reuniões — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Reuniões e atendimentos</h1>
+    <p>{% if is_family %}Reuniões para as quais a escola convidou você.{% else %}Reuniões que você marcou, das quais participa{% if user_role == ROLE_DIRECAO %} e todas as da escola{% elif user_role == ROLE_COORDENACAO %} e as do seu alcance{% endif %}.{% endif %}</p>
+  </div>
+  {% if can_create %}
+  <div class="page-actions">
+    <a href="{% url 'meetings:create' %}" class="btn btn-primary">{% icon "plus" %}Marcar reunião</a>
+  </div>
+  {% endif %}
+</div>
+
+{% if my_follow_ups %}
+<section class="card mb-3" aria-labelledby="h-meus">
+  <div class="card-body">
+    <h2 class="h6 mb-2" id="h-meus">Encaminhamentos sob sua responsabilidade</h2>
+    <ul class="list-unstyled mb-0 d-grid gap-1 small">
+      {% for fu in my_follow_ups %}
+        <li>
+          <a href="{% url 'meetings:detail' fu.meeting_id %}">{{ fu.description }}</a>
+          <span class="text-body-secondary">· {{ fu.meeting.title }}</span>
+          {% if fu.due_date %}<span class="chip{% if fu.overdue %} chip-state state-encerrada{% endif %}">{% if fu.overdue %}venceu em{% else %}até{% endif %} {{ fu.due_date|date:"d/m/Y" }}</span>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endif %}
+
+<nav class="d-flex gap-2 mb-3" aria-label="Período">
+  <a href="?quando=proximas" class="btn btn-sm {% if when == 'proximas' %}btn-primary{% else %}btn-outline-secondary{% endif %}"{% if when == 'proximas' %} aria-current="page"{% endif %}>Próximas</a>
+  <a href="?quando=anteriores" class="btn btn-sm {% if when == 'anteriores' %}btn-primary{% else %}btn-outline-secondary{% endif %}"{% if when == 'anteriores' %} aria-current="page"{% endif %}>Anteriores e canceladas</a>
+</nav>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 table-stack">
+      <thead><tr><th>Data</th><th>Assunto</th><th>Estudante ou turma</th><th>Situação</th><th class="text-end"></th></tr></thead>
+      <tbody>
+        {% for m in meetings %}
+        <tr>
+          <td class="text-nowrap">{{ m.scheduled_at|date:"d/m/Y H:i" }}</td>
+          <td><span class="fw-semibold">{{ m.title }}</span><span class="d-block small text-body-secondary">{{ m.get_kind_display }}{% if m.location %} · {{ m.location }}{% endif %}</span></td>
+          <td>{% if m.student %}{{ m.student.full_name }}{% elif m.class_group %}Turma {{ m.class_group.name }}{% else %}—{% endif %}</td>
+          <td><span class="chip chip-state {% if m.status == 'realizada' %}state-entregue{% elif m.status == 'cancelada' %}state-cancelada{% else %}state-pendente{% endif %}">{{ m.get_status_display }}</span></td>
+          <td class="text-end cell-actions"><a href="{% url 'meetings:detail' m.pk %}" class="btn btn-sm btn-outline-secondary">Abrir</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5"><div class="empty-state py-4">{% icon "calendar-days" %}<strong>{% if when == 'proximas' %}Nenhuma reunião marcada.{% else %}Nenhuma reunião anterior.{% endif %}</strong>{% if can_create and when == 'proximas' %}<span>Use “Marcar reunião” para convidar a família ou a equipe.</span>{% endif %}</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/_pager.html" %}
+{% endblock %}

@@ -131,6 +131,8 @@ ITEMS = {
     "config": Item("Regras e limites", "pedagogy:config_edit", "sliders-horizontal",
                    ("pedagogy:config_", "pedagogy:academic_rule_"), "Médias e limite de faltas"),
     "users": Item("Usuários", "user_list", "shield", ("user_",), "Contas e auditoria"),
+    "error_log": Item("Falhas técnicas", "error_log", "triangle-alert", ("error_log",),
+                      "Erros do servidor registrados"),
     "photos": Item("Fotografias", "photo_pending", "user-round", ("photo_",),
                    "Quem ainda não tem foto de identificação"),
     # Comunicação
@@ -192,6 +194,8 @@ ITEMS = {
                      "Mapa de competências, alertas e intervenções por habilidade"),
     "norms": Item("Referências normativas", "curriculum:references", "book-open", ("curriculum:references",),
                   "LDB, BNCC, educação inclusiva e LGPD"),
+    "meetings": Item("Reuniões", "meetings:list", "users-round", ("meetings:",),
+                     "Reuniões e atendimentos: pauta, registro e encaminhamentos"),
 }
 
 # Itens do rodapé do menu, iguais para todos os perfis.
@@ -210,17 +214,20 @@ ACTIONS = {
     "new_user": Item("Criar conta profissional", "user_create", "plus"),
     "new_thread": Item("Nova mensagem", "communication:thread_create", "message-circle"),
     "new_request": Item("Nova solicitação", "communication:request_create", "inbox"),
+    "new_meeting": Item("Marcar reunião", "meetings:create", "plus"),
     "justify": ITEMS["justify"],
     "link_request": ITEMS["link_request"],
 }
 
-COMMUNICATION_STAFF = ("Comunicação", ["threads_staff", "announcements", "requests", "notifications"])
+COMMUNICATION_STAFF = ("Comunicação", ["threads_staff", "announcements", "requests", "meetings", "notifications"])
+# A administração cuida das contas e da configuração, não participa de reuniões.
+COMMUNICATION_ADMIN = ("Comunicação", ["threads_staff", "announcements", "requests", "notifications"])
 
 LAYOUT = {
     RESPONSAVEL: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Acompanhamento", ["children", "fam_activities", "fam_works", "fam_grades", "fam_attendance"]),
-        ("Escola", ["threads_family", "announcements", "requests", "notifications"]),
+        ("Escola", ["threads_family", "announcements", "requests", "meetings", "notifications"]),
         ("Secretaria", ["fam_applications", "justify", "links", "fam_support"]),
         ("Análises", ["reports", "methodology"]),
     ],
@@ -272,13 +279,14 @@ LAYOUT = {
     ],
     ADMIN: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
-        ("Administração", ["users", "coord_designations", "config", "registration_cfg", "notif_rules"]),
+        ("Administração", ["users", "coord_designations", "config", "registration_cfg", "notif_rules",
+                           "error_log"]),
         ("Cadastro", ["students", "applications", "student_import", "photos", "guardians", "staff_links",
                       "enrollments"]),
         ("Acadêmico", ["classes", "subjects", "years", "official_calendar", "assignments", "teacher_perms"]),
         ("Pedagógico", ["evaluations", "activities", "prints_queue", "works", "attendance", "occurrences",
                         "justifications"]),
-        COMMUNICATION_STAFF,
+        COMMUNICATION_ADMIN,
         ("Análises", ["institutional", "goals", "secretaria_panel", "subject_bi", "quality", "reports", "methodology",
                       "norms"]),
     ],
@@ -288,10 +296,10 @@ ROLE_ACTIONS = {
     RESPONSAVEL: ["new_thread", "justify", "new_request", "link_request"],
     ESTUDANTE: [],
     PROFESSOR: ["new_activity", "new_evaluation", "new_work", "new_occurrence",
-                "new_observation", "new_thread"],
-    SECRETARIA: ["new_student", "new_enrollment", "new_thread"],
-    COORDENACAO: ["new_plan", "new_observation", "new_occurrence", "new_thread"],
-    DIRECAO: ["new_occurrence", "new_thread"],
+                "new_observation", "new_thread", "new_meeting"],
+    SECRETARIA: ["new_student", "new_enrollment", "new_thread", "new_meeting"],
+    COORDENACAO: ["new_plan", "new_observation", "new_occurrence", "new_thread", "new_meeting"],
+    DIRECAO: ["new_occurrence", "new_thread", "new_meeting"],
     ADMIN: ["new_user", "new_student", "new_enrollment"],
 }
 

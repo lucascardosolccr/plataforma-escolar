@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{% if obj %}Alterar reunião{% else %}Marcar reunião{% endif %} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% if obj %}{% url 'meetings:detail' obj.pk as back %}{% else %}{% url 'meetings:list' as back %}{% endif %}
+<div class="form-page">
+  {% if obj %}
+    {% include "partials/_form_head.html" with back_url=back back_label="Voltar à reunião" heading="Alterar reunião" subheading="Mudar a data avisa todos os participantes de novo." %}
+  {% else %}
+    {% include "partials/_form_head.html" with back_url=back back_label="Reuniões" heading="Marcar reunião ou atendimento" subheading="Os participantes recebem o aviso na plataforma e um lembrete na véspera." %}
+  {% endif %}
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">
+      {% include "partials/_form_fields.html" with f=form %}
+      <p class="small text-body-secondary mb-0">A pauta aparece para todos os participantes, inclusive a família. Assuntos só da equipe vão nas anotações da equipe, depois da reunião.</p>
+    </div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label=obj|yesno:"Salvar alterações,Marcar reunião" %}
+  </form>
+</div>
+{% endblock %}

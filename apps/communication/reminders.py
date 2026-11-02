@@ -328,6 +328,9 @@ def run_daily(today=None):
         counts["trabalhos"] = group_work_reminders(today, policies, enabled, letivo)
         counts["provas"] = exam_reminders(today, policies, enabled, letivo)
         counts["alertas_pedagogicos"] = _learning_alerts(today)
+        from apps.meetings.services import meeting_reminders
+
+        counts["reunioes"] = meeting_reminders(today)
     except Exception:
         run.status = ReminderRun.Status.ERROR
         run.detail = traceback.format_exc()[-2000:]

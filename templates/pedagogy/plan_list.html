@@ -22,18 +22,23 @@
 <div class="card">
   <div class="table-responsive">
     <table class="table table-hover align-middle mb-0 table-stack">
-      <thead><tr><th>Estudante</th><th>Título</th><th>Situação</th><th>Criado por</th><th class="text-end"></th></tr></thead>
+      <thead><tr><th>Estudante</th><th>Título</th><th>Situação</th><th>Prazo</th><th>Criado por</th><th class="text-end"></th></tr></thead>
       <tbody>
         {% for p in plans %}
         <tr>
           <td class="fw-semibold">{{ p.student.full_name }}</td>
           <td>{{ p.title }}</td>
-          <td><span class="chip">{{ p.get_status_display }}</span></td>
+          <td>
+            <span class="chip">{{ p.get_status_display }}</span>
+            {% if p.signals.overdue %}<span class="chip chip-state state-a_vencer">prazo vencido</span>{% endif %}
+            {% if p.signals.stale_days %}<span class="chip chip-state state-a_vencer" title="Plano ativo sem registro de evolução há mais de {{ stale_days }} dias">sem registro há {{ p.signals.stale_days }} dias</span>{% endif %}
+          </td>
+          <td>{{ p.deadline|date:"d/m/Y"|default:"—" }}</td>
           <td>{{ p.created_by.get_full_name|default:p.created_by.username|default:"—" }}</td>
           <td class="text-end cell-actions"><a href="{% url 'pedagogy:plan_detail' p.pk %}" class="btn btn-sm btn-outline-secondary">Abrir</a></td>
         </tr>
         {% empty %}
-        <tr><td colspan="5"><div class="empty-state py-4">{% icon "inbox" %}<strong>Nenhum plano.</strong></div></td></tr>
+        <tr><td colspan="6"><div class="empty-state py-4">{% icon "inbox" %}<strong>Nenhum plano.</strong></div></td></tr>
         {% endfor %}
       </tbody>
     </table>

@@ -885,6 +885,9 @@ class InterventionPlan(models.Model):
     )
     title = models.CharField("título", max_length=200)
     description = models.TextField("objetivos e estratégias")
+    # Opcionais (Prompt 9 §5.7): objetivo acompanhável com critério e prazo.
+    success_criterion = models.TextField("critério de sucesso", blank=True)
+    deadline = models.DateField("prazo para reavaliar", null=True, blank=True)
     created_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name="plans_created"
     )
@@ -901,6 +904,26 @@ class InterventionPlan(models.Model):
 
     def __str__(self):
         return f"{self.title} — {self.student} ({self.get_status_display()})"
+
+    # Plano ativo sem registro de evolução há mais que isto pede atenção.
+    STALE_DAYS = 30
+
+    def follow_up(self, last_note_at=None, today=None):
+        """Sinais de acompanhamento do plano ativo: prazo vencido e dias sem
+        registro de evolução. ``last_note_at`` evita uma consulta por plano
+        nas listas (vem de uma anotação ``Max``)."""
+        if self.status != self.Status.ACTIVE:
+            return {"overdue": False, "stale_days": None}
+        today = today or timezone.localdate()
+        if last_note_at is None:
+            last = self.notes.order_by("-created_at").values_list("created_at", flat=True).first()
+            last_note_at = last
+        ref = timezone.localdate(last_note_at) if last_note_at else timezone.localdate(self.created_at)
+        idle = (today - ref).days
+        return {
+            "overdue": bool(self.deadline and self.deadline < today),
+            "stale_days": idle if idle > self.STALE_DAYS else None,
+        }
 
 
 class PlanNote(models.Model):

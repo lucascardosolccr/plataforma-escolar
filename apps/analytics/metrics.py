@@ -307,6 +307,17 @@ _M = [
         "Ajuda a planejar a impressão; não avalia pessoas.",
         "Depende de a secretaria registrar cada passo no dia em que acontece.",
     ),
+    Metric(
+        "module_usage", "Utilização da plataforma", "Gestão",
+        "Quanto cada módulo foi usado no período e quantas contas entraram, por perfil.",
+        "Registros criados no período em cada tabela (chamada conta turma e data uma vez; entrega conta "
+        "a última atualização do registro); contas distintas com login no período.",
+        "Tabelas de atividades, trabalhos, avaliações, frequência, entregas, ocorrências, planos de aula, "
+        "comunicados, mensagens e solicitações; logins da auditoria.",
+        "Sem registro, o módulo aparece com 0: aqui zero é a contagem real, não falta de dado.",
+        "Mostra adoção da plataforma. Não mede a qualidade do trabalho de nenhum profissional.",
+        "Registro feito fora da plataforma (papel, outro sistema) não aparece.",
+    ),
 ]
 
 METRICS = {m.key: m for m in _M}

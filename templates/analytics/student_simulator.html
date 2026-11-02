@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% load static ui %}
+{% block title %}Simular cenários — {{ student.full_name }} — Plataforma Escolar{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/bi.css' %}">{% endblock %}
+{% block crumb %}<li><a href="{% url 'analytics:student_dashboard' student.pk %}?{{ period.querystring }}">Painel de {{ student.first_name }}</a></li><li><span aria-current="page">Simular cenários</span></li>{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'analytics:student_dashboard' student.pk %}?{{ period.querystring }}" class="back-link">{% icon "arrow-left" %}Voltar ao painel</a>
+    <h1>Simular cenários — {{ student.full_name }}</h1>
+    <p>“E se a próxima nota for…?” e “e se faltar … dias?”. As contas usam as notas
+      publicadas e as regras de média da escola. <strong>Nada aqui é gravado</strong>:
+      as notas e a frequência oficiais não mudam.</p>
+  </div>
+</div>
+
+{% include "analytics/bi/_filters.html" with presets=presets period=period export_links=None %}
+
+{% if subject_limited %}<div class="callout mb-3">{% icon "info" %}<div>Você simula só as disciplinas que leciona.</div></div>{% endif %}
+
+<form method="get" novalidate>
+  <input type="hidden" name="periodo" value="{{ period.preset }}">
+  {% if period.preset == "personalizado" %}
+    <input type="hidden" name="inicio" value="{{ period.start|date:'Y-m-d' }}">
+    <input type="hidden" name="fim" value="{{ period.end|date:'Y-m-d' }}">
+  {% endif %}
+
+  <section class="card mb-3" aria-labelledby="h-notas">
+    <div class="card-body">
+      <h2 class="h5 mb-1" id="h-notas">Notas: próxima avaliação</h2>
+      <p class="small text-body-secondary mb-3">
+        Período: {{ period.label }} ({{ period.start|date:"d/m/Y" }} a {{ period.end|date:"d/m/Y" }}).
+        “Média atual” é a mesma do painel. “Para alcançar a aprovação” é a menor nota,
+        nessa próxima avaliação, que deixa a média na nota de aprovação da disciplina.
+      </p>
+      {% if rows %}
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <caption class="visually-hidden">Média atual, nota necessária e cenário simulado por disciplina</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="min-w-14">Disciplina</th>
+              <th scope="col">Média atual <span class="fw-normal text-body-secondary">(observada)</span></th>
+              <th scope="col">Para alcançar a aprovação</th>
+              <th scope="col">Nota hipotética</th>
+              <th scope="col">Média simulada <span class="fw-normal text-body-secondary">(hipótese)</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+            <tr>
+              <th scope="row">
+                {{ r.subject.name }}
+                <span class="d-block small fw-normal text-body-secondary">{{ r.count }} nota{{ r.count|pluralize }} · {{ r.formula|lower }} · aprovação {{ r.passing|floatformat:"-2" }}</span>
+              </th>
+              <td>{% if r.current is not None %}<strong>{{ r.current|floatformat:2 }}</strong>{% else %}—{% endif %}</td>
+              <td class="small">
+                {% if r.needed is None %}—
+                {% elif r.needed == 0 %}Já garantida: qualquer nota mantém a média na aprovação.
+                {% elif r.reachable %}Nota <strong>{{ r.needed|floatformat:2 }}</strong> ou mais{% if r.uses_weight %} (peso {{ r.weight|floatformat:"-2" }}){% endif %}.
+                {% else %}Não alcança com uma avaliação só{% if r.uses_weight %} de peso {{ r.weight|floatformat:"-2" }}{% endif %}: seria preciso {{ r.needed|floatformat:2 }}, acima da nota máxima ({{ r.max_grade|floatformat:"-2" }}).
+                {% endif %}
+              </td>
+              <td>
+                <label class="visually-hidden" for="nota-{{ r.subject.pk }}">Nota hipotética em {{ r.subject.name }}</label>
+                <input id="nota-{{ r.subject.pk }}" name="nota_{{ r.subject.pk }}" value="{{ r.raw }}" inputmode="decimal"
+                       class="form-control form-control-sm{% if r.invalid %} is-invalid{% endif %}" placeholder="0 a {{ r.max_grade|floatformat:'-2' }}"
+                       {% if r.invalid %}aria-describedby="nota-{{ r.subject.pk }}-erro" aria-invalid="true"{% endif %}>
+                {% if r.invalid %}<div id="nota-{{ r.subject.pk }}-erro" class="invalid-feedback">Use um número de 0 a {{ r.max_grade|floatformat:"-2" }}, com vírgula para decimais.</div>{% endif %}
+                {% if r.uses_weight %}
+                  <label class="small text-body-secondary mt-1 d-block" for="peso-{{ r.subject.pk }}">Peso</label>
+                  <input id="peso-{{ r.subject.pk }}" name="peso_{{ r.subject.pk }}" value="{{ r.weight|floatformat:'-2' }}" inputmode="decimal" class="form-control form-control-sm">
+                {% endif %}
+              </td>
+              <td>
+                {% if r.simulated is not None %}
+                  <strong>{{ r.simulated|floatformat:2 }}</strong>
+                  {% if r.simulated >= r.passing %}<span class="chip chip-state state-entregue">na aprovação</span>{% else %}<span class="chip chip-state state-a_vencer">abaixo da aprovação</span>{% endif %}
+                {% else %}<span class="text-body-secondary">—</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        <p class="text-body-secondary mb-0">Ainda não há notas publicadas neste período: sem elas não há média para simular. Escolha outro período acima ou aguarde a publicação das avaliações.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="card mb-3" aria-labelledby="h-freq">
+    <div class="card-body">
+      <h2 class="h5 mb-1" id="h-freq">Frequência até o fim do ano letivo</h2>
+      <p class="small text-body-secondary mb-3">
+        Ano letivo até hoje ({{ year_period.start|date:"d/m/Y" }} a {% now "d/m/Y" %}):
+        {% if att.total %}<strong>{{ att.percent|floatformat:1 }}%</strong> de presença em {{ att.total }} dia{{ att.total|pluralize }} com chamada
+        ({{ att.absent }} falta{{ att.absent|pluralize }}{% if att.late %}, {{ att.late }} atraso{{ att.late|pluralize }}, que conta{{ att.late|pluralize:"m" }} como presença{% endif %}).
+        {% else %}ainda não há chamada registrada.{% endif %}
+        {% if att.min_percent is not None %}A escola exige no mínimo <strong>{{ att.min_percent|floatformat:"-1" }}%</strong>.{% endif %}
+      </p>
+      <div class="row g-3 align-items-start">
+        <div class="col-sm-6 col-lg-4">
+          {% if remaining_cal is not None %}
+            <p class="mb-1 small text-body-secondary">Dias letivos restantes (calendário oficial)</p>
+            <p class="mb-0 fs-5"><strong>{{ remaining_cal }}</strong></p>
+          {% else %}
+            <label class="form-label" for="restantes">Dias letivos restantes</label>
+            <input id="restantes" name="restantes" value="{{ remaining_raw }}" inputmode="numeric" class="form-control" aria-describedby="restantes-ajuda">
+            <div id="restantes-ajuda" class="form-text">A escola ainda não publicou o calendário deste ano, então informe uma estimativa sua.</div>
+          {% endif %}
+        </div>
+        <div class="col-sm-6 col-lg-4">
+          <label class="form-label" for="faltas">Faltas a partir de amanhã</label>
+          <input id="faltas" name="faltas" value="{{ absences_raw }}" inputmode="numeric"
+                 class="form-control{% if absences_invalid or too_many_absences %} is-invalid{% endif %}" placeholder="0"
+                 {% if absences_invalid or too_many_absences %}aria-describedby="faltas-erro" aria-invalid="true"{% endif %}>
+          {% if absences_invalid %}<div id="faltas-erro" class="invalid-feedback">Use um número inteiro de 0 em diante.</div>
+          {% elif too_many_absences %}<div id="faltas-erro" class="invalid-feedback">Há só {{ remaining }} dia{{ remaining|pluralize }} letivo{{ remaining|pluralize }} pela frente.</div>{% endif %}
+        </div>
+      </div>
+      {% if projection %}
+        <div class="callout mt-3" role="status">
+          {% icon "info" %}
+          <div>
+            <strong>Cenário hipotético:</strong> faltando {{ absences|default:0 }} dos {{ remaining }} dias restantes,
+            a frequência do ano fecharia em <strong>{{ projection.projected|floatformat:1 }}%</strong>
+            {% if projection.minimum is not None %}({% if projection.below %}abaixo{% else %}dentro{% endif %} do mínimo de {{ projection.minimum|floatformat:"-1" }}%){% endif %}.
+            {% if projection.max_absences is not None %}
+              <span class="d-block mt-1">
+              {% if projection.max_absences < 0 %}Mesmo sem nenhuma falta a mais, a frequência do ano não chega ao mínimo. Converse com a escola sobre compensação de ausências.
+              {% else %}Até <strong>{{ projection.max_absences }}</strong> falta{{ projection.max_absences|pluralize }} a mais ainda mantêm o mínimo.{% endif %}
+              </span>
+            {% endif %}
+            <span class="d-block small text-body-secondary mt-1">Supõe chamada em todos os dias letivos restantes e não considera justificativas futuras. É uma conta, não uma previsão.</span>
+          </div>
+        </div>
+      {% elif not att.total %}
+        <p class="small text-body-secondary mt-3 mb-0">Sem chamada registrada não há base para a conta.</p>
+      {% elif remaining is None %}
+        <p class="small text-body-secondary mt-3 mb-0">Informe os dias letivos restantes para ver o cenário.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <button type="submit" class="btn btn-primary">{% icon "sliders-horizontal" %}Simular</button>
+  <a class="btn btn-outline-secondary" href="?periodo={{ period.preset }}">Limpar</a>
+</form>
+{% endblock %}

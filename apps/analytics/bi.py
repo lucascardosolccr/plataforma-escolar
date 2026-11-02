@@ -1358,3 +1358,45 @@ def operational_indicators(school, period):
         "school_days_left": cd.get("year_left"),
         "calendar_reason": cd.get("reason", ""),
     }
+
+def module_usage(school, period):
+    """Utilização de cada módulo no período (Prompt 9 §6.1): quanto foi
+    registrado, contado direto nas tabelas, e quantas contas entraram, por
+    perfil (pelos logins na auditoria). Só contagens agregadas: nenhum nome.
+
+    Mede uso da plataforma, não a qualidade do trabalho de ninguém.
+    """
+    from apps.communication.models import Announcement, Message, ServiceRequest
+    from apps.core.models import AuditLog, Role
+    from apps.pedagogy.models import GroupWork, LessonPlan, Occurrence
+
+    start, end = period.start, period.end
+    created = {"created_at__date__gte": start, "created_at__date__lte": end}
+
+    def n(model, **extra):
+        return model.objects.filter(school=school, **created, **extra).count()
+
+    rows = [
+        ("Atividades de casa criadas", n(Activity)),
+        ("Trabalhos em grupo criados", n(GroupWork)),
+        ("Avaliações criadas", n(Evaluation)),
+        ("Dias de chamada (turma e data)", AttendanceRecord.objects.filter(
+            school=school, date__gte=start, date__lte=end).values("class_group", "date").distinct().count()),
+        ("Entregas registradas", Submission.objects.filter(
+            school=school, updated_at__date__gte=start, updated_at__date__lte=end).count()),
+        ("Ocorrências registradas", n(Occurrence)),
+        ("Planos de aula", n(LessonPlan)),
+        ("Comunicados", n(Announcement)),
+        ("Mensagens trocadas", Message.objects.filter(thread__school=school, **created).count()),
+        ("Solicitações abertas", n(ServiceRequest)),
+    ]
+    logins = (
+        AuditLog.objects.filter(school=school, action="login", **created)
+        .values("user__role").annotate(users=Count("user", distinct=True))
+    )
+    labels = dict(Role.choices)
+    by_role = sorted(
+        ({"role": labels.get(r["user__role"], "—"), "users": r["users"]} for r in logins if r["user__role"]),
+        key=lambda r: -r["users"],
+    )
+    return {"modules": [{"label": l, "count": c} for l, c in rows], "logins": by_role}

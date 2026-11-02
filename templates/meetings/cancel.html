@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Cancelar reunião — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url 'meetings:detail' meeting.pk as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Voltar à reunião" heading="Cancelar reunião" %}
+  <div class="card form-card"><div class="card-body">
+    <div class="alert alert-warning" role="alert"><div>
+      <strong>{{ meeting.title }}</strong> · {{ meeting.scheduled_at|date:"d/m/Y H:i" }}
+      <span class="d-block small">Os participantes são avisados, com o motivo. A reunião continua no histórico como cancelada.</span>
+    </div></div>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include "partials/_form_fields.html" with f=form %}
+      <div class="d-flex gap-2 mt-2">
+        <a href="{{ back }}" class="btn btn-outline-secondary flex-grow-1">Manter a reunião</a>
+        <button type="submit" class="btn btn-danger flex-grow-1">Confirmar cancelamento</button>
+      </div>
+    </form>
+  </div></div>
+</div>
+{% endblock %}

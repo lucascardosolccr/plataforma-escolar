@@ -14,7 +14,8 @@
   </div>
   <div class="page-actions">
     <div class="d-flex gap-2">
-    {% if user_role == ROLE_COORDENACAO %}
+    {% if can_manage %}<a href="{% url 'pedagogy:plan_edit' plan.pk %}" class="btn btn-sm btn-outline-secondary">{% icon "pencil" %}Editar</a>{% endif %}
+    {% if can_manage %}
       <form method="post" class="d-inline">
         {% csrf_token %}
         <input type="hidden" name="_action" value="set_status">
@@ -29,11 +30,24 @@
   </div>
 </div>
 
+{% if signals.overdue or signals.stale_days %}
+  <div class="alert alert-warning" role="status"><div>
+    {% if signals.overdue %}<strong>Prazo para reavaliar vencido</strong> em {{ plan.deadline|date:"d/m/Y" }}.{% endif %}
+    {% if signals.stale_days %}<strong>Sem registro de evolução há {{ signals.stale_days }} dias.</strong>{% endif %}
+    <span class="d-block small">Um plano ativo sem acompanhamento perde o sentido: registre a evolução, ajuste o prazo ou conclua o plano.</span>
+  </div></div>
+{% endif %}
+
 <div class="row g-3">
   <div class="col-lg-7">
     <div class="card"><div class="card-body">
       <h2 class="h6 text-body-secondary text-uppercase">Objetivos e estratégias</h2>
       <div>{{ plan.description|linebreaks }}</div>
+      {% if plan.success_criterion %}
+        <h2 class="h6 text-body-secondary text-uppercase mt-3">Critério de sucesso</h2>
+        <div>{{ plan.success_criterion|linebreaks }}</div>
+      {% endif %}
+      <p class="small text-body-secondary mb-0 mt-3">Prazo para reavaliar: {% if plan.deadline %}<strong>{{ plan.deadline|date:"d/m/Y" }}</strong>{% else %}não definido{% endif %}</p>
     </div></div>
   </div>
   <div class="col-lg-5">

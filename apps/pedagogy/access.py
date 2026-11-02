@@ -369,8 +369,11 @@ def teacher_observations_q(user, student):
             | Q(subject_id__in=teacher_subject_ids(user, class_ids=class_ids)))
 
 
-def can_manage_plans(user):
-    return user.is_authenticated and user.role == Role.COORDENACAO.value
+def can_manage_plans(user, student=None):
+    """Só a coordenação mantém planos; com estudante, só dentro da designação."""
+    if not (user.is_authenticated and user.role == Role.COORDENACAO.value):
+        return False
+    return reaches_student(user, student) if student is not None else True
 
 
 def can_view_plans(user, student=None):

@@ -264,3 +264,44 @@ def global_search(request):
                     "hint": f"Painel da turma · {cg.school_year.name}",
                 })
     return JsonResponse({"results": results})
+
+
+def _read_error_log(path, limit=50):
+    """Últimas ``limit`` ocorrências do registro de falhas, a mais recente
+    primeiro. Uma ocorrência começa numa linha com data ("2026-11-02 ...") e
+    leva junto as linhas seguintes (o rastreamento do erro)."""
+    import re
+
+    if not path.exists():
+        return []
+    starts = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
+    entries = []
+    # Só o fim do arquivo: com rodízio de 1 MB, isso cobre muitas ocorrências.
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        fh.seek(max(path.stat().st_size - 512 * 1024, 0))
+        lines = fh.read().splitlines()
+    for line in lines:
+        if starts.match(line):
+            stamp, _, rest = line.partition(",")
+            head = rest.split(" ", 1)[1] if " " in rest else rest
+            level, _, message = head.partition(" ")
+            entries.append({"when": stamp, "level": level, "message": message, "detail": []})
+        elif entries:
+            entries[-1]["detail"].append(line)
+    for e in entries:
+        e["detail"] = "\n".join(e["detail"]).strip()
+    return list(reversed(entries))[:limit]
+
+
+@role_required(Role.ADMIN)
+def error_log(request):
+    """Falhas técnicas registradas (ver LOGGING em config.settings)."""
+    from django.conf import settings
+
+    path = settings.LOG_DIR / "erros.log"
+    entries = _read_error_log(path)
+    return render(request, "core/error_log.html", {
+        "entries": entries,
+        "errors": sum(1 for e in entries if e["level"] in ("ERROR", "CRITICAL")),
+        "log_path": path,
+    })

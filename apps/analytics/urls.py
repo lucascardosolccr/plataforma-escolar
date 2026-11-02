@@ -17,6 +17,11 @@ urlpatterns = [
         name="student_dashboard",
     ),
     path(
+        "paineis/estudante/<int:student_id>/simulador/",
+        views.student_simulator,
+        name="student_simulator",
+    ),
+    path(
         "paineis/turma/<int:class_group_id>/",
         views.class_dashboard,
         name="class_dashboard",

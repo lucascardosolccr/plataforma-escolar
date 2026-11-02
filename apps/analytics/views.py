@@ -113,9 +113,16 @@ def _default_student(user):
 # --------------------------------------------------------------------------- #
 # Painel individual do estudante
 # --------------------------------------------------------------------------- #
-def _student_timeline(student, report, *, can_occ, can_plan, can_just):
-    """Trajetória do estudante, só com o que quem consulta pode ver."""
+def _student_timeline(student, report, *, can_occ, can_plan, can_just, meetings=()):
+    """Trajetória do estudante, só com o que quem consulta pode ver.
+
+    ``meetings``: reuniões sobre o estudante que a pessoa pode abrir
+    (``meetings.access.meetings_visible_to``); entram só assunto e situação.
+    """
     events = []
+    for m in meetings:
+        events.append({"date": timezone.localtime(m.scheduled_at).date(), "kind": "Reunião",
+                       "text": f"{m.title} ({m.get_status_display().lower()})"})
     for e in report["enrollments"]:
         if e.started_on:
             events.append({"date": e.started_on, "kind": "Matrícula",
@@ -140,6 +147,12 @@ def _student_timeline(student, report, *, can_occ, can_plan, can_just):
     period = report["period"]
     events = [e for e in events if period.start <= e["date"] <= period.end]
     return sorted(events, key=lambda e: e["date"], reverse=True)[:40]
+
+
+def _meetings_about(user, student):
+    from apps.meetings.access import meetings_visible_to
+
+    return list(meetings_visible_to(user).filter(student=student).exclude(status="cancelada")[:15])
 
 
 def _switchable_students(user, student):
@@ -235,7 +248,8 @@ def student_dashboard(request, student_id):
         "subject_filter": subject_filter,
         "switch_students": _switchable_students(user, student),
         "timeline": _student_timeline(student, report, can_occ=can_view_occ,
-                                      can_plan=can_view_plan, can_just=can_just),
+                                      can_plan=can_view_plan, can_just=can_just,
+                                      meetings=_meetings_about(user, student)),
         "sections": [
             ("visao-geral", "Visão geral"), ("desempenho", "Desempenho"),
             ("frequencia", "Frequência"), ("atividades", "Atividades"),
@@ -272,6 +286,116 @@ def student_dashboard(request, student_id):
         "generated_at": timezone.now(),
     }
     return render(request, "analytics/student_dashboard.html", context)
+
+
+def _remaining_school_days(school):
+    """Dias letivos de amanhã até o fim do ano letivo, pelo calendário oficial
+    publicado; None se a escola não publicou o calendário."""
+    from datetime import timedelta
+
+    from apps.school_calendar import services as cal
+
+    year = cal.current_year(school)
+    if not cal.is_published(year):
+        return None
+    days = cal.school_days(year, timezone.localdate() + timedelta(days=1), year.end_date)
+    return len(days) if days is not None else None
+
+
+def student_simulator(request, student_id):
+    """Cenários hipotéticos de média e de frequência (nada é gravado).
+
+    Mesmo acesso do painel do estudante; o professor só simula as
+    disciplinas que leciona. As notas vêm do mesmo período e das mesmas
+    regras do painel, para os números baterem com ele.
+    """
+    from decimal import Decimal
+
+    from apps.pedagogy.models import AcademicRule
+
+    from . import simulator
+
+    student = get_object_or_404(Student.objects.select_related("school"), pk=student_id)
+    user = request.user
+    if not can_view_student_dashboard(user, student):
+        raise PermissionDenied("Você não tem acesso ao painel deste estudante.")
+    school = student.school
+    period = bi.resolve_period(request.GET, school)
+    only_subjects = _teacher_only_subjects(user, student=student)
+    grades = bi.load_grades([student.pk], period.start, period.end,
+                            subject_ids=only_subjects).get(student.pk, [])
+    rules = services.rules_by_subject(school)
+
+    by_subject = {}
+    for g in grades:
+        by_subject.setdefault(g.evaluation.subject, []).append(
+            (g.value, g.evaluation.weight or Decimal("1")))
+    rows = []
+    for subject, vw in sorted(by_subject.items(), key=lambda kv: kv[0].name):
+        rule = rules.get(subject.pk)
+        formula = rule.formula if rule else AcademicRule.Formula.ARITHMETIC
+        passing = rule.passing_grade if rule else Decimal("6.0")
+        max_grade = Decimal("10") if passing <= 10 else Decimal("100")
+        weight = simulator.parse_number(request.GET.get(f"peso_{subject.pk}"),
+                                        lo=Decimal("0.01"), hi=Decimal("99")) or Decimal("1")
+        raw = request.GET.get(f"nota_{subject.pk}", "")
+        value = simulator.parse_number(raw, hi=max_grade)
+        needed = simulator.needed_grade(vw, formula, passing, weight)
+        rows.append({
+            "subject": subject,
+            "count": len(vw),
+            "formula": rule.get_formula_display() if rule else AcademicRule.Formula.ARITHMETIC.label,
+            "uses_weight": formula == AcademicRule.Formula.WEIGHTED,
+            "passing": passing,
+            "max_grade": max_grade,
+            "current": services._apply_formula(vw, formula),
+            "raw": raw,
+            "invalid": bool(raw.strip()) and value is None,
+            "weight": weight,
+            "simulated": simulator.simulate_average(vw, formula, value, weight) if value is not None else None,
+            "needed": needed,
+            "reachable": needed is not None and needed <= max_grade,
+        })
+
+    # Frequência: sempre o ano letivo até hoje, porque é sobre ele que vale o
+    # mínimo exigido; e os dias restantes vêm do calendário publicado.
+    year_period = bi.resolve_period({}, school)
+    today = timezone.localdate()
+    records = bi.load_attendance([student.pk], year_period.start, today).get(student.pk, [])
+    limit = float(services.school_max_absences(school))
+    att = bi.attendance_summary(records, limit)
+    remaining_cal = _remaining_school_days(school)
+    remaining_raw = request.GET.get("restantes", "")
+    remaining = remaining_cal
+    if remaining is None:
+        typed = simulator.parse_number(remaining_raw, hi=Decimal("400"))
+        remaining = int(typed) if typed is not None else None
+    absences_raw = request.GET.get("faltas", "")
+    absences = simulator.parse_number(absences_raw, hi=Decimal("400"))
+    absences = int(absences) if absences is not None else None
+    projection = None
+    if att["total"] and remaining is not None:
+        projection = simulator.attendance_projection(
+            att["present"] + att["late"], att["total"], remaining,
+            absences if absences is not None else 0, limit)
+
+    return render(request, "analytics/student_simulator.html", {
+        "student": student,
+        "period": period,
+        "presets": bi.presets_for(school),
+        "rows": rows,
+        "subject_limited": only_subjects is not None,
+        "att": att,
+        "year_period": year_period,
+        "remaining_cal": remaining_cal,
+        "remaining": remaining,
+        "remaining_raw": remaining_raw,
+        "absences": absences,
+        "absences_raw": absences_raw,
+        "absences_invalid": bool(absences_raw.strip()) and absences is None,
+        "projection": projection,
+        "too_many_absences": absences is not None and remaining is not None and absences > remaining,
+    })
 
 
 # --------------------------------------------------------------------------- #
@@ -403,6 +527,7 @@ def institutional_dashboard(request):
         "goals_summary": {"total": len(progress), "on_track": sum(1 for p in progress if p["status"] == "atingida")},
         "report": r,
         "ops": bi.operational_indicators(school, period),
+        "usage": bi.module_usage(school, period),
         "period": period,
         "presets": bi.presets_for(request.user.school),
         # Chaves mantidas por compatibilidade com telas e testes anteriores.
@@ -430,7 +555,8 @@ def institutional_dashboard(request):
         "grade_trend_chart": charts.line_chart(
             [{"label": m["label"], "value": m["grade"]} for m in r["monthly"]], y_min=0, y_max=10),
         "sections": [("visao-geral", "Visão geral"), ("turmas", "Turmas"), ("disciplinas", "Disciplinas"),
-                     ("composicao", "Série e turno"), ("evolucao", "Evolução"), ("gestao", "Gestão")],
+                     ("composicao", "Série e turno"), ("evolucao", "Evolução"), ("gestao", "Gestão"),
+                     ("uso", "Utilização")],
         "generated_at": timezone.now(),
     })
 

@@ -143,17 +143,23 @@ def _approved_child_ids(user):
     )
 
 
-def _family_reaches(user, item):
-    """Algum estudante pelo qual este usuário responde é alcançado pelo item?"""
+def family_students_reached(user, item):
+    """Ids dos estudantes pelos quais este usuário responde (filhos com vínculo
+    aprovado, ou a própria conta de estudante) alcançados pelo item."""
     if user.role == Role.RESPONSAVEL.value:
         student_ids = _approved_child_ids(user)
     elif user.role == Role.ESTUDANTE.value:
         own = own_student(user)
         student_ids = [own.pk] if own is not None else []
     else:
-        return False
+        return []
     por_aluno = enrollments_by_student(student_ids, item.class_group_id)
-    return any(reaches(enrs, item) for enrs in por_aluno.values())
+    return [sid for sid, enrs in por_aluno.items() if reaches(enrs, item)]
+
+
+def _family_reaches(user, item):
+    """Algum estudante pelo qual este usuário responde é alcançado pelo item?"""
+    return bool(family_students_reached(user, item))
 
 
 def can_manage_activities(user, class_group=None, subject=None):

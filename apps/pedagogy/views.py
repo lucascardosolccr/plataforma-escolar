@@ -32,6 +32,7 @@ from apps.core.uploads import attachment_content_type
 from apps.registry.models import Enrollment, GuardianLink, Student
 
 from . import access as acc
+from . import history
 from .forms import (
     AbsenceJustificationForm,
     AcademicRuleForm,
@@ -55,7 +56,9 @@ from .models import (
     AbsenceJustification,
     AcademicRule,
     Activity,
+    ActivityAcknowledgement,
     ActivityAttachment,
+    ActivityChange,
     AttendanceRecord,
     Evaluation,
     Grade,
@@ -606,6 +609,28 @@ def _rows_for_students(school, students, activities):
     return rows
 
 
+def _mark_changes_and_acks(rows):
+    """Acrescenta às linhas da família a data da última alteração que ela viu
+    acontecer (``changed_on``) e se o estudante já tem "ciente" (``ack``).
+
+    Duas consultas para a página inteira, não por cartão.
+    """
+    act_ids = {r["activity"].pk for r in rows}
+    changed = {}
+    for c in ActivityChange.objects.filter(activity_id__in=act_ids, family_saw=True):
+        if c.family_labels:
+            changed[c.activity_id] = max(changed.get(c.activity_id, c.changed_at), c.changed_at)
+    acked = set(
+        ActivityAcknowledgement.objects.filter(
+            activity_id__in=act_ids, student_id__in={r["student"].pk for r in rows}
+        ).values_list("activity_id", "student_id")
+    )
+    for r in rows:
+        r["changed_on"] = changed.get(r["activity"].pk)
+        r["ack"] = (r["activity"].pk, r["student"].pk) in acked
+    return rows
+
+
 def _visible_activities(qs):
     return list(
         qs.select_related("subject", "class_group", "created_by").prefetch_related(
@@ -697,6 +722,7 @@ def activity_list(request):
 
     if user.role == Role.ESTUDANTE.value:
         rows, students = _student_own_rows(user)
+        _mark_changes_and_acks(rows)
         rows, state, resumo = _family_filter(request, rows, "activity")
         page = paginate(request, rows)
         return render(
@@ -723,6 +749,7 @@ def activity_list(request):
                 raise PermissionDenied
             student_pk = student.pk
         rows, children = _family_rows(user, student_filter=student_pk)
+        _mark_changes_and_acks(rows)
         rows, state, resumo = _family_filter(request, rows, "activity")
         page = paginate(request, rows)
         return render(
@@ -842,16 +869,29 @@ def activity_detail(request, pk):
         pk=pk,
     )
     acc.require(acc.can_view_activity(user, act))
+    is_family = user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value)
     students = []
-    if user.role == Role.RESPONSAVEL.value:
-        por_aluno = acc.enrollments_by_student(
-            _guardian_child_ids(user)[0], act.class_group_id
-        )
+    if is_family:
         students = list(
             Student.objects.filter(
-                pk__in=[sid for sid, enrs in por_aluno.items() if acc.reaches(enrs, act)]
+                pk__in=acc.family_students_reached(user, act)
             ).order_by("first_name", "last_name")
         )
+        # Por estudante: a entrega registrada pelo professor e o "ciente"
+        # (deste usuário ou de outro responsável do mesmo estudante).
+        subs = {s.student_id: s for s in act.submissions.filter(student__in=students)}
+        acks = {}
+        for a in act.acknowledgements.filter(student__in=students).order_by("created_at"):
+            if a.user_id == user.pk or a.student_id not in acks:
+                acks[a.student_id] = a
+        for s in students:
+            s.submission = subs.get(s.pk)
+            s.ack = acks.get(s.pk)
+    changes = list(act.changes.select_related("changed_by"))
+    if is_family:
+        # A família vê só o que mudou depois de já ter a atividade na tela, e
+        # só nos campos que ela enxerga.
+        changes = [c for c in changes if c.family_saw and c.family_labels]
     state, state_label = act.family_situation()
     return render(
         request,
@@ -859,6 +899,13 @@ def activity_detail(request, pk):
         {
             "activity": act,
             "students": students,
+            "is_family": is_family,
+            "can_acknowledge": is_family and act.status == Activity.Status.PUBLISHED,
+            "changes": changes,
+            "ack_count": (
+                act.acknowledgements.values("student").distinct().count()
+                if not is_family else 0
+            ),
             "state": state,
             "state_label": state_label,
             "today": timezone.localdate(),
@@ -883,6 +930,8 @@ def _support_count(user, class_group):
 
 
 def _save_attachments(request, act, form):
+    """Grava os anexos enviados e devolve os nomes (para o histórico)."""
+    names = []
     for upload in form.cleaned_data.get("attachments") or []:
         ActivityAttachment.objects.create(
             activity=act,
@@ -891,6 +940,8 @@ def _save_attachments(request, act, form):
             size=upload.size,
             uploaded_by=request.user,
         )
+        names.append(upload.name[:255])
+    return names
 
 
 def activity_create(request):
@@ -939,6 +990,9 @@ def activity_edit(request, pk):
         return redirect("pedagogy:activity_detail", pk=act.pk)
     was_draft = act.status == Activity.Status.DRAFT
     old_deadline = act.deadline
+    # Antes do formulário: is_valid() já escreve os valores novos em ``act``.
+    before = history.snapshot(act)
+    family_saw = act.is_visible_to_family
     form = ActivityForm(
         request.POST or None,
         request.FILES or None,
@@ -950,11 +1004,15 @@ def activity_edit(request, pk):
         publish = bool(request.POST.get("_publish"))
         with transaction.atomic():
             act = form.save()
-            _save_attachments(request, act, form)
+            added = _save_attachments(request, act, form)
             if publish and was_draft:
                 act.status = Activity.Status.PUBLISHED
                 act.save(update_fields=["status"])
-            _log(request, "update", act, f"Atualizou a atividade {act.title}")
+            mudou = history.diff(act, before) + history.attachment_entries(added=added)
+            if not was_draft:
+                history.record(act, user, family_saw, mudou)
+            _log(request, "update", act, f"Atualizou a atividade {act.title}"
+                 + (f": {history.summary(mudou)}" if mudou else ""))
             avisou = announce_publication(act)
             if not avisou:
                 notify_deadline_changed(act, old_deadline)
@@ -1016,6 +1074,64 @@ def activity_attachment(request, pk, attachment_id):
     )
 
 
+def activity_attachment_remove(request, pk, attachment_id):
+    """Retira um anexo enviado por engano.
+
+    Antes não havia como: um arquivo errado (por exemplo, com dados de um
+    estudante) ficava disponível para a turma inteira. Vale também na
+    atividade cancelada, porque o motivo costuma ser justamente proteger
+    dados. O nome do arquivo fica na auditoria e no histórico; o arquivo sai
+    do disco.
+    """
+    if request.method != "POST":
+        raise PermissionDenied
+    user = request.user
+    act = _get_managed_activity(user, pk)
+    att = get_object_or_404(ActivityAttachment, pk=attachment_id, activity=act)
+    name, storage, path = att.original_name, att.file.storage, att.file.name
+    with transaction.atomic():
+        family_saw = act.is_visible_to_family
+        att.delete()
+        history.record(act, user, family_saw, history.attachment_entries(removed=[name]))
+        _log(request, "delete", act, f"Removeu o anexo {name} da atividade {act.title}")
+        if path:
+            transaction.on_commit(lambda: storage.delete(path))
+    messages.success(request, f"Anexo {name} removido. A turma deixa de vê-lo.")
+    return redirect("pedagogy:activity_detail", pk=act.pk)
+
+
+def activity_acknowledge(request, pk):
+    """"Estou ciente": confirmação de leitura do responsável ou do estudante.
+
+    Só por POST, e só para um estudante que a atividade de fato alcança e por
+    quem o usuário responde. Não conclui a tarefa (ver ``ActivityAcknowledgement``).
+    """
+    if request.method != "POST":
+        raise PermissionDenied
+    user = request.user
+    act = get_object_or_404(Activity, pk=pk, school=user.school)
+    acc.require(
+        user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value)
+        and acc.can_view_activity(user, act)
+    )
+    student_id = id_param(request, "estudante", source=request.POST)
+    if not student_id or int(student_id) not in acc.family_students_reached(user, act):
+        raise PermissionDenied
+    if act.status != Activity.Status.PUBLISHED:
+        messages.warning(request, "Esta atividade foi cancelada: não há o que confirmar.")
+        return redirect("pedagogy:activity_detail", pk=act.pk)
+    _, created = ActivityAcknowledgement.objects.get_or_create(
+        activity=act, student_id=student_id, user=user
+    )
+    if created:
+        messages.success(
+            request,
+            "Pronto: o professor vê que você está ciente desta tarefa. "
+            "Isso não marca a tarefa como feita.",
+        )
+    return redirect("pedagogy:activity_detail", pk=act.pk)
+
+
 def _activity_students(act, existing):
     """Quem aparece no controle de entregas da atividade.
 
@@ -1038,6 +1154,14 @@ def _activity_students(act, existing):
     )
     _mark_left(saidos, _left_class(act.class_group, antigos), attr="pk")
     return ativos + saidos
+
+
+def _acks_by_student(act):
+    """{estudante: primeira confirmação de ciência}, com o papel de quem confirmou."""
+    out = {}
+    for a in act.acknowledgements.select_related("user").order_by("created_at"):
+        out.setdefault(a.student_id, a)
+    return out
 
 
 def activity_submissions(request, pk):
@@ -1063,6 +1187,8 @@ def activity_submissions(request, pk):
                 # Vazio significa "sem registro": não inventa uma entrega para
                 # quem o professor não avaliou. Antes o select era sempre
                 # enviado e salvar marcava a turma inteira como entregue.
+                # Para quem JÁ tem registro, vazio quer dizer "manter": o
+                # registro não é apagado (a tela diz isso na própria opção).
                 if status not in dict(Submission.Status.choices):
                     continue
                 grade, ok = _read_grade(request.POST.get(f"nota_{st.pk}", ""), max_grade)
@@ -1113,6 +1239,7 @@ def activity_submissions(request, pk):
             "activity": act,
             "students": students,
             "existing": existing,
+            "acks": _acks_by_student(act),
             "read_only": canceled,
         },
     )

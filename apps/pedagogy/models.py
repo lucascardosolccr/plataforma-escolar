@@ -364,6 +364,79 @@ class Submission(models.Model):
         return f"{self.student} — {self.activity}: {self.get_status_display()}"
 
 
+class ActivityChange(models.Model):
+    """Uma edição de atividade já publicada: o que mudou, de quê para quê.
+
+    Antes a edição só deixava "Atualizou a atividade X" na auditoria: ninguém
+    sabia o que tinha mudado, e a família que já tinha lido as instruções não
+    tinha como perceber que elas eram outras. Rascunho não entra: enquanto
+    ninguém vê, o professor está só escrevendo.
+
+    ``fields`` é uma lista de {"label", "before", "after", "family"}; "family"
+    diz se o campo aparece à família (observação interna não aparece).
+    """
+
+    activity = models.ForeignKey(
+        Activity, on_delete=models.CASCADE, related_name="changes", verbose_name="atividade"
+    )
+    changed_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, verbose_name="alterada por"
+    )
+    changed_at = models.DateTimeField("alterada em", auto_now_add=True)
+    # A família já via a atividade quando ela foi alterada? Só essas alterações
+    # são mostradas a ela: mudar uma publicação agendada não muda nada que
+    # alguém tenha lido.
+    family_saw = models.BooleanField("família já via", default=False)
+    fields = models.JSONField("campos alterados", default=list)
+
+    class Meta:
+        ordering = ["-changed_at", "-pk"]
+        verbose_name = "alteração de atividade"
+        verbose_name_plural = "alterações de atividade"
+
+    def __str__(self):
+        return f"{self.activity} — {self.changed_at:%d/%m/%Y %H:%M}"
+
+    @property
+    def family_labels(self):
+        return [f["label"] for f in self.fields if f.get("family")]
+
+
+class ActivityAcknowledgement(models.Model):
+    """Confirmação de leitura: "estou ciente desta tarefa".
+
+    É um gesto explícito do responsável (ou do estudante com conta), nunca
+    gravado só por abrir a tela, e não conclui nada: quem diz se a tarefa foi
+    entregue continua sendo o professor, em ``Submission``.
+    """
+
+    activity = models.ForeignKey(
+        Activity, on_delete=models.CASCADE, related_name="acknowledgements",
+        verbose_name="atividade",
+    )
+    student = models.ForeignKey(
+        Student, on_delete=models.CASCADE, related_name="activity_acknowledgements",
+        verbose_name="estudante",
+    )
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="activity_acknowledgements",
+        verbose_name="confirmada por",
+    )
+    created_at = models.DateTimeField("confirmada em", auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["activity", "student", "user"], name="uniq_activity_ack"
+            )
+        ]
+        verbose_name = "ciência da atividade"
+        verbose_name_plural = "ciências da atividade"
+
+    def __str__(self):
+        return f"{self.student} — {self.activity}: ciente"
+
+
 class GroupWork(FamilyVisibility, models.Model):
     """Trabalho em grupo: UMA entidade compartilhada pela turma.
 

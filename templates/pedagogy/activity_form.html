@@ -48,7 +48,7 @@
           </fieldset>
 
           <fieldset class="form-section">
-            <legend><span class="step" aria-hidden="true">3</span>Quando<small>A data de aplicação é obrigatória</small></legend>
+            <legend><span class="step" aria-hidden="true">3</span>Quando{% if not obj %}<small>A data de aplicação é obrigatória</small>{% endif %}</legend>
             <div class="row g-3">
               {% include "partials/_field.html" with field=form.published_date col="col-md-4" %}
               {% include "partials/_field.html" with field=form.deadline col="col-md-4" %}
@@ -68,7 +68,7 @@
                   <li>{% icon "paperclip" %} <a href="{% url 'pedagogy:activity_attachment' obj.pk att.pk %}">{{ att.original_name }}</a></li>
                 {% endfor %}
               </ul>
-              <p class="form-text">Enviar novos arquivos acrescenta à lista; os atuais são mantidos.</p>
+              <p class="form-text">Enviar novos arquivos acrescenta à lista; os atuais são mantidos. Para retirar um anexo, use “Remover” na tela da atividade.</p>
             {% endif %}
           </fieldset>
           {% for field in form.hidden_fields %}{{ field }}{% endfor %}

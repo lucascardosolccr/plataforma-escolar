@@ -23,6 +23,12 @@ urlpatterns = [
         name="activity_attachment",
     ),
     path(
+        "atividades/<int:pk>/anexo/<int:attachment_id>/remover/",
+        views.activity_attachment_remove,
+        name="activity_attachment_remove",
+    ),
+    path("atividades/<int:pk>/ciente/", views.activity_acknowledge, name="activity_acknowledge"),
+    path(
         "atividades/<int:pk>/entregas/",
         views.activity_submissions,
         name="activity_submissions",

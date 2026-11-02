@@ -68,6 +68,12 @@
               {% if r.activity.deadline %}<strong>{{ r.activity.deadline|date:"d/m/Y" }}</strong>{% else %}<span class="text-body-secondary">sem prazo definido</span>{% endif %}
             </dd>
           </dl>
+          {% if r.changed_on or r.ack %}
+            <p class="small mb-2 d-flex flex-wrap gap-2">
+              {% if r.changed_on %}<span class="chip chip-state state-a_vencer">Alterada em {{ r.changed_on|date:"d/m" }}</span>{% endif %}
+              {% if r.ack %}<span class="text-success">✓ Ciente</span>{% endif %}
+            </p>
+          {% endif %}
           {% if r.activity.status == 'cancelada' and r.activity.cancel_reason %}
             <p class="small text-body-secondary mb-2">
               <strong>Cancelada:</strong> {{ r.activity.cancel_reason }}

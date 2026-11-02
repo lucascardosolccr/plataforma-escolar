@@ -23,7 +23,8 @@
   <div class="card bg-body-tertiary border-primary mb-3 shadow-sm">
     <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
       <div class="small fw-semibold text-primary">
-        Prévia: o conteúdo abaixo é exatamente o que estudantes e responsáveis autorizados veem.
+        Prévia: estudantes e responsáveis autorizados veem o conteúdo abaixo, menos o que
+        está marcado como “só equipe”.
       </div>
       <span class="badge text-bg-primary">Visão da Família</span>
     </div>
@@ -51,11 +52,49 @@
   </div>
 {% endif %}
 
-{% if students %}
-  <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
-    <span class="text-body-secondary small">Atribuída a:</span>
-    {% for s in students %}<span class="chip">{{ s.full_name }}</span>{% endfor %}
+{% if is_family and changes %}
+  <div class="alert alert-info" role="status">
+    <div>
+      <strong>Esta atividade foi alterada depois de publicada.</strong>
+      <ul class="mb-0 mt-1 small">
+        {% for c in changes %}
+          <li>{{ c.changed_at|date:"d/m/Y" }}: {{ c.family_labels|join:", "|lower }}</li>
+        {% endfor %}
+      </ul>
+      <span class="d-block small mt-1">O texto abaixo já é o atual.</span>
+    </div>
   </div>
+{% endif %}
+
+{% if students %}
+  <section class="card mb-3" aria-labelledby="ack-title">
+    <div class="card-body">
+      <h2 class="h6 mb-1" id="ack-title">{% if students|length > 1 %}Publicada para a turma de{% else %}Acompanhamento{% endif %}</h2>
+      <p class="small text-body-secondary mb-2">
+        A tarefa é da turma inteira. “Estou ciente” avisa o professor que a tarefa foi
+        lida; não marca a tarefa como feita. Quem registra a entrega é o professor.
+      </p>
+      <ul class="list-unstyled mb-0 d-grid gap-2">
+        {% for s in students %}
+          <li class="d-flex flex-wrap align-items-center gap-2">
+            <span class="chip"><span class="visually-hidden">Estudante: </span>{{ s.full_name }}</span>
+            {% if s.submission %}
+              <span class="small">Entrega: <strong>{{ s.submission.get_status_display }}</strong>{% if s.submission.grade is not None %} · nota {{ s.submission.grade|floatformat:"-2" }}{% endif %}</span>
+            {% endif %}
+            {% if s.ack %}
+              <span class="small text-success">✓ Ciente em {{ s.ack.created_at|date:"d/m/Y" }}{% if s.ack.user_id != request.user.pk %} ({% if s.ack.user.role == 'estudante' %}pelo estudante{% else %}por outro responsável{% endif %}){% endif %}</span>
+            {% elif can_acknowledge %}
+              <form method="post" action="{% url 'pedagogy:activity_acknowledge' activity.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="estudante" value="{{ s.pk }}">
+                <button type="submit" class="btn btn-sm btn-outline-primary">Estou ciente{% if students|length > 1 %} ({{ s.first_name }}){% endif %}</button>
+              </form>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
 {% endif %}
 
 <div class="row g-3">
@@ -126,6 +165,15 @@
               <li class="mb-2 d-flex align-items-start gap-2">
                 {% icon "paperclip" %}
                 <a href="{% url 'pedagogy:activity_attachment' activity.pk att.pk %}">{{ att.original_name }}</a>
+                {% if can_manage %}
+                  <form method="post" action="{% url 'pedagogy:activity_attachment_remove' activity.pk att.pk %}" class="ms-auto">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-link btn-sm text-danger p-0"
+                            aria-label="Remover o anexo {{ att.original_name }}"
+                            data-confirm="O arquivo sai da atividade e do servidor; a turma deixa de vê-lo. O nome do arquivo fica no histórico."
+                            data-confirm-title="Remover anexo?" data-confirm-ok="Remover" data-confirm-tone="danger">Remover</button>
+                  </form>
+                {% endif %}
               </li>
             {% endfor %}
           </ul>
@@ -143,10 +191,15 @@
     <p class="text-body-secondary small mb-0">
       Alcança <strong>{{ reach }}</strong> estudante{{ reach|pluralize:"s" }} com matrícula
       ativa nesta turma. Editar atualiza a atividade para toda a turma de uma vez.
+      {% if activity.status != 'rascunho' %}
+        <span class="d-block">Família ciente: <strong>{{ ack_count }}</strong> estudante{{ ack_count|pluralize:"s" }} (confirmação de leitura; não é entrega).</span>
+      {% endif %}
     </p>
     <div class="d-flex flex-wrap gap-2">
       <a href="{% url 'pedagogy:activity_submissions' activity.pk %}" class="btn btn-sm btn-outline-primary">Acompanhar entregas</a>
-      <a href="{% url 'pedagogy:activity_edit' activity.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
+      {% if activity.status != 'cancelada' %}
+        <a href="{% url 'pedagogy:activity_edit' activity.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
+      {% endif %}
       <a href="{% url 'pedagogy:activity_reuse' activity.pk %}" class="btn btn-sm btn-outline-secondary">Reutilizar</a>
       {% if activity.status != 'cancelada' %}
         <a href="{% url 'pedagogy:activity_cancel' activity.pk %}" class="btn btn-sm btn-outline-danger">Cancelar atividade</a>
@@ -154,5 +207,39 @@
     </div>
   </div>
 </div>
+{% endif %}
+
+{% if is_staff_view and changes %}
+<section class="card mt-3" aria-labelledby="hist-title">
+  <div class="card-body">
+    <h2 class="h6 mb-1" id="hist-title">Histórico de alterações</h2>
+    <p class="small text-body-secondary mb-2">
+      Alterações feitas depois de sair do rascunho. As marcadas “família viu” foram feitas
+      quando a atividade já estava na tela das famílias, que veem a data e o que mudou
+      (sem os valores antigos e sem as observações internas).
+    </p>
+    <ol class="list-unstyled mb-0 d-grid gap-2">
+      {% for c in changes %}
+        <li>
+          <details>
+            <summary class="small">
+              <strong>{{ c.changed_at|date:"d/m/Y H:i" }}</strong>
+              {% if c.changed_by %}· {{ c.changed_by.get_full_name|default:c.changed_by.username }}{% endif %}
+              · {% for f in c.fields %}{{ f.label|lower }}{% if not forloop.last %}, {% endif %}{% endfor %}
+              {% if c.family_saw %}<span class="chip ms-1">família viu</span>{% endif %}
+            </summary>
+            <dl class="small mt-2 mb-0">
+              {% for f in c.fields %}
+                <dt>{{ f.label }}</dt>
+                <dd class="mb-2"><span class="text-body-secondary">Antes:</span> {{ f.before|default:"—"|linebreaksbr }}<br>
+                  <span class="text-body-secondary">Depois:</span> {{ f.after|default:"—"|linebreaksbr }}</dd>
+              {% endfor %}
+            </dl>
+          </details>
+        </li>
+      {% endfor %}
+    </ol>
+  </div>
+</section>
 {% endif %}
 {% endblock %}

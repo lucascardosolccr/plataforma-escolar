@@ -38,6 +38,7 @@ GUIDES = [
         ("A prévia ao lado mostra o cartão exatamente como a família vai ver.", None),
         ("Publique agora ou agende uma data: a família é avisada quando a atividade aparece.", None),
         ("Depois do prazo, abra a atividade e registre quem entregou.", "pedagogy:activity_list"),
+        ("Editou depois de publicar? A tela da atividade guarda o histórico, e a família vê que ela mudou.", None),
     ]),
     ("Organizar um trabalho em grupo", "users-round", (PROFESSOR,), [
         ("Crie o trabalho em Trabalhos em grupo.", "pedagogy:group_work_create"),
@@ -55,6 +56,7 @@ GUIDES = [
     ]),
     ("Acompanhar tarefas, notas e frequência", "notebook-pen", (RESPONSAVEL,), [
         ("Atividades de casa mostra o que está para entregar, por filho.", "pedagogy:activity_list"),
+        ("Na atividade, “Estou ciente” avisa o professor de que vocês leram. Não marca a tarefa como feita.", None),
         ("Notas mostra só as avaliações que o professor já publicou.", "pedagogy:evaluation_list"),
         ("Frequência mostra presenças, atrasos e faltas.", "pedagogy:attendance_list"),
         ("O painel de cada filho reúne tudo isso com a evolução no tempo.", "my_children"),

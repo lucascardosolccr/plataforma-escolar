@@ -24,6 +24,10 @@ def platform_context(request):
 
         match = getattr(request, "resolver_match", None)
         ctx["nav"] = navigation.build(user, match.view_name if match else None)
+        from .models import UserPreference
+
+        pref = UserPreference.objects.filter(user=user).first()
+        ctx["user_prefs"] = pref.as_json() if pref else {"saved": False, "favorites": [], "filters": []}
         if user.role == Role.ESTUDANTE.value:
             ctx["own_student"] = getattr(user, "student_record", None)
         if user.school_id is not None:

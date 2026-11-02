@@ -1561,6 +1561,13 @@ def group_work_detail(request, pk):
             s for s in _enrolled_in(work.class_group) if s.pk not in com_grupo
         ]
     is_family = user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value)
+    rubric_levels = {}
+    if work.rubric_id and is_family:
+        from .views_rubrics import group_work_family_levels
+
+        rubric_levels = group_work_family_levels(work, meus)
+    for s in meus:
+        s.rubric_levels = rubric_levels.get(s.pk, [])
     changes = list(work.changes.select_related("changed_by"))
     if is_family:
         # Como nas atividades: só o que mudou depois de a família já ver, sem o texto antigo.
@@ -1580,6 +1587,7 @@ def group_work_detail(request, pk):
             "ungrouped": sem_grupo,
             "changes": changes,
             "is_family": is_family,
+            "rubric_grid": work.rubric.grid() if work.rubric_id else None,
             "reach": _enrolled_in(work.class_group).count(),
             "sees_all_groups": can_manage
             or user.role

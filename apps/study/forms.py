@@ -8,7 +8,7 @@ from apps.core.uploads import MAX_ATTACHMENT_SIZE_MB, validate_attachment, valid
 from apps.curriculum.forms import CurriculumFormMixin
 from apps.curriculum.models import CurriculumItem
 
-from .models import ExamGuide, ExamTopic, StudyMaterial, StudyQuestion, platform_of
+from .models import ExamGuide, ExamTopic, PracticeQuestion, StudyMaterial, StudyQuestion, platform_of
 
 DATE = forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"})
 
@@ -172,3 +172,65 @@ class QuestionForm(forms.ModelForm):
 
 class AnswerForm(forms.Form):
     answer = forms.CharField(label="Resposta", widget=forms.Textarea(attrs={"rows": 2}), max_length=2000)
+
+
+class PracticeForm(forms.ModelForm):
+    """Exercício de múltipla escolha (verdadeiro ou falso = duas alternativas)."""
+
+    MAX_OPTIONS = 5
+    correct_choice = forms.TypedChoiceField(
+        label="Alternativa correta", coerce=int, choices=[(i, f"Alternativa {i + 1}") for i in range(MAX_OPTIONS)])
+
+    class Meta:
+        model = PracticeQuestion
+        fields = ["topic", "statement", "explanation", "curriculum", "order"]
+        widgets = {"statement": forms.Textarea(attrs={"rows": 3}), "explanation": forms.Textarea(attrs={"rows": 2}),
+                   "curriculum": forms.CheckboxSelectMultiple}
+
+    def __init__(self, *args, guide=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["topic"].queryset = guide.topics.all()
+        self.fields["topic"].required = False
+        self.fields["curriculum"].queryset = CurriculumItem.objects.filter(exam_topics__guide=guide).distinct()
+        self.fields["curriculum"].required = False
+        self.curriculum_groups = [("Habilidades dos tópicos desta prova", list(self.fields["curriculum"].queryset))]
+        current = list(self.instance.options) if self.instance.pk else []
+        for i in range(self.MAX_OPTIONS):
+            self.fields[f"option_{i}"] = forms.CharField(
+                label=f"Alternativa {i + 1}", required=False, max_length=300,
+                initial=current[i] if i < len(current) else "")
+        if self.instance.pk:
+            self.fields["correct_choice"].initial = self.instance.correct
+        if self.is_bound:
+            self.curriculum_selected = set(self.data.getlist("curriculum"))
+        else:
+            self.curriculum_selected = {str(pk) for pk in (
+                self.instance.curriculum.values_list("pk", flat=True) if self.instance.pk else [])}
+        # Ordem dos campos: enunciado, alternativas, correta, explicação.
+        order = ["topic", "statement"] + [f"option_{i}" for i in range(self.MAX_OPTIONS)] + [
+            "correct_choice", "explanation", "curriculum", "order"]
+        self.order_fields(order)
+
+    def clean(self):
+        c = super().clean()
+        filled = [(i, (c.get(f"option_{i}") or "").strip()) for i in range(self.MAX_OPTIONS)]
+        options = [text for _, text in filled if text]
+        if len(options) < 2:
+            raise forms.ValidationError("Escreva pelo menos duas alternativas.")
+        chosen = c.get("correct_choice")
+        if chosen is None or not filled[chosen][1]:
+            self.add_error("correct_choice", "A alternativa correta precisa estar preenchida.")
+            return c
+        # Índice da correta na lista compacta (sem as alternativas em branco).
+        c["options_list"] = options
+        c["correct_index"] = [i for i, t in filled if t].index(chosen)
+        return c
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        obj.options = self.cleaned_data["options_list"]
+        obj.correct = self.cleaned_data["correct_index"]
+        if commit:
+            obj.save()
+            self.save_m2m()
+        return obj

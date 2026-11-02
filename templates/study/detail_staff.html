@@ -77,6 +77,30 @@
       {% endif %}
     </div></section>
 
+    <section class="card mb-3" id="pratica" aria-labelledby="h-pra"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+        <h2 class="h5 mb-0" id="h-pra">Exercícios de prática</h2>
+        {% if can_manage %}<a href="{% url 'study:practice_add' guide.pk %}" class="btn btn-sm btn-outline-primary">{% icon "plus" %}Novo exercício</a>{% endif %}
+      </div>
+      {% if practice %}
+        <p class="small text-body-secondary">Ordenados pelos que mais erram na primeira tentativa. É treino: o estudante vê a resposta e pode refazer, então não vale como evidência de aprendizagem.</p>
+        <ol class="d-grid gap-3 mb-0">
+          {% for r in practice %}
+            <li>
+              <div class="activity-instructions small">{{ r.q.statement|truncatechars:220 }}</div>
+              <p class="small mb-1">{% if r.answered %}{{ r.right_first }} de {{ r.answered }} acertaram na primeira tentativa{% if r.common_wrong %} · resposta errada mais comum: “{{ r.common_wrong.0 }}” ({{ r.common_wrong.1 }}){% endif %}{% else %}<span class="text-body-secondary">Ninguém respondeu ainda.</span>{% endif %}</p>
+              {% if can_manage %}
+                <div class="d-flex gap-2">
+                  <a href="{% url 'study:practice_edit' guide.pk r.q.pk %}" class="btn btn-link btn-sm p-0">Editar</a>
+                  <form method="post" action="{% url 'study:practice_delete' guide.pk r.q.pk %}">{% csrf_token %}<button type="submit" class="btn btn-link btn-sm p-0 text-danger" data-confirm="O exercício e as respostas dadas a ele saem da prova." data-confirm-title="Retirar exercício?" data-confirm-ok="Retirar" data-confirm-tone="danger">Retirar</button></form>
+                </div>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}<p class="text-body-secondary mb-0">Nenhum exercício. Exercícios curtos de treino, com correção na hora, ajudam o estudante a conferir o que entendeu.</p>{% endif %}
+    </div></section>
+
     <section class="card mb-3" id="duvidas" aria-labelledby="h-duv"><div class="card-body">
       <h2 class="h5" id="h-duv">Dúvidas dos estudantes</h2>
       {% for q in questions %}

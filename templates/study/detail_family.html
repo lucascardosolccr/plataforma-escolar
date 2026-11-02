@@ -17,8 +17,9 @@
   <a href="#o-que-cai" class="btn btn-sm btn-outline-secondary">1. O que vai cair</a>
   <a href="#plano" class="btn btn-sm btn-outline-secondary">2. Por onde começar</a>
   <a href="#materiais" class="btn btn-sm btn-outline-secondary">3. Materiais</a>
-  <a href="#como-estou" class="btn btn-sm btn-outline-secondary">4. Como estou</a>
-  <a href="#duvidas" class="btn btn-sm btn-outline-secondary">5. Dúvidas</a>
+  {% if per_student.0.practice %}<a href="#pratica" class="btn btn-sm btn-outline-secondary">4. Pratique</a>{% endif %}
+  <a href="#como-estou" class="btn btn-sm btn-outline-secondary">{% if per_student.0.practice %}5{% else %}4{% endif %}. Como estou</a>
+  <a href="#duvidas" class="btn btn-sm btn-outline-secondary">{% if per_student.0.practice %}6{% else %}5{% endif %}. Dúvidas</a>
 </nav>
 
 <section class="card mb-3" id="o-que-cai" aria-labelledby="h-cai"><div class="card-body">
@@ -68,8 +69,49 @@
   {% if not materials %}<p class="text-body-secondary mb-0">O professor ainda não indicou materiais.</p>{% endif %}
 </div></section>
 
+{% if per_student.0.practice %}
+<section class="card mb-3" id="pratica" aria-labelledby="h-pra"><div class="card-body">
+  <h2 class="h5" id="h-pra">4. Pratique</h2>
+  <p class="small text-body-secondary">Exercícios de treino feitos pelo professor. Você vê a resposta certa e a explicação logo depois de responder, e pode tentar de novo. Não vale nota.</p>
+  {% for ps in per_student %}
+    {% if not is_student %}<h3 class="h6">{{ ps.student.full_name }} · respondeu {{ ps.practice_done }} de {{ ps.practice|length }}, acertou {{ ps.practice_right }} na primeira tentativa</h3>{% endif %}
+    <ol class="d-grid gap-3">
+      {% for r in ps.practice %}
+        <li id="ex-{{ r.q.pk }}">
+          {% if r.q.topic %}<span class="small text-body-secondary">{{ r.q.topic.title }}</span>{% endif %}
+          <div class="activity-instructions mb-1">{{ r.q.statement }}</div>
+          {% if is_student %}
+            <form method="post" action="{% url 'study:practice_answer' guide.pk r.q.pk %}">
+              {% csrf_token %}
+              <fieldset>
+                <legend class="visually-hidden">Alternativas</legend>
+                {% for opt in r.q.options %}
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="alternativa" value="{{ forloop.counter0 }}" id="ex{{ r.q.pk }}-{{ forloop.counter0 }}"{% if r.last and r.last.chosen == forloop.counter0 %} checked{% endif %}>
+                    <label class="form-check-label" for="ex{{ r.q.pk }}-{{ forloop.counter0 }}">{{ opt }}</label>
+                  </div>
+                {% endfor %}
+              </fieldset>
+              <button type="submit" class="btn btn-sm btn-outline-primary mt-1">{% if r.last %}Responder de novo{% else %}Conferir{% endif %}</button>
+            </form>
+          {% endif %}
+          {% if r.last %}
+            <div class="small mt-1" role="status">
+              {% if r.last.is_correct %}<span class="text-success fw-semibold">✓ Resposta certa.</span>
+              {% else %}<span class="fw-semibold">Ainda não.</span> A resposta certa é: <strong>{% for opt in r.q.options %}{% if forloop.counter0 == r.q.correct %}{{ opt }}{% endif %}{% endfor %}</strong>.{% endif %}
+              {% if r.q.explanation %}<span class="d-block">{{ r.q.explanation }}</span>{% endif %}
+              {% if not is_student %}<span class="d-block text-body-secondary">{% if r.first.is_correct %}Acertou na primeira tentativa.{% else %}Não acertou na primeira tentativa.{% endif %}</span>{% endif %}
+            </div>
+          {% elif not is_student %}<p class="small text-body-secondary mb-0">Ainda não respondeu.</p>{% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+  {% endfor %}
+</div></section>
+{% endif %}
+
 <section class="card mb-3" id="como-estou" aria-labelledby="h-estou"><div class="card-body">
-  <h2 class="h5" id="h-estou">4. Como estou</h2>
+  <h2 class="h5" id="h-estou">{% if per_student.0.practice %}5{% else %}4{% endif %}. Como estou</h2>
   <p class="small text-body-secondary">{% if is_student %}Marque como você se sente em cada tópico. É só para você e o professor organizarem o estudo: não vale nota e não substitui a prova.{% else %}O que o estudante marcou sobre cada tópico. É uma impressão dele, não uma avaliação.{% endif %}</p>
   {% for ps in per_student %}
     {% if not is_student %}<h3 class="h6">{{ ps.student.full_name }} · {{ ps.reviewed }} de {{ topics|length }} tópico{{ topics|length|pluralize }} marcados como “entendi”</h3>{% endif %}
@@ -96,7 +138,7 @@
 </div></section>
 
 <section class="card mb-3" id="duvidas" aria-labelledby="h-duv"><div class="card-body">
-  <h2 class="h5" id="h-duv">5. Dúvidas para o professor</h2>
+  <h2 class="h5" id="h-duv">{% if per_student.0.practice %}6{% else %}5{% endif %}. Dúvidas para o professor</h2>
   {% for ps in per_student %}
     {% for q in ps.questions %}
       <div class="mb-3">

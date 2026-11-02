@@ -56,6 +56,10 @@
     <span class="small">Você está vendo este trabalho no registro de:</span>
     {% for s in viewer_students %}<strong>{{ s.full_name }}</strong>{% if not forloop.last %}<span>·</span>{% endif %}{% endfor %}
   </div>
+  {% for s in viewer_students %}{% if s.rubric_levels %}
+    <p class="small mb-3"><span class="fw-semibold">{% if work.delivery_mode == 'grupo' %}Avaliação do grupo de {{ s.first_name }}{% else %}Avaliação de {{ s.first_name }}{% endif %} pela rubrica:</span>
+      {% for sc in s.rubric_levels %}<span class="chip">{{ sc.criterion.name }}: {{ sc.level.label }}</span>{% endfor %}</p>
+  {% endif %}{% endfor %}
 {% endif %}
 
 <div class="row g-3">
@@ -77,6 +81,15 @@
           <h2 class="h6 text-body-secondary mb-2">Orientações e critérios</h2>
           <div class="activity-instructions mb-0">{{ work.guidelines }}</div>
         {% endif %}
+        {% if rubric_grid %}{% with levels=rubric_grid.0 rows=rubric_grid.1 %}
+          <hr>
+          <h2 class="h6 text-body-secondary mb-2">Como será avaliado: {{ work.rubric.title }} ({% if work.delivery_mode == 'grupo' %}por grupo{% else %}por integrante{% endif %})</h2>
+          <div class="table-responsive"><table class="table table-sm align-top small mb-0">
+            <caption class="visually-hidden">Rubrica: o que se espera em cada critério e nível</caption>
+            <thead><tr><th scope="col">Critério</th>{% for lv in levels %}<th scope="col">{{ lv.label }}</th>{% endfor %}</tr></thead>
+            <tbody>{% for c, cells in rows %}<tr><th scope="row">{{ c.name }}</th>{% for t in cells %}<td>{{ t|default:"—" }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+          </table></div>
+        {% endwith %}{% endif %}
 
         {% if work.materials %}
           <hr>
@@ -221,6 +234,7 @@
     <div class="d-flex flex-wrap gap-2">
       <a href="{% url 'pedagogy:group_work_groups' work.pk %}" class="btn btn-sm btn-outline-primary">Organizar grupos</a>
       <a href="{% url 'pedagogy:group_work_deliveries' work.pk %}" class="btn btn-sm btn-outline-primary">Registrar entregas</a>
+      {% if work.rubric_id %}<a href="{% url 'pedagogy:group_work_rubric_scores' work.pk %}" class="btn btn-sm btn-outline-primary">Avaliar com a rubrica</a>{% endif %}
       <a href="{% url 'pedagogy:group_work_edit' work.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
       {% if work.status != 'cancelada' %}
         <a href="{% url 'pedagogy:group_work_cancel' work.pk %}" class="btn btn-sm btn-outline-danger">Cancelar trabalho</a>

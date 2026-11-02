@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Exercício de prática — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url 'study:detail' guide.pk as back %}
+<div class="form-page-wide">
+  {% if obj %}
+    {% include "partials/_form_head.html" with back_url=back back_label=guide.title heading="Editar exercício de prática" subheading="Mudar o exercício apaga as respostas já dadas a ele, porque eram de outra versão da pergunta." %}
+  {% else %}
+    {% include "partials/_form_head.html" with back_url=back back_label=guide.title heading="Novo exercício de prática" subheading="Múltipla escolha, corrigida na hora. Para verdadeiro ou falso, use duas alternativas." %}
+  {% endif %}
+  <div class="callout mb-3">{% icon "info" %}<div>
+    Escreva aqui uma questão <strong>de treino</strong>, diferente das questões da prova: o estudante vê a
+    alternativa correta e a explicação logo depois de responder, e pode tentar de novo. Por isso o resultado
+    não entra como evidência de aprendizagem.
+  </div></div>
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Salvar exercício" %}
+  </form>
+</div>
+{% endblock %}

@@ -35,4 +35,10 @@
     <li class="text-body-secondary">Sem tópicos na prova.</li>
   {% endfor %}
 </ol>
+{% if practice %}
+<section class="card mt-3" aria-labelledby="h-pra"><div class="card-body">
+  <h2 class="h6" id="h-pra">Exercícios de prática (treino, não é avaliação)</h2>
+  <ul class="small mb-0">{% for r in practice %}<li>{{ r.q.statement|truncatechars:90 }} — {% if r.first %}{% if r.first.is_correct %}acertou na primeira tentativa{% else %}errou na primeira tentativa{% endif %} ({{ r.tries }} tentativa{{ r.tries|pluralize }}){% else %}não respondeu{% endif %}</li>{% endfor %}</ul>
+</div></section>
+{% endif %}
 {% endblock %}

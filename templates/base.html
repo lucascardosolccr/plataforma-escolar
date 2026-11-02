@@ -186,9 +186,11 @@
   <form method="dialog" class="text-end"><button class="btn btn-primary">Entendi</button></form>
 </dialog>
 {{ nav.palette|json_script:"cmdk-data" }}
+{{ user_prefs|json_script:"ds-prefs" }}
 <span hidden id="ds-urls" data-search="{% url 'global_search' %}" data-home="{% url 'home' %}"
       data-calendar="{% url 'school_calendar:calendar_index' %}" data-notifications="{% url 'communication:notification_list' %}"
-      data-sprite="{% static 'icons/sprite.svg' %}" data-user="{{ user.pk }}"></span>
+      data-sprite="{% static 'icons/sprite.svg' %}" data-user="{{ user.pk }}"
+      data-prefs="{% url 'save_preferences' %}" data-csrf="{{ csrf_token }}"></span>
 {% endif %}
 
 <script src="{% static 'vendor/bootstrap.bundle.min.js' %}"></script>

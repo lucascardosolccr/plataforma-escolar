@@ -531,6 +531,10 @@ class GroupWork(FamilyVisibility, models.Model):
     curriculum = models.ManyToManyField(
         "curriculum.CurriculumItem", blank=True, related_name="%(class)s_set",
         verbose_name="habilidades e objetivos curriculares")
+    rubric = models.ForeignKey(
+        "Rubric", on_delete=models.PROTECT, null=True, blank=True, related_name="group_works",
+        verbose_name="rubrica de avaliação",
+    )
     created_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name="group_works_created"
     )
@@ -1180,3 +1184,30 @@ class RubricScore(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["activity", "student", "criterion"], name="uniq_rubric_score")]
+
+class GroupWorkRubricScore(models.Model):
+    """Nível da rubrica num trabalho em grupo, conforme a modalidade de entrega.
+
+    "Uma entrega por grupo": o nível é do GRUPO (``group``). "Uma entrega por
+    integrante": é de cada ESTUDANTE (``student``). O nível do grupo nunca é
+    copiado para os integrantes como se fosse individual (Prompt 6 §6.9).
+    """
+
+    group_work = models.ForeignKey("GroupWork", on_delete=models.CASCADE, related_name="rubric_scores")
+    group = models.ForeignKey("WorkGroup", on_delete=models.CASCADE, null=True, blank=True, related_name="+")
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, null=True, blank=True, related_name="+")
+    criterion = models.ForeignKey(RubricCriterion, on_delete=models.PROTECT, related_name="+")
+    level = models.ForeignKey(RubricLevel, on_delete=models.PROTECT, related_name="+")
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="+")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(Q(group__isnull=False, student__isnull=True) | Q(group__isnull=True, student__isnull=False)),
+                name="gw_rubric_group_xor_student"),
+            models.UniqueConstraint(fields=["group_work", "group", "criterion"], condition=Q(group__isnull=False),
+                                    name="uniq_gw_rubric_group"),
+            models.UniqueConstraint(fields=["group_work", "student", "criterion"], condition=Q(student__isnull=False),
+                                    name="uniq_gw_rubric_student"),
+        ]

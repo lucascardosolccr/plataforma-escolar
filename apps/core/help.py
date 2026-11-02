@@ -330,7 +330,7 @@ FAQ = [
     ("Como encontro uma tela ou um estudante rapidamente?",
      "Aperte Ctrl+K (ou /) e digite. A busca mostra páginas, ações e, para a equipe, estudantes e turmas.", TODOS),
     ("Posso deixar uma página mais à mão?",
-     "Sim. A estrela na barra superior guarda a página nos Favoritos, no topo do menu. Os favoritos ficam neste navegador.", TODOS),
+     "Sim. A estrela na barra superior guarda a página nos Favoritos, no topo do menu. Favoritos e filtros salvos (o funil ao lado da estrela, numa lista filtrada) ficam na sua conta e aparecem em qualquer computador.", TODOS),
     ("Como sei onde estou?",
      "A trilha no topo (Início / seção / página) mostra o caminho. Clique num nível para voltar a ele.", TODOS),
     # Quem redefine é regra de passwords.can_reset_password: a secretaria só

@@ -313,3 +313,51 @@ class StudyQuestion(models.Model):
     @property
     def is_open(self):
         return not self.answer
+
+
+class PracticeQuestion(models.Model):
+    """Exercício de prática com correção automática (Prompt 18 §10.8).
+
+    É escrito pelo professor AQUI, para preparação: não é questão da prova
+    (``cognitio.Question``) e o gabarito aparece ao estudante depois que ele
+    responde. Por isso não vira evidência de domínio: o estudante pode tentar
+    de novo e consultar a explicação. O professor vê quantos acertaram na
+    primeira tentativa, para saber o que retomar.
+    """
+
+    guide = models.ForeignKey(ExamGuide, on_delete=models.CASCADE, related_name="practice", verbose_name="prova")
+    topic = models.ForeignKey(ExamTopic, on_delete=models.SET_NULL, null=True, blank=True,
+                              related_name="practice", verbose_name="tópico")
+    statement = models.TextField("enunciado")
+    options = models.JSONField("alternativas", default=list)
+    correct = models.PositiveSmallIntegerField("alternativa correta")  # índice em ``options``
+    explanation = models.TextField(
+        "explicação", blank=True,
+        help_text="Aparece depois da resposta, certa ou errada: por que a correta é a correta.")
+    curriculum = models.ManyToManyField("curriculum.CurriculumItem", blank=True, related_name="practice_questions",
+                                        verbose_name="habilidades")
+    order = models.PositiveSmallIntegerField("ordem", default=0)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["order", "pk"]
+        verbose_name = "exercício de prática"
+        verbose_name_plural = "exercícios de prática"
+
+    def __str__(self):
+        return self.statement[:60]
+
+
+class PracticeAttempt(models.Model):
+    """Uma resposta do estudante a um exercício de prática. Várias tentativas ficam guardadas."""
+
+    question = models.ForeignKey(PracticeQuestion, on_delete=models.CASCADE, related_name="attempts")
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="practice_attempts")
+    chosen = models.PositiveSmallIntegerField()
+    is_correct = models.BooleanField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "pk"]
+        indexes = [models.Index(fields=["question", "student", "created_at"])]

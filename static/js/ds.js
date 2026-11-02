@@ -67,6 +67,31 @@
   var USER_SUFFIX = urls.user ? ":" + urls.user : "";
   var RECENT_KEY = "ds-recent-pages" + USER_SUFFIX;
 
+  /* Favoritos e filtros salvos ficam na conta (servidor); o localStorage é
+   * só uma cópia para a página abrir sem esperar. Na primeira vez, o que já
+   * estava salvo neste navegador sobe para a conta. Sem rede, a cópia local
+   * continua funcionando e sobe na próxima alteração. */
+  var prefsEl = $("#ds-prefs");
+  var serverPrefs = prefsEl ? JSON.parse(prefsEl.textContent) : null;
+  function pushPrefs(payload) {
+    if (!urls.prefs || !urls.csrf) return;
+    fetch(urls.prefs, {
+      method: "POST", credentials: "same-origin",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": urls.csrf },
+      body: JSON.stringify(payload)
+    }).catch(function () { /* fica a cópia local */ });
+  }
+  if (serverPrefs) {
+    if (serverPrefs.saved) {
+      store("ds-favorites" + USER_SUFFIX, serverPrefs.favorites);
+      store("ds-saved-filters" + USER_SUFFIX, serverPrefs.filters);
+    } else {
+      var localFav = store("ds-favorites" + USER_SUFFIX) || [];
+      var localFil = store("ds-saved-filters" + USER_SUFFIX) || [];
+      if (localFav.length || localFil.length) pushPrefs({ favorites: localFav, filters: localFil });
+    }
+  }
+
   function normalize(text) {
     return (text || "").toString().normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   }
@@ -568,8 +593,8 @@
   });
 
   /* ---------- Favoritos ----------
-   * A estrela da barra superior guarda a página atual do menu neste
-   * navegador (não vai para o servidor) e a mostra no topo do menu. */
+   * A estrela da barra superior guarda a página atual do menu na conta
+   * (ver "pushPrefs") e a mostra no topo do menu. */
   var FAV_KEY = "ds-favorites" + USER_SUFFIX;
   var favToggle = $("[data-fav-toggle]");
   var favList = $("[data-fav-list]");
@@ -610,6 +635,7 @@
       var favs = (store(FAV_KEY) || []).filter(function (k) { return k !== currentPage.key; });
       if (favToggle.getAttribute("aria-pressed") !== "true") favs.unshift(currentPage.key);
       store(FAV_KEY, favs.slice(0, 8));
+      pushPrefs({ favorites: favs.slice(0, 8) });
       renderFavorites();
     });
   }
@@ -618,8 +644,8 @@
   /* ---------- Filtros salvos ----------
    * Numa tela do menu com filtros aplicados (?turma=...&status=...), o botão
    * de funil guarda o endereço completo com um nome tirado dos próprios
-   * filtros ("Atividades de casa · 6º Ano A · Publicada"). Fica neste
-   * navegador e nesta conta, como os favoritos; abrir o item reaplica os
+   * filtros ("Atividades de casa · 6º Ano A · Publicada"). Fica na conta,
+   * como os favoritos; abrir o item reaplica os
    * filtros. Paginação e ordem fora da lista de filtros não contam. */
   var FILTER_KEY = "ds-saved-filters" + USER_SUFFIX;
   var filterSave = $("[data-filter-save]");
@@ -677,6 +703,7 @@
       var saved = (store(FILTER_KEY) || []).filter(function (f) { return f.url !== url; });
       if (filterSave.getAttribute("aria-pressed") !== "true") saved.unshift({ url: url, label: filterLabel() });
       store(FILTER_KEY, saved.slice(0, 10));
+      pushPrefs({ filters: saved.slice(0, 10) });
       renderFilters();
     });
   }

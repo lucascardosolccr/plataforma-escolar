@@ -148,3 +148,20 @@ def create_audit_log(*, user, action, request=None, target=None, detail="", scho
         detail=detail,
         ip_address=getattr(request, "META", {}).get("REMOTE_ADDR"),
     )
+
+
+class UserPreference(models.Model):
+    """Favoritos do menu e filtros salvos, guardados na conta.
+
+    Antes ficavam só no navegador; aqui acompanham a pessoa em qualquer
+    computador. Guarda apenas chaves do menu e endereços internos com filtros
+    (nunca dados de estudante): ver ``views_prefs.save_preferences``.
+    """
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="preferences")
+    favorites = models.JSONField("favoritos do menu", default=list, blank=True)
+    saved_filters = models.JSONField("filtros salvos", default=list, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def as_json(self):
+        return {"saved": True, "favorites": self.favorites, "filters": self.saved_filters}

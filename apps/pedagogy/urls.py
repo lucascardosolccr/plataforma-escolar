@@ -29,6 +29,7 @@ urlpatterns = [
     ),
     path("atividades/<int:pk>/ciente/", views.activity_acknowledge, name="activity_acknowledge"),
     path("atividades/<int:pk>/rubrica/", views_rubrics.activity_rubric_scores, name="activity_rubric_scores"),
+    path("trabalhos/<int:pk>/rubrica/", views_rubrics.group_work_rubric_scores, name="group_work_rubric_scores"),
     path("rubricas/", views_rubrics.rubric_list, name="rubric_list"),
     path("rubricas/nova/", views_rubrics.rubric_form, name="rubric_create"),
     path("rubricas/<int:pk>/editar/", views_rubrics.rubric_form, name="rubric_edit"),

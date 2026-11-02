@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Avaliar com a rubrica — {{ work.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'pedagogy:group_work_detail' work.pk %}" class="back-link">{% icon "arrow-left" %}{{ work.title }}</a>
+    <h1>Avaliar com a rubrica</h1>
+    <p>{{ rubric.title }} · {% if by_group %}uma avaliação <strong>por grupo</strong>{% else %}uma avaliação <strong>por integrante</strong>{% endif %}, conforme a forma de registro da entrega. Não entra na média.</p>
+  </div>
+</div>
+
+{% if read_only %}<div class="alert alert-secondary" role="status"><div>Trabalho cancelado: as avaliações ficam como registro.</div></div>{% endif %}
+{% if by_group %}<p class="small text-body-secondary">A família vê o nível do grupo do filho, identificado como avaliação do grupo, não como avaliação individual.</p>{% endif %}
+
+<form method="post" novalidate>
+  {% csrf_token %}
+  <fieldset{% if read_only %} disabled{% endif %}>
+  <div class="card"><div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <caption class="visually-hidden">Nível de cada {% if by_group %}grupo{% else %}integrante{% endif %} em cada critério</caption>
+      <thead><tr><th scope="col">{% if by_group %}Grupo{% else %}Integrante{% endif %}</th>{% for c in criteria %}<th scope="col" class="min-w-11">{{ c.name }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for row in table %}
+          <tr>
+            <th scope="row">{{ row.t.label }}<span class="d-block small fw-normal text-body-secondary">{{ row.t.names|join:", " }}</span></th>
+            {% for c, level_id in row.cells %}
+              <td>
+                <label class="visually-hidden" for="r_{{ row.t.key }}_{{ c.pk }}">{{ c.name }}: nível de {{ row.t.label }}</label>
+                <select id="r_{{ row.t.key }}_{{ c.pk }}" name="r_{{ row.t.key }}_{{ c.pk }}" class="form-select form-select-sm">
+                  <option value="">{% if level_id %}— manter —{% else %}— sem avaliação —{% endif %}</option>
+                  {% for lv in levels %}<option value="{{ lv.pk }}"{% if lv.pk == level_id %} selected{% endif %}>{{ lv.label }}</option>{% endfor %}
+                </select>
+              </td>
+            {% endfor %}
+          </tr>
+        {% empty %}
+          <tr><td colspan="{{ criteria|length|add:1 }}" class="text-center text-body-secondary py-4">Monte os grupos antes de avaliar.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div></div>
+  </fieldset>
+  {% if table and not read_only %}<button type="submit" class="btn btn-primary mt-3">Salvar avaliação</button>{% endif %}
+</form>
+{% endblock %}

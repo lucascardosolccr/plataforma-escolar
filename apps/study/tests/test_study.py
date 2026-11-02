@@ -478,3 +478,77 @@ class LibraryTests(StudyBase):
         self.shared.removed_at = self.today
         StudyMaterial.objects.filter(pk=self.shared.pk).update(removed_at=timezone.now())
         self.assertNotContains(self.client.get(reverse("study:library")), "Lista de frações")
+
+
+class PracticeTests(StudyBase):
+    """P18 §10.8: exercício de prática corrigido na hora, separado da prova e fora das evidências."""
+
+    def make(self, g):
+        self.login(self.prof)
+        r = self.client.post(reverse("study:practice_add", args=[g.pk]), {
+            "statement": "Quanto é 3 × 4?", "option_0": "7", "option_1": "", "option_2": "12", "option_3": "34",
+            "correct_choice": 2, "explanation": "Três grupos de quatro: 4 + 4 + 4 = 12.", "order": 0})
+        self.assertEqual(r.status_code, 302)
+        return g.practice.get()
+
+    def test_teacher_creates_with_compacted_options(self):
+        g = self.guide()
+        q = self.make(g)
+        self.assertEqual(q.options, ["7", "12", "34"])
+        self.assertEqual(q.options[q.correct], "12")
+        r = self.client.post(reverse("study:practice_add", args=[g.pk]),
+                             {"statement": "x", "option_0": "só uma", "correct_choice": 0, "order": 0})
+        self.assertContains(r, "pelo menos duas alternativas")
+        r = self.client.post(reverse("study:practice_add", args=[g.pk]),
+                             {"statement": "x", "option_0": "a", "option_1": "b", "correct_choice": 3, "order": 0})
+        self.assertIn("correct_choice", r.context["form"].errors)
+
+    def test_student_answers_sees_feedback_and_can_retry(self):
+        from ..models import PracticeAttempt
+
+        g = self.guide()
+        q = self.make(g)
+        self.login(self.conta)
+        page = self.client.get(reverse("study:detail", args=[g.pk]))
+        self.assertContains(page, "Quanto é 3 × 4?")
+        self.assertNotContains(page, "Três grupos de quatro")  # explicação só depois de responder
+        self.client.post(reverse("study:practice_answer", args=[g.pk, q.pk]), {"alternativa": "0"})
+        page = self.client.get(reverse("study:detail", args=[g.pk]))
+        self.assertContains(page, "A resposta certa é: <strong>12</strong>")
+        self.assertContains(page, "Três grupos de quatro")
+        self.client.post(reverse("study:practice_answer", args=[g.pk, q.pk]), {"alternativa": "1"})
+        self.assertEqual(list(PracticeAttempt.objects.values_list("is_correct", flat=True)), [False, True])
+        # Prática não vira evidência de domínio.
+        from apps.cognitio.models import SkillEvidence
+
+        self.assertFalse(SkillEvidence.objects.filter(student=self.ana).exists())
+
+    def test_only_the_student_answers_and_teacher_sees_first_try_stats(self):
+        g = self.guide()
+        q = self.make(g)
+        for user in (self.fam, self.prof):
+            self.login(user)
+            self.assertEqual(self.client.post(reverse("study:practice_answer", args=[g.pk, q.pk]),
+                                              {"alternativa": "1"}).status_code, 403)
+        self.login(self.conta)
+        self.client.post(reverse("study:practice_answer", args=[g.pk, q.pk]), {"alternativa": "2"})
+        self.client.post(reverse("study:practice_answer", args=[g.pk, q.pk]), {"alternativa": "1"})
+        self.client.post(reverse("study:practice_answer", args=[g.pk, q.pk]), {"alternativa": "9"})  # inválida
+        self.login(self.prof)
+        page = self.client.get(reverse("study:detail", args=[g.pk]))
+        self.assertContains(page, "0 de 1 acertaram na primeira tentativa")
+        self.assertContains(page, "resposta errada mais comum: “34”")
+        plano = self.client.get(reverse("study:student_plan", args=[g.pk, self.ana.pk]))
+        self.assertContains(plano, "errou na primeira tentativa (2 tentativas)")
+        self.login(self.fam)
+        self.assertContains(self.client.get(reverse("study:detail", args=[g.pk])), "Não acertou na primeira tentativa")
+
+    def test_editing_question_clears_old_answers(self):
+        from ..models import PracticeAttempt
+
+        g = self.guide()
+        q = self.make(g)
+        PracticeAttempt.objects.create(question=q, student=self.ana, chosen=0, is_correct=False)
+        self.client.post(reverse("study:practice_edit", args=[g.pk, q.pk]), {
+            "statement": "Quanto é 3 × 5?", "option_0": "15", "option_1": "8", "correct_choice": 0, "order": 0})
+        self.assertFalse(PracticeAttempt.objects.exists())

@@ -363,6 +363,7 @@ class GroupWorkForm(CurriculumFormMixin, forms.ModelForm):
             "delivery_mode",
             "notes",
             "curriculum",
+            "rubric",
         ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 5}),
@@ -395,6 +396,14 @@ class GroupWorkForm(CurriculumFormMixin, forms.ModelForm):
     def __init__(self, *args, user=None, school=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.attach_curriculum(user)
+        if user is not None:
+            from .views_rubrics import rubrics_for
+
+            self.fields["rubric"].queryset = (rubrics_for(user) | Rubric.objects.filter(pk=self.instance.rubric_id)
+                                              ).distinct()
+        self.fields["rubric"].required = False
+        self.fields["rubric"].help_text = ("Opcional. Avalia o grupo ou cada integrante, conforme a forma de registro "
+                                           "da entrega. Não entra na média.")
         self.user = user
         self.school = school
         self.fields["published_date"].required = False

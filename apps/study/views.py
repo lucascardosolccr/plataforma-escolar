@@ -18,8 +18,9 @@ from apps.core.uploads import attachment_content_type
 from apps.registry.models import Student
 
 from . import access, plan, services
-from .forms import AnswerForm, GuideForm, MaterialForm, QuestionForm, TopicForm
-from .models import ExamGuide, ExamTopic, GuideUpdate, StudyMaterial, StudyQuestion, TopicCheck
+from .forms import AnswerForm, GuideForm, MaterialForm, PracticeForm, QuestionForm, TopicForm
+from .models import (ExamGuide, ExamTopic, GuideUpdate, PracticeAttempt, PracticeQuestion, StudyMaterial,
+                     StudyQuestion, TopicCheck)
 
 
 def _require(cond):
@@ -447,6 +448,7 @@ def _family_context(user, guide, topics):
 
     students = list(Student.objects.filter(pk__in=access.family_students(user, guide)).order_by("first_name"))
     share = MasteryScale.for_school(guide.school).share_with_family
+    practice_qs = list(guide.practice.select_related("topic"))
     per_student = []
     for s in students:
         checks = {c.topic_id: c for c in TopicCheck.objects.filter(student=s, topic__guide=guide)}
@@ -456,8 +458,13 @@ def _family_context(user, guide, topics):
         if not share:
             p["note"] = ("Plano geral: segue a prioridade indicada pelo professor. A escola não ativou a "
                          "personalização pelos registros de aprendizagem.")
+        attempts = _practice_rows(guide, [s.pk])
+        practice = [{"q": q, "first": attempts.get(q.pk, {}).get(s.pk, (None, None))[0],
+                     "last": attempts.get(q.pk, {}).get(s.pk, (None, None))[1]} for q in practice_qs]
         per_student.append({
-            "student": s, "plan": p,
+            "student": s, "plan": p, "practice": practice,
+            "practice_done": sum(1 for r in practice if r["last"]),
+            "practice_right": sum(1 for r in practice if r["first"] and r["first"].is_correct),
             "checks": {t.pk: checks.get(t.pk) for t in topics},
             "reviewed": sum(1 for c in checks.values() if c.status == TopicCheck.Status.UNDERSTOOD),
             "questions": list(StudyQuestion.objects.filter(guide=guide, student=s).select_related("topic")),
@@ -485,7 +492,23 @@ def _staff_context(user, guide, topics):
         t.self_report = [(label, counts.get(key, 0)) for key, label in TopicCheck.Status.choices]
         t.no_report = len(students) - sum(counts.values())
         t.n_questions = sum(1 for q in questions if q.topic_id == t.pk)
+    attempts = _practice_rows(guide, [s.pk for s in students])
+    practice = []
+    for q in guide.practice.select_related("topic"):
+        per = attempts.get(q.pk, {})
+        firsts = [fl[0] for fl in per.values()]
+        wrong = {}
+        for f in firsts:
+            if not f.is_correct:
+                wrong[f.chosen] = wrong.get(f.chosen, 0) + 1
+        common = max(wrong.items(), key=lambda kv: kv[1]) if wrong else None
+        practice.append({"q": q, "answered": len(firsts), "right_first": sum(1 for f in firsts if f.is_correct),
+                         "common_wrong": (q.options[common[0]], common[1]) if common and common[0] < len(q.options)
+                         else None})
+    # Os que mais erram na primeira tentativa primeiro: é o que vale retomar.
+    practice.sort(key=lambda r: (-(r["answered"] - r["right_first"]), r["q"].order, r["q"].pk))
     return {
+        "practice": practice,
         "can_manage": can_manage,
         "students": students,
         "questions": questions,
@@ -512,6 +535,74 @@ def student_plan(request, pk, student_id):
     checks = {c.topic_id: c for c in TopicCheck.objects.filter(student=student, topic__guide=guide)}
     create_audit_log(user=user, action="view", request=request, target=student,
                      detail=f"Consultou o plano de preparação de {student} para {guide.title}")
+    attempts = _practice_rows(guide, [student.pk])
+    practice = [{"q": q, "first": attempts.get(q.pk, {}).get(student.pk, (None, None))[0],
+                 "tries": PracticeAttempt.objects.filter(question=q, student=student).count()}
+                for q in guide.practice.all()]
     return render(request, "study/plan_student.html", {
-        "guide": guide, "student": student, "plan": p, "checks": checks,
+        "guide": guide, "student": student, "plan": p, "checks": checks, "practice": practice,
         "topics": list(guide.topics.all())})
+
+
+# ------------------------------------------------------------------ exercícios de prática
+def practice_form(request, pk, question_id=None):
+    user = request.user
+    guide = _managed(request, pk)
+    q = get_object_or_404(PracticeQuestion, pk=question_id, guide=guide) if question_id else None
+    form = PracticeForm(request.POST or None, instance=q, guide=guide)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            obj = form.save(commit=False)
+            obj.guide = guide
+            if not obj.pk:
+                obj.created_by = user
+            obj.save()
+            form.save_m2m()
+            if q is not None and q.attempts.exists():
+                # Mudou a pergunta: as respostas antigas eram de outra versão dela.
+                q.attempts.all().delete()
+            _log(request, "update" if q else "create", guide, f"Exercício de prática na prova {guide.title}")
+        messages.success(request, "Exercício salvo. O estudante vê a correção e a explicação logo depois de responder.")
+        return redirect(reverse("study:detail", args=[guide.pk]) + "#pratica")
+    return render(request, "study/practice_form.html", {"form": form, "guide": guide, "obj": q})
+
+
+def practice_delete(request, pk, question_id):
+    if request.method != "POST":
+        raise PermissionDenied
+    guide = _managed(request, pk)
+    q = get_object_or_404(PracticeQuestion, pk=question_id, guide=guide)
+    q.delete()
+    _log(request, "delete", guide, f"Retirou um exercício de prática da prova {guide.title}")
+    messages.success(request, "Exercício retirado.")
+    return redirect(reverse("study:detail", args=[guide.pk]) + "#pratica")
+
+
+def practice_answer(request, pk, question_id):
+    """O próprio estudante responde; a correção é imediata e a tentativa fica guardada."""
+    if request.method != "POST":
+        raise PermissionDenied
+    user = request.user
+    guide = _guide(request, pk)
+    _require(user.role == Role.ESTUDANTE.value)
+    q = get_object_or_404(PracticeQuestion, pk=question_id, guide=guide)
+    student_ids = access.family_students(user, guide)
+    _require(len(student_ids) == 1)
+    raw = request.POST.get("alternativa", "")
+    if not raw.isdigit() or int(raw) >= len(q.options):
+        messages.error(request, "Escolha uma alternativa antes de conferir.")
+    else:
+        chosen = int(raw)
+        PracticeAttempt.objects.create(question=q, student_id=student_ids[0], chosen=chosen,
+                                       is_correct=chosen == q.correct)
+    return redirect(reverse("study:detail", args=[guide.pk]) + f"#ex-{q.pk}")
+
+
+def _practice_rows(guide, student_ids):
+    """{questão: {estudante: (primeira, última)}} numa consulta."""
+    out = {}
+    for a in PracticeAttempt.objects.filter(question__guide=guide, student_id__in=student_ids).order_by(
+            "created_at", "pk"):
+        first_last = out.setdefault(a.question_id, {}).get(a.student_id)
+        out[a.question_id][a.student_id] = (first_last[0] if first_last else a, a)
+    return out

@@ -203,3 +203,93 @@ def family_rubric_rows(activity, student_ids):
             "criterion", "level"):
         out.setdefault(sc.student_id, []).append(sc)
     return out
+
+
+def group_work_rubric_scores(request, pk):
+    """Rubrica no trabalho em grupo: uma linha por grupo ou por integrante, conforme a modalidade."""
+    from django.urls import reverse
+
+    from .models import GroupWork, GroupWorkRubricScore, WorkGroupMember
+    from .views import _get_managed_work
+
+    user = request.user
+    work = _get_managed_work(user, pk)
+    if not work.rubric_id:
+        messages.warning(request, "Este trabalho não tem rubrica. Escolha uma em Editar.")
+        return redirect("pedagogy:group_work_detail", pk=work.pk)
+    levels, rows_ = work.rubric.grid()
+    criteria = [c for c, _ in rows_]
+    by_group = work.delivery_mode == GroupWork.DeliveryMode.GROUP
+    members = list(WorkGroupMember.objects.filter(group__group_work=work, removed_at__isnull=True)
+                   .select_related("group", "student").order_by("group__name", "student__first_name"))
+    if by_group:
+        targets = []
+        for m in members:
+            if not targets or targets[-1]["obj"].pk != m.group_id:
+                targets.append({"key": f"g{m.group_id}", "obj": m.group, "label": m.group.name, "names": []})
+            targets[-1]["names"].append(m.student.first_name)
+    else:
+        targets = [{"key": f"s{m.student_id}", "obj": m.student, "label": m.student.full_name,
+                    "names": [m.group.name]} for m in members]
+    current = {}
+    for sc in GroupWorkRubricScore.objects.filter(group_work=work):
+        current[(f"g{sc.group_id}" if sc.group_id else f"s{sc.student_id}", sc.criterion_id)] = sc.level_id
+    canceled = work.status == GroupWork.Status.CANCELED
+    if request.method == "POST":
+        if canceled:
+            messages.error(request, "Trabalho cancelado: as avaliações ficam como estavam.")
+            return redirect("pedagogy:group_work_rubric_scores", pk=work.pk)
+        valid = {lv.pk for lv in levels}
+        changed = []
+        with transaction.atomic():
+            for t in targets:
+                for c in criteria:
+                    raw = request.POST.get(f"r_{t['key']}_{c.pk}", "")
+                    if not raw.isdigit() or int(raw) not in valid or current.get((t["key"], c.pk)) == int(raw):
+                        continue
+                    lookup = {"group": t["obj"]} if by_group else {"student": t["obj"]}
+                    GroupWorkRubricScore.objects.update_or_create(
+                        group_work=work, criterion=c, **lookup, defaults={"level_id": int(raw), "updated_by": user})
+                    changed.append(t)
+            create_audit_log(user=user, action="update", request=request, target=work,
+                             detail=f"Avaliou o trabalho {work.title} com a rubrica {work.rubric.title}")
+        if work.is_visible_to_family:
+            students = set()
+            for t in changed:
+                if by_group:
+                    students |= {m.student for m in members if m.group_id == t["obj"].pk}
+                else:
+                    students.add(t["obj"])
+            for st in students:
+                notify_family(st, "atividade_corrigida", f"Trabalho avaliado: {work.title}",
+                              body=f"A avaliação do trabalho de {st.first_name} pela rubrica está disponível.",
+                              url=reverse("pedagogy:group_work_detail", args=[work.pk]),
+                              dedupe_key=f"rubrica-gw-{work.pk}-{st.pk}-{work.updated_at:%Y%m%d}")
+        messages.success(request, "Avaliação salva.")
+        return redirect("pedagogy:group_work_rubric_scores", pk=work.pk)
+    table = [{"t": t, "cells": [(c, current.get((t["key"], c.pk))) for c in criteria]} for t in targets]
+    return render(request, "pedagogy/groupwork_rubric_scores.html", {
+        "work": work, "rubric": work.rubric, "levels": levels, "criteria": criteria, "table": table,
+        "by_group": by_group, "read_only": canceled})
+
+
+def group_work_family_levels(work, students):
+    """{estudante: [score]}: do grupo do estudante (modo grupo) ou dele (modo individual)."""
+    from .models import GroupWork, GroupWorkRubricScore, WorkGroupMember
+
+    if not work.rubric_id or not students:
+        return {}
+    ids = [s.pk for s in students]
+    if work.delivery_mode == GroupWork.DeliveryMode.GROUP:
+        group_of = dict(WorkGroupMember.objects.filter(group__group_work=work, student_id__in=ids,
+                                                       removed_at__isnull=True).values_list("student_id", "group_id"))
+        by_group = {}
+        for sc in GroupWorkRubricScore.objects.filter(group_work=work, group_id__in=set(group_of.values())) \
+                .select_related("criterion", "level"):
+            by_group.setdefault(sc.group_id, []).append(sc)
+        return {sid: by_group.get(gid, []) for sid, gid in group_of.items()}
+    out = {}
+    for sc in GroupWorkRubricScore.objects.filter(group_work=work, student_id__in=ids).select_related(
+            "criterion", "level"):
+        out.setdefault(sc.student_id, []).append(sc)
+    return out

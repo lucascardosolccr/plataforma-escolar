@@ -489,10 +489,20 @@ class LearningIntervention(models.Model):
         DONE = "concluida", "Concluída"
         REJECTED = "rejeitada", "Rejeitada pelo professor"
 
+    class Kind(models.TextChoices):
+        """Prompt 18 §12: cada tipo pede uma estratégia e um critério de sucesso diferentes."""
+
+        REINFORCEMENT = "reforco", "Reforço: mais prática ou outra abordagem da mesma habilidade"
+        PREREQUISITE = "retomada", "Retomada de pré-requisito"
+        RECOVERY = "recuperacao", "Recuperação contínua (depois de uma avaliação)"
+        DEEPENING = "aprofundamento", "Aprofundamento: quem já demonstrou vai além"
+        ENRICHMENT = "enriquecimento", "Enriquecimento curricular"
+
     school = models.ForeignKey(School, on_delete=models.CASCADE)
     class_group = models.ForeignKey(ClassGroup, on_delete=models.CASCADE, verbose_name="turma")
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, verbose_name="disciplina")
     item = models.ForeignKey("curriculum.CurriculumItem", on_delete=models.PROTECT, verbose_name="habilidade a desenvolver")
+    kind = models.CharField("tipo de intervenção", max_length=14, choices=Kind.choices, blank=True, default="")
     students = models.ManyToManyField("registry.Student", related_name="learning_interventions", verbose_name="estudantes")
     strategy = models.ForeignKey(InterventionStrategy, on_delete=models.SET_NULL, null=True, blank=True,
                                  verbose_name="estratégia")

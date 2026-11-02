@@ -131,10 +131,21 @@
           <p class="mb-0 small text-body-secondary">{% for label, n in r.counts %}{{ label }}: {{ n }}{% if not forloop.last %} · {% endif %}{% endfor %}{% if r.dependents %} · base para {{ r.dependents }} habilidade{{ r.dependents|pluralize }}{% endif %}</p>
         </div>
       {% empty %}<p class="small text-body-secondary mb-0">Ligue habilidades aos tópicos para ver os registros da turma.</p>{% endfor %}
-      {% if guide.evaluation and guide.evaluation.status == 'publicada' %}
-        <p class="small mt-2 mb-0">A prova já tem notas publicadas. Para que o resultado entre nas habilidades, registre as questões e as habilidades avaliadas no EIA-Cognitio.</p>
+    </div></section>
+
+    {% if guide.evaluation %}
+    <section class="card mb-3" aria-labelledby="h-depois"><div class="card-body">
+      <h2 class="h5" id="h-depois">Depois da prova</h2>
+      {% if guide.evaluation.questions.exists %}
+        <p class="small">Com os resultados por questão, a análise mostra quais habilidades foram demonstradas nesta prova, os erros mais frequentes, os pré-requisitos a investigar, os tópicos e materiais a retomar e quem precisa de apoio.</p>
+        <a href="{% url 'cognitio:exam_analysis' guide.evaluation.pk %}" class="btn btn-sm btn-outline-primary">Ver a análise da prova</a>
+        {% if can_manage %}<a href="{% url 'cognitio:responses' guide.evaluation.pk %}" class="btn btn-sm btn-outline-secondary">Lançar resultados por questão</a>{% endif %}
+      {% else %}
+        <p class="small mb-2">Para analisar o resultado por habilidade, cadastre as questões da prova e as habilidades de cada uma. Só a nota geral não diz qual habilidade foi ou não demonstrada.</p>
+        {% if can_manage %}<a href="{% url 'cognitio:questions' guide.evaluation.pk %}" class="btn btn-sm btn-outline-primary">Cadastrar as questões</a>{% endif %}
       {% endif %}
     </div></section>
+    {% endif %}
 
     <section class="card mb-3" aria-labelledby="h-est"><div class="card-body">
       <h2 class="h5" id="h-est">Plano de cada estudante</h2>

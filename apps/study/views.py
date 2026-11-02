@@ -84,6 +84,7 @@ def guide_list(request):
                     rows.append({"guide": g, "student": child})
         if when == "anteriores":
             rows.reverse()
+        _list_progress(rows)
         return render(request, "study/list_family.html", {
             "rows": rows, "when": when, "children": children,
             "is_student": user.role == Role.ESTUDANTE.value, "today": today})
@@ -443,6 +444,32 @@ def guide_detail(request, pk):
     return render(request, "study/detail_staff.html", {**ctx, **_staff_context(user, guide, topics)})
 
 
+def _list_progress(rows):
+    """Tópicos marcados como "entendi" e exercícios respondidos, por prova e estudante.
+
+    É progresso da preparação (o que o estudante marcou e fez aqui), não aprendizagem.
+    """
+    if not rows:
+        return
+    gids = {r["guide"].pk for r in rows}
+    sids = {r["student"].pk for r in rows}
+    n_topics = dict(ExamTopic.objects.filter(guide_id__in=gids).values("guide_id").annotate(n=Count("pk"))
+                    .values_list("guide_id", "n"))
+    n_practice = dict(PracticeQuestion.objects.filter(guide_id__in=gids).values("guide_id").annotate(n=Count("pk"))
+                      .values_list("guide_id", "n"))
+    understood = {(g, s): n for g, s, n in TopicCheck.objects.filter(
+        topic__guide_id__in=gids, student_id__in=sids, status=TopicCheck.Status.UNDERSTOOD)
+        .values("topic__guide_id", "student_id").annotate(n=Count("pk")).values_list("topic__guide_id", "student_id", "n")}
+    answered = {(g, s): n for g, s, n in PracticeAttempt.objects.filter(
+        question__guide_id__in=gids, student_id__in=sids)
+        .values("question__guide_id", "student_id").annotate(n=Count("question", distinct=True))
+        .values_list("question__guide_id", "student_id", "n")}
+    for r in rows:
+        key = (r["guide"].pk, r["student"].pk)
+        r.update(topics=n_topics.get(key[0], 0), understood=understood.get(key, 0),
+                 practice=n_practice.get(key[0], 0), answered=answered.get(key, 0))
+
+
 def _family_context(user, guide, topics):
     from apps.cognitio.models import MasteryScale
 
@@ -461,15 +488,21 @@ def _family_context(user, guide, topics):
         attempts = _practice_rows(guide, [s.pk])
         practice = [{"q": q, "first": attempts.get(q.pk, {}).get(s.pk, (None, None))[0],
                      "last": attempts.get(q.pk, {}).get(s.pk, (None, None))[1]} for q in practice_qs]
+        questions = list(StudyQuestion.objects.filter(guide=guide, student=s).select_related("topic"))
         per_student.append({
             "student": s, "plan": p, "practice": practice,
             "practice_done": sum(1 for r in practice if r["last"]),
             "practice_right": sum(1 for r in practice if r["first"] and r["first"].is_correct),
             "checks": {t.pk: checks.get(t.pk) for t in topics},
             "reviewed": sum(1 for c in checks.values() if c.status == TopicCheck.Status.UNDERSTOOD),
-            "questions": list(StudyQuestion.objects.filter(guide=guide, student=s).select_related("topic")),
+            # Progresso da preparação (§10.6): o que foi marcado e feito aqui, não o que foi aprendido.
+            "unmarked": [t for t in topics if t.pk not in checks],
+            "to_review": [t for t in topics if t.pk in checks and checks[t.pk].status != TopicCheck.Status.UNDERSTOOD],
+            "open_questions": sum(1 for q in questions if not q.answer),
+            "questions": questions,
         })
     return {"per_student": per_student, "is_student": user.role == Role.ESTUDANTE.value,
+            "days_left": (guide.exam_date - timezone.localdate()).days,
             "question_form": QuestionForm(guide=guide), "check_choices": TopicCheck.Status.choices,
             "videos": [m for m in guide.active_materials if m.kind == "video"],
             "readings": [m for m in guide.active_materials if m.kind == "leitura"],

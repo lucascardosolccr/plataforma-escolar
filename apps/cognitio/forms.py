@@ -102,6 +102,14 @@ class ObservationForm(forms.Form):
         self.fields["item"].queryset = CurriculumItem.objects.filter(pk__in=[i.pk for i in items])
         self.fields["item"].label_from_instance = lambda i: f"{i.code} — {i.text[:110]}"
         self.fields["students"].choices = [(str(s.pk), s.full_name) for s in students]
+        self.fields["level"].label = "O que foi observado (nível de todos os marcados)"
+        # Revisão individual antes de confirmar (Prompt 18 §7): cada estudante pode ter
+        # um nível diferente do nível de todos.
+        own = [("", "o nível de todos")] + list(SkillObservation.Level.choices)
+        self.students_list = list(students)
+        for s in self.students_list:
+            self.fields[f"lv_{s.pk}"] = forms.TypedChoiceField(
+                choices=own, coerce=int, empty_value=None, required=False, label=f"Nível de {s.full_name}")
         cg, subject = pair
         # as 60 mais recentes; o filtro por ids mantém o queryset filtrável (validação do ModelChoiceField)
         acts = Activity.objects.filter(class_group=cg, subject=subject).exclude(status="cancelada")
@@ -110,6 +118,13 @@ class ObservationForm(forms.Form):
             pk__in=list(acts.order_by("-class_date").values_list("pk", flat=True)[:60])).order_by("-class_date")
         self.fields["evaluation"].queryset = evals.filter(
             pk__in=list(evals.order_by("-date").values_list("pk", flat=True)[:60])).order_by("-date")
+
+    def main_fields(self):
+        """Campos comuns a todos; estudantes e níveis individuais vão na tabela própria."""
+        return [f for f in self if f.name != "students" and not f.name.startswith("lv_")]
+
+    def level_for(self, student_id):
+        return self.cleaned_data.get(f"lv_{student_id}") or self.cleaned_data["level"]
 
     def clean_observed_on(self):
         from django.utils import timezone

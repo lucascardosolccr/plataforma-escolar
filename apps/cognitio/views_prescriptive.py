@@ -28,8 +28,8 @@ class InterventionForm(forms.ModelForm):
 
     class Meta:
         model = LearningIntervention
-        fields = ["title", "objective", "activity", "complexity", "materials", "minutes", "methodology", "criteria",
-                  "expected_evidence", "prereqs_to_check", "evidence_basis", "starts_on", "review_on"]
+        fields = ["title", "kind", "objective", "activity", "complexity", "materials", "minutes", "methodology",
+                  "criteria", "expected_evidence", "prereqs_to_check", "evidence_basis", "starts_on", "review_on"]
         widgets = {"starts_on": DATE, "review_on": DATE,
                    **{f: forms.Textarea(attrs={"rows": 3}) for f in ("objective", "activity", "materials",
                                                                      "methodology", "criteria", "expected_evidence",
@@ -38,7 +38,9 @@ class InterventionForm(forms.ModelForm):
     def __init__(self, *args, students=(), **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["students"].choices = [(str(s.pk), s.full_name) for s in students]
-        self.order_fields(["title", "students"] + self.Meta.fields[1:])
+        self.fields["kind"].help_text = ("Um estudante: individual; parte da turma: pequeno grupo; todos: a turma. "
+                                         "O formato sai dos estudantes marcados.")
+        self.order_fields(["title", "kind", "students"] + self.Meta.fields[2:])
 
     def clean(self):
         data = super().clean()
@@ -118,6 +120,10 @@ def intervention_create(request):
         strategy = recs[0]["strategy"]
     initial = {"students": pre, "starts_on": timezone.localdate(),
                "review_on": timezone.localdate() + datetime.timedelta(days=14)}
+    if request.GET.get("tipo") in LearningIntervention.Kind.values:
+        initial["kind"] = request.GET["tipo"]
+    elif (request.GET.get("alvo") or "").isdigit() and request.GET["alvo"] != str(item.pk):
+        initial["kind"] = LearningIntervention.Kind.PREREQUISITE  # trabalha um pré-requisito da competência-alvo
     if strategy:
         initial.update(title=f"{strategy.title} — {item.code}", objective=strategy.objective,
                        activity=strategy.procedures, materials=strategy.materials, minutes=strategy.minutes,
@@ -160,6 +166,17 @@ def intervention_create(request):
         "strategy": strategy, "query": request.GET.urlencode()})
 
 
+def grouping(iv):
+    """Individual, pequeno grupo ou turma, pelos estudantes marcados (§12). Não é guardado: sai dos dados."""
+    n = iv.students.count()
+    total = Enrollment.objects.filter(class_group=iv.class_group, status="ativo").count()
+    if n == 1:
+        return "individual"
+    if total and n >= total:
+        return f"com a turma ({n} estudantes)"
+    return f"em pequeno grupo ({n} estudantes)"
+
+
 def intervention_detail(request, pk):
     user = request.user
     iv = get_object_or_404(_visible(user).select_related("class_group", "subject", "item", "strategy", "alert"), pk=pk)
@@ -177,7 +194,7 @@ def intervention_detail(request, pk):
     results = outcomes(iv)
     return render(request, "cognitio/intervention_detail.html", {
         "iv": iv, "results": results, "labels": RESULT_LABELS, "can_edit": can_edit, "cmp": comparison(iv),
-        "next": next_step(iv, results),
+        "next": next_step(iv, results), "grouping": grouping(iv),
         "status_choices": LearningIntervention.Status.choices,
         "history": strategy_history(iv.strategy, user.school) if iv.strategy else None})
 

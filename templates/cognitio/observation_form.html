@@ -1,11 +1,23 @@
 {% extends "base.html" %}
-{% load ui %}
+{% load ui form_extras %}
 {% block title %}Registrar observação — Plataforma Escolar{% endblock %}
 
 {% block content %}
 <div class="form-page">
   {% url 'cognitio:class_view' cg.pk as back %}
   {% include "partials/_form_head.html" with heading="Registrar observação de habilidade" subheading="Evidência direta da sala de aula (leitura, resolução no quadro, experimento, apresentação). Registre o que foi observado na situação, não um juízo sobre o estudante." back_url=back back_label="Mapa da turma" %}
+
+  <form method="get" class="card mb-3" aria-label="Ver a situação da turma numa habilidade"><div class="card-body d-flex flex-wrap align-items-end gap-2">
+    <div class="flex-grow-1">
+      <label for="ver-item" class="form-label">Ver a situação da turma em</label>
+      <select id="ver-item" name="item" class="form-select">
+        <option value="">Escolha a habilidade</option>
+        {% for it in item_choices %}<option value="{{ it.pk }}"{% if state_item and it.pk == state_item.pk %} selected{% endif %}>{{ it.code }} — {{ it.text|truncatechars:100 }}</option>{% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-outline-secondary">Ver situação</button>
+  </div></form>
+
   <form method="post" class="card form-card" novalidate>
     {% csrf_token %}
     <div class="card-body"><p class="small text-secondary">{{ cg }} · {{ subject }}</p>
@@ -13,7 +25,29 @@
         <dl class="small row mb-0 mt-2">{% for label, help in levels %}<dt class="col-sm-4">{{ label }}</dt><dd class="col-sm-8 mb-1">{{ help }}</dd>{% endfor %}</dl>
         <p class="small text-secondary mb-0">Os critérios e as evidências esperadas de cada habilidade estão na estrutura da habilidade (seções C e D). Se não houve oportunidade de observar, não registre: "não avaliada" não é "não desenvolvida".</p>
       </details>
-      {% include "partials/_form_fields.html" with f=form %}</div>
+      {% if form.non_field_errors %}<div class="alert alert-danger" role="alert"><div>{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div></div>{% endif %}
+      {% if form.errors %}<p class="visually-hidden" role="alert">O formulário tem campos a corrigir.</p>{% endif %}
+      <div class="row g-3 mb-3 form-grid">{% for field in form.main_fields %}{% include "partials/_field.html" with field=field %}{% endfor %}</div>
+
+      <fieldset>
+        <legend class="form-label fs-6">Estudantes<span class="required-mark" aria-hidden="true"> *</span><span class="visually-hidden"> (obrigatório)</span></legend>
+        <p class="small text-body-secondary">Marque quem foi observado. Quem teve um resultado diferente recebe o próprio nível na última coluna: confira antes de registrar.
+          {% if state_item %}{% if missing %}<strong>{{ missing }} estudante{{ missing|pluralize }} ainda sem registro suficiente em {{ state_item.code }}.</strong>{% else %}Todos já têm registro suficiente em {{ state_item.code }}.{% endif %}{% endif %}</p>
+        {% if form.students.errors %}<div class="invalid-feedback d-block">{% for e in form.students.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+        <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+          <caption class="visually-hidden">Estudantes observados e nível de cada um</caption>
+          <thead><tr><th scope="col">Registrar</th><th scope="col">Estudante</th>{% if state_item %}<th scope="col">Situação em {{ state_item.code }}</th>{% endif %}<th scope="col">Nível próprio</th></tr></thead>
+          <tbody>{% for r in rows %}
+            <tr>
+              <td><input class="form-check-input" type="checkbox" name="students" value="{{ r.s.pk }}" id="obs-{{ r.s.pk }}"{% if r.checked %} checked{% endif %}></td>
+              <td><label for="obs-{{ r.s.pk }}" class="mb-0">{{ r.s.full_name }}</label></td>
+              {% if state_item %}<td class="small">{% if r.state.0 == 'nao_avaliado' or r.state.0 == 'insuficiente' %}<strong>{{ r.state.1 }}</strong>{% else %}{{ r.state.1 }}{% endif %}</td>{% endif %}
+              <td><label for="{{ r.lv.id_for_label }}" class="visually-hidden">{{ r.lv.label }}</label>{{ r.lv|bs }}</td>
+            </tr>
+          {% empty %}<tr><td colspan="4" class="text-body-secondary">Turma sem estudantes ativos.</td></tr>{% endfor %}</tbody>
+        </table></div>
+      </fieldset>
+    </div>
     {% include "partials/_form_actions.html" with submit_label="Registrar" %}
   </form>
 </div>

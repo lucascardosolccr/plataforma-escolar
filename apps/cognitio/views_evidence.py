@@ -174,18 +174,23 @@ def observation_create(request, class_id, subject_id):
                            initial={"observed_on": timezone.localdate(), "item": request.GET.get("item")})
     if request.method == "POST" and form.is_valid():
         d = form.cleaned_data
+        own = 0
         with transaction.atomic():
             for sid in d["students"]:
+                level = form.level_for(sid)
+                own += level != d["level"]
                 SkillObservation.objects.create(
                     school=user.school, student_id=int(sid), item=d["item"], class_group=cg, subject=subject,
-                    teacher=user, observed_on=d["observed_on"], level=d["level"], context=d["context"],
+                    teacher=user, observed_on=d["observed_on"], level=level, context=d["context"],
                     note=d["note"], activity=d.get("activity"), evaluation=d.get("evaluation"),
                     recheck_on=d.get("recheck_on"))
             create_audit_log(user=user, action="create", request=request, target=cg,
-                             detail=f"Registrou observação de {d['item'].code} para {len(d['students'])} estudante(s)")
+                             detail=f"Registrou observação de {d['item'].code} para {len(d['students'])} estudante(s)"
+                                    + (f", {own} com nível próprio" if own else ""))
         rebuild_class(cg)
         messages.success(request, "Observação registrada como evidência.")
         return redirect(f"{_class_url(cg)}?disciplina={subject.pk}&habilidade={d['item'].pk}")
+    rows = _observation_rows(form, students, request)
     levels = [
         ("Dificuldade observada", "Nesta situação, ainda não conseguiu realizar a tarefa da habilidade, mesmo com apoio."),
         ("Em desenvolvimento inicial", "Realizou partes da tarefa, com muito apoio ou com erros frequentes."),
@@ -194,10 +199,68 @@ def observation_create(request, class_id, subject_id):
         ("Consolidada na situação observada", "Realizou com autonomia e consistência nesta situação."),
     ]
     return render(request, "cognitio/observation_form.html",
-                  {"form": form, "cg": cg, "subject": subject, "levels": levels})
+                  {"form": form, "cg": cg, "subject": subject, "levels": levels, **rows})
+
+
+def _observation_rows(form, students, request):
+    """Uma linha por estudante: marcado?, nível próprio e situação atual na habilidade.
+
+    A situação mostra quem ainda não tem registro suficiente (Prompt 18 §7: "indicação
+    clara do que ainda precisa ser registrado"). Uma consulta para as evidências de
+    todos e uma por estudante para a decisão do professor.
+    """
+    from .gaps import item_state
+    from .mastery import STATES
+    from .models import MasteryScale, SkillEvidence
+
+    raw = request.POST.get("item") or request.GET.get("item") or ""
+    item = form.fields["item"].queryset.filter(pk=int(raw)).first() if raw.isdigit() else None
+    chosen = set(request.POST.getlist("students")) if request.method == "POST" else set(request.GET.getlist("estudante"))
+    states = {}
+    if item is not None:
+        scale = MasteryScale.for_school(request.user.school)
+        evs = {}
+        for e in SkillEvidence.objects.filter(item=item, student__in=students).order_by("observed_on"):
+            evs.setdefault(e.student_id, []).append(e)
+        for s in students:
+            a = item_state(s, item, scale, evidences=evs.get(s.pk, []))
+            state = getattr(a, "effective", a.state)
+            states[s.pk] = (state, STATES[state][0])
+    rows = [{"s": s, "checked": str(s.pk) in chosen, "lv": form[f"lv_{s.pk}"], "state": states.get(s.pk)}
+            for s in students]
+    missing = sum(1 for st in states.values() if st[0] in ("nao_avaliado", "insuficiente"))
+    return {"rows": rows, "state_item": item, "missing": missing, "item_choices": list(form.fields["item"].queryset)}
 
 
 def _class_url(cg):
     from django.urls import reverse
 
     return reverse("cognitio:class_view", args=[cg.pk])
+
+
+
+def analysis(request, evaluation_id):
+    """Depois da prova: o que ela mostrou, por habilidade e por questão (Prompt 18 §10.10).
+
+    Professor do par, coordenação no alcance e direção. Fora o professor da turma, a
+    consulta fica na auditoria, como a do mapa individual: a tela traz nomes.
+    """
+    from apps.pedagogy.models import Evaluation
+
+    from .exam_analysis import LEVELS, analyze
+
+    user = request.user
+    ev = get_object_or_404(Evaluation.objects.select_related("class_group", "subject"), pk=evaluation_id,
+                           school=user.school)
+    subjects = access.class_subjects(user, ev.class_group)
+    if subjects is not None and ev.subject_id not in subjects:
+        raise PermissionDenied
+    teacher = access.can_teach(user, ev.class_group, ev.subject)
+    if not teacher:
+        create_audit_log(user=user, action="view", request=request, target=ev,
+                         detail=f"Consultou a análise da prova {ev.title} ({ev.class_group})")
+    data = analyze(ev, _students(ev.class_group, ev.date), user.school)
+    return render(request, "cognitio/exam_analysis.html", {
+        "ev": ev, "a": data, "levels": LEVELS, "teacher": teacher,
+        "guides": list(ev.study_guides.exclude(status="arquivado")),
+    })

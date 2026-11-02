@@ -20,7 +20,7 @@
   <article class="card"><div class="card-body">
     <div class="d-flex flex-wrap justify-content-between gap-2 align-items-baseline">
       <h2 class="h6 mb-0"><a href="{% url 'cognitio:intervention_detail' iv.pk %}">{{ iv.title }}</a></h2>
-      <span class="small"><span class="chip">{{ iv.get_status_display }}</span>{% if row.due %} <span class="chip chip-state state-a_vencer">revisão em {{ iv.review_on|date:"d/m" }}</span>{% endif %}</span>
+      <span class="small">{% if iv.kind %}<span class="chip">{{ iv.get_kind_display|truncatewords:2 }}</span> {% endif %}<span class="chip">{{ iv.get_status_display }}</span>{% if row.due %} <span class="chip chip-state state-a_vencer">revisão em {{ iv.review_on|date:"d/m" }}</span>{% endif %}</span>
     </div>
     <p class="small text-secondary mb-1">{{ iv.class_group.name }} · {{ iv.subject.name }} · {{ iv.item.code }}{% if iv.trail %} · {{ iv.trail.title }}{% endif %} · de {{ iv.starts_on|date:"d/m" }} a {{ iv.review_on|date:"d/m" }}</p>
     <ul class="list-unstyled small mb-0">{% for r in row.results %}<li>{{ r.student.first_name }}: {% for k, v in labels.items %}{% if k == r.result %}{{ v }}{% endif %}{% endfor %}{% if r.after %} ({{ r.before.label|lower }} → {{ r.after.label|lower }}){% endif %}</li>{% endfor %}</ul>

@@ -166,6 +166,32 @@ class QuestionFlowTests(Base):
         self.login(self.prof_geo)
         self.assertEqual(self.client.get(url).status_code, 403)
 
+    def test_batch_with_individual_review_and_who_is_missing(self):
+        """Prompt 18 §7: nível de todos, ajuste por estudante antes de confirmar, e quem falta registrar."""
+        self.login(self.prof)
+        url = reverse("cognitio:observation_create", args=[self.cg.pk, self.mat.pk])
+        r = self.client.post(url, {"item": self.h1.pk, "level": 4, "context": "Resolução no quadro",
+                                   "observed_on": self.today.isoformat(),
+                                   "students": [self.ana.pk, self.bia.pk, self.caio.pk],
+                                   f"lv_{self.bia.pk}": "2", f"lv_{self.caio.pk}": ""})
+        self.assertEqual(r.status_code, 302)
+        levels = dict(SkillObservation.objects.values_list("student__first_name", "level"))
+        self.assertEqual(levels, {"Ana": 4, "Bia": 2, "Caio": 4})
+        self.assertTrue(AuditLog.objects.filter(detail__endswith="1 com nível próprio").exists())
+        # Nível próprio inválido é recusado e nada é gravado.
+        before = SkillObservation.objects.count()
+        r = self.client.post(url, {"item": self.h1.pk, "level": 4, "context": "x", "observed_on": self.today.isoformat(),
+                                   "students": [self.ana.pk], f"lv_{self.ana.pk}": "9"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(SkillObservation.objects.count(), before)
+        # Situação da turma na habilidade: uma observação só ainda não é registro suficiente.
+        page = self.client.get(url + f"?item={self.h2.pk}")
+        self.assertContains(page, "3 estudantes ainda sem registro suficiente em EF06MA03.")
+        self.assertContains(page, "<strong>Não avaliada</strong>", count=3)
+        page = self.client.get(url + f"?item={self.h1.pk}&estudante={self.bia.pk}")
+        self.assertContains(page, "Sem evidência suficiente")
+        self.assertContains(page, f'value="{self.bia.pk}" id="obs-{self.bia.pk}" checked')
+
 
 class MapAccessTests(Base):
     def setUp(self):

@@ -170,6 +170,26 @@ class InterventionTests(Base):
         self.assertTrue(all(r["strategy"].component in ("Geografia", "") for r in recommend(geo, self.school)))
         self.assertTrue(InterventionStrategy.objects.filter(evidence_level="pesquisa").exclude(references="").exists())
 
+    def test_intervention_kind_and_grouping(self):
+        """Prompt 18 §12: tipo de intervenção registrado; formato tirado dos estudantes marcados."""
+        self.login(self.prof)
+        base = reverse("cognitio:intervention_create") + f"?turma={self.cg.pk}&disciplina={self.mat.pk}&habilidade={self.h1.pk}"
+        r = self.client.get(base + f"&tipo=recuperacao&estudante={self.ana.pk}")
+        self.assertEqual(r.context["form"].initial["kind"], "recuperacao")
+        self.assertEqual(self.client.get(base + "&tipo=inventado").context["form"].initial.get("kind"), None)
+        data = {"title": "Retomada", "kind": "recuperacao", "objective": "o", "activity": "a", "complexity": 2,
+                "minutes": 30, "students": [self.ana.pk, self.bia.pk], "starts_on": self.today.isoformat(),
+                "review_on": (self.today + timedelta(days=7)).isoformat()}
+        self.assertEqual(self.client.post(base, data).status_code, 302)
+        iv = LearningIntervention.objects.get()
+        self.assertEqual(iv.kind, "recuperacao")
+        page = self.client.get(reverse("cognitio:intervention_detail", args=[iv.pk]))
+        self.assertContains(page, "Recuperação contínua (depois de uma avaliação) · em pequeno grupo (2 estudantes)")
+        iv.students.set([self.ana])
+        self.assertContains(self.client.get(reverse("cognitio:intervention_detail", args=[iv.pk])), "· individual")
+        bad = {**data, "kind": "inventado"}
+        self.assertEqual(self.client.post(base, bad).status_code, 200)  # tipo fora da lista é recusado
+
     def test_intervention_from_class_and_outcome(self):
         self.login(self.prof)
         url = reverse("cognitio:intervention_create") + \

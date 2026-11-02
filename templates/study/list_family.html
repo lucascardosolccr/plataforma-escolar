@@ -26,6 +26,7 @@
         </div>
         <h2 class="h6 mb-1"><a href="{% url 'study:detail' r.guide.pk %}">{{ r.guide.title }}</a></h2>
         <p class="small text-body-secondary mb-2">{{ r.guide.subject.name }} · turma {{ r.guide.class_group.name }} · atualizado em {{ r.guide.updated_at|date:"d/m/Y" }}</p>
+        {% if r.topics %}<p class="small mb-2">{% if is_student %}Você marcou “entendi”{% else %}Marcou “entendi”{% endif %} em {{ r.understood }} de {{ r.topics }} tópico{{ r.topics|pluralize }}{% if r.practice %} · respondeu {{ r.answered }} de {{ r.practice }} exercício{{ r.practice|pluralize }}{% endif %}</p>{% endif %}
         <div class="mt-auto"><a href="{% url 'study:detail' r.guide.pk %}" class="btn btn-sm btn-outline-primary">Ver o que estudar</a></div>
       </div></div>
     </div>

@@ -23,6 +23,7 @@ urlpatterns = [
          name="observation_create"),
     path("cognitio/avaliacao/<int:evaluation_id>/questoes/", views_evidence.questions, name="questions"),
     path("cognitio/avaliacao/<int:evaluation_id>/resultados/", views_evidence.responses, name="responses"),
+    path("cognitio/avaliacao/<int:evaluation_id>/analise/", views_evidence.analysis, name="exam_analysis"),
     # Grafo, alertas e modelos
     path("cognitio/habilidade/<int:item_id>/grafo/", views_intel.skill_graph, name="skill_graph"),
     path("cognitio/habilidade/<int:item_id>/grafo/relacao/", views_intel.relation_curate, name="relation_curate"),

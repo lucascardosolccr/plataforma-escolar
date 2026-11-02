@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Análise da prova — {{ ev.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    {% if guides %}<a href="{% url 'study:detail' guides.0.pk %}" class="back-link">{% icon "arrow-left" %}{{ guides.0.title }}</a>
+    {% elif teacher %}<a href="{% url 'cognitio:responses' ev.pk %}" class="back-link">{% icon "arrow-left" %}Resultados por questão</a>{% endif %}
+    <h1>Análise da prova</h1>
+    <p>{{ ev.title }} · {{ ev.class_group }} · {{ ev.subject }} · {{ ev.date|date:"d/m/Y" }}</p>
+  </div>
+  {% if teacher %}<div class="d-flex flex-wrap gap-2">
+    <a href="{% url 'cognitio:questions' ev.pk %}" class="btn btn-sm btn-outline-secondary">Questões e habilidades</a>
+    <a href="{% url 'cognitio:responses' ev.pk %}" class="btn btn-sm btn-outline-secondary">Resultados por questão</a>
+  </div>{% endif %}
+</div>
+
+<div class="callout mb-3">{% icon "info" %}<div>
+  É o retrato <strong>desta prova</strong>, não o estado da habilidade: o estado considera todas as evidências do estudante.
+  “Demonstrou” segue os cortes da escala da escola (abaixo de {% widthratio a.t1 1 100 %}% de acerto: não demonstrou; de {% widthratio a.t1 1 100 %}% a {% widthratio a.t2 1 100 %}%: em parte).
+  Ausente e não aplicada não contam como erro. Uma habilidade medida por uma questão só não basta para concluir.
+</div></div>
+
+{% if not a.has_results %}
+  <div class="card"><div class="card-body text-center py-5">
+    <p class="mb-2">Ainda não há resultados por questão nesta prova.</p>
+    {% if teacher %}<a href="{% url 'cognitio:responses' ev.pk %}" class="btn btn-primary">Lançar resultados por questão</a>{% endif %}
+  </div></div>
+{% else %}
+
+<section class="card mb-3" aria-labelledby="h-hab"><div class="card-body">
+  <h2 class="h5" id="h-hab">1. Habilidades avaliadas</h2>
+  <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+    <caption class="visually-hidden">Quantos estudantes demonstraram cada habilidade nesta prova</caption>
+    <thead><tr><th scope="col" class="min-w-14">Habilidade</th><th scope="col">Questões</th>{% for code, label in levels %}<th scope="col" class="text-end">{{ label }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for r in a.skills %}
+        <tr>
+          <th scope="row" class="fw-normal"><a href="{% url 'cognitio:skill_graph' r.item.pk %}?turma={{ ev.class_group_id }}"><strong>{{ r.item.code }}</strong></a> <span class="small">{{ r.item.text|truncatechars:80 }}</span>
+            {% if r.single %}<span class="d-block small text-body-secondary">Uma questão só: não basta para concluir.</span>{% endif %}
+            {% if r.only_secondary %}<span class="d-block small text-body-secondary">Só aparece como habilidade secundária: não classificada.</span>{% endif %}</th>
+          <td class="small">{% for q in r.main %}Q{{ q.number }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if r.secondary %}{% if r.main %}; {% endif %}<span class="text-body-secondary">secundária em {% for q in r.secondary %}Q{{ q.number }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}</td>
+          {% if r.only_secondary %}<td colspan="4" class="small text-body-secondary">—</td>
+          {% else %}{% for code, label, n in r.counts %}<td class="text-end">{{ n }}</td>{% endfor %}{% endif %}
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" class="text-body-secondary">Nenhuma questão tem habilidade ligada. {% if teacher %}<a href="{% url 'cognitio:questions' ev.pk %}">Ligue as habilidades às questões</a>.{% endif %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  <p class="small text-body-secondary mt-2 mb-0">Contagem de estudantes, só nesta prova. Sem registro: ausente, prova não aplicada ou resultado não lançado.</p>
+</div></section>
+
+<section class="card mb-3" aria-labelledby="h-q"><div class="card-body">
+  <h2 class="h5" id="h-q">2. Questões e erros</h2>
+  {% if a.errors %}<p class="small">Erros mais registrados na prova: {% for label, n in a.errors %}<span class="chip">{{ label }}: {{ n }}</span>{% endfor %}</p>{% endif %}
+  <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+    <caption class="visually-hidden">Acerto médio e erros por questão</caption>
+    <thead><tr><th scope="col">Questão</th><th scope="col" class="text-end">Com resultado</th><th scope="col" class="text-end">Acerto médio</th><th scope="col" class="text-end">Abaixo do corte</th><th scope="col">Erros mais comuns</th></tr></thead>
+    <tbody>{% for r in a.questions %}
+      <tr>
+        <th scope="row" class="fw-normal">Q{{ r.q.number }}. {{ r.q.label|truncatechars:70 }}
+          {% if r.review %}<span class="d-block small fw-semibold">Quase ninguém acertou: antes de concluir sobre a turma, confira se o enunciado está claro, se o conteúdo foi trabalhado e se a correção está certa.</span>{% endif %}</th>
+        <td class="text-end">{{ r.n }}{% if r.absent %} <span class="small text-body-secondary">({{ r.absent }} sem)</span>{% endif %}</td>
+        <td class="text-end">{% if r.facility is not None %}{% widthratio r.facility 1 100 %}%{% else %}—{% endif %}</td>
+        <td class="text-end">{{ r.low }}</td>
+        <td class="small">{% for label, n in r.errors %}{{ label }} ({{ n }}){% if not forloop.last %}; {% endif %}{% empty %}—{% endfor %}</td>
+      </tr>{% endfor %}
+    </tbody>
+  </table></div>
+  <p class="small text-body-secondary mt-2 mb-0">Acerto médio: média, entre os estudantes com resultado, da fração dos pontos da questão (em branco conta como zero).</p>
+</div></section>
+
+<section class="mb-3" aria-labelledby="h-at">
+  <h2 class="h5" id="h-at">3. O que pede atenção</h2>
+  <p class="small text-body-secondary">Habilidades em que pelo menos um quarto dos estudantes avaliados não demonstrou ou demonstrou em parte.</p>
+  {% for r in a.skills %}{% if not r.only_secondary and r.needs_attention %}
+    <article class="card mb-2"><div class="card-body">
+      <h3 class="h6"><strong>{{ r.item.code }}</strong> {{ r.item.text|truncatechars:110 }}</h3>
+      {% if r.single %}<p class="small fw-semibold">Medida por uma questão só. Antes de planejar retomada, confirme em outra situação (2 ou 3 questões ou uma observação).</p>{% endif %}
+
+      <p class="small mb-1 fw-semibold">Pré-requisitos a investigar</p>
+      {% if r.prereqs %}<ul class="small">{% for p in r.prereqs %}
+        <li><strong>{{ p.rel.source.code }}</strong> {{ p.rel.source.text|truncatechars:70 }} — {{ p.rel.get_kind_display|lower }}{% if p.rel.status != 'validada' %} <span class="text-body-secondary">(relação proposta, a confirmar pela escola)</span>{% endif %}.
+          Entre quem não demonstrou: {% if p.tally.lacuna %}lacuna confirmada em {{ p.tally.lacuna }}; {% endif %}{% if p.tally.a_verificar %}a verificar em {{ p.tally.a_verificar }}; {% endif %}{% if p.tally.sem_evidencia %}sem evidência em {{ p.tally.sem_evidencia }}; {% endif %}{% if p.tally.ok %}já demonstrado por {{ p.tally.ok }}{% endif %}.</li>
+      {% endfor %}</ul>
+      {% else %}<p class="small text-body-secondary">Nenhum pré-requisito documentado no grafo para esta habilidade. <a href="{% url 'cognitio:skill_graph' r.item.pk %}?turma={{ ev.class_group_id }}">Ver o grafo</a>.</p>{% endif %}
+
+      {% if r.strategies %}<p class="small mb-1 fw-semibold">Estratégias para testar</p>
+      <ul class="small">{% for s in r.strategies %}<li>{{ s.strategy.title }}{% if s.reasons %} <span class="text-body-secondary">— {{ s.reasons|join:"; " }}</span>{% endif %}</li>{% endfor %}</ul>{% endif %}
+
+      {% if r.not_dem or r.partial %}
+        <p class="small mb-1"><span class="fw-semibold">Não demonstraram nesta prova:</span> {% for s in r.not_dem %}{{ s.first_name }}{% if not forloop.last %}, {% endif %}{% empty %}ninguém{% endfor %}.
+          {% if r.partial %}<span class="fw-semibold">Em parte:</span> {% for s in r.partial %}{{ s.first_name }}{% if not forloop.last %}, {% endif %}{% endfor %}.{% endif %}</p>
+      {% endif %}
+      {% if teacher and r.group %}
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'cognitio:intervention_create' %}?turma={{ ev.class_group_id }}&disciplina={{ ev.subject_id }}&habilidade={{ r.item.pk }}&tipo=recuperacao{% for s in r.not_dem %}&estudante={{ s.pk }}{% endfor %}">Planejar retomada em pequeno grupo</a>
+      {% endif %}
+    </div></article>
+  {% endif %}{% empty %}{% endfor %}
+  {% if not a.skills %}<p class="small text-body-secondary">Sem habilidades ligadas às questões.</p>{% endif %}
+</section>
+
+<section class="card mb-3" aria-labelledby="h-ret"><div class="card-body">
+  <h2 class="h5" id="h-ret">4. Retomar na preparação</h2>
+  {% for t in a.retake %}
+    <p class="small mb-1"><strong>{{ t.topic.title }}</strong> <span class="text-body-secondary">({{ t.guide.title }}; {% for c in t.skills %}{{ c.code }}{% if not forloop.last %}, {% endif %}{% endfor %})</span></p>
+    <p class="small mb-2">{% if t.materials %}Materiais: {% for m in t.materials %}{{ m.title }}{% if not forloop.last %}; {% endif %}{% endfor %}{% else %}Nenhum material ligado a este tópico. Considere incluir um.{% endif %}</p>
+  {% empty %}
+    <p class="small text-body-secondary mb-0">{% if guides %}Nenhum tópico da preparação está ligado às habilidades que pedem atenção.{% else %}Esta prova não tem “Conteúdos da prova” ligados.{% endif %}</p>
+  {% endfor %}
+</div></section>
+
+<section class="card mb-3" aria-labelledby="h-ap"><div class="card-body">
+  <h2 class="h5" id="h-ap">5. Apoio individual</h2>
+  <p class="small text-body-secondary">Estudantes que não demonstraram duas ou mais habilidades nesta prova, cada uma medida por mais de uma questão. É um convite a conversar e observar, não um rótulo.</p>
+  {% for s, items in a.support %}
+    <p class="small mb-1">{% if teacher %}<a href="{% url 'cognitio:student_map' s.pk %}">{{ s.full_name }}</a>{% else %}{{ s.full_name }}{% endif %}: {% for it in items %}{{ it.code }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+  {% empty %}<p class="small mb-0">Nenhum estudante nesta situação.</p>{% endfor %}
+</div></section>
+{% endif %}
+{% endblock %}

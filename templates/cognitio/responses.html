@@ -29,7 +29,8 @@
   </table></div>
   <div class="form-actions d-flex flex-wrap gap-3 align-items-center">
     {% if can_update_grades %}<label class="form-check mb-0"><input class="form-check-input" type="checkbox" name="atualizar_notas" value="1" checked> Atualizar as notas da avaliação pela soma das questões</label>{% else %}<span class="small text-secondary">Avaliação publicada: as notas são alteradas na tela de notas (a família é avisada).</span>{% endif %}
-    <button type="submit" class="btn btn-primary ms-auto">Salvar resultados</button>
+    <a href="{% url 'cognitio:exam_analysis' ev.pk %}" class="btn btn-outline-primary ms-auto">Ver a análise da prova</a>
+    <button type="submit" class="btn btn-primary">Salvar resultados</button>
   </div>
 </form>
 {% endblock %}

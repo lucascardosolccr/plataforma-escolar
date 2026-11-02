@@ -11,7 +11,23 @@
   </div>
 </div>
 
-{% if guide.is_past %}<div class="alert alert-secondary" role="status"><div>Esta prova já aconteceu. Os conteúdos ficam aqui para consulta.</div></div>{% endif %}
+{% if guide.is_past %}<div class="alert alert-secondary" role="status"><div>Esta prova já aconteceu. Os conteúdos ficam aqui para consulta.</div></div>
+{% else %}
+<section class="card mb-3" aria-labelledby="h-prep"><div class="card-body">
+  <h2 class="h5" id="h-prep">{% if is_student %}Minha preparação{% else %}Preparação{% endif %} <span class="chip chip-state {% if days_left <= 2 %}state-a_vencer{% else %}state-pendente{% endif %}">{% if days_left == 0 %}a prova é hoje{% elif days_left == 1 %}falta 1 dia{% else %}faltam {{ days_left }} dias{% endif %}</span></h2>
+  {% for ps in per_student %}
+    {% if not is_student %}<h3 class="h6">{{ ps.student.full_name }}</h3>{% endif %}
+    <ul class="small mb-2">
+      <li>“Entendi” em {{ ps.reviewed }} de {{ topics|length }} tópico{{ topics|length|pluralize }}.</li>
+      {% if ps.to_review %}<li>Para rever: {% for t in ps.to_review %}<a href="#como-estou">{{ t.title }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}.</li>{% endif %}
+      {% if ps.unmarked %}<li>{% if is_student %}Você ainda não marcou{% else %}Ainda sem marcação{% endif %}: {% for t in ps.unmarked %}{{ t.title }}{% if not forloop.last %}, {% endif %}{% endfor %}.</li>{% endif %}
+      {% if ps.practice %}<li>Exercícios: respondeu {{ ps.practice_done }} de {{ ps.practice|length }}.</li>{% endif %}
+      {% if ps.open_questions %}<li>{{ ps.open_questions }} dúvida{{ ps.open_questions|pluralize }} esperando resposta do professor.</li>{% endif %}
+    </ul>
+  {% endfor %}
+  <p class="small text-body-secondary mb-0">É o que foi marcado e feito aqui. Ajuda a organizar o estudo, mas não é nota nem mostra o que foi aprendido.</p>
+</div></section>
+{% endif %}
 
 <nav aria-label="Etapas" class="d-flex flex-wrap gap-2 mb-3 small">
   <a href="#o-que-cai" class="btn btn-sm btn-outline-secondary">1. O que vai cair</a>

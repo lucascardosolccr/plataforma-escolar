@@ -296,6 +296,31 @@ class SelfReportAndQuestionsTests(StudyBase):
         self.assertContains(page, "Autorrelato do estudante: Entendi")
 
 
+    def test_preparation_progress_for_student_and_family(self):
+        """§10.6: progresso da preparação e o que ainda não foi revisto, sem virar nota."""
+        g = self.guide()
+        extra = ExamTopic.objects.create(guide=g, title="Frações", order=2)
+        TopicCheck.objects.create(topic=self.topic, student=self.ana, status="praticar")
+        StudyQuestion.objects.create(guide=g, student=self.ana, author=self.conta, text="Como simplificar?")
+        self.login(self.conta)
+        page = self.client.get(reverse("study:detail", args=[g.pk]))
+        self.assertContains(page, "Minha preparação")
+        self.assertContains(page, "faltam 10 dias")
+        self.assertContains(page, "“Entendi” em 0 de 2 tópicos.")
+        self.assertContains(page, "Para rever: <a href=\"#como-estou\">Operações</a>")
+        self.assertContains(page, "Você ainda não marcou: Frações.")
+        self.assertContains(page, "1 dúvida esperando resposta do professor.")
+        TopicCheck.objects.filter(topic=self.topic).update(status="entendi")
+        listing = self.client.get(reverse("study:list"))
+        self.assertContains(listing, "Você marcou “entendi” em 1 de 2 tópicos")
+        self.login(self.fam)
+        listing = self.client.get(reverse("study:list"))
+        self.assertContains(listing, "Marcou “entendi” em 1 de 2 tópicos")
+        page = self.client.get(reverse("study:detail", args=[g.pk]))
+        self.assertContains(page, "Ainda sem marcação: Frações.")
+        extra.delete()
+
+
 class PreparationPlanTests(StudyBase):
     """§20.1–6, §20.14, §20.15 e §20.28."""
 

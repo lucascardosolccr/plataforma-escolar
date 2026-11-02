@@ -14,6 +14,7 @@
   <div class="col-lg-7">
     <section class="card"><div class="card-body">
       <dl class="review-list mb-0">
+        <dt>Tipo e formato</dt><dd>{% if iv.kind %}{{ iv.get_kind_display }}{% else %}Tipo não informado{% endif %} · {{ grouping }}</dd>
         {% if iv.target_item %}<dt>Competência-alvo</dt><dd><a href="{% url 'cognitio:skill_graph' iv.target_item.pk %}">{{ iv.target_item.code }}</a> {{ iv.target_item.text|truncatechars:140 }}<span class="d-block small text-secondary">Esta intervenção trabalha {{ iv.item.code }}, pré-requisito dela.</span></dd>{% endif %}
         {% if iv.prereqs_to_check %}<dt>Pré-requisitos a verificar</dt><dd>{{ iv.prereqs_to_check|linebreaksbr }}</dd>{% endif %}
         {% if iv.evidence_basis %}<dt>Evidências que fundamentam</dt><dd class="small">{{ iv.evidence_basis|linebreaksbr }}</dd>{% endif %}

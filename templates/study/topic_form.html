@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Tópico da prova — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url 'study:detail' guide.pk as back %}
+<div class="form-page-wide">
+  {% if obj %}
+    {% include "partials/_form_head.html" with back_url=back back_label=guide.title heading="Editar tópico" %}
+  {% else %}
+    {% include "partials/_form_head.html" with back_url=back back_label=guide.title heading="Novo tópico" subheading="Um tópico é o que será cobrado. Ligue as habilidades: é por elas que o plano de cada estudante encontra os pré-requisitos." %}
+  {% endif %}
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Salvar tópico" %}
+  </form>
+</div>
+{% endblock %}

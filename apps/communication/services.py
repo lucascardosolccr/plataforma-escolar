@@ -351,6 +351,9 @@ def deliver_due_publications(school=None):
             due = due.filter(school=school)
         for item in due:
             total += announce_publication(item)
+    from apps.study.services import deliver_due_guides
+
+    total += deliver_due_guides(school)
     return total
 
 

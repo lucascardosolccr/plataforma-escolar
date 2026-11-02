@@ -78,6 +78,7 @@
         {% for s in students %}
           <li class="d-flex flex-wrap align-items-center gap-2">
             <span class="chip"><span class="visually-hidden">Estudante: </span>{{ s.full_name }}</span>
+            {% for sc in s.rubric_levels %}<span class="chip">{{ sc.criterion.name }}: {{ sc.level.label }}</span>{% endfor %}
             {% if s.submission %}
               <span class="small">Entrega: <strong>{{ s.submission.get_status_display }}</strong>{% if s.submission.grade is not None %} · nota {{ s.submission.grade|floatformat:"-2" }}{% endif %}</span>
             {% endif %}
@@ -125,6 +126,15 @@
           <h2 class="h6 text-body-secondary mb-2">Critérios de avaliação</h2>
           <div class="activity-instructions mb-0">{{ activity.criteria }}</div>
         {% endif %}
+        {% if rubric_grid %}{% with levels=rubric_grid.0 rows=rubric_grid.1 %}
+          <hr>
+          <h2 class="h6 text-body-secondary mb-2">Como será avaliada: {{ activity.rubric.title }}</h2>
+          <div class="table-responsive"><table class="table table-sm align-top small mb-0">
+            <caption class="visually-hidden">Rubrica: o que se espera em cada critério e nível</caption>
+            <thead><tr><th scope="col">Critério</th>{% for lv in levels %}<th scope="col">{{ lv.label }}{% if lv.points is not None %} ({{ lv.points|floatformat:"-2" }}){% endif %}</th>{% endfor %}</tr></thead>
+            <tbody>{% for c, cells in rows %}<tr><th scope="row">{{ c.name }}</th>{% for t in cells %}<td>{{ t|default:"—" }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+          </table></div>
+        {% endwith %}{% endif %}
         {% if is_staff_view and activity.internal_notes %}
           <hr>
           <h2 class="h6 text-body-secondary mb-2">Observações internas <span class="chip">só equipe</span></h2>
@@ -197,6 +207,7 @@
     </p>
     <div class="d-flex flex-wrap gap-2">
       <a href="{% url 'pedagogy:activity_submissions' activity.pk %}" class="btn btn-sm btn-outline-primary">Acompanhar entregas</a>
+      {% if activity.rubric_id %}<a href="{% url 'pedagogy:activity_rubric_scores' activity.pk %}" class="btn btn-sm btn-outline-primary">Avaliar com a rubrica</a>{% endif %}
       {% if activity.status != 'cancelada' %}
         <a href="{% url 'pedagogy:activity_edit' activity.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
       {% endif %}

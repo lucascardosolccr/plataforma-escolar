@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Conteúdos da prova — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Conteúdos da prova</h1>
+    <p>O que vai ser cobrado em cada prova, com materiais, vídeos e leituras para a turma estudar.</p>
+  </div>
+  {% if can_create %}<div class="page-actions"><a href="{% url 'study:create' %}" class="btn btn-primary">{% icon "plus" %}Novos conteúdos</a></div>{% endif %}
+</div>
+
+<nav class="d-flex gap-2 mb-3" aria-label="Período">
+  <a href="?quando=proximas" class="btn btn-sm {% if when == 'proximas' %}btn-primary{% else %}btn-outline-secondary{% endif %}"{% if when == 'proximas' %} aria-current="page"{% endif %}>Próximas provas</a>
+  <a href="?quando=anteriores" class="btn btn-sm {% if when == 'anteriores' %}btn-primary{% else %}btn-outline-secondary{% endif %}"{% if when == 'anteriores' %} aria-current="page"{% endif %}>Anteriores</a>
+</nav>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 table-stack">
+      <thead><tr><th>Prova</th><th>Turma</th><th>Data</th><th>Situação</th><th>Dúvidas abertas</th><th class="text-end"></th></tr></thead>
+      <tbody>
+        {% for g in guides %}
+        <tr>
+          <td><span class="fw-semibold">{{ g.title }}</span><span class="d-block small text-body-secondary">{{ g.subject.name }} · {{ g.n_topics }} tópico{{ g.n_topics|pluralize }}</span></td>
+          <td>{{ g.class_group.name }}</td>
+          <td class="text-nowrap">{{ g.exam_date|date:"d/m/Y" }}</td>
+          <td><span class="chip chip-state {% if g.status == 'publicado' %}state-pendente{% else %}state-rascunho{% endif %}">{{ g.get_status_display }}</span></td>
+          <td>{% if g.n_open %}<span class="chip chip-state state-a_vencer">{{ g.n_open }}</span>{% else %}—{% endif %}</td>
+          <td class="text-end cell-actions"><a href="{% url 'study:detail' g.pk %}" class="btn btn-sm btn-outline-secondary">Abrir</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6"><div class="empty-state py-4">{% icon "book-open" %}<strong>Nenhuma prova {% if when == 'proximas' %}marcada{% else %}anterior{% endif %}.</strong>{% if can_create and when == 'proximas' %}<span>Use “Novos conteúdos” para preparar a turma para uma prova.</span>{% endif %}</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/_pager.html" %}
+{% endblock %}

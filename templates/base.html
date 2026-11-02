@@ -55,6 +55,10 @@
             <p class="nav-section" id="nav-sec-fav">Favoritos</p>
             <ul class="nav-list" data-fav-list aria-labelledby="nav-sec-fav"></ul>
           </div>
+          <div data-filters-section hidden>
+            <p class="nav-section" id="nav-sec-filters">Filtros salvos</p>
+            <ul class="nav-list" data-filters-list aria-labelledby="nav-sec-filters"></ul>
+          </div>
           {% endif %}
         {% endfor %}
       </nav>
@@ -90,6 +94,9 @@
       </nav>
       <button class="btn btn-outline-secondary btn-icon fav-toggle" type="button" data-fav-toggle aria-pressed="false" aria-label="Adicionar aos favoritos" hidden>
         {% icon "star" %}
+      </button>
+      <button class="btn btn-outline-secondary btn-icon fav-toggle" type="button" data-filter-save aria-pressed="false" aria-label="Salvar este filtro" hidden>
+        {% icon "filter" %}
       </button>
       <button class="search-trigger" type="button" data-cmdk-open aria-haspopup="dialog" aria-keyshortcuts="Control+K /">
         {% icon "search" %}<span>Buscar ou ir para…</span><kbd>Ctrl K</kbd>

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Material de estudo — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url 'study:detail' guide.pk as back %}
+<div class="form-page-wide">
+  {% if replacing %}
+    {% include "partials/_form_head.html" with back_url=back back_label=guide.title heading="Substituir material" subheading="O material anterior sai da lista da turma e fica no histórico como substituído." %}
+  {% elif obj %}
+    {% include "partials/_form_head.html" with back_url=back back_label=guide.title heading="Editar material" %}
+  {% else %}
+    {% include "partials/_form_head.html" with back_url=back back_label=guide.title heading="Novo material de estudo" subheading="Preencha só o que se aplica ao tipo escolhido." %}
+  {% endif %}
+  <div class="callout mb-3">{% icon "info" %}<div>
+    Vídeos e páginas externas abrem fora da plataforma, em outra aba. Indique só o que você conferiu:
+    título, canal, duração e acesso livre não são preenchidos automaticamente.
+  </div></div>
+  <form method="post" enctype="multipart/form-data" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Salvar material" %}
+  </form>
+</div>
+{% endblock %}

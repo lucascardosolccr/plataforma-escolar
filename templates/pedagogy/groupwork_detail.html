@@ -41,6 +41,16 @@
   </div>
 {% endif %}
 
+{% if is_family and changes %}
+  <div class="alert alert-info" role="status">
+    <div>
+      <strong>Este trabalho foi alterado depois de publicado.</strong>
+      <ul class="mb-0 mt-1 small">{% for c in changes %}<li>{{ c.changed_at|date:"d/m/Y" }}: {{ c.family_labels|join:", "|lower }}</li>{% endfor %}</ul>
+      <span class="d-block small mt-1">O texto abaixo já é o atual.</span>
+    </div>
+  </div>
+{% endif %}
+
 {% if viewer_students %}
   <div class="alert alert-primary d-flex flex-wrap align-items-center gap-2" role="alert">
     <span class="small">Você está vendo este trabalho no registro de:</span>
@@ -218,5 +228,22 @@
     </div>
   </div>
 </div>
+{% endif %}
+
+{% if not is_family and changes %}
+<section class="card mt-3" aria-labelledby="hist-title">
+  <div class="card-body">
+    <h2 class="h6 mb-1" id="hist-title">Histórico de alterações</h2>
+    <p class="small text-body-secondary mb-2">Alterações feitas depois de sair do rascunho. A mudança de integrantes fica na tela de grupos, com data de entrada e saída.</p>
+    <ol class="list-unstyled mb-0 d-grid gap-2">
+      {% for c in changes %}
+        <li><details>
+          <summary class="small"><strong>{{ c.changed_at|date:"d/m/Y H:i" }}</strong>{% if c.changed_by %} · {{ c.changed_by.get_full_name|default:c.changed_by.username }}{% endif %} · {% for f in c.fields %}{{ f.label|lower }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if c.family_saw %} <span class="chip ms-1">família viu</span>{% endif %}</summary>
+          <dl class="small mt-2 mb-0">{% for f in c.fields %}<dt>{{ f.label }}</dt><dd class="mb-2"><span class="text-body-secondary">Antes:</span> {{ f.before|default:"—"|linebreaksbr }}<br><span class="text-body-secondary">Depois:</span> {{ f.after|default:"—"|linebreaksbr }}</dd>{% endfor %}</dl>
+        </details></li>
+      {% endfor %}
+    </ol>
+  </div>
+</section>
 {% endif %}
 {% endblock %}

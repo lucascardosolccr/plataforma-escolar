@@ -86,6 +86,7 @@ INSTALLED_APPS = [
     "apps.inclusion",
     "apps.cognitio",
     "apps.meetings",
+    "apps.study",
 ]
 
 MIDDLEWARE = [

@@ -329,3 +329,35 @@ class KeepExistingSubmissionTests(Base):
         self.client.post(reverse("pedagogy:activity_submissions", args=[act.pk]),
                          {f"status_{self.ana.pk}": ""})
         self.assertEqual(Submission.objects.get().status, Submission.Status.DELIVERED)
+
+
+class GroupWorkHistoryTests(Base):
+    """P5-11: o trabalho em grupo publicado também guarda o que mudou."""
+
+    def test_editing_published_work_is_recorded_and_shown(self):
+        from ..models import GroupWork, GroupWorkChange, WorkGroup, WorkGroupMember
+
+        work = GroupWork.objects.create(
+            school=self.school, class_group=self.turma, subject=self.mat, title="Pesquisa",
+            description="Pesquisar sobre o bairro.", created_by=self.prof, status=GroupWork.Status.PUBLISHED,
+            published_date=timezone.localdate() - timedelta(days=2))
+        g = WorkGroup.objects.create(group_work=work, name="Grupo 1")
+        WorkGroupMember.objects.create(group=g, student=self.ana)
+        self.login("prof")
+        nova = timezone.localdate() + timedelta(days=9)
+        r = self.client.post(reverse("pedagogy:group_work_edit", args=[work.pk]), {
+            "class_group": self.turma.pk, "subject": self.mat.pk, "title": "Pesquisa",
+            "description": "Pesquisar sobre o bairro e entrevistar um vizinho.",
+            "published_date": f"{work.published_date:%Y-%m-%d}", "deadline": f"{nova:%Y-%m-%d}",
+            "delivery_mode": work.delivery_mode})
+        self.assertEqual(r.status_code, 302, getattr(r, "context", None) and r.context["form"].errors)
+        change = GroupWorkChange.objects.get()
+        self.assertTrue(change.family_saw)
+        self.assertEqual({f["label"] for f in change.fields}, {"O que deve ser feito", "Prazo de entrega"})
+        detalhe = self.client.get(reverse("pedagogy:group_work_detail", args=[work.pk]))
+        self.assertContains(detalhe, "Histórico de alterações")
+        self.assertContains(detalhe, "Pesquisar sobre o bairro.<br>")  # valor antigo, só para a equipe
+        self.login("resp")
+        detalhe = self.client.get(reverse("pedagogy:group_work_detail", args=[work.pk]))
+        self.assertContains(detalhe, "foi alterado depois de publicado")
+        self.assertNotContains(detalhe, "Histórico de alterações")

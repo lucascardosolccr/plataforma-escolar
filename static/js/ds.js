@@ -450,6 +450,30 @@
     });
   }, true);
 
+  /* ---------- Envio único (formulários POST) ----------
+   * Clique duplo ou conexão lenta reenviavam o formulário. O servidor já
+   * protege os fluxos críticos; aqui o segundo envio nem sai do navegador.
+   * O botão é desabilitado só depois de o envio começar (desabilitado antes,
+   * o name/value dele não iria junto). Volta a funcionar ao voltar à página
+   * pelo histórico e, por segurança, depois de 8 s (download não troca de
+   * página). data-no-once desliga o comportamento num formulário. */
+  document.addEventListener("submit", function (e) {
+    var form = e.target;
+    if (e.defaultPrevented || (form.method || "").toLowerCase() !== "post" || form.hasAttribute("data-no-once")) return;
+    if (form._sending) { e.preventDefault(); return; }
+    form._sending = true;
+    var btn = e.submitter;
+    setTimeout(function () {
+      if (btn) { btn.disabled = true; btn.setAttribute("aria-busy", "true"); }
+    }, 0);
+    setTimeout(function () { releaseForm(form); }, 8000);
+  });
+  function releaseForm(form) {
+    form._sending = false;
+    $$("button[aria-busy=true]", form).forEach(function (b) { b.disabled = false; b.removeAttribute("aria-busy"); });
+  }
+  window.addEventListener("pageshow", function () { $$("form").forEach(releaseForm); });
+
   /* ---------- Tabela que vira lista no celular (.table-stack) ----------
    * Copia o título de cada coluna para as células que ainda não têm
    * data-label; o CSS o mostra antes do valor em telas estreitas. */
@@ -590,6 +614,73 @@
     });
   }
   renderFavorites();
+
+  /* ---------- Filtros salvos ----------
+   * Numa tela do menu com filtros aplicados (?turma=...&status=...), o botão
+   * de funil guarda o endereço completo com um nome tirado dos próprios
+   * filtros ("Atividades de casa · 6º Ano A · Publicada"). Fica neste
+   * navegador e nesta conta, como os favoritos; abrir o item reaplica os
+   * filtros. Paginação e ordem fora da lista de filtros não contam. */
+  var FILTER_KEY = "ds-saved-filters" + USER_SUFFIX;
+  var filterSave = $("[data-filter-save]");
+  var filterList = $("[data-filters-list]");
+  function currentFilterUrl() {
+    var params = new URLSearchParams(window.location.search);
+    params.delete("page");
+    params.delete("pagina");
+    var qs = params.toString();
+    return qs ? window.location.pathname + "?" + qs : "";
+  }
+  function filterLabel() {
+    var parts = [];
+    $$("form[method=get] select, form:not([method]) select").forEach(function (sel) {
+      if (sel.value && sel.selectedIndex >= 0 && sel.name) parts.push(sel.options[sel.selectedIndex].text.trim());
+    });
+    $$("form[method=get] input[type=date], form[method=get] input[type=search], form[method=get] input[type=text]").forEach(function (inp) {
+      if (inp.value && inp.name) parts.push(inp.value);
+    });
+    var label = [currentPage ? currentPage.label : document.title].concat(parts).join(" · ");
+    return label.length > 70 ? label.slice(0, 69) + "…" : label;
+  }
+  function renderFilters() {
+    var saved = store(FILTER_KEY) || [];
+    if (filterList) {
+      filterList.textContent = "";
+      filterList.closest("[data-filters-section]").hidden = !saved.length;
+      saved.forEach(function (f) {
+        var a = document.createElement("a");
+        a.className = "nav-item";
+        a.href = f.url;
+        a.title = f.label;
+        a.appendChild(iconSvg("filter"));
+        var span = document.createElement("span");
+        span.className = "nav-label";
+        span.textContent = f.label;
+        a.appendChild(span);
+        var li = document.createElement("li");
+        li.appendChild(a);
+        filterList.appendChild(li);
+      });
+    }
+    if (filterSave) {
+      var url = currentFilterUrl();
+      var on = saved.some(function (f) { return f.url === url; });
+      filterSave.setAttribute("aria-pressed", on ? "true" : "false");
+      filterSave.setAttribute("aria-label", on ? "Tirar dos filtros salvos" : "Salvar este filtro");
+      filterSave.title = filterSave.getAttribute("aria-label");
+    }
+  }
+  if (filterSave) {
+    filterSave.hidden = !currentPage || !currentFilterUrl();
+    filterSave.addEventListener("click", function () {
+      var url = currentFilterUrl();
+      var saved = (store(FILTER_KEY) || []).filter(function (f) { return f.url !== url; });
+      if (filterSave.getAttribute("aria-pressed") !== "true") saved.unshift({ url: url, label: filterLabel() });
+      store(FILTER_KEY, saved.slice(0, 10));
+      renderFilters();
+    });
+  }
+  renderFilters();
 
   /* ---------- Recorte de foto (data-photo-crop) ----------
    * Ao escolher a foto, mostra uma prévia redonda: arraste para enquadrar e

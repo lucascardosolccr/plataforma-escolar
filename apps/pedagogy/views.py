@@ -421,6 +421,10 @@ def evaluation_edit(request, pk):
                 ev = form.save()
                 _log(request, "update", ev, f"Atualizou a avaliação {ev.title}")
                 reminders.notify_exam_change(ev, old_date, was_announced)
+                from apps.study.services import sync_evaluation_date
+
+                # Os conteúdos da prova ligados a esta avaliação seguem a data dela.
+                sync_evaluation_date(ev, old_date, user)
             messages.success(request, "Avaliação atualizada.")
             return redirect("pedagogy:evaluation_list")
     return render(request, "pedagogy/evaluation_form.html", {"form": form, "obj": ev})
@@ -884,9 +888,15 @@ def activity_detail(request, pk):
         for a in act.acknowledgements.filter(student__in=students).order_by("created_at"):
             if a.user_id == user.pk or a.student_id not in acks:
                 acks[a.student_id] = a
+        rubric_by_student = {}
+        if act.rubric_id:
+            from .views_rubrics import family_rubric_rows
+
+            rubric_by_student = family_rubric_rows(act, [s.pk for s in students])
         for s in students:
             s.submission = subs.get(s.pk)
             s.ack = acks.get(s.pk)
+            s.rubric_levels = rubric_by_student.get(s.pk, [])
     changes = list(act.changes.select_related("changed_by"))
     if is_family:
         # A família vê só o que mudou depois de já ter a atividade na tela, e
@@ -900,6 +910,7 @@ def activity_detail(request, pk):
             "activity": act,
             "students": students,
             "is_family": is_family,
+            "rubric_grid": act.rubric.grid() if act.rubric_id else None,
             "can_acknowledge": is_family and act.status == Activity.Status.PUBLISHED,
             "changes": changes,
             "ack_count": (
@@ -1549,6 +1560,11 @@ def group_work_detail(request, pk):
         sem_grupo = [
             s for s in _enrolled_in(work.class_group) if s.pk not in com_grupo
         ]
+    is_family = user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value)
+    changes = list(work.changes.select_related("changed_by"))
+    if is_family:
+        # Como nas atividades: só o que mudou depois de a família já ver, sem o texto antigo.
+        changes = [c for c in changes if c.family_saw and c.family_labels]
     return render(
         request,
         "pedagogy/groupwork_detail.html",
@@ -1562,6 +1578,8 @@ def group_work_detail(request, pk):
             "highlight_ids": destaque,
             "can_manage": can_manage,
             "ungrouped": sem_grupo,
+            "changes": changes,
+            "is_family": is_family,
             "reach": _enrolled_in(work.class_group).count(),
             "sees_all_groups": can_manage
             or user.role
@@ -1576,6 +1594,8 @@ def group_work_detail(request, pk):
 
 
 def _save_work_attachments(request, work, form):
+    """Grava os anexos enviados e devolve os nomes (para o histórico)."""
+    names = []
     for upload in form.cleaned_data.get("attachments") or []:
         GroupWorkAttachment.objects.create(
             group_work=work,
@@ -1584,6 +1604,8 @@ def _save_work_attachments(request, work, form):
             size=upload.size,
             uploaded_by=request.user,
         )
+        names.append(upload.name[:255])
+    return names
 
 
 def group_work_create(request):
@@ -1631,6 +1653,9 @@ def group_work_edit(request, pk):
         return redirect("pedagogy:group_work_detail", pk=work.pk)
     was_draft = work.status == GroupWork.Status.DRAFT
     old_deadline = work.deadline
+    # Antes do formulário: is_valid() já escreve os valores novos em ``work``.
+    before = history.snapshot(work)
+    family_saw = work.is_visible_to_family
     form = GroupWorkForm(
         request.POST or None,
         request.FILES or None,
@@ -1642,11 +1667,15 @@ def group_work_edit(request, pk):
         publish = bool(request.POST.get("_publish"))
         with transaction.atomic():
             work = form.save()
-            _save_work_attachments(request, work, form)
+            added = _save_work_attachments(request, work, form)
             if publish and was_draft:
                 work.status = GroupWork.Status.PUBLISHED
                 work.save(update_fields=["status"])
-            _log(request, "update", work, f"Atualizou o trabalho {work.title}")
+            mudou = history.diff(work, before) + history.attachment_entries(added=added)
+            if not was_draft:
+                history.record(work, user, family_saw, mudou)
+            _log(request, "update", work, f"Atualizou o trabalho {work.title}"
+                 + (f": {history.summary(mudou)}" if mudou else ""))
             avisou = announce_publication(work)
             if not avisou:
                 notify_deadline_changed(work, old_deadline)

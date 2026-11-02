@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{% if obj %}Editar conteúdos da prova{% else %}Novos conteúdos da prova{% endif %} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% if obj %}{% url 'study:detail' obj.pk as back %}{% else %}{% url 'study:list' as back %}{% endif %}
+<div class="form-page">
+  {% if obj %}
+    {% include "partials/_form_head.html" with back_url=back back_label="Voltar" heading="Editar conteúdos da prova" subheading="Mudar a data avisa a turma e as famílias." %}
+  {% else %}
+    {% include "partials/_form_head.html" with back_url=back back_label="Conteúdos da prova" heading="Novos conteúdos da prova" subheading="Primeiro os dados da prova. Os tópicos e os materiais entram na tela seguinte." %}
+  {% endif %}
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">
+      {% include "partials/_form_fields.html" with f=form %}
+      <p class="small text-body-secondary mb-0">Com a avaliação escolhida, a data da prova é a dela e muda junto com ela.</p>
+    </div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label=obj|yesno:"Salvar,Criar rascunho" hint="Rascunho: só você vê." %}
+  </form>
+</div>
+{% endblock %}

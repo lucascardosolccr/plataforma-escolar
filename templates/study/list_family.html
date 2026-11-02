@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Conteúdos da prova — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{% if is_student %}Minhas provas{% else %}Conteúdos da prova{% endif %}</h1>
+    <p>{% if is_student %}O que vai cair em cada prova e o que o professor indicou para você estudar.{% else %}O que vai cair nas provas de cada filho e o que o professor indicou para estudar.{% endif %}</p>
+  </div>
+</div>
+
+<nav class="d-flex gap-2 mb-3" aria-label="Período">
+  <a href="?quando=proximas" class="btn btn-sm {% if when == 'proximas' %}btn-primary{% else %}btn-outline-secondary{% endif %}"{% if when == 'proximas' %} aria-current="page"{% endif %}>Próximas</a>
+  <a href="?quando=anteriores" class="btn btn-sm {% if when == 'anteriores' %}btn-primary{% else %}btn-outline-secondary{% endif %}"{% if when == 'anteriores' %} aria-current="page"{% endif %}>Anteriores</a>
+</nav>
+
+{% if rows %}
+  <div class="row g-3">
+    {% for r in rows %}
+    <div class="col-12 col-lg-6">
+      <div class="card h-100"><div class="card-body d-flex flex-column">
+        <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
+          {% if not is_student %}<span class="chip"><span class="visually-hidden">Estudante: </span>{{ r.student.full_name }}</span>{% endif %}
+          <span class="chip chip-state {% if r.guide.exam_date == today %}state-a_vencer{% else %}state-pendente{% endif %}">Prova em {{ r.guide.exam_date|date:"d/m/Y" }}</span>
+        </div>
+        <h2 class="h6 mb-1"><a href="{% url 'study:detail' r.guide.pk %}">{{ r.guide.title }}</a></h2>
+        <p class="small text-body-secondary mb-2">{{ r.guide.subject.name }} · turma {{ r.guide.class_group.name }} · atualizado em {{ r.guide.updated_at|date:"d/m/Y" }}</p>
+        <div class="mt-auto"><a href="{% url 'study:detail' r.guide.pk %}" class="btn btn-sm btn-outline-primary">Ver o que estudar</a></div>
+      </div></div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card"><div class="card-body text-center text-body-secondary py-5">
+    <p class="fw-semibold mb-1">{% if when == 'proximas' %}Nenhuma prova com conteúdos publicados.{% else %}Nenhuma prova anterior.{% endif %}</p>
+    <p class="small mb-0">Quando o professor publicar o que vai cair numa prova, aparece aqui.</p>
+  </div></div>
+{% endif %}
+{% endblock %}

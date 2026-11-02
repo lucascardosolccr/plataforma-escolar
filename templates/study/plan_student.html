@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load ui pedagogy_extras %}
+{% block title %}Plano de {{ student.full_name }} — {{ guide.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'study:detail' guide.pk %}" class="back-link">{% icon "arrow-left" %}{{ guide.title }}</a>
+    <h1>Plano de preparação — {{ student.full_name }}</h1>
+    <p>{{ guide.subject.name }} · prova em {{ guide.exam_date|date:"d/m/Y" }}</p>
+  </div>
+</div>
+
+<div class="callout mb-3">{% icon "info" %}<div>
+  {{ plan.note }} As regras estão em “Conteúdos da prova” na especificação: fundamento com lacuna confirmada vem primeiro;
+  pré-requisito sem registro pede só uma verificação curta; o que já foi demonstrado fica para uma revisão rápida.
+  É uma sugestão para orientar: a decisão é sua.
+</div></div>
+
+<ol class="d-grid gap-3">
+  {% for s in plan.steps %}
+    <li class="card"><div class="card-body py-2">
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="chip chip-state {% if s.kind == 'retomar' %}state-a_vencer{% elif s.kind == 'verificar' %}state-pendente{% elif s.kind == 'revisar' %}state-entregue{% else %}state-publicada{% endif %}">{% if s.kind == 'retomar' %}Retomar antes{% elif s.kind == 'verificar' %}Verificar{% elif s.kind == 'revisar' %}Revisão rápida{% else %}Estudar{% endif %}</span>
+        <span class="fw-semibold">{{ s.title }}</span>
+        {% if s.code %}<span class="small text-body-secondary">{{ s.code }}</span>{% endif %}
+      </div>
+      <p class="small mb-1 mt-1">{{ s.reason }}</p>
+      {% if s.state %}<p class="small text-body-secondary mb-1">Registros: {{ s.state }}</p>{% endif %}
+      {% if s.topic %}{% with c=checks|getitem:s.topic.pk %}<p class="small mb-1">Autorrelato do estudante: {% if c %}{{ c.get_status_display }}{% else %}não marcou{% endif %}</p>{% endwith %}{% endif %}
+      {% if s.materials %}<p class="small mb-0">Materiais: {% for m in s.materials %}{{ m.title }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+      {% elif s.kind == 'retomar' %}<p class="small mb-0 text-body-secondary">Nenhum material desta prova trata deste fundamento. Considere incluir um.</p>{% endif %}
+    </div></li>
+  {% empty %}
+    <li class="text-body-secondary">Sem tópicos na prova.</li>
+  {% endfor %}
+</ol>
+{% endblock %}

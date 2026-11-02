@@ -39,7 +39,7 @@
     <section class="card" aria-labelledby="res"><div class="card-body">
       <h2 id="res" class="h6">Resultado posterior por estudante</h2>
       <p class="small text-secondary">Compara as evidências desta habilidade antes e depois do início. Associação no tempo, sem grupo de comparação: não prova que a intervenção causou a mudança.</p>
-      <ul class="list-unstyled small mb-0">{% for r in results %}<li class="py-1 border-bottom"><a href="{% url 'cognitio:student_map' r.student.pk %}?habilidade={{ iv.item.pk }}">{{ r.student }}</a><span class="d-block">{% for k, v in labels.items %}{% if k == r.result %}{{ v }}{% endif %}{% endfor %} · antes: {{ r.before.label|lower }}{% if r.after %} · depois: {{ r.after.label|lower }} ({{ r.n_after }} evidência{{ r.n_after|pluralize }}){% endif %}</span></li>{% endfor %}</ul>
+      <ul class="list-unstyled small mb-0">{% for r in results %}<li class="py-1 border-bottom"><a href="{% url 'cognitio:student_map' r.student.pk %}?habilidade={{ iv.item.pk }}">{{ r.student }}</a><span class="d-block">{% for k, v in labels.items %}{% if k == r.result %}{{ v }}{% endif %}{% endfor %} · antes: {{ r.before.label|lower }}{% if r.after %} · depois: {{ r.after.label|lower }} ({{ r.n_after }} evidência{{ r.n_after|pluralize }}){% endif %}</span>{% if r.next %}<span class="d-block text-body-secondary">{{ r.next }}</span>{% endif %}</li>{% endfor %}</ul>
     </div></section>
     <section class="card" aria-labelledby="cmp"><div class="card-body small">
       <h2 id="cmp" class="h6">Comparação com colegas da turma</h2>

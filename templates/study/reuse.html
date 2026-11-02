@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Reutilizar conteúdos da prova — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url 'study:detail' source.pk as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label=source.title heading="Reutilizar em outra turma" subheading="Copia os tópicos, as orientações e os materiais como rascunho. Nada da turma de origem (dúvidas, marcações) é copiado." %}
+  <form method="post" class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">
+      <label class="form-label" for="par">Turma e disciplina</label>
+      <select id="par" name="par" class="form-select">
+        {% for value, label in options %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Criar cópia" %}
+  </form>
+</div>
+{% endblock %}

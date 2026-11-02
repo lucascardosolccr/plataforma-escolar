@@ -194,6 +194,16 @@ ITEMS = {
                      "Mapa de competências, alertas e intervenções por habilidade"),
     "norms": Item("Referências normativas", "curriculum:references", "book-open", ("curriculum:references",),
                   "LDB, BNCC, educação inclusiva e LGPD"),
+    "exam_prep": Item("Conteúdos da prova", "study:list", "book-open", ("study:",),
+                      "O que vai cair em cada prova e o que estudar"),
+    "rubrics": Item("Rubricas", "pedagogy:rubric_list", "list-checks", ("pedagogy:rubric_",),
+                    "Critérios e níveis para corrigir atividades"),
+    "library": Item("Biblioteca de materiais", "study:library", "book-marked", ("study:library",),
+                    "Materiais que os colegas compartilharam"),
+    "fam_exam_prep": Item("Conteúdos da prova", "study:list", "book-open", ("study:",),
+                          "O que vai cair nas provas e o que estudar"),
+    "my_exam_prep": Item("Minhas provas", "study:list", "book-open", ("study:",),
+                         "O que vai cair e por onde começar a estudar"),
     "meetings": Item("Reuniões", "meetings:list", "users-round", ("meetings:",),
                      "Reuniões e atendimentos: pauta, registro e encaminhamentos"),
 }
@@ -226,14 +236,15 @@ COMMUNICATION_ADMIN = ("Comunicação", ["threads_staff", "announcements", "requ
 LAYOUT = {
     RESPONSAVEL: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
-        ("Acompanhamento", ["children", "fam_activities", "fam_works", "fam_grades", "fam_attendance"]),
+        ("Acompanhamento", ["children", "fam_activities", "fam_works", "fam_exam_prep", "fam_grades",
+                            "fam_attendance"]),
         ("Escola", ["threads_family", "announcements", "requests", "meetings", "notifications"]),
         ("Secretaria", ["fam_applications", "justify", "links", "fam_support"]),
         ("Análises", ["reports", "methodology"]),
     ],
     ESTUDANTE: [
         (None, ["home", "calendar", "schedule", "menu", "my_dashboard"]),
-        ("Meus estudos", ["my_activities", "my_works", "my_grades", "my_attendance"]),
+        ("Meus estudos", ["my_activities", "my_works", "my_exam_prep", "my_grades", "my_attendance"]),
         # Comunicados da escola e da turma (a regra de acesso já os mostrava ao
         # estudante, mas o menu não tinha o caminho).
         ("Escola", ["announcements", "notifications"]),
@@ -241,7 +252,7 @@ LAYOUT = {
     PROFESSOR: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Sala de aula", ["classrooms", "lesson_plans", "curriculum", "cognitio", "attendance", "evaluations",
-                          "activities", "prints_mine", "works"]),
+                          "exam_prep", "library", "activities", "rubrics", "prints_mine", "works"]),
         ("Acompanhamento", ["occurrences", "observations", "support_guidance", "justifications"]),
         COMMUNICATION_STAFF,
         ("Análises", ["teacher_bi", "subject_bi", "reports", "methodology", "norms"]),
@@ -259,7 +270,7 @@ LAYOUT = {
     COORDENACAO: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Coordenação", ["coord_panel", "lesson_plans", "curriculum", "cognitio", "prints_queue", "coord_records"]),
-        ("Pedagógico", ["students", "evaluations", "activities", "works", "attendance",
+        ("Pedagógico", ["students", "evaluations", "exam_prep", "library", "activities", "works", "attendance",
                         "occurrences", "observations", "plans", "support", "justifications",
                         "active_search"]),
         ("Acadêmico", ["classes", "subjects", "years", "assignments"]),
@@ -270,7 +281,7 @@ LAYOUT = {
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Coordenação", ["coord_panel", "lesson_plans", "curriculum", "cognitio", "prints_queue", "coord_designations"]),
         ("Análises", ["institutional", "goals", "subject_bi", "quality", "reports", "methodology", "norms"]),
-        ("Pedagógico", ["students", "evaluations", "activities", "works", "attendance",
+        ("Pedagógico", ["students", "evaluations", "exam_prep", "library", "activities", "works", "attendance",
                         "occurrences", "observations", "plans", "support", "justifications",
                         "active_search"]),
         ("Acadêmico", ["classes", "subjects", "years", "official_calendar", "teacher_perms"]),

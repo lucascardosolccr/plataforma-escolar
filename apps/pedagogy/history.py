@@ -1,4 +1,5 @@
-"""Histórico de alterações das atividades de casa (ver ``ActivityChange``).
+"""Histórico de alterações das atividades de casa e dos trabalhos em grupo
+(ver ``ActivityChange`` e ``GroupWorkChange``).
 
 O retrato é tirado ANTES de o formulário validar: o ModelForm escreve os
 valores novos na instância durante ``is_valid()``, e um retrato tirado depois
@@ -6,7 +7,7 @@ já sairia igual ao novo.
 """
 from datetime import date
 
-from .models import ActivityChange
+from .models import Activity, ActivityChange, GroupWork, GroupWorkChange
 
 # (campo, rótulo, a família vê?)
 TRACKED = (
@@ -24,27 +25,46 @@ TRACKED = (
     ("internal_notes", "Observações internas", False),
 )
 
+# Trabalho em grupo: tudo o que está no formulário aparece à família.
+WORK_TRACKED = (
+    ("title", "Título", True),
+    ("subject", "Disciplina", True),
+    ("description", "O que deve ser feito", True),
+    ("objectives", "Objetivos", True),
+    ("guidelines", "Orientações e critérios", True),
+    ("materials", "Materiais necessários", True),
+    ("presentation", "Forma de apresentação", True),
+    ("notes", "Observações complementares", True),
+    ("published_date", "Data de publicação", True),
+    ("deadline", "Prazo de entrega", True),
+    ("delivery_mode", "Modalidade de entrega", True),
+)
 
-def _display(act, name):
-    value = getattr(act, name)
+
+def _tracked(obj):
+    return WORK_TRACKED if isinstance(obj, GroupWork) else TRACKED
+
+
+def _display(obj, name):
+    value = getattr(obj, name)
     if value is None or value == "":
         return ""
-    if act._meta.get_field(name).choices:
-        return getattr(act, f"get_{name}_display")()
+    if obj._meta.get_field(name).choices:
+        return getattr(obj, f"get_{name}_display")()
     if isinstance(value, date):
         return f"{value:%d/%m/%Y}"
     return str(value)
 
 
-def snapshot(act):
-    return {name: _display(act, name) for name, _, _ in TRACKED}
+def snapshot(obj):
+    return {name: _display(obj, name) for name, _, _ in _tracked(obj)}
 
 
-def diff(act, before):
+def diff(obj, before):
     """Campos que mudaram desde ``before`` (um ``snapshot``)."""
     out = []
-    for name, label, family in TRACKED:
-        after = _display(act, name)
+    for name, label, family in _tracked(obj):
+        after = _display(obj, name)
         if before.get(name, "") != after:
             out.append({"label": label, "before": before.get(name, ""), "after": after,
                         "family": family})
@@ -59,13 +79,13 @@ def attachment_entries(added=(), removed=()):
     ]
 
 
-def record(act, user, family_saw, fields):
+def record(obj, user, family_saw, fields):
     """Grava a alteração se houver o que gravar. Rascunho não tem histórico."""
-    if not fields or act.status == act.Status.DRAFT:
+    if not fields or obj.status == obj.Status.DRAFT:
         return None
-    return ActivityChange.objects.create(
-        activity=act, changed_by=user, family_saw=family_saw, fields=fields
-    )
+    if isinstance(obj, Activity):
+        return ActivityChange.objects.create(activity=obj, changed_by=user, family_saw=family_saw, fields=fields)
+    return GroupWorkChange.objects.create(group_work=obj, changed_by=user, family_saw=family_saw, fields=fields)
 
 
 def summary(fields, family_only=False):

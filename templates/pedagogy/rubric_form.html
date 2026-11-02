@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Rubrica — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url 'pedagogy:rubric_list' as back %}
+<div class="form-page-wide">
+  {% include "partials/_form_head.html" with back_url=back back_label="Rubricas" heading=obj|yesno:"Editar rubrica,Nova rubrica" subheading="Preencha os níveis (colunas) e os critérios (linhas). Linhas e colunas em branco são ignoradas." %}
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">
+      {% if errors %}<div class="alert alert-danger" role="alert"><div>{% for e in errors %}<div>{{ e }}</div>{% endfor %}</div></div>{% endif %}
+      {% include "partials/_form_fields.html" with f=form %}
+
+      <h2 class="h6 mt-2">Níveis</h2>
+      <div class="row g-2 mb-3">
+        {% for lv in levels %}
+          <div class="col-sm-6 col-lg-3">
+            <label class="form-label small" for="nivel_{{ lv.i }}">Nível {{ forloop.counter }}</label>
+            <input id="nivel_{{ lv.i }}" name="nivel_{{ lv.i }}" value="{{ lv.label }}" maxlength="60" class="form-control form-control-sm" placeholder="{% cycle 'Ainda não' 'Em parte' 'Atingiu' 'Superou' %}">
+            <label class="visually-hidden" for="pontos_{{ lv.i }}">Pontos do nível {{ forloop.counter }}</label>
+            <input id="pontos_{{ lv.i }}" name="pontos_{{ lv.i }}" value="{% if lv.points is not None %}{{ lv.points }}{% endif %}" inputmode="decimal" class="form-control form-control-sm mt-1" placeholder="Pontos (opcional)">
+          </div>
+        {% endfor %}
+      </div>
+
+      <h2 class="h6">Critérios e o que se espera em cada nível</h2>
+      {% for c in criteria %}
+        <fieldset class="border rounded p-2 mb-2">
+          <legend class="visually-hidden">Critério {{ forloop.counter }}</legend>
+          <label class="form-label small" for="criterio_{{ c.j }}">Critério {{ forloop.counter }}</label>
+          <input id="criterio_{{ c.j }}" name="criterio_{{ c.j }}" value="{{ c.name }}" maxlength="150" class="form-control form-control-sm mb-2" placeholder="Ex.: Organização das ideias">
+          <div class="row g-2">
+            {% for lv, text in c.cell_pairs %}
+              <div class="col-sm-6 col-lg-3">
+                <label class="visually-hidden" for="desc_{{ c.j }}_{{ lv.i }}">Critério {{ forloop.parentloop.counter }}, nível {{ forloop.counter }}</label>
+                <textarea id="desc_{{ c.j }}_{{ lv.i }}" name="desc_{{ c.j }}_{{ lv.i }}" rows="2" maxlength="300" class="form-control form-control-sm" placeholder="O que se espera neste nível">{{ text }}</textarea>
+              </div>
+            {% endfor %}
+          </div>
+        </fieldset>
+      {% endfor %}
+      <p class="small text-body-secondary mb-0">Até {{ max_levels }} níveis e {{ max_criteria }} critérios: depois de salvar, novas linhas em branco aparecem ao editar.</p>
+    </div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Salvar rubrica" %}
+  </form>
+</div>
+{% endblock %}

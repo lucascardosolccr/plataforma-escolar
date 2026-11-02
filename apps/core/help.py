@@ -40,6 +40,22 @@ GUIDES = [
         ("Depois do prazo, abra a atividade e registre quem entregou.", "pedagogy:activity_list"),
         ("Editou depois de publicar? A tela da atividade guarda o histórico, e a família vê que ela mudou.", None),
     ]),
+    ("Preparar a turma para uma prova", "book-open", (PROFESSOR,), [
+        ("Em Conteúdos da prova, use “Novos conteúdos” e escolha a avaliação, se já existir.", "study:create"),
+        ("Acrescente os tópicos com as habilidades e os materiais (vídeos, leituras, arquivos).", None),
+        ("Publique: a turma e as famílias são avisadas. Responda às dúvidas na própria tela.", None),
+        ("“Plano de cada estudante” mostra por onde cada um deve começar e por quê.", "study:list"),
+    ]),
+    ("Corrigir com rubrica", "list-checks", (PROFESSOR,), [
+        ("Em Rubricas, crie critérios e níveis, com o que se espera em cada um.", "pedagogy:rubric_list"),
+        ("Escolha a rubrica no formulário da atividade de casa.", None),
+        ("Na atividade, “Avaliar com a rubrica”. A família vê só o nível do próprio filho.", None),
+    ]),
+    ("Estudar para uma prova", "book-open", (ESTUDANTE, RESPONSAVEL), [
+        ("Em Minhas provas (família: Conteúdos da prova) estão o que vai cair e o que estudar.", "study:list"),
+        ("Siga “Por onde começar”, use os materiais e marque como está em cada tópico.", None),
+        ("Dúvida? Envie ao professor na própria prova: a resposta aparece ali.", None),
+    ]),
     ("Marcar uma reunião com a família", "users-round", (PROFESSOR, COORDENACAO, DIRECAO, SECRETARIA), [
         ("Em Reuniões, use “Marcar reunião”, escolha o estudante e marque “Convidar os responsáveis”.",
          "meetings:create"),

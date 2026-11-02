@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Rubricas — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Rubricas de avaliação</h1>
+    <p>Critérios e níveis que deixam claro, para o estudante e a família, como uma atividade é corrigida. Escolha a rubrica no formulário da atividade de casa.</p>
+  </div>
+  {% if can_create %}<div class="page-actions"><a href="{% url 'pedagogy:rubric_create' %}" class="btn btn-primary">{% icon "plus" %}Nova rubrica</a></div>{% endif %}
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0 table-stack">
+      <thead><tr><th>Rubrica</th><th>Disciplina</th><th>Autor</th><th>Uso</th><th class="text-end"></th></tr></thead>
+      <tbody>
+        {% for r in rubrics %}
+        <tr>
+          <td><span class="fw-semibold">{{ r.title }}</span>{% if r.description %}<span class="d-block small text-body-secondary">{{ r.description|truncatechars:120 }}</span>{% endif %}</td>
+          <td>{{ r.subject.name|default:"—" }}</td>
+          <td>{{ r.created_by.get_full_name|default:r.created_by.username|default:"—" }}{% if r.shared %} <span class="chip">compartilhada</span>{% endif %}</td>
+          <td>{% if r.in_use %}Já usada para avaliar{% else %}Ainda não usada{% endif %}</td>
+          <td class="text-end cell-actions">
+            {% if can_create %}
+              {% if r.created_by_id == request.user.pk and not r.in_use %}<a href="{% url 'pedagogy:rubric_edit' r.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>{% endif %}
+              <a href="{% url 'pedagogy:rubric_duplicate' r.pk %}" class="btn btn-sm btn-outline-secondary">Duplicar</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5"><div class="empty-state py-4">{% icon "list-checks" %}<strong>Nenhuma rubrica ainda.</strong>{% if can_create %}<span>Crie uma com três ou quatro níveis, como “Ainda não”, “Em parte” e “Atingiu”.</span>{% endif %}</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

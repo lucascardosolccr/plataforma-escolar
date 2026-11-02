@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load ui pedagogy_extras %}
+{% block title %}{{ guide.title }} — Conteúdos da prova — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'study:list' %}" class="back-link">{% icon "arrow-left" %}Conteúdos da prova</a>
+    <h1>{{ guide.title }}</h1>
+    <p>{{ guide.subject.name }} · turma {{ guide.class_group.name }} · prova em <strong>{{ guide.exam_date|date:"d/m/Y" }}</strong> · atualizado em {{ guide.updated_at|date:"d/m/Y" }}</p>
+  </div>
+</div>
+
+{% if guide.is_past %}<div class="alert alert-secondary" role="status"><div>Esta prova já aconteceu. Os conteúdos ficam aqui para consulta.</div></div>{% endif %}
+
+<nav aria-label="Etapas" class="d-flex flex-wrap gap-2 mb-3 small">
+  <a href="#o-que-cai" class="btn btn-sm btn-outline-secondary">1. O que vai cair</a>
+  <a href="#plano" class="btn btn-sm btn-outline-secondary">2. Por onde começar</a>
+  <a href="#materiais" class="btn btn-sm btn-outline-secondary">3. Materiais</a>
+  <a href="#como-estou" class="btn btn-sm btn-outline-secondary">4. Como estou</a>
+  <a href="#duvidas" class="btn btn-sm btn-outline-secondary">5. Dúvidas</a>
+</nav>
+
+<section class="card mb-3" id="o-que-cai" aria-labelledby="h-cai"><div class="card-body">
+  <h2 class="h5" id="h-cai">1. O que vai cair</h2>
+  {% if guide.description %}<div class="activity-instructions mb-3">{{ guide.description }}</div>{% endif %}
+  <ol class="d-grid gap-3 mb-0">
+    {% for t in topics %}
+      <li>
+        <span class="fw-semibold">{{ t.title }}</span>
+        {% if t.priority == 'alta' %}<span class="chip chip-state state-a_vencer">mais importante</span>{% endif %}
+        {% if t.level %}<span class="chip">{{ t.get_level_display }}</span>{% endif %}
+        {% if t.description %}<div class="small activity-instructions">{{ t.description }}</div>{% endif %}
+        {% if t.curriculum.all %}<ul class="small text-body-secondary mb-0">{% for it in t.curriculum.all %}<li><strong>{{ it.code }}</strong> {{ it.text }}</li>{% endfor %}</ul>{% endif %}
+        {% if t.prerequisite_notes %}<p class="small mb-0"><strong>É bom saber antes:</strong> {{ t.prerequisite_notes }}</p>{% endif %}
+      </li>
+    {% endfor %}
+  </ol>
+  {% if guide.guidance %}<h3 class="h6 mt-3">Orientações do professor</h3><div class="activity-instructions">{{ guide.guidance }}</div>{% endif %}
+  {% if guide.prep_time %}<p class="small mb-0"><strong>Tempo sugerido de estudo:</strong> {{ guide.prep_time }}</p>{% endif %}
+  {% if guide.criteria %}<h3 class="h6 mt-3">Como a prova será avaliada</h3><div class="activity-instructions">{{ guide.criteria }}</div>{% endif %}
+</div></section>
+
+<section class="card mb-3" id="plano" aria-labelledby="h-plano"><div class="card-body">
+  <h2 class="h5" id="h-plano">2. Por onde começar</h2>
+  {% for ps in per_student %}
+    {% if not is_student %}<h3 class="h6 mt-2">{{ ps.student.full_name }}</h3>{% endif %}
+    <p class="small text-body-secondary">{{ ps.plan.note }}</p>
+    <ol class="d-grid gap-3">
+      {% for s in ps.plan.steps %}
+        <li>
+          <span class="fw-semibold">{{ s.title }}</span>
+          {% if s.state %}<span class="chip">{{ s.state }}</span>{% endif %}
+          <p class="small mb-1">{{ s.reason }}</p>
+          <p class="small text-body-secondary mb-1">{{ s.how }}</p>
+          {% if s.materials %}<p class="small mb-0">Use: {% for m in s.materials %}<a href="#mat-{{ m.pk }}">{{ m.title }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+  {% endfor %}
+</div></section>
+
+<section class="card mb-3" id="materiais" aria-labelledby="h-mat"><div class="card-body">
+  <h2 class="h5" id="h-mat">3. Materiais indicados pelo professor</h2>
+  {% if videos %}<h3 class="h6">Vídeos</h3><ul class="list-unstyled d-grid gap-3">{% for m in videos %}{% include "study/_material.html" with m=m family=True %}{% endfor %}</ul>{% endif %}
+  {% if readings %}<h3 class="h6">Leituras</h3><ul class="list-unstyled d-grid gap-3">{% for m in readings %}{% include "study/_material.html" with m=m family=True %}{% endfor %}</ul>{% endif %}
+  {% if others %}<h3 class="h6">Arquivos, exercícios e roteiros</h3><ul class="list-unstyled d-grid gap-3">{% for m in others %}{% include "study/_material.html" with m=m family=True %}{% endfor %}</ul>{% endif %}
+  {% if not materials %}<p class="text-body-secondary mb-0">O professor ainda não indicou materiais.</p>{% endif %}
+</div></section>
+
+<section class="card mb-3" id="como-estou" aria-labelledby="h-estou"><div class="card-body">
+  <h2 class="h5" id="h-estou">4. Como estou</h2>
+  <p class="small text-body-secondary">{% if is_student %}Marque como você se sente em cada tópico. É só para você e o professor organizarem o estudo: não vale nota e não substitui a prova.{% else %}O que o estudante marcou sobre cada tópico. É uma impressão dele, não uma avaliação.{% endif %}</p>
+  {% for ps in per_student %}
+    {% if not is_student %}<h3 class="h6">{{ ps.student.full_name }} · {{ ps.reviewed }} de {{ topics|length }} tópico{{ topics|length|pluralize }} marcados como “entendi”</h3>{% endif %}
+    <ul class="list-unstyled d-grid gap-2">
+      {% for t in topics %}
+        {% with c=ps.checks|getitem:t.pk %}
+        <li class="d-flex flex-wrap align-items-center gap-2">
+          <span class="fw-semibold">{{ t.title }}</span>
+          {% if is_student %}
+            <form method="post" action="{% url 'study:topic_check' guide.pk t.pk %}" class="d-flex flex-wrap gap-1">
+              {% csrf_token %}
+              {% for value, label in check_choices %}
+                <button type="submit" name="status" value="{{ value }}" class="btn btn-sm {% if c.status == value %}btn-primary{% else %}btn-outline-secondary{% endif %}"{% if c.status == value %} aria-pressed="true"{% else %} aria-pressed="false"{% endif %}>{{ label }}</button>
+              {% endfor %}
+            </form>
+          {% else %}
+            <span class="small">{% if c %}{{ c.get_status_display }} <span class="text-body-secondary">({{ c.updated_at|date:"d/m" }})</span>{% else %}<span class="text-body-secondary">ainda não marcou</span>{% endif %}</span>
+          {% endif %}
+        </li>
+        {% endwith %}
+      {% endfor %}
+    </ul>
+  {% endfor %}
+</div></section>
+
+<section class="card mb-3" id="duvidas" aria-labelledby="h-duv"><div class="card-body">
+  <h2 class="h5" id="h-duv">5. Dúvidas para o professor</h2>
+  {% for ps in per_student %}
+    {% for q in ps.questions %}
+      <div class="mb-3">
+        <p class="mb-1">{% if not is_student %}<span class="chip">{{ ps.student.first_name }}</span> {% endif %}{% if q.topic %}<span class="small text-body-secondary">{{ q.topic.title }} · </span>{% endif %}{{ q.text }}</p>
+        {% if q.answer %}<p class="small mb-0"><strong>Resposta do professor:</strong> {{ q.answer }}</p>{% else %}<p class="small text-body-secondary mb-0">Aguardando resposta.</p>{% endif %}
+      </div>
+    {% endfor %}
+  {% endfor %}
+  <form method="post" action="{% url 'study:question_add' guide.pk %}" novalidate class="mt-2">
+    {% csrf_token %}
+    {% if per_student|length > 1 %}
+      <label class="form-label" for="estudante">Estudante</label>
+      <select id="estudante" name="estudante" class="form-select mb-2">{% for ps in per_student %}<option value="{{ ps.student.pk }}">{{ ps.student.full_name }}</option>{% endfor %}</select>
+    {% endif %}
+    {% include "partials/_form_fields.html" with f=question_form %}
+    <button type="submit" class="btn btn-primary">Enviar dúvida</button>
+  </form>
+</div></section>
+
+{% if updates %}
+<section class="card" aria-labelledby="h-atu"><div class="card-body">
+  <h2 class="h6" id="h-atu">Atualizações</h2>
+  <ul class="small mb-0">{% for u in updates %}<li>{{ u.created_at|date:"d/m/Y" }}: {{ u.text }}</li>{% endfor %}</ul>
+</div></section>
+{% endif %}
+{% endblock %}

@@ -188,6 +188,16 @@ class InterventionTests(Base):
         rebuild_class(self.cg)
         res = {r["student"].first_name: r["result"] for r in outcomes(iv)}
         self.assertEqual(res, {"Ana": "melhorou", "Bia": "sem_evidencia"})
+        # Prompt 18 §12/§20.16: sem melhora, o sistema pede para rever a hipótese antes de repetir.
+        from apps.cognitio.recommend import NEXT_AFTER
+        obs(self, self.bia, self.h1, 1, 12)
+        obs(self, self.bia, self.h1, 1, 2)
+        rebuild_class(self.cg)
+        bia = [r for r in outcomes(iv) if r["student"] == self.bia][0]
+        self.assertIn(bia["result"], ("estavel", "piorou"))  # sem melhora
+        self.assertEqual(bia["next"], NEXT_AFTER[bia["result"]])
+        self.assertContains(self.client.get(reverse("cognitio:intervention_detail", args=[iv.pk])),
+                            "reveja a hipótese")
         self.assertContains(self.client.get(reverse("cognitio:intervention_detail", args=[iv.pk])),
                             "não prova que a intervenção causou")
         self.login(self.prof_b)

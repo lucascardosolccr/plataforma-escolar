@@ -1369,6 +1369,7 @@ def module_usage(school, period):
     from apps.communication.models import Announcement, Message, ServiceRequest
     from apps.core.models import AuditLog, Role
     from apps.pedagogy.models import GroupWork, LessonPlan, Occurrence
+    from apps.study.models import ExamGuide, StudyQuestion
 
     start, end = period.start, period.end
     created = {"created_at__date__gte": start, "created_at__date__lte": end}
@@ -1389,6 +1390,8 @@ def module_usage(school, period):
         ("Comunicados", n(Announcement)),
         ("Mensagens trocadas", Message.objects.filter(thread__school=school, **created).count()),
         ("Solicitações abertas", n(ServiceRequest)),
+        ("Conteúdos de prova criados", n(ExamGuide)),
+        ("Dúvidas enviadas sobre provas", StudyQuestion.objects.filter(guide__school=school, **created).count()),
     ]
     logins = (
         AuditLog.objects.filter(school=school, action="login", **created)

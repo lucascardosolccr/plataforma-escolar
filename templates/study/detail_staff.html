@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ guide.title }} — Conteúdos da prova — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'study:list' %}" class="back-link">{% icon "arrow-left" %}Conteúdos da prova</a>
+    <h1>{{ guide.title }}</h1>
+    <p>{{ guide.subject.name }} · turma {{ guide.class_group.name }} · prova em <strong>{{ guide.exam_date|date:"d/m/Y" }}</strong>{% if guide.evaluation %} · ligada à avaliação “{{ guide.evaluation.title }}”{% endif %}</p>
+  </div>
+  <div class="page-actions">
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+      <span class="chip chip-state {% if guide.status == 'publicado' %}state-pendente{% else %}state-rascunho{% endif %}">{{ guide.get_status_display }}</span>
+      {% if can_manage %}
+        <a href="{% url 'study:edit' guide.pk %}" class="btn btn-sm btn-outline-secondary">{% icon "pencil" %}Editar</a>
+        {% if guide.status == 'rascunho' %}
+          <form method="post" action="{% url 'study:status' guide.pk 'publicar' %}">{% csrf_token %}<button type="submit" class="btn btn-sm btn-primary">{% icon "check" %}Publicar para a turma</button></form>
+        {% elif guide.status == 'publicado' %}
+          <form method="post" action="{% url 'study:status' guide.pk 'arquivar' %}">{% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-secondary" data-confirm="Os conteúdos saem das listas da turma e das famílias. Nada é apagado e dá para reabrir." data-confirm-title="Arquivar?" data-confirm-ok="Arquivar">Arquivar</button></form>
+        {% else %}
+          <form method="post" action="{% url 'study:status' guide.pk 'reabrir' %}">{% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-secondary">Reabrir</button></form>
+        {% endif %}
+      {% endif %}
+      <a href="{% url 'study:reuse' guide.pk %}" class="btn btn-sm btn-outline-secondary">Reutilizar</a>
+    </div>
+  </div>
+</div>
+
+{% if guide.status == 'rascunho' %}<div class="alert alert-warning" role="status"><div><strong>Rascunho.</strong> A turma e as famílias ainda não veem. Publicar avisa todos{% if guide.published_date > today %} em {{ guide.published_date|date:"d/m/Y" }}{% endif %}.</div></div>{% endif %}
+{% if broken %}<div class="alert alert-warning" role="status"><div><strong>Links que não abrem:</strong> {% for m in broken %}{{ m.title }}{% if not forloop.last %}, {% endif %}{% endfor %}. Confira, troque o material ou marque como conferido.</div></div>{% endif %}
+
+<div class="row g-3">
+  <div class="col-xl-7">
+    <section class="card mb-3" aria-labelledby="h-top"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+        <h2 class="h5 mb-0" id="h-top">Tópicos</h2>
+        {% if can_manage %}<a href="{% url 'study:topic_add' guide.pk %}" class="btn btn-sm btn-outline-primary">{% icon "plus" %}Novo tópico</a>{% endif %}
+      </div>
+      {% if guide.description %}<div class="small activity-instructions mb-2">{{ guide.description }}</div>{% endif %}
+      <ol class="d-grid gap-3 mb-0">
+        {% for t in topics %}
+          <li>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <span class="fw-semibold">{{ t.title }}</span>
+              <span class="chip">prioridade {{ t.get_priority_display|lower }}</span>
+              {% if can_manage %}
+                <a href="{% url 'study:topic_edit' guide.pk t.pk %}" class="btn btn-link btn-sm p-0">Editar</a>
+                <form method="post" action="{% url 'study:topic_delete' guide.pk t.pk %}">{% csrf_token %}<button type="submit" class="btn btn-link btn-sm p-0 text-danger" data-confirm="O tópico e as marcações dos estudantes sobre ele saem da prova." data-confirm-title="Retirar tópico?" data-confirm-ok="Retirar" data-confirm-tone="danger">Retirar</button></form>
+              {% endif %}
+            </div>
+            {% if t.curriculum.all %}<p class="small text-body-secondary mb-1">{% for it in t.curriculum.all %}{{ it.code }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+            <p class="small mb-0">Autorrelato da turma:
+              {% for label, n in t.self_report %}{{ label|lower }} <strong>{{ n }}</strong>{% if not forloop.last %} · {% endif %}{% endfor %}
+              · sem marcação <strong>{{ t.no_report }}</strong>{% if t.n_questions %} · {{ t.n_questions }} dúvida{{ t.n_questions|pluralize }}{% endif %}
+            </p>
+          </li>
+        {% empty %}
+          <li class="text-body-secondary">Nenhum tópico ainda. É preciso pelo menos um para publicar.</li>
+        {% endfor %}
+      </ol>
+      <p class="small text-body-secondary mt-2 mb-0">O autorrelato é o que o estudante declara (“entendi”, “preciso praticar”). Não é evidência de aprendizagem: compare com os registros abaixo.</p>
+    </div></section>
+
+    <section class="card mb-3" aria-labelledby="h-mat"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+        <h2 class="h5 mb-0" id="h-mat">Materiais</h2>
+        {% if can_manage %}<a href="{% url 'study:material_add' guide.pk %}" class="btn btn-sm btn-outline-primary">{% icon "plus" %}Novo material</a>{% endif %}
+      </div>
+      {% if materials %}
+        <ul class="list-unstyled d-grid gap-3 mb-0">{% for m in materials %}{% include "study/_material.html" with m=m manage=can_manage %}{% endfor %}</ul>
+      {% else %}<p class="text-body-secondary mb-0">Nenhum material ainda.</p>{% endif %}
+      {% if removed %}
+        <details class="mt-3"><summary class="small">Retirados ou substituídos ({{ removed|length }})</summary>
+          <ul class="small mb-0">{% for m in removed %}<li>{{ m.title }} — {{ m.removed_at|date:"d/m/Y" }}{% if m.replaced_by %}, trocado por “{{ m.replaced_by.title }}”{% endif %}</li>{% endfor %}</ul>
+        </details>
+      {% endif %}
+    </div></section>
+
+    <section class="card mb-3" id="duvidas" aria-labelledby="h-duv"><div class="card-body">
+      <h2 class="h5" id="h-duv">Dúvidas dos estudantes</h2>
+      {% for q in questions %}
+        <div class="mb-3">
+          <p class="mb-1"><span class="chip">{{ q.student.full_name }}</span>{% if q.topic %} <span class="small text-body-secondary">{{ q.topic.title }}</span>{% endif %} <span class="small text-body-secondary">· {{ q.created_at|date:"d/m H:i" }}</span></p>
+          <p class="mb-1">{{ q.text }}</p>
+          {% if q.answer %}<p class="small mb-0"><strong>Resposta:</strong> {{ q.answer }}</p>
+          {% elif can_manage %}
+            <form method="post" action="{% url 'study:question_answer' guide.pk q.pk %}" class="d-flex flex-wrap gap-2">
+              {% csrf_token %}
+              <label class="visually-hidden" for="resp-{{ q.pk }}">Resposta para {{ q.student.first_name }}</label>
+              <textarea id="resp-{{ q.pk }}" name="answer" rows="2" class="form-control" maxlength="2000"></textarea>
+              <button type="submit" class="btn btn-sm btn-primary">Responder</button>
+            </form>
+          {% else %}<p class="small text-body-secondary mb-0">Sem resposta.</p>{% endif %}
+        </div>
+      {% empty %}<p class="text-body-secondary mb-0">Nenhuma dúvida enviada.</p>{% endfor %}
+    </div></section>
+  </div>
+
+  <div class="col-xl-5">
+    <section class="card mb-3" aria-labelledby="h-hab"><div class="card-body">
+      <h2 class="h5" id="h-hab">Habilidades da prova na turma</h2>
+      <p class="small text-body-secondary">Registros do EIA-Cognitio (evidências e decisões do professor), contados por estudante. Ausência de registro não é ausência de aprendizagem.</p>
+      {% for r in skills %}
+        <div class="mb-2">
+          <p class="mb-0 small"><strong>{{ r.item.code }}</strong> {{ r.item.text|truncatechars:90 }}</p>
+          <p class="mb-0 small text-body-secondary">{% for label, n in r.counts %}{{ label }}: {{ n }}{% if not forloop.last %} · {% endif %}{% endfor %}{% if r.dependents %} · base para {{ r.dependents }} habilidade{{ r.dependents|pluralize }}{% endif %}</p>
+        </div>
+      {% empty %}<p class="small text-body-secondary mb-0">Ligue habilidades aos tópicos para ver os registros da turma.</p>{% endfor %}
+      {% if guide.evaluation and guide.evaluation.status == 'publicada' %}
+        <p class="small mt-2 mb-0">A prova já tem notas publicadas. Para que o resultado entre nas habilidades, registre as questões e as habilidades avaliadas no EIA-Cognitio.</p>
+      {% endif %}
+    </div></section>
+
+    <section class="card mb-3" aria-labelledby="h-est"><div class="card-body">
+      <h2 class="h5" id="h-est">Plano de cada estudante</h2>
+      <p class="small text-body-secondary">A ordem de estudo sugerida e o porquê de cada passo, a partir dos registros de aprendizagem.</p>
+      <ul class="list-unstyled small mb-0 study-students">
+        {% for s in students %}<li><a href="{% url 'study:student_plan' guide.pk s.pk %}">{{ s.full_name }}</a></li>{% empty %}<li class="text-body-secondary">Turma sem estudantes ativos.</li>{% endfor %}
+      </ul>
+    </div></section>
+
+    <section class="card" aria-labelledby="h-atu"><div class="card-body">
+      <h2 class="h6" id="h-atu">Atualizações</h2>
+      {% if updates %}<ul class="small mb-0">{% for u in updates %}<li>{{ u.created_at|date:"d/m/Y H:i" }}: {{ u.text }}</li>{% endfor %}</ul>
+      {% else %}<p class="small text-body-secondary mb-0">Nada ainda.</p>{% endif %}
+    </div></section>
+  </div>
+</div>
+{% endblock %}

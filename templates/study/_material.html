@@ -1,0 +1,52 @@
+{% load ui %}{% comment %}
+Um material de estudo. Recebe ``m``, ``guide`` e, opcionalmente, ``family``
+(mostra "o link não abre") e ``manage`` (mostra editar, trocar, retirar).
+Link externo abre em outra aba, sem enviar a página de origem.
+{% endcomment %}
+<li class="study-material" id="mat-{{ m.pk }}">
+  <div class="d-flex flex-wrap align-items-center gap-2">
+    <span class="chip">{{ m.get_kind_display }}</span>
+    {% if m.url %}
+      <a href="{{ m.url }}" target="_blank" rel="noopener noreferrer" class="fw-semibold">{{ m.title }}<span class="visually-hidden"> (abre em outra aba, fora da plataforma)</span></a>
+      <span class="small text-body-secondary">{{ m.platform }}</span>
+    {% elif m.file %}
+      <a href="{% url 'study:material_file' guide.pk m.pk %}" class="fw-semibold">{% icon "paperclip" %}{{ m.title }}</a>
+    {% else %}
+      <span class="fw-semibold">{{ m.title }}</span>
+    {% endif %}
+    {% if m.duration %}<span class="small text-body-secondary">· {{ m.duration }}</span>{% endif %}
+    {% if manage and m.broken_reports %}<span class="chip chip-state state-encerrada">{{ m.broken_reports }} aviso{{ m.broken_reports|pluralize }} de link que não abre</span>{% endif %}
+  </div>
+  {% if m.author or m.publisher or m.edition_year or m.pages %}
+    <p class="small text-body-secondary mb-1">{% if m.author %}{{ m.author }}{% endif %}{% if m.publisher %} · {{ m.publisher }}{% endif %}{% if m.edition_year %} · {{ m.edition_year }}{% endif %}{% if m.pages %} · {{ m.pages }}{% endif %}{% if m.access_type %} · {{ m.get_access_type_display }}{% endif %}</p>
+  {% endif %}
+  {% if m.why %}<p class="small mb-1"><strong>Por quê:</strong> {{ m.why }}</p>{% endif %}
+  {% if m.description %}<div class="small mb-1 activity-instructions">{{ m.description }}</div>{% endif %}
+  {% if m.segment %}<p class="small mb-1"><strong>Trecho:</strong> {{ m.segment }}</p>{% endif %}
+  {% if m.guiding_questions %}<p class="small mb-1"><strong>Perguntas para guiar:</strong> {{ m.guiding_questions|linebreaksbr }}</p>{% endif %}
+  {% if m.follow_up %}<p class="small mb-1"><strong>Depois:</strong> {{ m.follow_up|linebreaksbr }}</p>{% endif %}
+  {% if m.accessibility %}<p class="small mb-1"><strong>Acessibilidade:</strong> {{ m.accessibility }}</p>{% endif %}
+  {% if m.alternative %}<p class="small mb-1"><strong>Sem acesso ao material?</strong> {{ m.alternative }}</p>{% endif %}
+  {% if family and m.url %}
+    <form method="post" action="{% url 'study:material_report' guide.pk m.pk %}" class="mt-1">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-link btn-sm p-0">O link não abre? Avise o professor</button>
+    </form>
+  {% endif %}
+  {% if manage %}
+    <div class="d-flex flex-wrap gap-2 mt-1">
+      <a href="{% url 'study:material_edit' guide.pk m.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
+      <a href="{% url 'study:material_replace' guide.pk m.pk %}" class="btn btn-sm btn-outline-secondary">Substituir</a>
+      <form method="post" action="{% url 'study:material_remove' guide.pk m.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="O material sai da lista da turma e fica registrado no histórico." data-confirm-title="Retirar material?" data-confirm-ok="Retirar" data-confirm-tone="danger">Retirar</button>
+      </form>
+      {% if m.broken_reports %}
+        <form method="post" action="{% url 'study:material_report_clear' guide.pk m.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-outline-success">Link conferido</button>
+        </form>
+      {% endif %}
+    </div>
+  {% endif %}
+</li>

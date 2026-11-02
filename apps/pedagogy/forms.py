@@ -13,6 +13,7 @@ from apps.core.uploads import (
 from apps.registry.choices import label_students_with_class
 
 from .models import (
+    Rubric,
     AbsenceJustification,
     AcademicRule,
     Activity,
@@ -219,6 +220,7 @@ class ActivityForm(CurriculumFormMixin, forms.ModelForm):
             "deadline",
             "internal_notes",
             "curriculum",
+            "rubric",
         ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 5}),
@@ -279,6 +281,15 @@ class ActivityForm(CurriculumFormMixin, forms.ModelForm):
         # Sem escolha (ou cliente antigo que não envia o campo): individual.
         self.fields["work_mode"].required = False
         self.fields["internal_notes"].help_text = "Só a equipe vê (coordenação, impressão). A família nunca vê."
+        if user is not None:
+            from .views_rubrics import rubrics_for
+
+            # As do professor e as compartilhadas; a atual continua na lista.
+            self.fields["rubric"].queryset = (rubrics_for(user) | Rubric.objects.filter(pk=self.instance.rubric_id)
+                                              ).distinct()
+        self.fields["rubric"].required = False
+        self.fields["rubric"].help_text = ("Opcional. A família vê os critérios e, depois da correção, o nível do "
+                                           "filho em cada um. Não entra na média.")
         self.fields["internal_notes"].widget = forms.Textarea(attrs={"rows": 2})
         if self.instance.pk and self.instance.status != Activity.Status.DRAFT:
             # Mudar a turma de uma atividade já publicada a tiraria em silêncio

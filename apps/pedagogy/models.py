@@ -239,6 +239,10 @@ class Activity(FamilyVisibility, models.Model):
     curriculum = models.ManyToManyField(
         "curriculum.CurriculumItem", blank=True, related_name="%(class)s_set",
         verbose_name="habilidades e objetivos curriculares")
+    rubric = models.ForeignKey(
+        "Rubric", on_delete=models.PROTECT, null=True, blank=True, related_name="activities",
+        verbose_name="rubrica de avaliação",
+    )
     created_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name="activities_created"
     )
@@ -396,6 +400,33 @@ class ActivityChange(models.Model):
 
     def __str__(self):
         return f"{self.activity} — {self.changed_at:%d/%m/%Y %H:%M}"
+
+    @property
+    def family_labels(self):
+        return [f["label"] for f in self.fields if f.get("family")]
+
+
+class GroupWorkChange(models.Model):
+    """Edição de trabalho em grupo já publicado (mesma ideia de ``ActivityChange``).
+
+    A mudança de integrantes já fica em ``WorkGroupMember`` (entrada e saída
+    com data); aqui fica o que mudou no texto, nas datas e na modalidade.
+    """
+
+    group_work = models.ForeignKey(
+        "GroupWork", on_delete=models.CASCADE, related_name="changes", verbose_name="trabalho"
+    )
+    changed_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, verbose_name="alterado por"
+    )
+    changed_at = models.DateTimeField("alterado em", auto_now_add=True)
+    family_saw = models.BooleanField("família já via", default=False)
+    fields = models.JSONField("campos alterados", default=list)
+
+    class Meta:
+        ordering = ["-changed_at", "-pk"]
+        verbose_name = "alteração de trabalho em grupo"
+        verbose_name_plural = "alterações de trabalho em grupo"
 
     @property
     def family_labels(self):
@@ -1064,3 +1095,88 @@ class ActiveSearchAction(models.Model):
 
     def __str__(self):
         return f"{self.get_kind_display()} — {self.student} ({self.date:%d/%m/%Y})"
+
+class Rubric(models.Model):
+    """Rubrica de avaliação (Prompt 9 §8.2 e §8.3): critérios × níveis, com a
+    descrição do que se espera em cada célula.
+
+    Serve para tornar a correção explícita e igual para todos. Não entra na
+    média da disciplina (como a nota da atividade). Rubrica já usada para
+    avaliar não muda: para ajustar, duplique; assim nenhuma avaliação antiga
+    passa a significar outra coisa.
+    """
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, verbose_name="escola")
+    title = models.CharField("nome", max_length=150)
+    description = models.TextField("para que serve", blank=True)
+    subject = models.ForeignKey(Subject, on_delete=models.SET_NULL, null=True, blank=True,
+                                verbose_name="disciplina")
+    shared = models.BooleanField("colegas podem usar", default=False)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["title"]
+        verbose_name = "rubrica"
+        verbose_name_plural = "rubricas"
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def in_use(self):
+        return RubricScore.objects.filter(criterion__rubric=self).exists()
+
+    def grid(self):
+        """[(critério, [descrição por nível])] na ordem dos níveis."""
+        levels = list(self.levels.all())
+        texts = {(d.criterion_id, d.level_id): d.text for d in RubricDescriptor.objects.filter(criterion__rubric=self)}
+        return levels, [(c, [texts.get((c.pk, lv.pk), "") for lv in levels]) for c in self.criteria.all()]
+
+
+class RubricCriterion(models.Model):
+    rubric = models.ForeignKey(Rubric, on_delete=models.CASCADE, related_name="criteria")
+    name = models.CharField("critério", max_length=150)
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "pk"]
+
+    def __str__(self):
+        return self.name
+
+
+class RubricLevel(models.Model):
+    rubric = models.ForeignKey(Rubric, on_delete=models.CASCADE, related_name="levels")
+    label = models.CharField("nível", max_length=60)
+    points = models.DecimalField("pontos", max_digits=5, decimal_places=2, null=True, blank=True)
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "pk"]
+
+    def __str__(self):
+        return self.label
+
+
+class RubricDescriptor(models.Model):
+    criterion = models.ForeignKey(RubricCriterion, on_delete=models.CASCADE, related_name="descriptors")
+    level = models.ForeignKey(RubricLevel, on_delete=models.CASCADE, related_name="descriptors")
+    text = models.CharField("o que se espera", max_length=300)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["criterion", "level"], name="uniq_rubric_cell")]
+
+
+class RubricScore(models.Model):
+    """Nível atribuído pelo professor a um estudante, num critério, numa atividade."""
+
+    activity = models.ForeignKey(Activity, on_delete=models.CASCADE, related_name="rubric_scores")
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="rubric_scores")
+    criterion = models.ForeignKey(RubricCriterion, on_delete=models.PROTECT, related_name="scores")
+    level = models.ForeignKey(RubricLevel, on_delete=models.PROTECT, related_name="scores")
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="+")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["activity", "student", "criterion"], name="uniq_rubric_score")]

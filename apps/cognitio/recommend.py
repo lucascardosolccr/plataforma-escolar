@@ -161,8 +161,19 @@ def outcomes(intervention, scale=None):
             diff = after_mean - before.mean
             result = "melhorou" if diff >= 0.1 else "piorou" if diff <= -0.1 else "estavel"
         out.append({"student": st, "before": before, "after": after, "result": result,
-                    "n_after": len([e for e in after_ev if e.ratio is not None])})
+                    "n_after": len([e for e in after_ev if e.ratio is not None]),
+                    "next": NEXT_AFTER.get(result, "")})
     return out
+
+
+# Prompt 18 §12: sem o resultado esperado, revisar antes de repetir a mesma atividade.
+NEXT_AFTER = {
+    "estavel": ("Sem mudança nas evidências: reveja a hipótese (o obstáculo é mesmo esta habilidade ou um "
+                "pré-requisito dela?), a estratégia ou o instrumento de verificação, antes de repetir a mesma atividade."),
+    "piorou": ("Resultados mais baixos depois do início: confira se a verificação mediu a mesma coisa e reveja a "
+               "hipótese e a estratégia. Não repita a mesma atividade sem essa revisão."),
+    "sem_evidencia": "Registre uma verificação curta depois da intervenção para saber se ela ajudou.",
+}
 
 
 MIN_GROUP = 3  # com menos estudantes, a média de um grupo depende de uma pessoa só

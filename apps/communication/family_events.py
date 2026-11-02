@@ -36,6 +36,7 @@ EVENTS = {
     "prazo_alterado": ("Prazo de atividade ou trabalho alterado pelo professor", K.ACTIVITY, True),
     "prova_marcada": ("Prova com data divulgada, data alterada ou prova desmarcada", K.EXAM, True),
     "prova_lembrete": ("Lembrete de prova (conforme a antecedência configurada)", K.EXAM, True),
+    "conteudo_prova": ("Conteúdos da prova publicados, atualizados ou com data alterada", K.EXAM, True),
     "falta_registrada": ("Falta registrada", K.ATTENDANCE, True),
     "falta_corrigida": ("Falta corrigida para presença", K.ATTENDANCE, True),
     "limite_faltas": ("Faltas perto do limite", K.ATTENDANCE, True),

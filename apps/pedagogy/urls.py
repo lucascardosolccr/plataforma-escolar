@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_active_search, views_planning, views_reuse
+from . import views, views_active_search, views_planning, views_reuse, views_rubrics
 
 app_name = "pedagogy"
 
@@ -28,6 +28,11 @@ urlpatterns = [
         name="activity_attachment_remove",
     ),
     path("atividades/<int:pk>/ciente/", views.activity_acknowledge, name="activity_acknowledge"),
+    path("atividades/<int:pk>/rubrica/", views_rubrics.activity_rubric_scores, name="activity_rubric_scores"),
+    path("rubricas/", views_rubrics.rubric_list, name="rubric_list"),
+    path("rubricas/nova/", views_rubrics.rubric_form, name="rubric_create"),
+    path("rubricas/<int:pk>/editar/", views_rubrics.rubric_form, name="rubric_edit"),
+    path("rubricas/<int:pk>/duplicar/", views_rubrics.rubric_form, {"duplicate": True}, name="rubric_duplicate"),
     path(
         "atividades/<int:pk>/entregas/",
         views.activity_submissions,

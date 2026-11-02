@@ -292,8 +292,10 @@ REQS = [
       extra={"nota": "Lista da família e simulador conferidos a 390 px em 02/11/2026."}),
     R("P3-15", "P3 §11; P8 R11", "Acessibilidade: rótulos, foco, hierarquia, sem depender só de cor",
       "Auditoria própria com Playwright; rótulos e cabeçalhos",
-      ["../docs/RELATORIO_FINAL_REDESIGN.md"], "PARCIAL", prioridade="P2",
-      pendencia="Sem teste com leitor de tela real; sem ferramenta automática de acessibilidade instalada (não adiciona dependência)."),
+      ["../docs/RELATORIO_FINAL_REDESIGN.md", "../docs/AUDITORIA_LIGHTHOUSE_2026-11-02.md"], "PARCIAL", prioridade="P2",
+      pendencia="Verificação automática feita em 02/11/2026 (Lighthouse/axe: 100 em 13 páginas de 5 perfis, depois de "
+                "corrigir nome do botão de busca, nome do botão de perfil e alvos de toque). Falta teste com leitor "
+                "de tela real (NVDA ou Narrador), que nenhuma ferramenta automática substitui."),
     R("P3-16", "P3 §12; P6 §4.3", "Estados de erro, permissão, sessão expirada e página não encontrada",
       "403 explica o motivo; 404 amigável; 500 sem detalhes internos; formulário expirado",
       [T("core", "test_redesign_round2", "test_403_shows_reason_and_way_out"),
@@ -492,10 +494,13 @@ REQS = [
       "Decisão registrada", [], "DECISÃO", prioridade="P3",
       pendencia="Não adotado: 3D não responde a nenhuma pergunta da escola, pesa no celular e exigiria biblioteca externa."),
     R("P8-03", "P8 R13", "Medição de desempenho (Lighthouse ou equivalente)",
-      "Medição registrada", ["../docs/VARREDURA_DE_MELHORIAS_2026-11-01.md"], "BLOQUEADO", prioridade="P3",
-      pendencia="Medido tempo e consultas por página (mediana 20 ms, 12 consultas). Lighthouse: a tentativa de "
-                "baixá-lo pelo npm (só como ferramenta de medição, sem virar dependência) foi negada pela permissão "
-                "do ambiente em 02/11/2026. Precisa de autorização para rodar `npx lighthouse`."),
+      "Medição registrada: Lighthouse 13.5.0 em 13 páginas de 5 perfis; achados corrigidos",
+      ["../docs/AUDITORIA_LIGHTHOUSE_2026-11-02.md", "../docs/VARREDURA_DE_MELHORIAS_2026-11-01.md",
+       "tools/lighthouse_flow.mjs", "apps/core/static_serve.py",
+       T("core", "test_static", "test_css_and_js_are_gzipped_when_accepted"),
+       T("core", "test_static", "test_cache_policy")], "VALIDADO", prioridade="P3",
+      extra={"nota": "Autorizado pelo Lucas em 02/11/2026. Acessibilidade 100 e SEO 100 em todas; desempenho 95–100; "
+                     "boas práticas 81 só pelo script do Kaspersky injetado por HTTP nesta máquina."}),
 
     # ================================================================== P9
     R("P9-01", "P9 §5.1", "Visão geral do aluno com indicadores e 'dados insuficientes' quando faltar",

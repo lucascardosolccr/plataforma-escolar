@@ -2,7 +2,8 @@ from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.decorators import login_not_required
 from django.urls import include, path, re_path
-from django.views.static import serve as static_serve
+
+from apps.core.static_serve import serve_static
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -30,7 +31,8 @@ urlpatterns = [
 # Obs.: `login_not_required` é obrigatório, pois o LoginRequiredMiddleware
 # redireciona qualquer rota não marcada como pública quando o usuário é anônimo.
 if not settings.DEBUG:
-    serve_public_static = login_not_required(static_serve)
+    # Com gzip e cache: ver apps/core/static_serve.py.
+    serve_public_static = login_not_required(serve_static)
     urlpatterns += [
         re_path(
             r"^static/(?P<path>.*)$",

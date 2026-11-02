@@ -353,6 +353,10 @@ input[type="file"].form-control { padding: .45rem .6rem; }
 .table > tbody > tr > td, .table > tbody > tr > th { padding: .75rem 1rem; vertical-align: middle; }
 .table > tbody > tr:last-child > * { border-bottom: 0; }
 .card > .table-responsive, .card > .table { border-radius: var(--bs-card-inner-border-radius); }
+/* Listas de nomes com link (plano de cada estudante, integrantes do grupo):
+   alvo de toque de 24 px no mínimo (WCAG 2.5.8; Lighthouse "target-size"). */
+.study-students a, .group-members a { display: inline-block; min-height: 1.5rem; padding: .125rem 0; }
+
 /* position: relative mantém dentro da rolagem o texto .visually-hidden (absoluto)
    dos cabeçalhos; sem isso ele escapa e alarga a página inteira. */
 .table-responsive { scrollbar-width: thin; position: relative; }

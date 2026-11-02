@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Plataforma Escolar: atividades de casa, notas, frequência e comunicação entre a escola e as famílias.">
   <meta name="color-scheme" content="light dark">
   <title>{% block title %}Plataforma Escolar{% endblock %}</title>
   <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
@@ -109,9 +110,9 @@
         {% icon "moon" "i-moon" %}{% icon "sun" "i-sun" %}
       </button>
       <div class="dropdown">
-        <button class="btn btn-outline-secondary profile-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Conta de {{ user.get_full_name|default:user.username }}">
+        <button class="btn btn-outline-secondary profile-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
           {% avatar user %}
-          <span class="profile-name">{{ user.first_name|default:user.username }}</span>
+          <span class="profile-name">{{ user.first_name|default:user.username }}</span><span class="visually-hidden">: conta de {{ user.get_full_name|default:user.username }}</span>
           {% icon "chevron-down" %}
         </button>
         <ul class="dropdown-menu dropdown-menu-end">

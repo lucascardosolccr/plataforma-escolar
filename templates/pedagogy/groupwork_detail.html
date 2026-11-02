@@ -132,7 +132,7 @@
                     <h3 class="h6 mb-0">{{ row.group.name }}</h3>
                     <span class="chip">{{ row.members|length }} integrante{{ row.members|length|pluralize:"s" }}</span>
                   </div>
-                  <ol class="mb-0 small ps-3">
+                  <ol class="mb-0 small ps-3 group-members">
                     {% for m in row.members %}
                       <li class="{% if m.student_id in highlight_ids %}fw-bold{% endif %}">
                         {% if sees_all_groups %}

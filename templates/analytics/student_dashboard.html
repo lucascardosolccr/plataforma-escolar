@@ -89,11 +89,12 @@
 {# ================= Desempenho ================= #}
 <section class="bi-section" id="desempenho" aria-labelledby="h-desempenho">
   <h2 id="h-desempenho">Desempenho acadêmico {% metric_info "subject_average" %}</h2>
-  <p class="bi-lead">Médias pela regra de cada disciplina. Clique numa barra para ver as avaliações que formam a média.</p>
+  <p class="bi-lead">Médias pela regra de cada disciplina. Clique numa barra para filtrar a evolução, a distribuição e as avaliações por aquela disciplina.</p>
+  {% if subject_filter_name %}<p class="chip chip-state" role="status">{% icon "filter" %}Filtrado por {{ subject_filter_name }} · <a href="?{{ period.querystring }}#desempenho">limpar</a></p>{% endif %}
   <div class="row g-3 mb-3">
     <div class="col-lg-6"><div class="card h-100 bi-chart-card"><div class="card-header">Média por disciplina</div><div class="card-body">{{ subject_chart }}
       <div class="chart-legend"><span><i class="l-main"></i>Na média ou acima</span><span><i class="l-alert"></i>Abaixo da aprovação</span></div></div></div></div>
-    <div class="col-lg-6"><div class="card h-100 bi-chart-card"><div class="card-header">Evolução mensal (média das notas do mês)</div><div class="card-body">{{ evolution_chart }}
+    <div class="col-lg-6"><div class="card h-100 bi-chart-card"><div class="card-header">Evolução mensal (média das notas do mês){% if subject_filter_name %} · {{ subject_filter_name }}{% endif %}</div><div class="card-body">{{ evolution_chart }}
       <p class="bi-chart-note">Meses sem avaliação ficam sem ponto (não são zero).</p></div></div></div>
   </div>
   <div class="card mb-3">
@@ -121,7 +122,7 @@
     </div>
   </div>
   <div class="row g-3 mb-3">
-    <div class="col-lg-5"><div class="card h-100 bi-chart-card"><div class="card-header">Distribuição das notas {% metric_info "grade_distribution" %}</div><div class="card-body">{{ distribution_chart }}</div></div></div>
+    <div class="col-lg-5"><div class="card h-100 bi-chart-card"><div class="card-header">Distribuição das notas{% if subject_filter_name %} · {{ subject_filter_name }}{% endif %} {% metric_info "grade_distribution" %}</div><div class="card-body">{{ distribution_chart }}</div></div></div>
     <div class="col-lg-7"><div class="card h-100"><div class="card-header">Mapa de calor: disciplina × mês</div><div class="card-body p-0">
       {% if acad.heatmap %}{% include "analytics/bi/_heatmap.html" with rows=acad.heatmap months=acad.months scale=10 caption="Média das notas por disciplina e mês" %}
       {% else %}<div class="empty-state py-4">{% icon "layers" %}Sem notas no período.</div>{% endif %}

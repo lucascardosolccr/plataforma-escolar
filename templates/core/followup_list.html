@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Pendências acompanhadas — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'pending_center' %}" class="back-link">{% icon "arrow-left" %}Pendências</a>
+<div class="page-head">
+  <div>
+    <h1>Pendências acompanhadas</h1>
+    <p>O que alguém da equipe precisa resolver, com responsável, prazo e histórico. Nada some: encerrar é marcar como resolvida ou cancelada.</p>
+  </div>
+  <a href="{% url 'follow_up_create' %}" class="btn btn-primary">{% icon "plus" %}Nova pendência</a>
+</div>
+
+<form method="get" class="filter-bar" aria-label="Filtrar pendências">
+  {% include "partials/_filter_select.html" with name="escopo" label="Quais" options=escopos selected=escopo all_label=can_see_all|yesno:"Todas da escola,Todas que posso ver" %}
+  {% include "partials/_filter_select.html" with name="situacao" label="Situação" options=situacoes selected=situacao %}
+  {% include "partials/_filter_end.html" with count=page.paginator.count noun="pendência(s)" %}
+</form>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 table-stack">
+      <thead><tr>
+        <th scope="col">Pendência</th>
+        <th scope="col">Responsável</th>
+        <th scope="col">Prazo</th>
+        <th scope="col">Situação</th>
+        <th scope="col" class="text-end"><span class="visually-hidden">Ações</span></th>
+      </tr></thead>
+      <tbody>
+        {% for fu in page %}
+        <tr>
+          <td>
+            <a class="fw-semibold text-decoration-none" href="{% url 'follow_up_detail' fu.pk %}">{{ fu.title }}</a>
+            <div class="text-body-secondary small">{{ fu.get_category_display }}{% if fu.student %} · {{ fu.student.full_name }}{% endif %}</div>
+          </td>
+          <td>{{ fu.assignee.get_full_name|default:fu.assignee.username }}</td>
+          <td class="text-nowrap">{% if fu.due_date %}{{ fu.due_date|date:"d/m/Y" }}{% if fu.is_overdue %} <span class="chip chip-state text-danger">{% icon "clock" %}atrasada</span>{% endif %}{% else %}—{% endif %}</td>
+          <td><span class="chip chip-state{% if fu.status == 'resolvida' %} text-success{% endif %}">{{ fu.get_status_display }}</span></td>
+          <td class="text-end cell-actions"><a class="btn btn-sm btn-outline-secondary" href="{% url 'follow_up_detail' fu.pk %}">Abrir</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">
+          <div class="empty-state py-4">{% icon "circle-check" %}<strong>Nenhuma pendência com estes filtros</strong>
+            <span>Abra uma pendência quando precisar combinar quem resolve algo e até quando.</span></div>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/_pager.html" %}
+{% endblock %}

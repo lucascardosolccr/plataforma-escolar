@@ -277,5 +277,8 @@ def pending_center(request):
     """Central de pendências do usuário (todos os perfis)."""
     from .pending import for_user
 
+    from .views_followup import is_staff_user
+
     items = for_user(request.user)
-    return render(request, "core/pending.html", {"items": items, "total": sum(i["count"] for i in items)})
+    return render(request, "core/pending.html", {"items": items, "total": sum(i["count"] for i in items),
+                                                 "is_staff": is_staff_user(request.user)})

@@ -165,3 +165,81 @@ class UserPreference(models.Model):
 
     def as_json(self):
         return {"saved": True, "favorites": self.favorites, "filters": self.saved_filters}
+
+
+class FollowUp(models.Model):
+    """Pendência acompanhada (Prompt 15 §6.4): responsável, prazo, situação e histórico.
+
+    A central de pendências calcula as pendências a partir do estado real dos
+    registros (chamada sem registro, nota sem lançamento...). Isso diz o QUE
+    falta, mas não QUEM resolve nem ATÉ QUANDO. Esta tabela registra a
+    atribuição: uma pessoa da equipe abre a pendência, escolhe o responsável e
+    o prazo, e cada mudança fica no histórico (``FollowUpEvent``). Nada é
+    apagado: encerrar é mudar a situação. A família nunca vê estas pendências.
+    """
+
+    class Category(models.TextChoices):
+        DOCUMENTACAO = "documentacao", "Documentação"
+        ATIVIDADES = "atividades", "Atividades"
+        REGISTROS = "registros", "Registros pedagógicos"
+        AVALIACOES = "avaliacoes", "Avaliações e notas"
+        FREQUENCIA = "frequencia", "Frequência"
+        SOLICITACAO = "solicitacao", "Solicitação administrativa"
+        OUTRA = "outra", "Outra"
+
+    class Status(models.TextChoices):
+        ABERTA = "aberta", "Aberta"
+        ANDAMENTO = "andamento", "Em andamento"
+        RESOLVIDA = "resolvida", "Resolvida"
+        CANCELADA = "cancelada", "Cancelada"
+
+    OPEN = (Status.ABERTA, Status.ANDAMENTO)
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="follow_ups", verbose_name="escola")
+    title = models.CharField("o que precisa ser resolvido", max_length=200)
+    description = models.TextField("detalhes", blank=True)
+    category = models.CharField("tipo", max_length=15, choices=Category.choices, default=Category.OUTRA)
+    student = models.ForeignKey("registry.Student", on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name="follow_ups", verbose_name="estudante")
+    link = models.CharField("tela onde se resolve", max_length=300, blank=True)
+    assignee = models.ForeignKey(User, on_delete=models.PROTECT, related_name="follow_ups_assigned",
+                                 verbose_name="responsável")
+    due_date = models.DateField("prazo", null=True, blank=True)
+    status = models.CharField("situação", max_length=10, choices=Status.choices, default=Status.ABERTA)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="follow_ups_created",
+                                   verbose_name="aberta por")
+    created_at = models.DateTimeField("aberta em", auto_now_add=True)
+    updated_at = models.DateTimeField("atualizada em", auto_now=True)
+    closed_at = models.DateTimeField("encerrada em", null=True, blank=True)
+
+    class Meta:
+        ordering = ["due_date", "-created_at"]
+        verbose_name = "pendência acompanhada"
+        verbose_name_plural = "pendências acompanhadas"
+        indexes = [models.Index(fields=["school", "assignee", "status"])]
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def is_open(self):
+        return self.status in self.OPEN
+
+    @property
+    def is_overdue(self):
+        return self.is_open and self.due_date is not None and self.due_date < timezone.localdate()
+
+
+class FollowUpEvent(models.Model):
+    """Uma linha do histórico da pendência: quem mudou o quê, quando e por quê."""
+
+    follow_up = models.ForeignKey(FollowUp, on_delete=models.CASCADE, related_name="events")
+    by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name="por")
+    at = models.DateTimeField("em", auto_now_add=True)
+    change = models.CharField("mudança", max_length=300)
+    note = models.TextField("observação", blank=True)
+
+    class Meta:
+        ordering = ["at", "pk"]
+        verbose_name = "histórico da pendência"
+        verbose_name_plural = "históricos das pendências"

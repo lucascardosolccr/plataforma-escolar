@@ -8,6 +8,7 @@
     <h1>Pendências</h1>
     <p>O que falta resolver, reunido de várias telas. Cada item leva direto aonde se resolve.</p>
   </div>
+  {% if is_staff %}<a href="{% url 'follow_up_list' %}" class="btn btn-outline-secondary">{% icon "list-checks" %}Pendências acompanhadas</a>{% endif %}
 </div>
 {% if items %}
 <div class="card">
@@ -19,6 +20,7 @@
         <p class="feed-title"><a href="{{ i.url }}" class="stretched-link text-decoration-none">{{ i.label }}</a> <span class="visually-hidden">: {{ i.count }}</span></p>
         {% if i.hint %}<p class="feed-meta">{{ i.hint }}</p>{% endif %}
       </div>
+      {% if is_staff and i.assignable %}<a class="btn btn-sm btn-outline-secondary position-relative z-2" href="{% url 'follow_up_create' %}?titulo={{ i.label|urlencode }}&amp;tela={{ i.url|urlencode }}">Atribuir</a>{% endif %}
       {% icon "chevron-right" %}
     </li>
     {% endfor %}

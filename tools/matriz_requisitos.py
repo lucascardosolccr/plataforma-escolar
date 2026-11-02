@@ -19,6 +19,7 @@ Situações:
     BLOQUEADO         depende de algo fora do ambiente (a pendência diz o quê)
 """
 
+import importlib.util
 import re
 import sys
 from collections import Counter
@@ -726,6 +727,14 @@ REQS = [
 ]
 
 
+# Prompts 13 a 17 (acrescentados pelo Prompt 20): módulo próprio, mesma conferência.
+_spec = importlib.util.spec_from_file_location("matriz_p13_p17", Path(__file__).resolve().parent / "matriz_p13_p17.py")
+_p13 = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_p13)
+PROMPTS.update(_p13.PROMPTS)
+REQS += _p13.build(R)
+
+
 def _check_evidence(path):
     """'' se a evidência existe; senão, o motivo."""
     file_part, _, test = path.partition("::")
@@ -763,13 +772,14 @@ def render():
     for r in REQS:
         by_prompt.setdefault(r.id.split("-")[0], Counter())[r.situacao] += 1
     out = [
-        "# Matriz mestra de requisitos (Prompt 11)",
+        "# Matriz mestra de requisitos (Prompts 11 e 20)",
         "",
         "Gerada por `plataforma-escolar/tools/matriz_requisitos.py`. Não edite à mão: edite o script e rode-o.",
         "Cada evidência foi conferida pelo script (o arquivo existe; o teste citado existe no arquivo), e o teste",
         "`apps/core/tests/test_requirements_matrix.py` repete essa conferência a cada execução da suíte.",
         "",
         "Os Prompts 4 e 10 têm o mesmo texto; seus requisitos aparecem uma vez, com o prefixo P4.",
+        "Os Prompts 13 a 17 entraram pelo Prompt 20 (02/11/2026), em `tools/matriz_p13_p17.py`.",
         "Requisitos repetidos em vários prompts aparecem uma vez, com todas as origens na coluna Origem.",
         "",
         "## Situações",

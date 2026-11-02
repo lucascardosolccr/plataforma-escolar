@@ -179,13 +179,18 @@ def validate_attachment_content(file):
         )
 
 
-def safe_attachment_path(instance, filename):
+def safe_attachment_path(instance, filename, folder="activities"):
     """Nome aleatório no disco: o nome original fica no banco, então um nome
     enviado pelo usuário nunca chega ao sistema de arquivos."""
     ext = attachment_extension(filename)
     if ext not in ALLOWED_ATTACHMENT_EXTENSIONS:
         ext = ".bin"
-    return f"activities/{uuid.uuid4().hex}{ext}"
+    return f"{folder}/{uuid.uuid4().hex}{ext}"
+
+
+def safe_message_attachment_path(instance, filename):
+    """Anexo de mensagem: mesma regra, em pasta própria."""
+    return safe_attachment_path(instance, filename, folder="messages")
 
 
 def attachment_content_type(filename):

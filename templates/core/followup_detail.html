@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Pendência — {{ fu.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'follow_up_list' %}" class="back-link">{% icon "arrow-left" %}Pendências acompanhadas</a>
+    <h1>{{ fu.title }}</h1>
+    <p>
+      {{ fu.get_category_display }}{% if fu.student %} · {{ fu.student.full_name }}{% endif %}
+      · aberta por {{ fu.created_by.get_full_name|default:fu.created_by.username|default:"—" }} em {{ fu.created_at|date:"d/m/Y" }}
+    </p>
+  </div>
+  <div class="page-actions">
+    <span class="chip">{{ fu.get_status_display }}</span>
+    {% if fu.is_overdue %}<span class="chip chip-state text-danger">{% icon "clock" %}atrasada</span>{% endif %}
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card"><div class="card-body">
+      <h2 class="h6 text-body-secondary text-uppercase">Pendência</h2>
+      <dl class="row mb-0">
+        <dt class="col-sm-4">Responsável</dt><dd class="col-sm-8">{{ fu.assignee.get_full_name|default:fu.assignee.username }} ({{ fu.assignee.role_label|lower }})</dd>
+        <dt class="col-sm-4">Prazo</dt><dd class="col-sm-8">{{ fu.due_date|date:"d/m/Y"|default:"sem prazo" }}</dd>
+        {% if fu.closed_at %}<dt class="col-sm-4">Encerrada em</dt><dd class="col-sm-8">{{ fu.closed_at|date:"d/m/Y H:i" }}</dd>{% endif %}
+        {% if fu.link %}<dt class="col-sm-4">Onde se resolve</dt><dd class="col-sm-8"><a href="{{ fu.link }}">Abrir a tela</a></dd>{% endif %}
+      </dl>
+      {% if fu.description %}<div class="mt-3">{{ fu.description|linebreaks }}</div>{% endif %}
+    </div></div>
+    <div class="card mt-3"><div class="card-body">
+      <h2 class="h6 text-body-secondary text-uppercase">Histórico</h2>
+      <ol class="list-unstyled mb-0">
+        {% for e in events %}
+        <li class="mb-2">
+          <div class="small"><strong>{{ e.by.get_full_name|default:e.by.username|default:"—" }}</strong> · {{ e.at|date:"d/m/Y H:i" }}</div>
+          <div class="small">{{ e.change }}</div>
+          {% if e.note %}<div class="text-body-secondary small">{{ e.note|linebreaksbr }}</div>{% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    {% if form %}
+    <div class="card"><div class="card-body">
+      <h2 class="h6 text-body-secondary text-uppercase">Atualizar</h2>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% include "partials/_form_fields.html" with f=form %}
+        <button type="submit" class="btn btn-primary w-100 mt-2">Salvar</button>
+      </form>
+    </div></div>
+    {% else %}
+    <p class="text-body-secondary">Só quem abriu a pendência, quem é responsável por ela e a direção podem atualizá-la.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

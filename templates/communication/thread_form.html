@@ -8,7 +8,7 @@
   {% include "partials/_form_head.html" with back_url=back back_label="Mensagens" heading="Nova mensagem" %}
   <p class="form-lead">{% if user_role == ROLE_RESPONSAVEL %}Escolha com quem da escola você quer conversar.{% else %}Escolha o responsável com quem você quer conversar.{% endif %} A outra pessoa recebe um aviso.</p>
   
-  <form method="post" novalidate class="card form-card">
+  <form method="post" novalidate class="card form-card" enctype="multipart/form-data">
     {% csrf_token %}
     
     <div class="card-body">

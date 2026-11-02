@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
-from . import views, views_photo, views_prefs
+from . import views, views_followup, views_photo, views_prefs
 from .forms import ThrottledAuthenticationForm
 
 urlpatterns = [
@@ -12,6 +12,9 @@ urlpatterns = [
     path("falhas-tecnicas/", views.error_log, name="error_log"),
     path("minha-foto/", views_photo.my_photo, name="my_photo"),
     path("pendencias/", views_photo.pending_center, name="pending_center"),
+    path("pendencias/acompanhadas/", views_followup.follow_up_list, name="follow_up_list"),
+    path("pendencias/acompanhadas/nova/", views_followup.follow_up_create, name="follow_up_create"),
+    path("pendencias/acompanhadas/<int:pk>/", views_followup.follow_up_detail, name="follow_up_detail"),
     path("fotografias/pendentes/", views_photo.photo_pending, name="photo_pending"),
     path("fotografias/cobrar/", views_photo.photo_remind, name="photo_remind"),
     path("fotografias/dispensas/nova/", views_photo.photo_exception_create, name="photo_exception_create"),

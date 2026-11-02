@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Q
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -9,6 +10,7 @@ from django.views.decorators.http import require_POST
 from apps.core.params import id_param
 from apps.core.models import AuditLog, Role, create_audit_log
 from apps.core.pagination import Sort, paginate
+from apps.core.uploads import attachment_content_type
 from apps.registry.models import Student
 
 from . import access as acc
@@ -224,7 +226,7 @@ def thread_create(request):
     if student_id:
         student = get_object_or_404(Student, pk=student_id, school=user.school)
         initial["student"] = student
-    form = ThreadForm(request.POST or None, initial=initial, user=user)
+    form = ThreadForm(request.POST or None, request.FILES or None, initial=initial, user=user)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             thread = Thread.objects.create(
@@ -234,9 +236,7 @@ def thread_create(request):
                 created_by=user,
             )
             thread.participants.add(form.cleaned_data["recipient"], user)
-            msg = Message.objects.create(
-                thread=thread, sender=user, body=form.cleaned_data["body"]
-            )
+            msg = _new_message(thread, user, form.cleaned_data)
             _log(request, "create", thread, f"Abriu conversa '{thread.title}'")
         notify_thread_message(thread, msg)
         messages.success(request, "Conversa iniciada.")
@@ -259,12 +259,10 @@ def thread_detail(request, pk):
         read_at=timezone.now()
     )
     if request.method == "POST":
-        form = ReplyForm(request.POST)
+        form = ReplyForm(request.POST, request.FILES)
         if form.is_valid():
             with transaction.atomic():
-                msg = Message.objects.create(
-                    thread=thread, sender=request.user, body=form.cleaned_data["body"]
-                )
+                msg = _new_message(thread, request.user, form.cleaned_data)
                 _log(request, "create", msg, f"Respondeu em '{thread.title}'")
             notify_thread_message(thread, msg)
             return redirect("communication:thread_detail", pk=thread.pk)
@@ -281,6 +279,31 @@ def thread_detail(request, pk):
         request,
         "communication/thread_detail.html",
         {"thread": thread, "form": form, "other": other},
+    )
+
+
+def _new_message(thread, sender, data):
+    upload = data.get("attachment")
+    msg = Message(thread=thread, sender=sender, body=data["body"])
+    if upload:
+        msg.attachment = upload
+        msg.attachment_name = upload.name[:255]
+    msg.save()
+    return msg
+
+
+def message_attachment(request, pk):
+    """Download do anexo: só para quem participa da conversa (ou a pode ver)."""
+    msg = get_object_or_404(Message.objects.select_related("thread"), pk=pk,
+                            thread__school=request.user.school)
+    acc.require(acc.can_view_thread(request.user, msg.thread))
+    if not msg.attachment:
+        raise Http404("Anexo indisponível.")
+    return FileResponse(
+        msg.attachment.open("rb"),
+        content_type=attachment_content_type(msg.attachment.name),
+        as_attachment=True,
+        filename=msg.attachment_name or "anexo",
     )
 
 

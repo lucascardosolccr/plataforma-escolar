@@ -3,10 +3,20 @@ from django.core.exceptions import ValidationError
 
 from apps.academics.models import ClassGroup
 from apps.core.models import User
+from apps.core.uploads import MAX_ATTACHMENT_SIZE_MB, validate_attachment, validate_attachment_content
 from apps.registry.models import Enrollment, GuardianLink, Student
 
 from . import access as acc
 from .models import Announcement, ReminderPolicy, ServiceRequest
+
+
+def attachment_field():
+    return forms.FileField(
+        label="Anexo",
+        required=False,
+        validators=[validate_attachment, validate_attachment_content],
+        help_text=f"Opcional. Um arquivo de até {MAX_ATTACHMENT_SIZE_MB} MB: PDF, imagem, documento ou planilha.",
+    )
 
 
 class PersonChoiceField(forms.ModelChoiceField):
@@ -61,6 +71,7 @@ class ThreadForm(forms.Form):
             label="Mensagem inicial",
             widget=forms.Textarea(attrs={"rows": 4}),
         )
+        self.fields["attachment"] = attachment_field()
 
     def clean_recipient(self):
         recipient = self.cleaned_data["recipient"]
@@ -99,6 +110,7 @@ class ReplyForm(forms.Form):
         label="Sua resposta",
         widget=forms.Textarea(attrs={"rows": 3}),
     )
+    attachment = attachment_field()
 
 
 class AnnouncementForm(forms.ModelForm):

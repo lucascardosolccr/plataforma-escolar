@@ -214,11 +214,22 @@ def student_dashboard(request, student_id):
     if not can_view_plan:
         report["interventions"] = []
     acad = report["academic"]
-    subject_filter = id_param(request, "disciplina")
+    # id_param devolve texto; comparar texto com subject_id (int) esvaziava a
+    # tabela ao clicar numa disciplina.
+    subject_filter = int(id_param(request, "disciplina") or 0) or None
     evaluations = [
         e for e in acad["evaluations"]
         if not subject_filter or e["evaluation"].subject_id == subject_filter
     ]
+    # Cruzamento de filtros (Prompt 13 §7): a disciplina escolhida no gráfico de
+    # médias vale também para a evolução mensal e a distribuição das notas.
+    monthly, distribution, filter_name = acad["monthly"], acad["distribution"], ""
+    if subject_filter:
+        chosen = [e["grade"] for e in evaluations]
+        by_month = bi._monthly_grades(chosen)
+        monthly = [{**m, "value": by_month.get(m["month"])} for m in acad["monthly"]]
+        distribution = bi.bands([g.value for g in chosen])
+        filter_name = next((s["subject"].name for s in acad["subjects"] if s["subject"].pk == subject_filter), "")
     base_qs = period.querystring()
     skills, strategies = (services.consolidated_skills(student, only_subjects,
                                                        shared_only=user.role == Role.RESPONSAVEL.value)
@@ -246,6 +257,7 @@ def student_dashboard(request, student_id):
         "subject_averages": acad["subjects"],
         "evaluations": evaluations,
         "subject_filter": subject_filter,
+        "subject_filter_name": filter_name,
         "switch_students": _switchable_students(user, student),
         "timeline": _student_timeline(student, report, can_occ=can_view_occ,
                                       can_plan=can_view_plan, can_just=can_just,
@@ -262,15 +274,15 @@ def student_dashboard(request, student_id):
         "subject_chart": charts.bar_chart(
             [
                 {"label": s["subject"].name, "value": s["average"], "below": s["below"],
-                 "url": f"?{base_qs}&disciplina={s['subject'].pk}#avaliacoes"}
+                 "url": f"?{base_qs}&disciplina={s['subject'].pk}#desempenho"}
                 for s in acad["subjects"]
             ],
         ),
         "evolution_chart": charts.line_chart(
-            [{"label": m["label"], "value": m["value"]} for m in acad["monthly"]],
+            [{"label": m["label"], "value": m["value"]} for m in monthly],
             y_min=0, y_max=10,
         ),
-        "distribution_chart": charts.bar_chart(acad["distribution"], suffix=" nota(s)"),
+        "distribution_chart": charts.bar_chart(distribution, suffix=" nota(s)"),
         "attendance_chart": charts.line_chart(
             [{"label": m["label"], "value": m["percent"]} for m in report["attendance"]["by_month"]],
             y_min=0, y_max=100, suffix="%",
@@ -938,7 +950,9 @@ def teacher_dashboard(request):
         .select_related("class_group", "subject", "school_year")
         .order_by("class_group__name", "subject__name")
     )
-    turma, disciplina = id_param(request, "turma"), id_param(request, "disciplina")
+    # id_param devolve texto: sem converter, escolher uma turma esvaziava o painel.
+    turma = int(id_param(request, "turma") or 0) or None
+    disciplina = int(id_param(request, "disciplina") or 0) or None
     escolhidas = [a for a in todas if (not turma or a.class_group_id == turma)
                   and (not disciplina or a.subject_id == disciplina)]
     r = bi.teacher_report(user, period, escolhidas)

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Nova pendência — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url 'follow_up_list' as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Pendências acompanhadas" heading="Nova pendência" %}
+  <p class="form-lead">Diga o que precisa ser resolvido, quem resolve e até quando. A pessoa escolhida recebe um aviso e a pendência aparece na central dela. A família não vê pendências da equipe.</p>
+  {% if form.initial.link %}<p class="form-lead">Ligada à tela <a href="{{ form.initial.link }}">{{ form.initial.link }}</a>.</p>{% endif %}
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">
+      {% include "partials/_form_fields.html" with f=form %}
+    </div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Registrar pendência" hint="" %}
+  </form>
+</div>
+{% endblock %}

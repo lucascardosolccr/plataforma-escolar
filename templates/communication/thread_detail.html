@@ -21,6 +21,7 @@
       <div class="chat-bubble">
         <p class="chat-author">{% if m.sender_id == user.pk %}Você{% else %}{{ m.sender.get_full_name|default:m.sender.username|default:"—" }}{% endif %}</p>
         <div class="chat-text">{{ m.body|linebreaksbr }}</div>
+        {% if m.attachment %}<p class="chat-attachment"><a href="{% url 'communication:message_attachment' m.pk %}">{% icon "paperclip" %}{{ m.attachment_name|default:"anexo" }}</a></p>{% endif %}
         <p class="chat-meta">
           <time datetime="{{ m.created_at|date:'c' }}">{{ m.created_at|date:"d/m/Y H:i" }}</time>
           {% if m.sender_id == user.pk %}{% if m.read_at %} · {% icon "check-check" %}lida {{ m.read_at|date:"d/m H:i" }}{% else %} · {% icon "check" %}enviada{% endif %}{% endif %}
@@ -31,7 +32,7 @@
     <li class="empty-state py-4">{% icon "message-circle" %}<strong>Nenhuma mensagem nesta conversa</strong></li>
     {% endfor %}
   </ol>
-  <form method="post" class="chat-compose" novalidate>
+  <form method="post" class="chat-compose" novalidate enctype="multipart/form-data">
     {% csrf_token %}
     {% include "partials/_form_fields.html" with f=form %}
     <div class="d-flex justify-content-end">

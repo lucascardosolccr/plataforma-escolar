@@ -11,11 +11,13 @@ from django.db.models import Exists, OuterRef, Q
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import Role
+from .models import STAFF_ROLES, Role
 
 
-def _item(label, count, url, hint="", tone="attention"):
-    return {"label": label, "count": count, "url": url, "hint": hint, "tone": tone}
+def _item(label, count, url, hint="", tone="attention", assignable=True):
+    """``assignable``: a equipe pode abrir uma pendência acompanhada a partir do item
+    (falso para o que é pessoal, como a própria foto)."""
+    return {"label": label, "count": count, "url": url, "hint": hint, "tone": tone, "assignable": assignable}
 
 
 def for_user(user):
@@ -31,11 +33,19 @@ def for_user(user):
         items += _active_search(user)
     if role == Role.RESPONSAVEL.value:
         items += _family(user)
+    if role in [r.value for r in STAFF_ROLES]:
+        from .views_followup import open_follow_ups
+
+        total, late = open_follow_ups(user)
+        hint = f"{late} com prazo vencido." if late else "Com responsável, prazo e histórico."
+        items.append(_item("Pendências atribuídas a você", total, reverse("follow_up_list"), hint,
+                           "attention" if late else "info", assignable=False))
     if role != Role.ESTUDANTE.value:
         from .views_photo import has_photo, photo_exempt
 
         if not has_photo(user) and not photo_exempt(user):
-            items.append(_item("Sua foto de identificação", 1, reverse("my_photo"), "Leva um minuto.", "info"))
+            items.append(_item("Sua foto de identificação", 1, reverse("my_photo"), "Leva um minuto.", "info",
+                               assignable=False))
     return [i for i in items if i["count"]]
 
 

@@ -2,6 +2,7 @@ from django.db import models
 from django.utils import timezone
 
 from apps.core.models import School, User
+from apps.core.uploads import safe_message_attachment_path, validate_attachment
 
 
 class Notification(models.Model):
@@ -139,6 +140,12 @@ class Message(models.Model):
         User, on_delete=models.SET_NULL, null=True, related_name="messages_sent", verbose_name="remetente"
     )
     body = models.TextField("mensagem")
+    # Um anexo por mensagem (Prompt 15 §6.3). Só é baixado pela view que confere
+    # a participação na conversa; o nome no disco é aleatório.
+    attachment = models.FileField(
+        "anexo", upload_to=safe_message_attachment_path, validators=[validate_attachment], blank=True
+    )
+    attachment_name = models.CharField("nome do anexo", max_length=255, blank=True)
     created_at = models.DateTimeField("enviada em", auto_now_add=True)
     read_at = models.DateTimeField("lida em", null=True, blank=True)
 

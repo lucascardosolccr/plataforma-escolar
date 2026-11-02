@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Histórico escolar — {{ student.full_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'student_detail' student.pk %}" class="back-link d-print-none">{% icon "arrow-left" %}Ficha do estudante</a>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Histórico escolar consolidado</span>
+    <h1>{{ student.full_name }}</h1>
+    <p>Médias por disciplina e frequência em cada ano letivo e turma registrados nesta plataforma. Gerado em {{ generated_at|date:"d/m/Y H:i" }}.</p>
+  </div>
+  <div class="page-actions d-print-none">
+    <button type="button" class="btn btn-outline-secondary" data-print>{% icon "printer" %}Imprimir</button>
+  </div>
+</div>
+
+<div class="alert alert-info" role="note">
+  <div>Documento interno de acompanhamento. <strong>Não substitui o histórico escolar oficial</strong>, emitido pela secretaria com a carga horária e o resultado final homologado. Aqui não se declara aprovação nem reprovação: cada disciplina mostra a média calculada pela regra da escola e a média de referência.</div>
+</div>
+
+{% for y in years %}
+<section class="card mb-3" aria-labelledby="ano-{{ forloop.counter }}">
+  <div class="card-body">
+    <h2 class="h5" id="ano-{{ forloop.counter }}">{{ y.enrollment.school_year.name }} · {{ y.enrollment.class_group.name }}</h2>
+    <p class="text-body-secondary small mb-2">
+      {% if y.enrollment.class_group.grade %}Série: {{ y.enrollment.class_group.grade }} · {% endif %}Turno: {{ y.enrollment.class_group.get_turn_display }}
+      · Matrícula: {{ y.enrollment.get_status_display|lower }}{% if y.enrollment.enrollment_number %} (nº {{ y.enrollment.enrollment_number }}){% endif %}
+    </p>
+    <p class="mb-2">
+      <strong>Frequência:</strong>
+      {% if y.attendance.total %}{{ y.attendance.percent }}% de presença em {{ y.attendance.total }} registro{{ y.attendance.total|pluralize }} de chamada ({{ y.attendance.absent }} falta{{ y.attendance.absent|pluralize }}; mínimo da escola: {{ y.attendance.min_percent }}%).
+      {% else %}sem chamada registrada nesta turma.{% endif %}
+    </p>
+    {% if y.subjects %}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead><tr><th scope="col">Disciplina</th><th scope="col" class="text-end">Média</th><th scope="col" class="text-end">Referência</th><th scope="col" class="text-end">Notas</th><th scope="col">Regra</th></tr></thead>
+        <tbody>
+          {% for s in y.subjects %}
+          <tr>
+            <td>{{ s.subject.name }}</td>
+            <td class="text-end fw-semibold">{{ s.average|default:"—" }}{% if s.below %} <span class="chip chip-state">abaixo da referência</span>{% endif %}</td>
+            <td class="text-end">{{ s.passing }}</td>
+            <td class="text-end">{{ s.count }}</td>
+            <td class="small text-body-secondary">{{ s.formula_label }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-body-secondary mb-0">Nenhuma nota publicada nesta turma. Ausência de nota não é nota zero.</p>
+    {% endif %}
+  </div>
+</section>
+{% empty %}
+<div class="empty-state py-5">{% icon "file-text" %}<strong>Nenhuma matrícula registrada</strong><span>O histórico aparece quando o estudante tem matrícula numa turma.</span></div>
+{% endfor %}
+{% endblock %}

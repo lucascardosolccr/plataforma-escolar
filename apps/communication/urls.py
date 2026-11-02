@@ -26,6 +26,7 @@ urlpatterns = [
     path("mensagens/", views.thread_list, name="thread_list"),
     path("mensagens/nova/", views.thread_create, name="thread_create"),
     path("mensagens/<int:pk>/", views.thread_detail, name="thread_detail"),
+    path("mensagens/anexo/<int:pk>/", views.message_attachment, name="message_attachment"),
     path("comunicados/", views.announcement_list, name="announcement_list"),
     path("comunicados/novo/", views.announcement_create, name="announcement_create"),
     path("comunicados/<int:pk>/", views.announcement_detail, name="announcement_detail"),

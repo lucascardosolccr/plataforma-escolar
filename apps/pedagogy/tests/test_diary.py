@@ -95,3 +95,24 @@ class DiaryCalendarTests(CommunicationBase):
         self._post(date="2026-05-11")                                             # segunda comum
         self.assertEqual(sorted(LessonRecord.objects.values_list("date", flat=True)),
                          [dt.date(2026, 5, 9), dt.date(2026, 5, 11)])
+
+
+class DiaryPickerFocusTests(CommunicationBase):
+    def test_edit_and_create_from_pair_show_only_that_class(self):
+        from apps.academics.models import ClassGroup, TeacherAssignment
+
+        sexto = ClassGroup.objects.create(school=self.school, school_year=self.year, name="6º Ano A")
+        TeacherAssignment.objects.create(school=self.school, school_year=self.year, teacher=self.prof,
+                                         class_group=sexto, subject=self.mat)
+        self.login("prof")
+        labels = lambda r: [label for label, _ in r.context["form"].curriculum_groups]
+        allg = labels(self.client.get(reverse("pedagogy:diary_create")))
+        self.assertTrue(any("6º ano" in g for g in allg) and any("1º ano" in g for g in allg))
+        some = labels(self.client.get(reverse("pedagogy:diary_create") + f"?par={sexto.pk}:{self.mat.pk}"))
+        self.assertTrue(any("6º ano" in g for g in some))
+        self.assertFalse(any("1º ano" in g for g in some))
+        DiaryTests._post(self)
+        rec = LessonRecord.objects.get()
+        edit = labels(self.client.get(reverse("pedagogy:diary_edit", args=[rec.pk])))
+        self.assertTrue(any("1º ano" in g for g in edit))
+        self.assertFalse(any("6º ano" in g for g in edit))

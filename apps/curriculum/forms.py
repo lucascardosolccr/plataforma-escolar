@@ -53,11 +53,15 @@ class CurriculumFormMixin:
 
     def _curriculum_focus_class(self):
         """Turma já definida no formulário (dados enviados, instância ou valor inicial), ou None."""
-        if "class_group" not in self.fields:
+        if "class_group" in self.fields:
+            raw = self.data.get("class_group") if self.is_bound else None
+            if not raw:
+                raw = getattr(self.instance, "class_group_id", None) or self.initial.get("class_group")
+        elif "pair" in self.fields:  # diário: turma e disciplina num campo só ("turma:disciplina")
+            raw = (self.data.get("pair") if self.is_bound else None) or self.initial.get("pair") or ""
+            raw = str(raw).split(":")[0] or getattr(self.instance, "class_group_id", None)
+        else:
             return None
-        raw = self.data.get("class_group") if self.is_bound else None
-        if not raw:
-            raw = getattr(self.instance, "class_group_id", None) or self.initial.get("class_group")
         raw = getattr(raw, "pk", raw)
         try:
             return int(raw) if raw else None

@@ -274,6 +274,40 @@ def load_grades(student_ids, start, end, class_group=None, subject=None, subject
     return out
 
 
+class _Ev:
+    __slots__ = ("subject", "subject_id", "weight", "date")
+
+    def __init__(self, subject, weight, date):
+        self.subject, self.subject_id, self.weight, self.date = subject, subject.pk, weight, date
+
+
+class _LightGrade:
+    """Nota sem o objeto completo: só o que médias e evolução mensal usam."""
+    __slots__ = ("value", "evaluation")
+
+    def __init__(self, value, evaluation):
+        self.value, self.evaluation = value, evaluation
+
+
+def load_grades_light(student_ids, start, end):
+    """Como ``load_grades``, mas para agregados da escola inteira: na escala de uma escola real (20 mil
+    notas) montar cada Grade com avaliação e disciplina levava mais de 1 s no painel institucional.
+    Devolve objetos com ``value`` e ``evaluation.subject/weight/date`` — o que ``_averages_from_grades``
+    e ``_monthly_grades`` leem."""
+    from apps.academics.models import Subject
+
+    rows = list(Grade.objects.filter(
+        student_id__in=list(student_ids), evaluation__status=PUBLISHED, evaluation__date__gte=start,
+        evaluation__date__lte=end, value__isnull=False,
+    ).order_by("evaluation__date", "evaluation_id").values_list(
+        "student_id", "value", "evaluation__subject_id", "evaluation__weight", "evaluation__date"))
+    subjects = Subject.objects.in_bulk({r[2] for r in rows})
+    out = defaultdict(list)
+    for sid, value, subj_id, weight, d in rows:
+        out[sid].append(_LightGrade(value, _Ev(subjects[subj_id], weight, d)))
+    return out
+
+
 def load_attendance(student_ids, start, end, class_group=None):
     """{estudante: [(data, situação)]} ordenado por data."""
     qs = AttendanceRecord.objects.filter(
@@ -1091,7 +1125,7 @@ def institutional_report(school, period):
     for sid, cid in active:
         by_class[cid].add(sid)
     ids = sorted({sid for sid, _ in active})
-    grades = load_grades(ids, period.start, period.end)
+    grades = load_grades_light(ids, period.start, period.end)
     att = AttendanceRecord.objects.filter(school=school, date__gte=period.start, date__lte=period.end)
     att_by_class = defaultdict(lambda: [0, 0, 0])  # presença, total, faltas
     month_att = defaultdict(lambda: [0, 0])
@@ -1103,11 +1137,12 @@ def institutional_report(school, period):
             month_att[month_key(d)][0] += 1
         else:
             att_by_class[cid][2] += 1
-    overall = {sid: _overall(_subject_rows(grades.get(sid, []), rules)) for sid in ids}
+    rows_by_student = {sid: _subject_rows(grades.get(sid, []), rules) for sid in ids}  # uma vez por estudante
+    overall = {sid: _overall(rows_by_student[sid]) for sid in ids}
     subj_acc = defaultdict(list)
     subj_names = {}
     for sid in ids:
-        for k, r in _subject_rows(grades.get(sid, []), rules).items():
+        for k, r in rows_by_student[sid].items():
             if r["average"] is not None:
                 subj_acc[k].append((float(r["average"]), r["below"]))
                 subj_names[k] = r["subject"]

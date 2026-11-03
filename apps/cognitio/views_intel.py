@@ -252,11 +252,13 @@ def models_page(request):
         raise PermissionDenied
     if request.method == "POST":
         action = request.POST.get("acao")
-        if action in ("treinar", "treinar_bkt", "validar_indicadores"):
-            from . import bkt, ews_validation
+        if action in ("treinar", "treinar_bkt", "treinar_elo", "validar_indicadores"):
+            from . import bkt, elo, ews_validation
 
             if action == "validar_indicadores":
                 run = ews_validation.run(user.school, user)
+            elif action == "treinar_elo":
+                run = elo.train_and_validate(user.school, user)
             else:
                 run = (bkt if action == "treinar_bkt" else predictive).train_and_validate(user.school, user)
             create_audit_log(user=user, action="create", request=request, target=run,

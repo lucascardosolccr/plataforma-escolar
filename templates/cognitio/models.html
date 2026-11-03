@@ -9,7 +9,7 @@
     <h1>Modelos e validação</h1>
     <p>Transparência algorítmica: o que roda, com que dados e com que resultado. Um modelo só sai do modo exploratório com dados reais suficientes (pelo menos {{ mins.0 }} exemplos de treino, {{ mins.2 }} de teste e {{ mins.1 }} casos de dificuldade), validação com separação temporal e aprovação registrada pela direção. Dados de demonstração ou sintéticos não demonstram eficácia.</p>
   </div>
-  <form method="post" class="d-flex flex-wrap gap-2">{% csrf_token %}<button class="btn btn-outline-primary" name="acao" value="treinar">{% icon "chart-line" %}Validar o modelo de risco</button><button class="btn btn-outline-primary" name="acao" value="treinar_bkt">{% icon "chart-line" %}Validar o BKT</button><button class="btn btn-outline-primary" name="acao" value="validar_indicadores">{% icon "chart-line" %}Validar os indicadores precoces</button></form>
+  <form method="post" class="d-flex flex-wrap gap-2">{% csrf_token %}<button class="btn btn-outline-primary" name="acao" value="treinar">{% icon "chart-line" %}Validar o modelo de risco</button><button class="btn btn-outline-primary" name="acao" value="treinar_bkt">{% icon "chart-line" %}Validar o BKT</button><button class="btn btn-outline-primary" name="acao" value="treinar_elo">{% icon "chart-line" %}Validar o Elo (comparar com o BKT)</button><button class="btn btn-outline-primary" name="acao" value="validar_indicadores">{% icon "chart-line" %}Validar os indicadores precoces</button></form>
 </div>
 
 <section class="card mb-3" aria-labelledby="niveis"><div class="card-body">
@@ -41,7 +41,7 @@
 
 <section class="card" aria-labelledby="runs"><div class="card-body">
   <h2 id="runs" class="h6">Execuções dos modelos</h2>
-  <p class="small text-secondary">“risco_dificuldade_subsequente”: regressão logística sobre pré-requisitos. “bkt_proximo_acerto”: Bayesian Knowledge Tracing, probabilidade de acerto na próxima evidência de uma habilidade.</p>
+  <p class="small text-secondary">“risco_dificuldade_subsequente”: regressão logística sobre pré-requisitos. “bkt_proximo_acerto”: Bayesian Knowledge Tracing, probabilidade de acerto na próxima evidência de uma habilidade. “elo_proximo_acerto”: sistema Elo (proficiência do estudante × dificuldade da habilidade), validado no mesmo corte do BKT para comparar os dois; valide o BKT antes para ver a comparação na nota da execução.</p>
   {% for r in runs %}
   <article class="border rounded p-2 mb-2">
     <div class="d-flex flex-wrap justify-content-between gap-2"><strong>{{ r.name }} v{{ r.version }} · {{ r.created_at|date:"d/m/Y H:i" }}</strong><span class="chip chip-state state-{% if r.status == 'aprovado' %}validado{% elif r.status == 'experimental' %}aguardando{% else %}rascunho{% endif %}">{{ r.get_status_display }}</span></div>

@@ -22,40 +22,49 @@ from .recommend import RESULT_LABELS, outcomes
 from .summary import student_components
 
 
-def evidence_url(e):
-    """Endereço do registro original de uma evidência (cada tela confere o próprio acesso)."""
-    from apps.pedagogy.models import Grade, GroupWorkDelivery, Submission
+def _source_parents():
+    """Origem → (modelo do registro, campo da tela de destino, rota)."""
+    from apps.pedagogy.models import Grade, GroupWorkDelivery, GroupWorkRubricScore, RubricScore, Submission
 
     from .models import QuestionResponse
 
-    try:
-        if e.source_type == "questao":
-            r = QuestionResponse.objects.select_related("question").filter(pk=e.source_id).first()
-            return reverse("cognitio:responses", args=[r.question.evaluation_id]) if r else None
-        if e.source_type == "avaliacao":
-            g = Grade.objects.filter(pk=e.source_id).first()
-            return reverse("pedagogy:evaluation_grade", args=[g.evaluation_id]) if g else None
-        if e.source_type == "atividade":
-            s = Submission.objects.filter(pk=e.source_id).first()
-            return reverse("pedagogy:activity_detail", args=[s.activity_id]) if s else None
-        if e.source_type == "trabalho":
-            d = GroupWorkDelivery.objects.filter(pk=e.source_id).first()
-            return reverse("pedagogy:group_work_detail", args=[d.group_work_id]) if d else None
-        if e.source_type == "texto":
-            return reverse("cognitio:text_detail", args=[e.source_id])
-        if e.source_type == "rubrica":
-            from apps.pedagogy.models import RubricScore
+    return {"questao": (QuestionResponse, "question__evaluation_id", "cognitio:responses"),
+            "avaliacao": (Grade, "evaluation_id", "pedagogy:evaluation_grade"),
+            "atividade": (Submission, "activity_id", "pedagogy:activity_detail"),
+            "trabalho": (GroupWorkDelivery, "group_work_id", "pedagogy:group_work_detail"),
+            "rubrica": (RubricScore, "activity_id", "pedagogy:activity_detail"),
+            "rubrica_trab": (GroupWorkRubricScore, "group_work_id", "pedagogy:group_work_detail")}
 
-            s = RubricScore.objects.filter(pk=e.source_id).first()
-            return reverse("pedagogy:activity_detail", args=[s.activity_id]) if s else None
-        if e.source_type == "rubrica_trab":
-            from apps.pedagogy.models import GroupWorkRubricScore
 
-            s = GroupWorkRubricScore.objects.filter(pk=e.source_id).first()
-            return reverse("pedagogy:group_work_detail", args=[s.group_work_id]) if s else None
-    except NoReverseMatch:
-        return None
-    return None
+def evidence_urls(evs):
+    """Endereço do registro original de cada evidência, na mesma ordem (cada tela confere o próprio
+    acesso). Uma consulta por tipo de origem, não uma por evidência."""
+    parents = _source_parents()
+    found = {}
+    by_type = {}
+    for e in evs:
+        by_type.setdefault(e.source_type, set()).add(e.source_id)
+    for kind, ids in by_type.items():
+        if kind in parents:
+            model, field, _ = parents[kind]
+            found.update({(kind, pk): v for pk, v in model.objects.filter(pk__in=ids).values_list("pk", field)})
+    out = []
+    for e in evs:
+        try:
+            if e.source_type == "texto":
+                out.append(reverse("cognitio:text_detail", args=[e.source_id]))
+            elif (e.source_type, e.source_id) in found:
+                out.append(reverse(parents[e.source_type][2], args=[found[(e.source_type, e.source_id)]]))
+            else:
+                out.append(None)
+        except NoReverseMatch:
+            out.append(None)
+    return out
+
+
+def evidence_url(e):
+    """Endereço do registro original de uma evidência (cada tela confere o próprio acesso)."""
+    return evidence_urls([e])[0]
 
 
 def _student_or_403(user, student_id):
@@ -96,15 +105,17 @@ def student_projection(request, student_id):
            .order_by("-observed_on", "-pk"))
     if subjects is not None:
         evs = evs.filter(subject_id__in=subjects)
-    timeline = [(e, evidence_url(e)) for e in evs[:15]]
+    recent = list(evs[:15])
+    timeline = list(zip(recent, evidence_urls(recent)))
     ups = gaps.upcoming_items(student, today, days=45)
+    up_items = CurriculumItem.objects.in_bulk(list(ups))
+    up_states = gaps.item_states(student, list(up_items.values()), today=today)  # duas consultas para todas
     upcoming = []
     for pk, uses in ups.items():
-        it = CurriculumItem.objects.filter(pk=pk).first()
+        it = up_items.get(pk)
         if it is None:
             continue
-        a = gaps.item_state(student, it, today=today)
-        upcoming.append({"item": it, "uses": sorted(uses, key=lambda u: u[2]), "a": a})
+        upcoming.append({"item": it, "uses": sorted(uses, key=lambda u: u[2]), "a": up_states[pk]})
     upcoming.sort(key=lambda r: r["uses"][0][2])
     prio = gaps.priorities(student, user.school, subjects, order=order, today=today)
     analysis = prop = hor = scen = estimate = None

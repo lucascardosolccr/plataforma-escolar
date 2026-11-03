@@ -75,11 +75,13 @@ def skill_graph(request, item_id):
         r.ctx, r.assoc = states.get(r.source_id), assoc.get(r.pk)
     obs_links = []
     if user.role == Role.PROFESSOR.value:
-        for c, s in teacher_pairs(user):
-            subject = Subject.objects.filter(pk=s, school=user.school).first()
-            if subject and component_for(subject) == item.component:
-                cg = ClassGroup.objects.filter(pk=c).first()
-                obs_links.append((cg, subject))
+        # Duas consultas no total (antes, duas por turma × disciplina: ~130 para quem tem muitas turmas).
+        pairs = teacher_pairs(user)
+        subjects = Subject.objects.filter(school=user.school).in_bulk({s for _, s in pairs})
+        cgs = ClassGroup.objects.filter(school=user.school).in_bulk({c for c, _ in pairs})
+        obs_links = sorted(((cgs[c], subjects[s]) for c, s in pairs
+                            if c in cgs and s in subjects and component_for(subjects[s]) == item.component),
+                           key=lambda t: (t[0].name, t[1].name))
     class_options = [cg for cg in ClassGroup.objects.filter(school=user.school, school_year__is_current=True)
                      .order_by("name") if access.can_view_class(user, cg)]
     students = []

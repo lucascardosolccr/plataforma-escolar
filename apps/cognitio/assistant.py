@@ -205,7 +205,7 @@ def _h_prereqs(user, a, item, student, cg):
 
 
 def _h_evidence_gap(user, a, item, student, cg):
-    from .views_projection import evidence_url
+    from .views_projection import evidence_urls
 
     if not (item and student):
         return _need(a, "Informe o código da habilidade e escolha o estudante.")
@@ -214,10 +214,11 @@ def _h_evidence_gap(user, a, item, student, cg):
     kind, why = gaps.classify(st, gaps.MasteryScale.for_school(user.school))
     a.paragraphs.append(f"Estado: {STATES.get(st.effective, (st.effective,))[0]}. "
                         + (f"{gaps.GAP_KINDS[kind]}: {why}" if kind else why))
-    for e in st.evidence[-8:]:
+    last = st.evidence[-8:]
+    for e, url in zip(last, evidence_urls(last)):
         a.items.append((f"{e.observed_on:%d/%m/%Y} · {e.get_source_type_display()}: {e.source_label}"
                         + (f" · {round(e.ratio * 100)}% de acerto" if e.ratio is not None else " · sem resposta (não "
-                           "conta)"), evidence_url(e)))
+                           "conta)"), url))
     if not st.evidence:
         a.limits.append("Sem evidência registrada: isso não indica que o estudante não sabe.")
 

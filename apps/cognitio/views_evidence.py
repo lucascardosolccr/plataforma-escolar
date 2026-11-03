@@ -207,9 +207,9 @@ def _observation_rows(form, students, request):
 
     A situação mostra quem ainda não tem registro suficiente (Prompt 18 §7: "indicação
     clara do que ainda precisa ser registrado"). Uma consulta para as evidências de
-    todos e uma por estudante para a decisão do professor.
+    todos e uma para as decisões do professor.
     """
-    from .gaps import item_state
+    from .gaps import item_state, judgments_for
     from .mastery import STATES
     from .models import MasteryScale, SkillEvidence
 
@@ -222,8 +222,9 @@ def _observation_rows(form, students, request):
         evs = {}
         for e in SkillEvidence.objects.filter(item=item, student__in=students).order_by("observed_on"):
             evs.setdefault(e.student_id, []).append(e)
+        judged = judgments_for([s.pk for s in students], [item.pk])
         for s in students:
-            a = item_state(s, item, scale, evidences=evs.get(s.pk, []))
+            a = item_state(s, item, scale, evidences=evs.get(s.pk, []), judgment=judged.get((s.pk, item.pk)))
             state = getattr(a, "effective", a.state)
             states[s.pk] = (state, STATES[state][0])
     rows = [{"s": s, "checked": str(s.pk) in chosen, "lv": form[f"lv_{s.pk}"], "state": states.get(s.pk)}

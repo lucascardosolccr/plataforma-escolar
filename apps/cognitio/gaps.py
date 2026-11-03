@@ -55,13 +55,32 @@ def _judgment(student, item):
     return SkillJudgment.objects.filter(student=student, item=item, active=True).order_by("-decided_on", "-pk").first()
 
 
-def item_state(student, item, scale=None, today=None, evidences=None):
-    """Estado da habilidade para o estudante, com a decisão do professor quando houver."""
+def judgments_for(student_ids, item_ids):
+    """Decisões ativas dos professores numa consulta só: {(estudante, habilidade): a mais recente}."""
+    from .models import SkillJudgment
+
+    out = {}
+    for j in SkillJudgment.objects.filter(student_id__in=set(student_ids), item_id__in=set(item_ids),
+                                          active=True).order_by("decided_on", "pk"):
+        out[(j.student_id, j.item_id)] = j  # a mais recente vale, como em _judgment
+    return out
+
+
+_LOOKUP = object()
+
+
+def item_state(student, item, scale=None, today=None, evidences=None, judgment=_LOOKUP):
+    """Estado da habilidade para o estudante, com a decisão do professor quando houver.
+
+    Em laços, passe ``evidences`` e ``judgment`` (de ``judgments_for``; ``None`` = sem decisão) já
+    carregados: sem eles, são duas consultas por chamada."""
     scale = scale or MasteryScale.for_school(student.school)
     today = today or timezone.localdate()
     evs = evidences if evidences is not None else list(
         SkillEvidence.objects.filter(student=student, item=item).order_by("observed_on"))
-    return _with_judgment(assess(evs, scale, today=today), _judgment(student, item))
+    if judgment is _LOOKUP:
+        judgment = _judgment(student, item)
+    return _with_judgment(assess(evs, scale, today=today), judgment)
 
 
 def item_states(student, items, scale=None, today=None):
@@ -211,10 +230,11 @@ def priorities(student, school, subjects=None, order="prioridade", today=None):
         by_item.setdefault(e.item_id, []).append(e)
     upcoming = upcoming_items(student, today)
     ivs = LearningIntervention.objects.filter(students=student)
+    judged = judgments_for([student.pk], by_item)
     rows = []
     for item_evs in by_item.values():
         item = item_evs[0].item
-        a = item_state(student, item, scale, today, item_evs)
+        a = item_state(student, item, scale, today, item_evs, judged.get((student.pk, item.pk)))
         kind, why = classify(a, scale, today)
         if kind not in ("confirmada", "situacao", "reavaliar", "conflitante", "hipotese"):
             continue

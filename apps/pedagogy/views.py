@@ -2234,7 +2234,7 @@ def attendance_register(request, class_group_id):
                         request,
                         "create" if created else "update",
                         rec,
-                        f"Frequência {student} em {tdate}: {status}",
+                        f"Frequência {student} em {tdate:%d/%m/%Y}: {status}",
                     )
                     old = before.get(student.pk)
                     furl = f"{reverse('pedagogy:attendance_list')}?estudante={student.pk}"

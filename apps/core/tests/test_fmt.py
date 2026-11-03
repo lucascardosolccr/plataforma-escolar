@@ -30,3 +30,16 @@ class FmtTests(SimpleTestCase):
         reasons = " ".join(assess(evs, MasteryScale(), today=date(2026, 3, 30)).reasons)
         self.assertRegex(reasons, r"Média ponderada \d,\d\d")
         self.assertNotRegex(reasons, r"\d\.\d")
+
+    def test_record_names_use_brazilian_dates(self):
+        """Nomes de registro aparecem no histórico e nas listas: antes saía "em 2026-03-10"."""
+        from datetime import date
+
+        from apps.pedagogy.models import AbsenceJustification, Occurrence
+        from apps.registry.models import Student
+
+        ana = Student(first_name="Ana")
+        self.assertIn("em 10/03/2026", str(Occurrence(student=ana, date=date(2026, 3, 10))))
+        self.assertIn("(02/03/2026 a 04/03/2026)",
+                      str(AbsenceJustification(student=ana, start_date=date(2026, 3, 2), end_date=date(2026, 3, 4))))
+        self.assertIn("em —", str(Occurrence(student=ana, date=None)))

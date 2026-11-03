@@ -8,6 +8,11 @@ from apps.core.uploads import safe_attachment_path, validate_attachment
 from apps.registry.models import Student
 
 
+def _br(d):
+    """Data no padrão brasileiro para nomes de registro (histórico, listas); sem data, "—"."""
+    return d.strftime("%d/%m/%Y") if d else "—"
+
+
 class FamilyVisibility:
     """Regra única do que chega à família (responsável e conta do estudante).
 
@@ -783,7 +788,7 @@ class AttendanceRecord(models.Model):
         verbose_name_plural = "registros de frequência"
 
     def __str__(self):
-        return f"{self.student} — {self.date}: {self.get_status_display()}"
+        return f"{self.student} — {_br(self.date)}: {self.get_status_display()}"
 
 
 class AbsenceJustification(models.Model):
@@ -827,7 +832,7 @@ class AbsenceJustification(models.Model):
         verbose_name_plural = "justificativas de falta"
 
     def __str__(self):
-        return f"Justificativa de {self.student} ({self.start_date}..{self.end_date})"
+        return f"Justificativa de {self.student} ({_br(self.start_date)} a {_br(self.end_date)})"
 
 
 class Occurrence(models.Model):
@@ -865,7 +870,7 @@ class Occurrence(models.Model):
         verbose_name_plural = "ocorrências"
 
     def __str__(self):
-        return f"Ocorrência de {self.student} em {self.date}"
+        return f"Ocorrência de {self.student} em {_br(self.date)}"
 
 
 class PedagogicalObservation(models.Model):

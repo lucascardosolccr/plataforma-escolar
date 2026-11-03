@@ -10,6 +10,7 @@
   </div>
   {% if can_create %}<a href="{% url 'communication:authorization_create' %}" class="btn btn-primary">{% icon "plus" %}Nova autorização</a>{% endif %}
 </div>
+{% if no_link %}<div class="callout mb-3">{% icon "info" %}<div>Quando a escola aprovar o vínculo com seu filho, aparecem aqui as que forem da turma dele.</div></div>{% endif %}
 <div class="card">
   <div class="table-responsive">
     <table class="table table-hover align-middle mb-0 table-stack">

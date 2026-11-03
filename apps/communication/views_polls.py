@@ -131,10 +131,14 @@ class PollForm(forms.ModelForm):
 def poll_list(request):
     user = request.user
     qs = visible(user)
-    if qs is None:
+    no_link = qs is None and user.role == Role.RESPONSAVEL.value
+    if no_link:  # o menu mostra o item; sem vínculo aprovado a lista fica vazia, com o motivo
+        qs = Poll.objects.none()
+    elif qs is None:
         raise PermissionDenied
     voted = set(PollVote.objects.filter(user=user).values_list("poll_id", flat=True))
     return render(request, "communication/poll_list.html", {
+        "no_link": no_link,
         "page": paginate(request, qs.prefetch_related("class_groups")), "voted": voted,
         "staff": staff_class_ids(user) is not None, "can_create": bool(staff_class_ids(user)),
     })

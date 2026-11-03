@@ -138,10 +138,14 @@ def _guardians_of(class_ids):
 def authorization_list(request):
     user = request.user
     qs = visible(user)
-    if qs is None:
+    no_link = qs is None and user.role in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value)
+    if no_link:  # o menu mostra o item; sem vínculo aprovado a lista fica vazia, com o motivo
+        qs = Authorization.objects.none()
+    elif qs is None:
         raise PermissionDenied
     staff = staff_class_ids(user) is not None
     return render(request, "communication/authorization_list.html", {
+        "no_link": no_link,
         "page": paginate(request, qs.prefetch_related("class_groups")), "staff": staff,
         "can_create": staff and bool(staff_class_ids(user)), "today": timezone.localdate(),
     })

@@ -522,3 +522,70 @@ def calendar_index(request):
             "can_manage_calendar": can_manage_calendar(request.user),
         },
     )
+
+
+# ---------- Agenda para o celular (.ics) ----------
+ICS_KINDS = ("activity", "group_work", "evaluation", "school", "meeting")
+
+
+def _ics_text(value):
+    """Escapa texto para o formato iCalendar (RFC 5545, seção 3.3.11)."""
+    return (str(value).replace("\\", "\\\\").replace(";", "\;").replace(",", "\,")
+            .replace("\r\n", "\n").replace("\n", "\n"))
+
+
+def _ics_fold(line):
+    """Linhas de no máximo 75 octetos, continuadas com espaço (RFC 5545, seção 3.1)."""
+    raw, out = line.encode("utf-8"), []
+    while len(raw) > 75:
+        cut = 75 if not out else 74
+        while cut > 0 and (raw[cut] & 0xC0) == 0x80:  # não corta no meio de um caractere
+            cut -= 1
+        out.append(raw[:cut].decode("utf-8"))
+        raw = raw[cut:]
+    out.append(raw.decode("utf-8"))
+    return "\r\n ".join(out)
+
+
+def calendar_ics(request):
+    """Arquivo .ics para importar no calendário do celular (Google Agenda, Apple, Outlook).
+
+    Traz o que a pessoa já vê no calendário, com as mesmas regras de acesso, mas só compromissos:
+    ocorrências e justificativas de falta ficam de fora (o arquivo vai para serviços de terceiros),
+    e reuniões levam só o horário e o local, sem o nome do estudante. Não há link público nem
+    assinatura automática: é um arquivo baixado com a pessoa logada, e o download fica na auditoria.
+    """
+    import hashlib
+
+    from django.http import HttpResponse
+
+    from apps.core.models import create_audit_log
+
+    if not access.can_view_calendar(request.user):
+        raise PermissionDenied
+    today = timezone.localdate()
+    events = [e for e in _collect_events(request.user, today - dt.timedelta(days=7), today + dt.timedelta(days=180))
+              if e["kind"] in ICS_KINDS]
+    stamp = timezone.now().strftime("%Y%m%dT%H%M%SZ")
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Plataforma Escolar//Agenda//PT-BR", "CALSCALE:GREGORIAN",
+             f"X-WR-CALNAME:{_ics_text('Agenda escolar — ' + request.user.school.name)}"]
+    for e in events:
+        day = e["date"]
+        summary = f"{e['kind_label']}: {e['title']}"
+        if e["kind"] == "meeting":
+            desc = e["date_label"]
+        else:
+            desc = " · ".join(x for x in (e.get("date_label"), e.get("subtitle")) if x)
+        if e.get("url"):
+            desc += "\n" + request.build_absolute_uri(e["url"])
+        uid = hashlib.sha1(f"{e['kind']}|{e.get('url') or e['title']}|{day}".encode()).hexdigest()[:20]
+        lines += ["BEGIN:VEVENT", f"UID:{uid}@plataforma-escolar", f"DTSTAMP:{stamp}",
+                  f"DTSTART;VALUE=DATE:{day:%Y%m%d}", f"DTEND;VALUE=DATE:{day + dt.timedelta(days=1):%Y%m%d}",
+                  f"SUMMARY:{_ics_text(summary)}", f"DESCRIPTION:{_ics_text(desc)}", "TRANSP:TRANSPARENT",
+                  "END:VEVENT"]
+    lines.append("END:VCALENDAR")
+    create_audit_log(user=request.user, action="export", request=request, target_type="calendario", target_id="ics",
+                     detail=f"Baixou a agenda (.ics) com {len(events)} compromisso(s)")
+    resp = HttpResponse("\r\n".join(_ics_fold(ln) for ln in lines) + "\r\n", content_type="text/calendar; charset=utf-8")
+    resp["Content-Disposition"] = 'attachment; filename="agenda-escolar.ics"'
+    return resp

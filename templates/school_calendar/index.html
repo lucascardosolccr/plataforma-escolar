@@ -25,6 +25,7 @@
     <a href="?ver=agenda" class="summary-pill{% if view_mode == 'agenda' %} active{% endif %}"{% if view_mode == 'agenda' %} aria-current="true"{% endif %}>Agenda</a>
     <a href="?ver=semana" class="summary-pill{% if view_mode == 'semana' %} active{% endif %}"{% if view_mode == 'semana' %} aria-current="true"{% endif %}>Semana</a>
     <a href="?ver=mes" class="summary-pill{% if view_mode == 'mes' %} active{% endif %}"{% if view_mode == 'mes' %} aria-current="true"{% endif %}>Mês</a>
+    <a href="{% url 'school_calendar:calendar_ics' %}" class="summary-pill ms-auto" title="Arquivo para importar no Google Agenda, no calendário do iPhone ou no Outlook: provas, entregas, eventos e reuniões dos próximos 6 meses. Não leva ocorrências nem justificativas.">{% icon "download" %}Levar para o celular (.ics)</a>
   </nav>
 
   <form class="calendar-filters" method="get">

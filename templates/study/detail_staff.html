@@ -83,7 +83,7 @@
         {% if can_manage %}<a href="{% url 'study:practice_add' guide.pk %}" class="btn btn-sm btn-outline-primary">{% icon "plus" %}Novo exercício</a>{% endif %}
       </div>
       {% if practice %}
-        <p class="small text-body-secondary">Ordenados pelos que mais erram na primeira tentativa. É treino: o estudante vê a resposta e pode refazer, então não vale como evidência de aprendizagem.</p>
+        <p class="small text-body-secondary">Ordenados pelos que mais erram na primeira tentativa. É treino: o estudante vê a resposta e pode refazer. Só a primeira tentativa, nos exercícios ligados a habilidades, entra no EIA-Cognitio, com peso baixo (0,3; uma questão de prova pesa 1,0).</p>
         <ol class="d-grid gap-3 mb-0">
           {% for r in practice %}
             <li>

@@ -320,9 +320,10 @@ class PracticeQuestion(models.Model):
 
     É escrito pelo professor AQUI, para preparação: não é questão da prova
     (``cognitio.Question``) e o gabarito aparece ao estudante depois que ele
-    responde. Por isso não vira evidência de domínio: o estudante pode tentar
-    de novo e consultar a explicação. O professor vê quantos acertaram na
-    primeira tentativa, para saber o que retomar.
+    responde. Por isso só a primeira tentativa vira evidência, formativa e de
+    peso baixo (``cognitio.evidence.W_PRACTICE``), e só nos exercícios ligados a
+    habilidades: o estudante pode tentar de novo e consultar a explicação. O
+    professor vê quantos acertaram na primeira tentativa, para saber o que retomar.
     """
 
     guide = models.ForeignKey(ExamGuide, on_delete=models.CASCADE, related_name="practice", verbose_name="prova")

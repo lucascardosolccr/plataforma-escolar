@@ -44,6 +44,17 @@ class MasteryRulesTests(TestCase):
         self.assertEqual(assess([ev(d, 0.9), ev(d, 1.0)], self.scale, d).state, "consolidada")
         self.assertEqual(assess([ev(d, 0.0), ev(d, 1.0)], self.scale, d).state, "contraditoria")
 
+    def test_without_explanation_same_state_and_no_text(self):
+        d = self.today
+        cases = [[], [ev(d, 0.1)], [ev(d, None, 0.0)] * 3, [ev(d, 0.2), ev(d, 0.3)], [ev(d, 0.9), ev(d, 1.0)],
+                 [ev(d, 0.0), ev(d, 1.0)], [ev(d - timedelta(days=200), 0.3), ev(d, 0.8), ev(d, 0.85)]]
+        for evs in cases:
+            full, light = assess(evs, self.scale, d), assess(evs, self.scale, d, explain=False)
+            self.assertEqual((light.state, light.mean, light.weight), (full.state, full.mean, full.weight))
+            self.assertEqual((light.reasons, light.sources), ([], {}))
+        # O nome da origem vem das opções do modelo, sem chamar get_source_type_display().
+        self.assertEqual(assess([ev(d, 0.5, source="rubrica")], self.scale, d).sources, {"Critério de rubrica ligado à habilidade": 1})
+
     def test_recency_trend_and_configurable_cuts(self):
         d = self.today
         old_bad = [ev(d - timedelta(days=400), 0.1), ev(d - timedelta(days=380), 0.1)]

@@ -67,11 +67,15 @@ def home(request):
     subjects = {s.pk: s for s in Subject.objects.filter(pk__in={s for _, s in pairs})}
     scale = MasteryScale.for_school(user.school)
     # Uma consulta para todas as turmas e disciplinas (antes, duas por cartão).
+    # Os cartões só contam estados: dispensa as colunas de texto e a explicação de cada par.
     by_pair = {}
-    for e in SkillEvidence.objects.filter(class_group_id__in=classes, subject_id__in=subjects).order_by("observed_on"):
+    for e in SkillEvidence.objects.filter(class_group_id__in=classes, subject_id__in=subjects)             .only("student_id", "item_id", "class_group_id", "subject_id", "observed_on", "ratio", "weight",
+                  "source_type").order_by("observed_on"):
         if (e.class_group_id, e.subject_id) in pairs:
             by_pair.setdefault((e.class_group_id, e.subject_id), []).append(e)
-    assessed = {p: {k: assess(v, scale) for k, v in group_evidence(evs).items()} for p, evs in by_pair.items()}
+    today = timezone.localdate()
+    assessed = {p: {k: assess(v, scale, today, explain=False) for k, v in group_evidence(evs).items()}
+                for p, evs in by_pair.items()}
     # A decisão do professor vale aqui também, como no mapa da turma e nos painéis. O mesmo par estudante ×
     # habilidade em duas disciplinas (raro) vai numa chamada seguinte, para não ser sobrescrito.
     pending = [(k, a) for d in assessed.values() for k, a in d.items()]

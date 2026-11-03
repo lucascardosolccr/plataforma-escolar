@@ -136,15 +136,18 @@ def dashboard(request):
     scale = MasteryScale.for_school(user.school)
     today = timezone.localdate()
     class_ids, pairs = _scope(user)
-    evs = list(_evidence_qs(user, class_ids, pairs).select_related("item", "class_group", "subject"))
+    # Só a habilidade vem junto: turma e disciplina não são lidas aqui, e cada uma dobrava os objetos
+    # montados para as ~19 mil evidências de uma escola grande.
+    evs = list(_evidence_qs(user, class_ids, pairs).select_related("item"))
     grouped = group_evidence(evs)
-    assessments = apply_judgments({k: assess(v, scale, today) for k, v in grouped.items()})
+    # O painel mostra estados e contagens, não a explicação de cada par.
+    assessments = apply_judgments({k: assess(v, scale, today, explain=False) for k, v in grouped.items()})
     ctx = {"role": user.role, "dist": _dist([a.state for a in assessments.values()]),
            "n_students": len({k[0] for k in grouped}), "n_items": len({k[1] for k in grouped}), "n_evidence": len(evs)}
     # Evolução por período (estado acumulado no fim de cada período).
     evolution = []
     for label, end in _periods(user.school):
-        st = [assess([e for e in v if e.observed_on <= end], scale, end).state for v in grouped.values()]
+        st = [assess([e for e in v if e.observed_on <= end], scale, end, explain=False).state for v in grouped.values()]
         st = [s for s in st if s != "nao_avaliado"]
         cons = sum(1 for s in st if s in ("consolidada", "consolidacao"))
         diff = sum(1 for s in st if s == "dificuldade")
@@ -316,13 +319,18 @@ def discipline(request):
     if not access.can_use(user):
         raise PermissionDenied
     scale = MasteryScale.for_school(user.school)
+    today = timezone.localdate()
     class_ids, pairs = _scope(user)
-    evs = list(_evidence_qs(user, class_ids, pairs).select_related("item", "subject"))
-    available = sorted({component_for(e.subject) or e.subject.name for e in evs if e.subject})
+    qs = _evidence_qs(user, class_ids, pairs)
+    # Componentes a partir das disciplinas com evidência; só as do componente escolhido são carregadas
+    # (antes vinham todas as evidências do alcance para depois descartar as dos outros componentes).
+    comp_of = {s.pk: component_for(s) or s.name
+               for s in Subject.objects.filter(pk__in=qs.filter(subject__isnull=False).values("subject_id"))}
+    available = sorted(set(comp_of.values()))
     comp = request.GET.get("componente") or (available[0] if available else "")
-    evs = [e for e in evs if e.subject and (component_for(e.subject) or e.subject.name) == comp]
+    evs = list(qs.filter(subject_id__in=[pk for pk, c in comp_of.items() if c == comp]).select_related("item"))
     grouped = group_evidence(evs)
-    assessments = {k: assess(v, scale) for k, v in grouped.items()}
+    assessments = {k: assess(v, scale, today, explain=False) for k, v in grouped.items()}
     # Por unidade temática.
     units = OrderedDict()
     for (sid, iid), a in sorted(assessments.items(), key=lambda kv: kv[1].evidence[0].item.thematic_unit):
@@ -332,11 +340,12 @@ def discipline(request):
     # Por dimensão analítica (ligações validadas ou sugeridas).
     item_ids = {k[1] for k in assessments}
     dim_links = ItemDimension.objects.filter(item_id__in=item_ids).select_related("dimension")
+    states_by_item = {}
+    for (sid, iid), a in assessments.items():
+        states_by_item.setdefault(iid, []).append(a.state)
     dims = OrderedDict()
     for l in dim_links:
-        for (sid, iid), a in assessments.items():
-            if iid == l.item_id:
-                dims.setdefault((l.dimension.group, l.dimension.name), []).append(a.state)
+        dims.setdefault((l.dimension.group, l.dimension.name), []).extend(states_by_item.get(l.item_id, []))
     dim_rows = [(g, n, len(st), _dist(st)) for (g, n), st in dims.items()]
     # Tipos de erro (só onde há tipologia).
     errors = []

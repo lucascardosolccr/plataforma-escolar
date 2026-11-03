@@ -99,8 +99,24 @@ class Assessment:
         return None if self.mean is None else round(self.mean * 100)
 
 
-def assess(evidences, scale, today=None):
-    """Classifica a habilidade a partir das evidências (lista de ``SkillEvidence``)."""
+_SOURCE_LABELS = {}
+
+
+def _source_label(code):
+    """Nome da origem sem ``get_source_type_display()``, que custava 2,8 s num painel com 19 mil evidências."""
+    if not _SOURCE_LABELS:
+        from .models import SkillEvidence
+
+        _SOURCE_LABELS.update(SkillEvidence.Source.choices)
+    return _SOURCE_LABELS.get(code, code)
+
+
+def assess(evidences, scale, today=None, explain=True):
+    """Classifica a habilidade a partir das evidências (lista de ``SkillEvidence``).
+
+    ``explain=False`` devolve o mesmo estado sem montar as frases de explicação nem a contagem por
+    origem: para gráficos que só usam o estado (evolução por período), onde a avaliação se repete
+    para cada ponto."""
     today = today or timezone.localdate()
     evs = sorted(evidences, key=lambda e: (e.observed_on, e.pk or 0))
     if not evs:
@@ -108,13 +124,14 @@ def assess(evidences, scale, today=None):
     valid = [e for e in evs if e.ratio is not None and e.weight > 0]
     without = [e for e in evs if e.ratio is None]
     a = Assessment("insuficiente", n_valid=len(valid), n_without=len(without), evidence=evs,
-                   sources=dict(Counter(e.get_source_type_display() for e in evs)),
+                   sources=dict(Counter(_source_label(e.source_type) for e in evs)) if explain else {},
                    last_date=evs[-1].observed_on)
-    if without:
+    if without and explain:
         a.reasons.append(f"{len(without)} registro(s) sem resposta, ausência ou não entrega: não contam como "
                          "dificuldade.")
     if not valid:
-        a.reasons.append("Nenhuma evidência de desempenho ainda.")
+        if explain:
+            a.reasons.append("Nenhuma evidência de desempenho ainda.")
         return a
     half = float(scale.half_life_days or 120)
     ws = [e.weight * 0.5 ** (max((today - e.observed_on).days, 0) / half) for e in valid]
@@ -147,16 +164,19 @@ def assess(evidences, scale, today=None):
         else:
             a.trend = "estavel"
     t1, t2, t3 = float(scale.t1), float(scale.t2), float(scale.t3)
-    a.reasons.append(f"Média ponderada {dec(mean)} em {len(valid)} evidência(s) válida(s) de "
-                     f"{len({e.source_type for e in valid})} tipo(s); peso total {dec(a.weight, 1)}.")
+    if explain:
+        a.reasons.append(f"Média ponderada {dec(mean)} em {len(valid)} evidência(s) válida(s) de "
+                         f"{len({e.source_type for e in valid})} tipo(s); peso total {dec(a.weight, 1)}.")
     if len(valid) < scale.min_evidence or a.weight < float(scale.min_weight):
-        a.reasons.append(f"Critério: são precisas ao menos {scale.min_evidence} evidências e peso "
-                         f"{dec(scale.min_weight, 1)} para concluir.")
+        if explain:
+            a.reasons.append(f"Critério: são precisas ao menos {scale.min_evidence} evidências e peso "
+                             f"{dec(scale.min_weight, 1)} para concluir.")
         return a
     ratios = [e.ratio for e in valid]
     if max(ratios) - min(ratios) >= 0.5 and sd >= 0.25:
         a.state = "contraditoria"
-        a.reasons.append("Há resultados muito altos e muito baixos: a situação de avaliação pode ter influído.")
+        if explain:
+            a.reasons.append("Há resultados muito altos e muito baixos: a situação de avaliação pode ter influído.")
         return a
     if mean < t1:
         a.state = "dificuldade"
@@ -166,8 +186,9 @@ def assess(evidences, scale, today=None):
         a.state = "consolidacao"
     else:
         a.state = "consolidada"
-    a.reasons.append(f"Cortes da escola: dificuldade < {dec(t1)}; em desenvolvimento < {dec(t2)}; "
-                     f"em consolidação < {dec(t3)}; consolidada a partir de {dec(t3)}.")
+    if explain:
+        a.reasons.append(f"Cortes da escola: dificuldade < {dec(t1)}; em desenvolvimento < {dec(t2)}; "
+                         f"em consolidação < {dec(t3)}; consolidada a partir de {dec(t3)}.")
     return a
 
 

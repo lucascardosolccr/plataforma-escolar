@@ -301,7 +301,10 @@ REQS = [
       pendencia="Verificação automática feita em 02/11/2026 (Lighthouse/axe: 100 em 13 páginas de 5 perfis, depois de "
                 "corrigir nome do botão de busca, nome do botão de perfil e alvos de toque). Prompt 20: mais 11 telas "
                 "novas com 100 e teste de teclado (pulo para o conteúdo, ordem do Tab, foco visível), que achou e corrigiu "
-                "o foco invisível no botão do calendário dos campos de data. Falta teste com leitor "
+                "o foco invisível no botão do calendário dos campos de data. Em 03/11/2026, axe (WCAG 2.0/2.1 A e AA) "
+                "sem nenhuma violação em 8 telas novas: trajetórias da turma e do estudante, modelos e validação, "
+                "privacidade, inventário LGPD, pedido LGPD e solicitações da família (roteiro conferido com página de "
+                "controle que acusou as 5 falhas plantadas). Falta teste com leitor "
                 "de tela real (NVDA ou Narrador), que nenhuma ferramenta automática substitui."),
     R("P3-16", "P3 §12; P6 §4.3", "Estados de erro, permissão, sessão expirada e página não encontrada",
       "403 explica o motivo; 404 amigável; 500 sem detalhes internos; formulário expirado",

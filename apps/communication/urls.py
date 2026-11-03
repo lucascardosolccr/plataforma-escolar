@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import views, views_authorizations
 
 app_name = "communication"
 
@@ -30,6 +30,12 @@ urlpatterns = [
     path("comunicados/", views.announcement_list, name="announcement_list"),
     path("comunicados/novo/", views.announcement_create, name="announcement_create"),
     path("comunicados/<int:pk>/", views.announcement_detail, name="announcement_detail"),
+    path("autorizacoes/", views_authorizations.authorization_list, name="authorization_list"),
+    path("autorizacoes/nova/", views_authorizations.authorization_create, name="authorization_create"),
+    path("autorizacoes/<int:pk>/", views_authorizations.authorization_detail, name="authorization_detail"),
+    path("autorizacoes/<int:pk>/responder/", views_authorizations.authorization_answer, name="authorization_answer"),
+    path("autorizacoes/<int:pk>/<str:action>/", views_authorizations.authorization_status,
+         name="authorization_status"),
     path("solicitacoes/", views.request_list, name="request_list"),
     path("solicitacoes/nova/", views.request_create, name="request_create"),
     path("solicitacoes/<int:pk>/", views.request_detail, name="request_detail"),

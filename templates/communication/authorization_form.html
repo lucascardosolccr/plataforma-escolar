@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Nova autorização — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url "communication:authorization_list" as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Autorizações" heading="Nova autorização" %}
+  <p class="form-lead">Os responsáveis dos estudantes das turmas escolhidas recebem um aviso e respondem por filho até o prazo. Escreva os detalhes como num bilhete: local, horários, transporte, o que levar e quem contatar.</p>
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Enviar às famílias" hint="" %}
+  </form>
+</div>
+{% endblock %}

@@ -247,7 +247,15 @@ def _family(user):
             guardian=user, status=StudentApplication.Status.CORRECTION).count(), reverse("family_applications")),
         _item("Complementação pedida pela escola (necessidades e laudos)", _support_requests(child_ids),
               reverse("inclusion:overview")),
+        _item("Autorizações de passeio aguardando sua resposta", _authorizations_pending(user),
+              reverse("communication:authorization_list"), "Responda até o prazo indicado em cada uma."),
     ]
+
+
+def _authorizations_pending(user):
+    from apps.communication.views_authorizations import pending_for_family
+
+    return pending_for_family(user)
 
 
 def _support_requests(child_ids):

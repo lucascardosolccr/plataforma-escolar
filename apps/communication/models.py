@@ -399,3 +399,62 @@ class ReminderRun(models.Model):
         ordering = ["-started_at"]
         verbose_name = "processamento de lembretes"
         verbose_name_plural = "processamentos de lembretes"
+
+
+class Authorization(models.Model):
+    """Autorização da família para passeio ou atividade fora da rotina (substitui o bilhete de papel).
+
+    A equipe cria para uma ou mais turmas; cada responsável com vínculo aprovado responde por filho até o
+    prazo. A escola acompanha quem autorizou, quem não autorizou e quem não respondeu, e imprime a lista
+    de autorizados para levar no dia. Nada é apagado: cancelar exige motivo e avisa as famílias.
+    """
+
+    class Status(models.TextChoices):
+        OPEN = "aberta", "Aberta"
+        CLOSED = "encerrada", "Encerrada"
+        CANCELED = "cancelada", "Cancelada"
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="authorizations")
+    title = models.CharField("atividade", max_length=200)
+    description = models.TextField("detalhes para a família",
+                                   help_text="Local, horário de saída e de volta, transporte, o que levar, contato.")
+    event_date = models.DateField("data da atividade")
+    deadline = models.DateField("responder até")
+    class_groups = models.ManyToManyField("academics.ClassGroup", related_name="authorizations",
+                                          verbose_name="turmas")
+    status = models.CharField("situação", max_length=10, choices=Status.choices, default=Status.OPEN)
+    cancel_reason = models.CharField("motivo do cancelamento", max_length=300, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="authorizations_created")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-event_date", "-pk"]
+        verbose_name = "autorização"
+        verbose_name_plural = "autorizações"
+
+    def __str__(self):
+        return self.title
+
+    def accepts_answers(self, today=None):
+        return self.status == self.Status.OPEN and (today or timezone.localdate()) <= self.deadline
+
+
+class AuthorizationResponse(models.Model):
+    """Resposta de um responsável por um estudante (a última vale; o histórico fica na auditoria)."""
+
+    class Answer(models.TextChoices):
+        YES = "autorizo", "Autorizo"
+        NO = "nao_autorizo", "Não autorizo"
+
+    authorization = models.ForeignKey(Authorization, on_delete=models.CASCADE, related_name="responses")
+    student = models.ForeignKey("registry.Student", on_delete=models.CASCADE, related_name="authorization_responses")
+    answer = models.CharField("resposta", max_length=12, choices=Answer.choices)
+    note = models.CharField("observação para a escola", max_length=300, blank=True,
+                            help_text="Ex.: cuidados, quem busca, restrição alimentar para o lanche do passeio.")
+    answered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="+")
+    answered_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["authorization", "student"], name="uniq_authorization_student")]
+        verbose_name = "resposta de autorização"
+        verbose_name_plural = "respostas de autorização"

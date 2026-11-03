@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Autorizações — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Autorizações</h1>
+    <p>{% if staff %}Passeios e atividades fora da rotina: a família autoriza pela plataforma, e você acompanha quem respondeu e imprime a lista de autorizados.{% else %}Passeios e atividades fora da rotina que pedem a sua autorização.{% endif %}</p>
+  </div>
+  {% if can_create %}<a href="{% url 'communication:authorization_create' %}" class="btn btn-primary">{% icon "plus" %}Nova autorização</a>{% endif %}
+</div>
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 table-stack">
+      <thead><tr><th scope="col">Atividade</th><th scope="col">Data</th><th scope="col">Responder até</th><th scope="col">Turmas</th><th scope="col">Situação</th></tr></thead>
+      <tbody>
+        {% for a in page %}
+        <tr>
+          <td><a class="fw-semibold" href="{% url 'communication:authorization_detail' a.pk %}">{{ a.title }}</a></td>
+          <td data-label="Data" class="text-nowrap">{{ a.event_date|date:"d/m/Y" }}</td>
+          <td data-label="Responder até" class="text-nowrap">{{ a.deadline|date:"d/m/Y" }}</td>
+          <td data-label="Turmas">{% for c in a.class_groups.all %}{{ c.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+          <td data-label="Situação">{% if a.status == "aberta" and a.deadline < today %}<span class="chip chip-state">prazo encerrado</span>{% else %}<span class="chip chip-state{% if a.status == "cancelada" %} text-danger{% endif %}">{{ a.get_status_display }}</span>{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5"><div class="empty-state py-4">{% icon "file-check" %}<strong>Nenhuma autorização</strong><span>{% if can_create %}Crie uma para o próximo passeio: as famílias respondem pela plataforma.{% else %}Quando a escola pedir autorização para um passeio, ela aparece aqui.{% endif %}</span></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/_pager.html" %}
+{% endblock %}

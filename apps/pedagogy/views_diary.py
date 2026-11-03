@@ -95,6 +95,11 @@ class LessonRecordForm(CurriculumFormMixin, forms.ModelForm):
             raise forms.ValidationError("O diário registra aulas que já aconteceram.")
         return d
 
+    def _check_school_day(self, cg_id, day):
+        why = _calendar_says_no_class(cg_id, day)
+        if why:
+            self.add_error("date", why)
+
     def clean(self):
         c = super().clean()
         raw = c.get("pair") or ""
@@ -108,10 +113,29 @@ class LessonRecordForm(CurriculumFormMixin, forms.ModelForm):
             return c
         self.cg_id, self.subj_id = cg_id, subj_id
         date = c.get("date")
+        if date:
+            self._check_school_day(cg_id, date)
         if date and not self.instance.pk and LessonRecord.objects.filter(
                 class_group_id=cg_id, subject_id=subj_id, date=date).exists():
             self.add_error("date", "Esta aula já tem registro. Abra o registro existente para completar.")
         return c
+
+
+def _calendar_says_no_class(class_group_id, day):
+    """Mensagem se o calendário oficial PUBLICADO diz que não houve aula; senão None.
+
+    Sem calendário publicado não há como saber, e nada é recusado."""
+    from apps.school_calendar.services import is_published, school_days
+
+    year = ClassGroup.objects.select_related("school_year").get(pk=class_group_id).school_year
+    if not (year and is_published(year) and year.start_date and year.end_date):
+        return None
+    if not (year.start_date <= day <= year.end_date):
+        return f"{day:%d/%m/%Y} está fora do ano letivo {year.name} desta turma."
+    if not school_days(year, day, day):
+        return (f"Pelo calendário oficial, {day:%d/%m/%Y} não teve aula (fim de semana, feriado ou recesso). "
+                "Se houve aula de reposição, a secretaria marca o dia letivo extra no calendário.")
+    return None
 
 
 def diary_list(request):

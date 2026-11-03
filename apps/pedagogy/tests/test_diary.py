@@ -69,3 +69,29 @@ class DiaryTests(CommunicationBase):
         self.turma.school_year.save()
         cov = coverage(self.turma, self.mat)
         self.assertGreaterEqual(cov["counts"]["worked"], 1)
+
+
+class DiaryCalendarTests(CommunicationBase):
+    """Com o calendário oficial publicado, o diário não aceita aula em dia sem aula."""
+
+    _post = DiaryTests._post
+
+    def test_school_calendar_is_respected_when_published(self):
+        from apps.school_calendar.models import CalendarEvent, CalendarPublication
+
+        year = self.turma.school_year
+        year.start_date, year.end_date = dt.date(2026, 2, 2), dt.date(2026, 12, 18)
+        year.save()
+        CalendarPublication.objects.create(school_year=year)
+        CalendarEvent.objects.create(school=self.school, school_year=year, kind="feriado", title="Feriado",
+                                     start=dt.date(2026, 4, 21), no_classes=True)
+        CalendarEvent.objects.create(school=self.school, school_year=year, kind="letivo_extra", title="Reposição",
+                                     start=dt.date(2026, 5, 9))
+        self.login("prof")
+        self.assertContains(self._post(date="2026-05-10"), "não teve aula")       # domingo
+        self.assertContains(self._post(date="2026-04-21"), "não teve aula")       # feriado
+        self.assertContains(self._post(date="2026-01-20"), "fora do ano letivo")  # antes do início
+        self._post(date="2026-05-09")                                             # sábado de reposição
+        self._post(date="2026-05-11")                                             # segunda comum
+        self.assertEqual(sorted(LessonRecord.objects.values_list("date", flat=True)),
+                         [dt.date(2026, 5, 9), dt.date(2026, 5, 11)])

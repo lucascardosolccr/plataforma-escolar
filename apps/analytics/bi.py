@@ -275,10 +275,11 @@ def load_grades(student_ids, start, end, class_group=None, subject=None, subject
 
 
 class _Ev:
-    __slots__ = ("subject", "subject_id", "weight", "date")
+    __slots__ = ("subject", "subject_id", "weight", "date", "class_group_id")
 
-    def __init__(self, subject, weight, date):
+    def __init__(self, subject, weight, date, class_group_id=None):
         self.subject, self.subject_id, self.weight, self.date = subject, subject.pk, weight, date
+        self.class_group_id = class_group_id
 
 
 class _LightGrade:
@@ -289,7 +290,7 @@ class _LightGrade:
         self.value, self.evaluation, self.evaluation_id = value, evaluation, evaluation_id
 
 
-def load_grades_light(student_ids, start, end, class_group=None, subject_ids=None):
+def load_grades_light(student_ids, start, end, class_group=None, subject_ids=None, class_ids=None):
     """Como ``load_grades``, mas para agregados da escola inteira: na escala de uma escola real (20 mil
     notas) montar cada Grade com avaliação e disciplina levava mais de 1 s no painel institucional.
     Devolve objetos com ``value`` e ``evaluation.subject/weight/date`` — o que ``_averages_from_grades``
@@ -302,17 +303,19 @@ def load_grades_light(student_ids, start, end, class_group=None, subject_ids=Non
     )
     if class_group is not None:
         qs = qs.filter(evaluation__class_group=class_group)
+    if class_ids is not None:
+        qs = qs.filter(evaluation__class_group_id__in=list(class_ids))
     if subject_ids is not None:
         qs = qs.filter(evaluation__subject_id__in=list(subject_ids))
     rows = list(qs.order_by("evaluation__date", "evaluation_id").values_list(
         "student_id", "value", "evaluation__subject_id", "evaluation__subject__name", "evaluation__weight",
-        "evaluation__date", "evaluation_id"))
+        "evaluation__date", "evaluation_id", "evaluation__class_group_id"))
     # Disciplina montada da mesma consulta (só id e nome, o que as telas usam): uma consulta a mais aqui
     # mudava o número de consultas conforme houvesse notas, e o teste de orçamento vigia isso.
     subjects, out = {}, defaultdict(list)
-    for sid, value, subj_id, subj_name, weight, d, ev_id in rows:
+    for sid, value, subj_id, subj_name, weight, d, ev_id, cg_id in rows:
         subj = subjects.get(subj_id) or subjects.setdefault(subj_id, Subject(pk=subj_id, name=subj_name))
-        out[sid].append(_LightGrade(value, _Ev(subj, weight, d), ev_id))
+        out[sid].append(_LightGrade(value, _Ev(subj, weight, d, cg_id), ev_id))
     return out
 
 
@@ -1087,12 +1090,20 @@ def teacher_report(teacher, period, assignments):
     observed = Counter(PedagogicalObservation.objects.filter(
         teacher=teacher, subject_id__in=subject_ids, observed_at__gte=period.start, observed_at__lte=period.end)
         .values_list("subject_id", "student_id"))
+    # Uma consulta de notas para todos os pares (antes, uma por par: 88 com um professor de 22 turmas).
+    all_ids = {sid for ids in enrolled.values() for sid in ids}
+    by_pair = defaultdict(lambda: defaultdict(list))
+    for sid, gs in load_grades_light(all_ids, period.start, period.end, class_ids=class_ids,
+                                     subject_ids=subject_ids).items():
+        for g in gs:
+            by_pair[(g.evaluation.class_group_id, g.evaluation.subject_id)][sid].append(g)
     out = []
     for a in assignments:
         cg, subj = a.class_group, a.subject
         ids = enrolled.get(cg.pk, [])
         id_set = set(ids)
-        grades = load_grades(ids, period.start, period.end, class_group=cg, subject=subj)
+        pair_grades = by_pair.get((cg.pk, subj.pk), {})
+        grades = {sid: pair_grades[sid] for sid in ids if sid in pair_grades}
         vals = []
         for sid in ids:
             r = _subject_rows(grades.get(sid, []), rules).get(subj.pk)

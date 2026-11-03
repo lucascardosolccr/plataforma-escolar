@@ -1001,11 +1001,37 @@ def subject_report(subject, class_groups, period):
     rules = rules_by_subject(subject.school)
     classes = []
     all_rows, all_grades = [], []
+    # Tudo em lote para todas as turmas (antes, 6 consultas por turma: 140 numa escola de 24 turmas).
+    class_groups = list(class_groups)
+    cg_ids = [cg.pk for cg in class_groups]
+    ids_by_class = defaultdict(list)
+    for cid, sid in Enrollment.objects.filter(class_group_id__in=cg_ids, status="ativo")             .values_list("class_group_id", "student_id"):
+        ids_by_class[cid].append(sid)
+    every_id = {sid for ids in ids_by_class.values() for sid in ids}
+    grades_by_pair = defaultdict(lambda: defaultdict(list))
+    for sid, gs in load_grades_light(every_id, period.start, period.end, class_ids=cg_ids,
+                                     subject_ids=[subject.pk]).items():
+        for g in gs:
+            grades_by_pair[g.evaluation.class_group_id][sid].append(g)
+    names = Student.objects.in_bulk(every_id)
+    act_ids_by_class = defaultdict(set)
+    for aid, cid in Activity.objects.filter(
+            class_group_id__in=cg_ids, subject=subject, status=Activity.Status.PUBLISHED, published_date__lte=today,
+            deadline__gte=period.start, deadline__lte=period.end).values_list("pk", "class_group_id"):
+        act_ids_by_class[cid].add(aid)
+    subs_by_class = defaultdict(lambda: [0, 0])  # [entregues, total] só de estudantes da própria turma
+    class_of_act = {aid: cid for cid, aids in act_ids_by_class.items() for aid in aids}
+    members = {cid: set(ids) for cid, ids in ids_by_class.items()}
+    for aid, sid, st in Submission.objects.filter(activity_id__in=list(class_of_act))             .values_list("activity_id", "student_id", "status"):
+        cid = class_of_act[aid]
+        if sid in members.get(cid, ()):
+            subs_by_class[cid][1] += 1
+            if st in Submission.DELIVERED_STATUSES:
+                subs_by_class[cid][0] += 1
     for cg in class_groups:
-        ids = list(Enrollment.objects.filter(class_group=cg, status="ativo").values_list("student_id", flat=True))
-        grades = load_grades(ids, period.start, period.end, class_group=cg, subject=subject)
+        ids = ids_by_class.get(cg.pk, [])
+        grades = grades_by_pair.get(cg.pk, {})
         vals, rows = [], []
-        names = {s.pk: s for s in Student.objects.filter(pk__in=ids)}
         for sid in ids:
             r = _subject_rows(grades.get(sid, []), rules).get(subject.pk)
             if r and r["average"] is not None:
@@ -1013,16 +1039,13 @@ def subject_report(subject, class_groups, period):
                 rows.append({"student": names[sid], "class_group": cg, "average": _r(r["average"], 2),
                              "passing": r["passing"], "below": r["below"], "count": r["count"]})
             all_grades.extend(grades.get(sid, []))
-        acts = Activity.objects.filter(class_group=cg, subject=subject, status=Activity.Status.PUBLISHED,
-                                       published_date__lte=today, deadline__gte=period.start, deadline__lte=period.end)
-        sub_counts = Submission.objects.filter(activity__in=acts, student_id__in=ids).aggregate(
-            total=Count("id"), done=Count("id", filter=Q(status__in=Submission.DELIVERED_STATUSES)))
+        done, total = subs_by_class[cg.pk]
         d = describe(vals)
         classes.append({
             "class_group": cg, "students": len(ids), **d,
             "below_count": sum(1 for r in rows if r["below"]),
-            "delivery_rate": pct(sub_counts["done"], sub_counts["total"]),
-            "activities": acts.count(),
+            "delivery_rate": pct(done, total),
+            "activities": len(act_ids_by_class.get(cg.pk, ())),
             "small": d["n"] < SMALL_GROUP,
         })
         all_rows.extend(rows)

@@ -9,7 +9,7 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from apps.academics.models import ClassGroup
+from apps.academics.models import ClassGroup, TeacherAssignment
 from apps.pedagogy.models import Occurrence
 from apps.registry.models import Enrollment, Student
 
@@ -57,6 +57,21 @@ class DashboardQueryTests(AnalyticsBase):
             cg = ClassGroup.objects.create(
                 school=self.school, school_year=self.year, name=f"Turma {i}"
             )
+            self.add_students(2, cg)
+        large = self.count(url)
+        self.assertEqual(small, large, f"consultas subiram de {small} para {large}")
+
+    def test_subject_dashboard_does_not_grow_with_classes(self):
+        """Painel por disciplina: antes, 6 consultas por turma (140 numa escola de 24 turmas)."""
+        self.login("coord")
+        url = reverse("analytics:subject_dashboard", args=[self.mat.pk])
+        self.add_students(2, self.turma)
+        small = self.count(url)
+        for i in range(5):
+            cg = ClassGroup.objects.create(school=self.school, school_year=self.year, name=f"Turma D{i}")
+            # o painel só considera turmas com a disciplina atribuída
+            TeacherAssignment.objects.create(school=self.school, school_year=self.year, teacher=self.prof,
+                                             class_group=cg, subject=self.mat)
             self.add_students(2, cg)
         large = self.count(url)
         self.assertEqual(small, large, f"consultas subiram de {small} para {large}")

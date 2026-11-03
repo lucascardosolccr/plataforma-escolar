@@ -198,13 +198,28 @@ def dashboard(request):
 
         from .gaps import class_prerequisite_needs
 
+        # Só os pares com prova ou atividade nas próximas semanas têm o que analisar (os demais devolviam
+        # vazio depois de 5 consultas cada: um professor com 80 pares fazia ~450 consultas nesta página).
+        from apps.pedagogy.models import Activity, Evaluation
+
+        horizon = today + datetime.timedelta(days=45)
+        upcoming = set(Evaluation.objects.filter(class_group_id__in=class_ids, date__gte=today, date__lte=horizon)
+                       .values_list("class_group_id", "subject_id"))
+        upcoming |= set(Activity.objects.filter(class_group_id__in=class_ids, deadline__gte=today,
+                                                deadline__lte=horizon).exclude(status="cancelada")
+                        .values_list("class_group_id", "subject_id"))
+        todo = [(c, s) for c, s in (pairs or []) if (c, s) in upcoming]
+        cgs = ClassGroup.objects.in_bulk({c for c, _ in todo})
+        subs = Subject.objects.in_bulk({s for _, s in todo})
+        studs_by_class = {}
+        for e in Enrollment.objects.filter(class_group_id__in=list(cgs), status="ativo").select_related("student"):
+            studs_by_class.setdefault(e.class_group_id, []).append(e.student)
         critical = []
-        for c, s in pairs or []:
-            cg, subject = ClassGroup.objects.filter(pk=c).first(), Subject.objects.filter(pk=s).first()
+        for c, s in todo:
+            cg, subject = cgs.get(c), subs.get(s)
             if not (cg and subject):
                 continue
-            studs = [e.student for e in Enrollment.objects.filter(class_group=cg, status="ativo")
-                     .select_related("student")]
+            studs = studs_by_class.get(c, [])
             for r in class_prerequisite_needs(cg, subject, user.school, studs, today)["rows"]:
                 if r["weak"]:
                     critical.append({"cg": cg, "subject": subject, **r})

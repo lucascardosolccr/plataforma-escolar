@@ -249,7 +249,15 @@ def _family(user):
               reverse("inclusion:overview")),
         _item("Autorizações de passeio aguardando sua resposta", _authorizations_pending(user),
               reverse("communication:authorization_list"), "Responda até o prazo indicado em cada uma."),
+        _item("Consultas da escola aguardando sua opinião", _polls_pending(user),
+              reverse("communication:poll_list"), "Um voto por família.", "info"),
     ]
+
+
+def _polls_pending(user):
+    from apps.communication.views_polls import pending_for_family
+
+    return pending_for_family(user)
 
 
 def _authorizations_pending(user):

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Consultas às famílias — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Consultas às famílias</h1>
+    <p>{% if staff %}Uma pergunta, algumas opções e um voto por família. Você vê os totais, nunca quem votou em quê.{% else %}A escola quer saber a sua opinião. Um voto por família; dá para mudar até o prazo.{% endif %}</p>
+  </div>
+  {% if can_create %}<a href="{% url "communication:poll_create" %}" class="btn btn-primary">{% icon "plus" %}Nova consulta</a>{% endif %}
+</div>
+<div class="card">
+  <ul class="feed">
+    {% for p in page %}
+    <li class="feed-item">
+      <div class="feed-body flex-grow-1">
+        <p class="feed-title"><a href="{% url "communication:poll_detail" p.pk %}" class="stretched-link text-decoration-none">{{ p.question }}</a></p>
+        <p class="feed-meta">Até {{ p.deadline|date:"d/m/Y" }} · {% for c in p.class_groups.all %}{{ c.name }}{% if not forloop.last %}, {% endif %}{% empty %}escola toda{% endfor %} · {{ p.get_status_display }}{% if not staff %}{% if p.pk in voted %} · você já respondeu{% elif p.status == "aberta" %} · aguardando sua resposta{% endif %}{% endif %}</p>
+      </div>
+      {% icon "chevron-right" %}
+    </li>
+    {% empty %}
+    <li><div class="empty-state py-4">{% icon "list-checks" %}<strong>Nenhuma consulta</strong><span>{% if can_create %}Pergunte às famílias, por exemplo, o melhor horário para a reunião.{% else %}Quando a escola fizer uma consulta, ela aparece aqui.{% endif %}</span></div></li>
+    {% endfor %}
+  </ul>
+</div>
+{% include "partials/_pager.html" %}
+{% endblock %}

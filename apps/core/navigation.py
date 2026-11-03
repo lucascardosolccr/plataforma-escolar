@@ -150,6 +150,8 @@ ITEMS = {
                      ("communication:request_",), "Pedidos de atendimento"),
     "authorizations": Item("Autorizações", "communication:authorization_list", "file-check",
                            ("communication:authorization_",), "Passeios e atividades com autorização da família"),
+    "polls": Item("Consultas às famílias", "communication:poll_list", "list-checks", ("communication:poll_",),
+                  "Uma pergunta, um voto por família"),
     # Análises
     "institutional": Item("Painel institucional", "analytics:institutional_dashboard",
                           "layout-dashboard", ("analytics:institutional_dashboard", "analytics:class_dashboard"),
@@ -237,10 +239,10 @@ ACTIONS = {
     "link_request": ITEMS["link_request"],
 }
 
-COMMUNICATION_STAFF = ("Comunicação", ["threads_staff", "announcements", "authorizations", "requests", "meetings",
-                                       "notifications"])
+COMMUNICATION_STAFF = ("Comunicação", ["threads_staff", "announcements", "authorizations", "polls", "requests",
+                                       "meetings", "notifications"])
 # A administração cuida das contas e da configuração, não participa de reuniões.
-COMMUNICATION_ADMIN = ("Comunicação", ["threads_staff", "announcements", "authorizations", "requests",
+COMMUNICATION_ADMIN = ("Comunicação", ["threads_staff", "announcements", "authorizations", "polls", "requests",
                                        "notifications"])
 
 LAYOUT = {
@@ -248,7 +250,8 @@ LAYOUT = {
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Acompanhamento", ["children", "fam_diary", "fam_activities", "fam_works", "fam_exam_prep", "fam_grades",
                             "fam_attendance"]),
-        ("Escola", ["threads_family", "announcements", "authorizations", "requests", "meetings", "notifications"]),
+        ("Escola", ["threads_family", "announcements", "authorizations", "polls", "requests", "meetings",
+                    "notifications"]),
         ("Secretaria", ["fam_applications", "justify", "links", "fam_support"]),
         ("Análises", ["reports", "methodology"]),
     ],

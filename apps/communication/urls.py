@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_authorizations
+from . import views, views_authorizations, views_polls
 
 app_name = "communication"
 
@@ -36,6 +36,11 @@ urlpatterns = [
     path("autorizacoes/<int:pk>/responder/", views_authorizations.authorization_answer, name="authorization_answer"),
     path("autorizacoes/<int:pk>/<str:action>/", views_authorizations.authorization_status,
          name="authorization_status"),
+    path("consultas/", views_polls.poll_list, name="poll_list"),
+    path("consultas/nova/", views_polls.poll_create, name="poll_create"),
+    path("consultas/<int:pk>/", views_polls.poll_detail, name="poll_detail"),
+    path("consultas/<int:pk>/votar/", views_polls.poll_vote, name="poll_vote"),
+    path("consultas/<int:pk>/encerrar/", views_polls.poll_close, name="poll_close"),
     path("solicitacoes/", views.request_list, name="request_list"),
     path("solicitacoes/nova/", views.request_create, name="request_create"),
     path("solicitacoes/<int:pk>/", views.request_detail, name="request_detail"),

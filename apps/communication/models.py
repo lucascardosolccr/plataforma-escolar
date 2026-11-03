@@ -458,3 +458,48 @@ class AuthorizationResponse(models.Model):
         constraints = [models.UniqueConstraint(fields=["authorization", "student"], name="uniq_authorization_student")]
         verbose_name = "resposta de autorização"
         verbose_name_plural = "respostas de autorização"
+
+
+class Poll(models.Model):
+    """Consulta às famílias: uma pergunta com opções (horário de reunião, data de evento, interesse).
+
+    Um voto por responsável. A equipe vê só os totais, nunca quem votou em quê: o voto guarda a pessoa
+    apenas para impedir voto duplo e permitir mudar até o prazo.
+    """
+
+    class Status(models.TextChoices):
+        OPEN = "aberta", "Aberta"
+        CLOSED = "encerrada", "Encerrada"
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="polls")
+    question = models.CharField("pergunta", max_length=200)
+    description = models.TextField("explicação (opcional)", blank=True)
+    options = models.JSONField("opções", default=list)
+    class_groups = models.ManyToManyField("academics.ClassGroup", blank=True, related_name="polls",
+                                          verbose_name="turmas (vazio: escola toda)")
+    deadline = models.DateField("responder até")
+    show_results = models.BooleanField("mostrar o resultado às famílias depois de encerrar", default=True)
+    status = models.CharField("situação", max_length=10, choices=Status.choices, default=Status.OPEN)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="polls_created")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        verbose_name = "consulta às famílias"
+        verbose_name_plural = "consultas às famílias"
+
+    def __str__(self):
+        return self.question
+
+    def accepts_votes(self, today=None):
+        return self.status == self.Status.OPEN and (today or timezone.localdate()) <= self.deadline
+
+
+class PollVote(models.Model):
+    poll = models.ForeignKey(Poll, on_delete=models.CASCADE, related_name="votes")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="+")
+    option = models.PositiveSmallIntegerField()
+    voted_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["poll", "user"], name="uniq_poll_vote")]

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ poll.question }} — Consultas — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url "communication:poll_list" %}" class="back-link">{% icon "arrow-left" %}Consultas às famílias</a>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Consulta às famílias</span>
+    <h1>{{ poll.question }}</h1>
+    <p>Responder até <strong>{{ poll.deadline|date:"d/m/Y" }}</strong> · {% for c in poll.class_groups.all %}{{ c.name }}{% if not forloop.last %}, {% endif %}{% empty %}escola toda{% endfor %}</p>
+  </div>
+  <div class="page-actions"><span class="chip">{{ poll.get_status_display }}</span></div>
+</div>
+{% if poll.description %}<div class="card mb-3"><div class="card-body">{{ poll.description|linebreaks }}</div></div>{% endif %}
+
+{% if can_vote %}
+<form method="post" action="{% url "communication:poll_vote" poll.pk %}" class="card mb-3"><div class="card-body">
+  {% csrf_token %}
+  <fieldset><legend class="form-label fs-6">{% if mine %}Mudar o voto{% else %}Seu voto{% endif %}</legend>
+    {% for i, label in options %}
+    <div class="form-check"><input class="form-check-input" type="radio" name="option" value="{{ i }}" id="op-{{ i }}"{% if mine and mine.option == i %} checked{% endif %}><label class="form-check-label" for="op-{{ i }}">{{ label }}</label></div>
+    {% endfor %}
+  </fieldset>
+  <button type="submit" class="btn btn-primary btn-sm mt-2">Enviar</button>
+</div></form>
+{% elif mine %}
+<p>Você respondeu esta consulta.</p>
+{% endif %}
+
+{% if results %}
+<section class="card mb-3" aria-labelledby="h-res"><div class="card-body">
+  <h2 id="h-res" class="h6">Resultado{% if poll.status == "aberta" %} parcial{% endif %}</h2>
+  <p class="small text-body-secondary">{{ total }} família{{ total|pluralize }} respond{{ total|pluralize:"eu,eram" }}{% if audience is not None %} de {{ audience }} com acesso{% endif %}. Ninguém vê quem votou em quê.</p>
+  <ul class="list-unstyled mb-0 poll-results">
+    {% for r in results %}
+    <li class="mb-2"><div class="d-flex justify-content-between small"><span>{{ r.label }}</span><span class="fw-semibold">{{ r.n }} ({{ r.pct }}%)</span></div>
+      <progress class="poll-bar" max="100" value="{{ r.pct }}" aria-label="{{ r.label }}: {{ r.pct }}%">{{ r.pct }}%</progress></li>
+    {% endfor %}
+  </ul>
+</div></section>
+{% elif not staff and poll.status == "encerrada" %}
+<p class="text-body-secondary">A consulta foi encerrada. A escola optou por não divulgar o resultado aqui.</p>
+{% endif %}
+
+{% if can_manage and poll.status == "aberta" %}
+<form method="post" action="{% url "communication:poll_close" poll.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary" data-confirm="As famílias não poderão mais votar." data-confirm-title="Encerrar a consulta?" data-confirm-ok="Encerrar">Encerrar a consulta</button></form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Nova consulta — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url "communication:poll_list" as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Consultas às famílias" heading="Nova consulta" %}
+  <p class="form-lead">Os responsáveis das turmas escolhidas recebem um aviso. Cada família vota uma vez e pode mudar até o prazo. Você verá os totais por opção e quantas famílias responderam; quem votou em quê não aparece para ninguém.</p>
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Enviar às famílias" hint="" %}
+  </form>
+</div>
+{% endblock %}

@@ -282,32 +282,37 @@ class _Ev:
 
 
 class _LightGrade:
-    """Nota sem o objeto completo: só o que médias e evolução mensal usam."""
-    __slots__ = ("value", "evaluation")
+    """Nota sem o objeto completo: só o que médias, evolução mensal e estatística por avaliação usam."""
+    __slots__ = ("value", "evaluation", "evaluation_id")
 
-    def __init__(self, value, evaluation):
-        self.value, self.evaluation = value, evaluation
+    def __init__(self, value, evaluation, evaluation_id):
+        self.value, self.evaluation, self.evaluation_id = value, evaluation, evaluation_id
 
 
-def load_grades_light(student_ids, start, end):
+def load_grades_light(student_ids, start, end, class_group=None, subject_ids=None):
     """Como ``load_grades``, mas para agregados da escola inteira: na escala de uma escola real (20 mil
     notas) montar cada Grade com avaliação e disciplina levava mais de 1 s no painel institucional.
     Devolve objetos com ``value`` e ``evaluation.subject/weight/date`` — o que ``_averages_from_grades``
     e ``_monthly_grades`` leem."""
     from apps.academics.models import Subject
 
-    rows = list(Grade.objects.filter(
+    qs = Grade.objects.filter(
         student_id__in=list(student_ids), evaluation__status=PUBLISHED, evaluation__date__gte=start,
         evaluation__date__lte=end, value__isnull=False,
-    ).order_by("evaluation__date", "evaluation_id").values_list(
+    )
+    if class_group is not None:
+        qs = qs.filter(evaluation__class_group=class_group)
+    if subject_ids is not None:
+        qs = qs.filter(evaluation__subject_id__in=list(subject_ids))
+    rows = list(qs.order_by("evaluation__date", "evaluation_id").values_list(
         "student_id", "value", "evaluation__subject_id", "evaluation__subject__name", "evaluation__weight",
-        "evaluation__date"))
+        "evaluation__date", "evaluation_id"))
     # Disciplina montada da mesma consulta (só id e nome, o que as telas usam): uma consulta a mais aqui
     # mudava o número de consultas conforme houvesse notas, e o teste de orçamento vigia isso.
     subjects, out = {}, defaultdict(list)
-    for sid, value, subj_id, subj_name, weight, d in rows:
+    for sid, value, subj_id, subj_name, weight, d, ev_id in rows:
         subj = subjects.get(subj_id) or subjects.setdefault(subj_id, Subject(pk=subj_id, name=subj_name))
-        out[sid].append(_LightGrade(value, _Ev(subj, weight, d)))
+        out[sid].append(_LightGrade(value, _Ev(subj, weight, d), ev_id))
     return out
 
 
@@ -859,8 +864,8 @@ def class_report(class_group, period, *, min_subjects_below=1, min_delivery=60, 
     students = {
         s.pk: s for s in Student.objects.filter(pk__in=active_ids).order_by("first_name", "last_name")
     }
-    grades = load_grades(active_ids, period.start, period.end, class_group=class_group,
-                         subject_ids=only_subjects)
+    grades = load_grades_light(active_ids, period.start, period.end, class_group=class_group,
+                               subject_ids=only_subjects)
     records = load_attendance(active_ids, period.start, period.end, class_group=class_group)
 
     acts = list(

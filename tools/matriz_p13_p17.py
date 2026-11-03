@@ -165,9 +165,11 @@ def build(R):
         R("P14-06", "P14 §3; §14.8", "Foto de todos os perfis, com tratamento (redimensionar, comprimir, validar) e visibilidade correta",
           "Equipe e família salvam a própria foto; tratamento no servidor", [F("test_staff_and_family_save_their_own_photo"),
            F("test_admin_uploads_staff_photo"), F("test_staff_photo_visibility")], V),
-        R("P14-06b", "P14 §3.1", "Recorte e ajuste da foto no navegador", "Recorte por arrasto e zoom antes do envio",
-          ["static/js/ds.js", F("test_student_form_photo_is_processed")], PA,
-          pendencia="O recorte central no servidor está testado; o arrasto e o zoom no navegador foram conferidos à mão, sem teste automatizado."),
+        R("P14-06b", "P14 §3.1", "Recorte e ajuste da foto no navegador", "Recorte por arrasto e zoom antes do envio; envia JPEG 512×512",
+          ["static/js/ds.js", "tools/qa_recorte_foto.mjs", F("test_student_form_photo_is_processed")], VE,
+          extra={"nota": "Roteiro de navegador conferido em 02/11/2026 a 390 e 1280 px, por cor de pixel do canvas. "
+                         "Achou e corrigiu um defeito: o arrasto andava metade do ponteiro (canvas exibido com 160 px). "
+                         "O roteiro reprova no código antigo. Fora do pytest para não exigir o Playwright no projeto."}),
         R("P14-07", "P14 §3.2–3.3; §14.9", "Lista de quem está sem foto, com cobrança e dispensa justificada, sem bloquear o acesso",
           "Pendência na central; dispensa registrada; lembrete à família uma vez por dia",
           [F("test_pending_list_roles_and_exception"), F("test_remind_notifies_linked_family_once_a_day"),

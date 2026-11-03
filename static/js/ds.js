@@ -759,8 +759,11 @@
       reader.readAsDataURL(file);
     });
     zoom.addEventListener("input", draw);
-    canvas.addEventListener("pointerdown", function (e) { drag = { x: e.clientX - ox, y: e.clientY - oy }; canvas.setPointerCapture(e.pointerId); });
-    canvas.addEventListener("pointermove", function (e) { if (!drag) return; ox = e.clientX - drag.x; oy = e.clientY - drag.y; draw(); });
+    // O canvas tem 320 px internos, mas aparece menor no celular (CSS): sem
+    // converter a escala, a foto andava metade do que o dedo andava.
+    function scale() { var r = canvas.getBoundingClientRect(); return r.width ? 320 / r.width : 1; }
+    canvas.addEventListener("pointerdown", function (e) { var k = scale(); drag = { x: e.clientX * k - ox, y: e.clientY * k - oy, k: k }; canvas.setPointerCapture(e.pointerId); });
+    canvas.addEventListener("pointermove", function (e) { if (!drag) return; ox = e.clientX * drag.k - drag.x; oy = e.clientY * drag.k - drag.y; draw(); });
     canvas.addEventListener("pointerup", function () { drag = null; });
 
     input.form && input.form.addEventListener("submit", function (e) {

@@ -192,7 +192,8 @@ class BKTTests(P17Base):
 class AssistantTests(P17Base):
     def test_examples_are_understood(self):
         expected = ["prerequisitos", "evidencias_lacuna", "dependentes", "intervencao_semelhante", "retomar",
-                    "depois_recuperacao", "sem_evidencia", "atividades", "evidencias_coletar", "nao_avaliadas"]
+                    "depois_recuperacao", "sem_evidencia", "atividades", "evidencias_coletar", "nao_avaliadas",
+                    "sinais_precoces", "trajetoria"]
         self.assertEqual([assistant.detect(q)[0] for q in assistant.EXAMPLES], expected)
         self.assertIsNone(assistant.detect("bom dia"))
 

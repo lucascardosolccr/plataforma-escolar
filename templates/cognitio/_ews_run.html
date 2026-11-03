@@ -19,5 +19,17 @@
     </tbody>
   </table></div>
 </details>
+{% if m.limiares %}
+<details class="small mb-1"><summary>Limiares alternativos: como cada corte teria funcionado nesta escola</summary>
+  <p class="mb-1">O índice J de Youden (sensibilidade + especificidade − 1) aponta o corte que melhor separa os grupos nestes dados; a escolha final é pedagógica. Para mudar, edite a <a href="{% url 'cognitio:scale' %}">escala do EIA</a> e valide de novo.</p>
+  {% for key, ind in m.limiares.items %}
+  <div class="table-responsive"><table class="table table-sm mb-2">
+    <caption class="caption-top">{{ ind.rotulo }}</caption>
+    <thead><tr><th scope="col">Limiar</th><th scope="col" class="text-end">Sinalizados</th><th scope="col" class="text-end">Sensibilidade</th><th scope="col" class="text-end">Precisão</th><th scope="col" class="text-end">Especificidade</th><th scope="col" class="text-end">J</th></tr></thead>
+    <tbody>{% for ln in ind.linhas %}<tr><td>{{ ln.limiar }}{% if ln.atual %} <span class="chip">em uso</span>{% endif %}{% if ln.maior_youden %} <span class="chip chip-state text-success">maior J</span>{% endif %}</td><td class="text-end">{{ ln.sinalizados }}</td><td class="text-end">{{ ln.sensibilidade|floatformat:2|default:"—" }}</td><td class="text-end">{{ ln.precisao|floatformat:2|default:"—" }}</td><td class="text-end">{{ ln.especificidade|floatformat:2|default:"—" }}</td><td class="text-end">{{ ln.youden|floatformat:2|default:"—" }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endfor %}
+</details>
+{% endif %}
 <p class="small text-secondary mb-1">Desfecho adverso: presença abaixo de 75%, alguma disciplina abaixo da média ou desistência nos 60 dias depois da data de corte; os indicadores usam só dados até ela. Aprovar não cria probabilidade: só passa a mostrar, nas telas de trajetória, quanto os indicadores acertaram nesta escola.</p>
 {% endwith %}

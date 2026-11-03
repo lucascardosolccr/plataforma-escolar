@@ -144,13 +144,29 @@ class ObservationForm(forms.Form):
 class ScaleForm(forms.ModelForm):
     class Meta:
         model = MasteryScale
-        fields = ["t1", "t2", "t3", "min_evidence", "min_weight", "half_life_days", "stale_days", "share_with_family"]
+        fields = ["t1", "t2", "t3", "min_evidence", "min_weight", "half_life_days", "stale_days", "ews_attendance",
+                  "ews_delivery", "ews_occurrences", "share_with_family"]
+
+    EWS = ("ews_attendance", "ews_delivery", "ews_occurrences")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name in self.EWS:  # em branco = mantém o limiar atual
+            self.fields[name].required = False
 
     def clean(self):
         data = super().clean()
+        for name in self.EWS:
+            if data.get(name) is None:
+                data[name] = getattr(self.instance, name)
         t1, t2, t3 = data.get("t1"), data.get("t2"), data.get("t3")
         if None not in (t1, t2, t3) and not (0 < t1 < t2 < t3 <= 1):
             raise ValidationError("Os cortes precisam crescer: 0 < dificuldade < desenvolvimento < consolidação ≤ 1.")
         if data.get("min_evidence") is not None and data["min_evidence"] < 1:
             self.add_error("min_evidence", "Use pelo menos 1.")
+        for name in ("ews_attendance", "ews_delivery"):
+            if data.get(name) is not None and not 50 <= data[name] <= 100:
+                self.add_error(name, "Use um valor entre 50 e 100.")
+        if data.get("ews_occurrences") is not None and data["ews_occurrences"] < 1:
+            self.add_error("ews_occurrences", "Use pelo menos 1.")
         return data

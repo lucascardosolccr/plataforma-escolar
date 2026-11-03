@@ -26,7 +26,7 @@ Métodos (Python puro, sem dependência nova):
   doi:10.1080/01621459.1961.10482090). Na tela, cada disciplina mostra a própria tendência.
 - **Dupla discrepância:** nível abaixo do quartil inferior da turma e ritmo de evolução abaixo da mediana
   da turma ao mesmo tempo. Responder pouco à aula, e não só ter nota baixa, é o critério mais informativo
-  para decidir apoio (Fuchs, 2003, Learning Disabilities Research & Practice 18(3),
+  para decidir apoio (Fuchs, 2003, Learning Disabilities Research & Practice 18(3), 172–186,
   doi:10.1111/1540-5826.00073). Só com ``MIN_PEERS`` colegas com tendência calculada.
 
 Indicadores precoces, todos com regra explícita e nenhuma pontuação:
@@ -240,8 +240,20 @@ def _top(rule):
     return 10.0 if float(passing) <= 10 else 100.0
 
 
+def thresholds_for(school):
+    """Limiares dos indicadores configurados pela escola (escala do EIA), em proporção."""
+    from .models import MasteryScale
+
+    scale = MasteryScale.for_school(school)
+    return {"attendance": float(scale.ews_attendance) / 100, "delivery": float(scale.ews_delivery) / 100,
+            "occurrences": scale.ews_occurrences}
+
+
+DEFAULT_THRESHOLDS = {"attendance": CHRONIC, "delivery": MIN_DELIVERY, "occurrences": OCCURRENCES}
+
+
 def class_overview(class_group, start, end, today=None, *, behavior=True, students=None, rules=None,
-                   subject_ids=None):
+                   subject_ids=None, thresholds=None):
     """Trajetória e indicadores de cada estudante da turma entre ``start`` e ``end``.
 
     ``students``: ids a considerar (padrão: matrícula ativa). A validação retrospectiva passa quem estava
@@ -307,10 +319,11 @@ def class_overview(class_group, start, end, today=None, *, behavior=True, studen
         }
         rows.append(row)
     _dual_discrepancy(rows)
+    th = thresholds or thresholds_for(class_group.school)
     for row in rows:
-        row["indicators"] = indicators(row)
+        row["indicators"] = indicators(row, th)
     return {"rows": rows, "subjects": sorted(subjects.values(), key=lambda s: s.name), "start": start, "end": end,
-            "behavior": behavior}
+            "behavior": behavior, "thresholds": th}
 
 
 def _dual_discrepancy(rows):
@@ -327,17 +340,18 @@ def _dual_discrepancy(rows):
                      "p25": p25, "median_slope": med, "peers": len(ok)}
 
 
-def indicators(row):
+def indicators(row, thresholds=None):
     """[{chave, rótulo, detalhe, nível}] na ordem de INDICATORS. Só os que se aplicam."""
+    th = thresholds or DEFAULT_THRESHOLDS
     out = []
     att = row["attendance"]
-    if att["rate"] is not None and att["records"] >= MIN_ATT_RECORDS and att["rate"] < CHRONIC:
+    if att["rate"] is not None and att["records"] >= MIN_ATT_RECORDS and att["rate"] < th["attendance"]:
         legal = att["rate"] < LEGAL_MIN
         out.append({"key": "frequencia", "level": "importante" if legal else "atencao",
                     "detail": f"Presença de {round(att['rate'] * 100)}% em {att['records']} aulas registradas"
                               + (" (abaixo do mínimo legal de 75%)." if legal else
-                                 " (ausência crônica: mais de 10% das aulas).")})
-    if row["occurrences"] is not None and row["occurrences"] >= OCCURRENCES:
+                                 f" (abaixo de {round(th['attendance'] * 100)}%, o limiar da escola).")})
+    if row["occurrences"] is not None and row["occurrences"] >= th["occurrences"]:
         out.append({"key": "comportamento", "level": "atencao",
                     "detail": f"{row['occurrences']} ocorrências registradas no período."})
     below = [s for s in row["subjects"].values() if s["below"]]
@@ -345,7 +359,7 @@ def indicators(row):
         out.append({"key": "desempenho", "level": "importante" if len(below) >= 2 else "atencao",
                     "detail": "Abaixo da média em " + ", ".join(sorted(s["subject"].name for s in below)) + "."})
     d = row["delivery"]
-    if d["rate"] is not None and d["registered"] >= MIN_REGISTERED and d["rate"] < MIN_DELIVERY:
+    if d["rate"] is not None and d["registered"] >= MIN_REGISTERED and d["rate"] < th["delivery"]:
         out.append({"key": "entregas", "level": "atencao",
                     "detail": f"{d['delivered']} de {d['registered']} atividades entregues."})
     tested = [s for s in row["subjects"].values() if s["trend"] != "insuficiente"]

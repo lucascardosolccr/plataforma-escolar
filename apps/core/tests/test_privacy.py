@@ -38,3 +38,6 @@ class PrivacyContactTests(CommunicationBase):
     def test_management_is_reminded_while_nothing_is_published(self):
         self.client.force_login(self.direc)
         self.assertContains(self.client.get(reverse("privacy")), "A escola ainda não informou o encarregado")
+        self.assertContains(self.client.get(reverse("pending_center")), "Informar o encarregado de dados")
+        self._publish()
+        self.assertNotContains(self.client.get(reverse("pending_center")), "Informar o encarregado de dados")

@@ -147,3 +147,54 @@ class RetrospectiveValidationTests(TrajectoryDataBase):
             run = ews_validation.run(self.school, today=self.today)
         self.assertEqual(run.status, ModelRun.Status.INSUFFICIENT)
         self.assertIn("não pode ser aprovada", run.metrics["aviso"])
+
+
+class ThresholdTests(TrajectoryDataBase):
+    def test_school_threshold_changes_who_is_flagged(self):
+        from apps.cognitio.models import MasteryScale
+
+        for i in range(12):  # Bia: 8 de 12 presenças = 67%
+            AttendanceRecord.objects.create(school=self.school, class_group=self.cg, student=self.bia,
+                                            date=self.today - dt.timedelta(days=i), status="falta" if i < 4 else "presente")
+        start = self.today - dt.timedelta(days=30)
+        flagged = lambda: any(i["key"] == "frequencia" for r in t.class_overview(self.cg, start, self.today)["rows"]
+                              if r["student"] == self.bia for i in r["indicators"])
+        self.assertTrue(flagged())  # padrão 90%
+        scale = MasteryScale.for_school(self.school)
+        scale.ews_attendance = 60
+        scale.save()
+        self.assertFalse(flagged())
+        self.login(self.coord)
+        r = self.client.post(reverse("cognitio:scale"), {"t1": "0.4", "t2": "0.6", "t3": "0.8", "min_evidence": 2,
+                                                         "min_weight": "1.2", "half_life_days": 120, "stale_days": 60,
+                                                         "ews_attendance": "40", "ews_delivery": "60",
+                                                         "ews_occurrences": 2})
+        self.assertContains(r, "Use um valor entre 50 e 100.")
+
+    def test_threshold_table_marks_current_and_best_separation(self):
+        rows = ([{"y": True, "att": 0.82, "att_n": 20, "occ": 0, "below": 1} for _ in range(10)]
+                + [{"y": False, "att": 0.88, "att_n": 20, "occ": 0, "below": 0} for _ in range(30)]
+                + [{"y": False, "att": 0.97, "att_n": 20, "occ": 0, "below": 0} for _ in range(60)])
+        table = ews_validation.threshold_table(rows, {"attendance": 0.90, "delivery": 0.6, "occurrences": 2,
+                                                      "below": 1})
+        att = {ln["limiar"]: ln for ln in table["frequencia"]["linhas"]}
+        self.assertTrue(att["presença abaixo de 90%"]["atual"])
+        self.assertEqual(att["presença abaixo de 90%"]["precisao"], 0.25)  # 10 de 40 sinalizados
+        self.assertTrue(att["presença abaixo de 85%"].get("maior_youden"))  # separa perfeitamente
+        self.assertEqual((att["presença abaixo de 85%"]["sensibilidade"], att["presença abaixo de 85%"]["especificidade"]),
+                         (1.0, 1.0))
+
+    def test_assistant_answers_early_signals_and_trajectory_within_access(self):
+        from apps.cognitio import assistant
+
+        self.grades({self.ana: [8, 7, 6, 5, 4.5, 4, 3, 2], self.bia: [8] * 8})
+        a = assistant.answer(self.prof, "Quem tem sinais precoces na turma?", class_group=self.cg)
+        self.assertEqual(a.intent, "sinais_precoces")
+        self.assertTrue(any(text.startswith("Ana:") for text, _ in a.items))
+        a = assistant.answer(self.prof, "Como está a trajetória da Ana?")
+        self.assertEqual(a.intent, "trajetoria")
+        self.assertIn("queda", " ".join(a.paragraphs))
+        a = assistant.answer(self.prof_b, "Como está a trajetória da Ana?")  # não leciona para a Ana
+        self.assertTrue(a.missing)
+        self.assertFalse(a.items)
+

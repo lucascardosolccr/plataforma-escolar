@@ -64,6 +64,13 @@ INTENTS = [
     ("prerequisitos", "Pré-requisitos", ["pre-requisito", "pre requisito", "prerequisito", "precisa desenvolver",
                                          "para alcancar", "sustenta", "base para", "o que falta",
                                          "falta para", "precisa saber antes", "antes de aprender"]),
+    ("sinais_precoces", "Quem tem sinais precoces na turma", ["sinais precoces", "sinal precoce", "alerta precoce",
+                                                             "em risco", "risco de", "acompanhar primeiro",
+                                                             "quem preciso acompanhar", "quem esta em queda",
+                                                             "preocupar", "sinais de alerta"]),
+    ("trajetoria", "Trajetória acadêmica do estudante", ["trajetoria", "esta melhorando", "esta piorando",
+                                                         "evoluindo", "como esta indo", "tendencia",
+                                                         "desde quando", "evolucao d"]),
 ]
 
 EXAMPLES = [
@@ -77,6 +84,8 @@ EXAMPLES = [
     "Quais atividades podem ajudar a desenvolver EF06MA07?",
     "Que evidências devo coletar para verificar se o estudante avançou em EF06MA07?",
     "Quais habilidades já trabalhadas ainda não foram avaliadas?",
+    "Quem tem sinais precoces na turma?",
+    "Como está a trajetória da Ana?",
 ]
 
 
@@ -374,7 +383,80 @@ def _h_not_evaluated(user, a, item, student, cg):
     a.limits.append("Só entram planejamentos e atividades com habilidades ligadas.")
 
 
+def _trajectory_period(user):
+    from django.utils import timezone
+
+    from apps.analytics.bi import _school_year_dates
+
+    today = timezone.localdate()
+    return _school_year_dates(user.school, today)[0], today
+
+
+def _h_early_signals(user, a, item, student, cg):
+    from apps.pedagogy.access import can_view_occurrences
+
+    from .trajectory import class_overview
+
+    if cg is None:
+        return _need(a, "Escolha a turma.")
+    allowed = access.class_subjects(user, cg)
+    if allowed is not None and not allowed:
+        return _need(a, "Você não leciona nesta turma.")
+    start, today = _trajectory_period(user)
+    rows = [r for r in class_overview(cg, start, today, behavior=can_view_occurrences(user),
+                                      subject_ids=allowed)["rows"] if r["indicators"]]
+    rows.sort(key=lambda r: (-len(r["indicators"]), r["student"].full_name))
+    a.title = f"Sinais precoces — {cg.name}"
+    a.paragraphs.append(f"{len(rows)} estudante(s) com algum indicador desde {start:%d/%m/%Y}"
+                        + (", nas suas disciplinas." if allowed is not None else "."))
+    for r in rows[:15]:
+        a.items.append((f"{r['student'].full_name}: " + "; ".join(i["detail"] for i in r["indicators"]),
+                        reverse("cognitio:student_trajectory", args=[r["student"].pk])))
+    a.sources.append("Notas, frequência, entregas e ocorrências da turma; métodos em Trajetórias e sinais precoces.")
+    a.limits.append("Indicador aceso pede conversa e observação, não rótulo. Enquanto a escola não validar os "
+                    "indicadores com os próprios dados, são sinais da pesquisa, não previsão.")
+    a.maturity = "Nível 2 (estatística descritiva e de tendência, sem modelo preditivo)"
+
+
+def _h_trajectory(user, a, item, student, cg):
+    from apps.pedagogy.access import can_view_occurrences
+    from apps.registry.models import Enrollment
+
+    from .trajectory import TRENDS, class_overview
+
+    if student is None:
+        return _need(a, "Escolha o estudante ou escreva o nome dele na pergunta.")
+    subjects = access.student_subjects(user, student)
+    enr = Enrollment.objects.filter(student=student, status="ativo").select_related("class_group").first()
+    if enr is None or (subjects is not None and not subjects):
+        return _need(a, "O estudante não tem matrícula ativa numa turma que você alcança.")
+    start, today = _trajectory_period(user)
+    row = next((r for r in class_overview(enr.class_group, start, today, behavior=can_view_occurrences(user),
+                                          subject_ids=subjects)["rows"] if r["student"].pk == student.pk), None)
+    a.title = f"Trajetória de {student.first_name}"
+    if row is None:
+        return _need(a, "Sem notas nem frequência no período.")
+    o = row["overall"]
+    a.paragraphs.append(f"Notas, no geral: {TRENDS[o['trend']][0].lower()}"
+                        + (f" ({o['n']} resultados)" if o["n"] else "")
+                        + (f"; queda em curso desde {o['drop_on']:%d/%m}" if o.get("drop_on") else "") + ".")
+    for s in sorted(row["subjects"].values(), key=lambda s: s["subject"].name):
+        a.items.append((f"{s['subject'].name}: {TRENDS[s['trend']][0].lower()}"
+                        + (f", queda desde {s['drop_on']:%d/%m}" if s.get("drop_on") else ""), None))
+    if row["attendance"]["rate"] is not None:
+        a.paragraphs.append(f"Presença: {round(row['attendance']['rate'] * 100)}% em {row['attendance']['records']} "
+                            "aulas registradas.")
+    a.paragraphs.append("Indicadores: " + ("; ".join(i["detail"] for i in row["indicators"])
+                                           if row["indicators"] else "nenhum aceso."))
+    a.items.append(("Abrir a trajetória com os gráficos", reverse("cognitio:student_trajectory", args=[student.pk])))
+    a.sources.append("Notas publicadas e frequência da turma atual; tendência de Theil–Sen, Mann–Kendall e CUSUM.")
+    a.limits.append("Tendência descreve o caminho até aqui; não prevê o resultado. Com menos de 6 resultados não há "
+                    "tendência.")
+    a.maturity = "Nível 2 (estatística descritiva e de tendência, sem modelo preditivo)"
+
+
 HANDLERS = {
+    "sinais_precoces": _h_early_signals, "trajetoria": _h_trajectory,
     "nao_avaliadas": _h_not_evaluated,
     "prerequisitos": _h_prereqs, "evidencias_lacuna": _h_evidence_gap, "dependentes": _h_dependents,
     "intervencao_semelhante": _h_similar, "retomar": _h_retake, "depois_recuperacao": _h_after,

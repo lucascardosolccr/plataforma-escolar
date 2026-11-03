@@ -35,6 +35,13 @@ def for_user(user):
         items += _family(user)
     if role in (Role.DIRECAO.value, Role.SECRETARIA.value, Role.ADMIN.value):
         items += _lgpd(user)
+    if role in (Role.DIRECAO.value, Role.ADMIN.value) and user.school_id:
+        from .models import PrivacyContact
+
+        if not PrivacyContact.objects.filter(school_id=user.school_id).exists():
+            items.append(_item("Informar o encarregado de dados (LGPD, art. 41)", 1, reverse("privacy_edit"),
+                               "Nome e contato precisam ser públicos; aparecem na página de privacidade.", "info",
+                               assignable=False))
     if role in [r.value for r in STAFF_ROLES]:
         from .views_followup import open_follow_ups
 

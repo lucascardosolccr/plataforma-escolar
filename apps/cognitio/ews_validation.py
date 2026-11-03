@@ -25,6 +25,12 @@ Método:
   doi:10.1145/3303772.3303791; Baker & Hawn, 2022, IJAIED 32, 1052–1092, doi:10.1007/s40593-021-00285-9).
   A plataforma não guarda cor, renda nem gênero, então não faz esses recortes.
 
+- **Limiares alternativos:** as mesmas métricas para outros cortes de frequência, entregas, ocorrências e
+  número de disciplinas abaixo da média. O índice J de Youden (sensibilidade + especificidade − 1;
+  Youden, 1950, Cancer 3(1), 32–35) indica o corte que melhor separa os grupos nos dados da escola. A
+  escolha final é pedagógica: deixar de ver um estudante e chamar uma família sem necessidade têm custos
+  diferentes. O limiar se ajusta na escala do EIA.
+
 Limites declarados: o estado atual de uma entrega pode ter mudado depois do corte (entrega atrasada), e a
 data em que a nota foi lançada não é guardada, só a da prova. Com dados de demonstração ou sintéticos, o
 resultado não diz nada sobre estudantes reais. Sem ``MIN_N`` casos e ``MIN_POS`` desfechos, o resultado
@@ -37,13 +43,15 @@ from collections import defaultdict
 from django.utils import timezone
 
 from .models import ModelRun
-from .trajectory import INDICATORS, LEGAL_MIN, auc, class_overview
+from .trajectory import INDICATORS, LEGAL_MIN, MIN_ATT_RECORDS, MIN_REGISTERED, auc, class_overview, thresholds_for
 
 NAME, VERSION = "indicadores_precoces", "1.0"
 STEP = HORIZON = 60
 MIN_N, MIN_POS = 100, 20
 BASE_RANGE = (0.03, 0.60)  # fora disso o desfecho é raro ou quase certo e a validação não distingue nada
 MIN_SLICE = 10
+ALTERNATIVES = {"attendance": [0.80, 0.85, 0.90, 0.95], "delivery": [0.50, 0.60, 0.70, 0.80],
+                "occurrences": [1, 2, 3], "below": [1, 2]}
 
 
 def _year_bounds(year, today):
@@ -105,6 +113,7 @@ def collect(school, today=None):
 
     today = today or timezone.localdate()
     rules = bi.school_rules(school)
+    th = thresholds_for(school)
     rows = []
     for year in SchoolYear.objects.filter(school=school):
         start, _ = _year_bounds(year, today)
@@ -116,11 +125,16 @@ def collect(school, today=None):
                 outcome = _outcomes(cg, members, cutoff, rules[0])
                 if not outcome:
                     continue
-                view = class_overview(cg, start, cutoff, today=cutoff, students=set(outcome), rules=rules)
+                view = class_overview(cg, start, cutoff, today=cutoff, students=set(outcome), rules=rules,
+                                      thresholds=th)
                 for r in view["rows"]:
                     keys = [i["key"] for i in r["indicators"]]
+                    att, d = r["attendance"], r["delivery"]
                     rows.append({"flags": keys, "count": len(keys), "y": outcome[r["student"].pk],
-                                 "class": cg.name, "turn": cg.get_turn_display(), "cutoff": cutoff.isoformat()})
+                                 "class": cg.name, "turn": cg.get_turn_display(), "cutoff": cutoff.isoformat(),
+                                 "att": att["rate"], "att_n": att["records"], "deliv": d["rate"],
+                                 "deliv_n": d["registered"], "occ": r["occurrences"] or 0,
+                                 "below": sum(1 for s in r["subjects"].values() if s["below"])})
     return rows
 
 
@@ -147,6 +161,35 @@ def metrics(rows):
     return out
 
 
+def threshold_table(rows, current):
+    """Para cada indicador ajustável: métricas de cada limiar alternativo, o atual e o de maior J de Youden."""
+    specs = {
+        "frequencia": ("attendance", lambda v: f"presença abaixo de {round(v * 100)}%",
+                       lambda r, v: r.get("att") is not None and r.get("att_n", 0) >= MIN_ATT_RECORDS and r["att"] < v),
+        "entregas": ("delivery", lambda v: f"entregas abaixo de {round(v * 100)}%",
+                     lambda r, v: r.get("deliv") is not None and r.get("deliv_n", 0) >= MIN_REGISTERED
+                     and r["deliv"] < v),
+        "comportamento": ("occurrences", lambda v: f"{v} ou mais ocorrências", lambda r, v: r.get("occ", 0) >= v),
+        "desempenho": ("below", lambda v: f"{v} ou mais disciplinas abaixo da média",
+                       lambda r, v: r.get("below", 0) >= v),
+    }
+    out = {}
+    for key, (name, label, pred) in specs.items():
+        cur = current.get(name, 1)
+        lines = []
+        for v in ALTERNATIVES[name]:
+            c = _confusion(rows, lambda r, v=v, pred=pred: pred(r, v))
+            j = (c["sensibilidade"] + c["especificidade"] - 1
+                 if c["sensibilidade"] is not None and c["especificidade"] is not None else None)
+            lines.append({"limiar": label(v), "atual": round(float(v), 3) == round(float(cur), 3), **c,
+                          "youden": round(j, 3) if j is not None else None})
+        scored = [ln for ln in lines if ln["youden"] is not None and ln["sinalizados"]]
+        if scored:
+            max(scored, key=lambda ln: ln["youden"])["maior_youden"] = True
+        out[key] = {"rotulo": INDICATORS[key], "linhas": lines}
+    return out
+
+
 def slices(rows, key):
     groups = defaultdict(list)
     for r in rows:
@@ -169,6 +212,10 @@ def slices(rows, key):
 def run(school, user=None, today=None):
     rows = collect(school, today)
     m = metrics(rows)
+    th = thresholds_for(school)
+    m["limiares"] = threshold_table(rows, {**th, "below": 1})
+    m["limiares_em_uso"] = {"frequencia": th["attendance"], "entregas": th["delivery"],
+                            "comportamento": th["occurrences"]}
     base = m["taxa_base"]
     if base is not None and not BASE_RANGE[0] <= base <= BASE_RANGE[1]:
         m["aviso"] = (f"O desfecho adverso aconteceu em {round(base * 100)}% dos casos. Com uma taxa tão "

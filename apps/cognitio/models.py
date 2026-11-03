@@ -40,6 +40,15 @@ class MasteryScale(models.Model):
         "meia-vida das evidências (dias)", default=120,
         help_text="Evidências antigas pesam menos: com 120, uma evidência de 4 meses vale metade.")
     stale_days = models.PositiveSmallIntegerField("evidência deixa de ser recente após (dias)", default=60)
+    # Limiares dos indicadores precoces (trajectory.py). Os padrões vêm da pesquisa (ausência crônica = 10%
+    # das aulas); a escola ajusta depois de ver a validação retrospectiva com os próprios dados.
+    ews_attendance = models.DecimalField(
+        "indicador de frequência: presença abaixo de (%)", max_digits=4, decimal_places=1, default=90,
+        help_text="Padrão 90%: perder mais de 10% das aulas é ausência crônica (Balfanz & Byrnes, 2012).")
+    ews_delivery = models.DecimalField(
+        "indicador de entregas: entregas abaixo de (%)", max_digits=4, decimal_places=1, default=60)
+    ews_occurrences = models.PositiveSmallIntegerField(
+        "indicador de comportamento: a partir de quantas ocorrências", default=2)
     share_with_family = models.BooleanField(
         "mostrar à família e ao estudante o resumo de aprendizagens", default=False,
         help_text="Lista de habilidades já demonstradas e em desenvolvimento, em linguagem própria, sem alertas, "

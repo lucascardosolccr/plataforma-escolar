@@ -20,4 +20,5 @@
     <td data-label="Situação">{% if t.reviewed %}<span class="chip chip-state state-validado">Revisada</span>{% else %}<span class="chip chip-state state-ajustes">Aguardando revisão</span>{% endif %}</td>
   </tr>{% empty %}<tr><td colspan="4"><div class="empty-state py-4">{% icon "file-text" %}<strong>Nenhuma produção registrada</strong></div></td></tr>{% endfor %}</tbody>
 </table></div></div>
+{% include "partials/_pager.html" %}
 {% endblock %}

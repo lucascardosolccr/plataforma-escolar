@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from apps.academics.models import ClassGroup, Subject
 from apps.core.models import Role, create_audit_log
+from apps.core.pagination import paginate
 from apps.curriculum.models import CurriculumItem, component_for
 from apps.registry.models import Enrollment, Student
 
@@ -90,8 +91,10 @@ def text_list(request):
     user = request.user
     if not access.can_use(user):
         raise PermissionDenied
-    qs = _visible(user).select_related("student", "class_group", "subject")[:80]
-    return render(request, "cognitio/texts.html", {"texts": qs, "can_create": user.role == Role.PROFESSOR.value})
+    # Paginado: antes só as 80 primeiras apareciam, sem aviso.
+    page = paginate(request, _visible(user).select_related("student", "class_group", "subject"))
+    return render(request, "cognitio/texts.html", {"texts": page, "page": page,
+                                                   "can_create": user.role == Role.PROFESSOR.value})
 
 
 def text_create(request):

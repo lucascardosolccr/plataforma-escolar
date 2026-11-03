@@ -88,7 +88,9 @@ def my_requests(request):
         .exclude(status=Activity.Status.CANCELED).select_related("class_group", "subject") \
         .order_by("-class_date", "-created_at")[:30]
     return render(request, "printing/my_requests.html", {
-        "requests": reqs[:100], "activities": activities, "today": timezone.localdate(),
+        # Paginado: com o corte em 100 (e a ordem por data desejada), os pedidos mais novos sumiam.
+        "requests": (page := paginate(request, reqs)), "page": page, "activities": activities,
+        "today": timezone.localdate(),
     })
 
 

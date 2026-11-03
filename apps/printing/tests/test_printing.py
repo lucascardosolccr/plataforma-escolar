@@ -166,3 +166,19 @@ class FlowTests(PrintBase):
         self.login(self.coord_a)
         self.assertContains(self.client.get(reverse("coordination:panel")), "Impressões a analisar")
 
+
+
+class MyRequestsPagingTests(PrintBase):
+    def test_every_request_is_reachable(self):
+        """Com o corte em 100 e a ordem pela data desejada, os pedidos mais novos sumiam da lista."""
+        from apps.printing.models import PrintRequest
+
+        PrintRequest.objects.bulk_create([
+            PrintRequest(school=self.school, activity=self.act, requested_by=self.prof, application_date=self.app_day,
+                         desired_date=self.app_day - timedelta(days=1), copies=10) for _ in range(105)])
+        self.login(self.prof)
+        first = self.client.get(reverse("printing:mine"))
+        self.assertEqual(first.context["page"].paginator.count, 105)
+        last = self.client.get(reverse("printing:mine") + f"?pagina={first.context['page'].paginator.num_pages}")
+        self.assertEqual(last.status_code, 200)
+        self.assertGreater(len(last.context["page"].object_list), 0)

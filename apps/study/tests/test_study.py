@@ -431,6 +431,18 @@ class PreparationPlanTests(StudyBase):
 
 
 class ReuseTests(StudyBase):
+    def test_reuse_button_only_for_who_can_reuse(self):
+        """A gestão abre a prova, mas não tem turma para onde copiar: o botão levava a 403."""
+        g = self.guide()
+        url = reverse("study:reuse", args=[g.pk])
+        self.login(self.prof)
+        self.assertContains(self.client.get(reverse("study:detail", args=[g.pk])), url)
+        for user in (self.coord, self.dir):
+            self.login(user)
+            page = self.client.get(reverse("study:detail", args=[g.pk]))
+            self.assertEqual(page.status_code, 200)
+            self.assertNotContains(page, url)
+
     def test_reuse_copies_structure_to_own_class_as_draft(self):
         from apps.academics.models import TeacherAssignment
 

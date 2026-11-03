@@ -1,13 +1,15 @@
 """Todo link que a plataforma mostra abre para quem o vê.
 
 Com a escola de demonstração, cada perfil navega pelos links internos (GET, até 3 níveis, no máximo duas
-páginas por padrão de URL) e nenhum pode dar 403 ou 500. Uma varredura assim achou 12 links que levavam a
+páginas por padrão de URL) e nenhum pode dar 403 ou 500, nem redirecionar com mensagem de erro ou de
+aviso (o "Editar" de uma avaliação já publicada só devolvia "apenas rascunhos podem ser alterados"). Uma varredura assim achou 12 links que levavam a
 "acesso negado" (por exemplo, a coordenação via "Analisar pré-cadastros", que é da secretaria).
 """
 
 import re
 from collections import Counter
 
+from django.contrib.messages import WARNING, get_messages
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 
@@ -85,6 +87,10 @@ class LinkIntegrityTests(TestCase):
                     r = self.client.get(path)
                     if r.status_code in (403, 500):
                         broken.append(f"{role}: {path} ({r.status_code}) — link em {origin}")
+                    elif r.status_code == 302:
+                        refused = [str(m) for m in get_messages(r.wsgi_request) if m.level >= WARNING]
+                        if refused:
+                            broken.append(f"{role}: {path} (302: {refused[0]}) — link em {origin}")
                     elif r.status_code == 200 and "text/html" in r.get("Content-Type", ""):
                         nxt += [(link, path) for link in LINK.findall(r.content.decode("utf-8", "ignore"))]
                 frontier = nxt

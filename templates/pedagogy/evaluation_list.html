@@ -106,8 +106,8 @@
             {% if row.managed %}
               <a href="{% url 'pedagogy:evaluation_grade' ev.pk %}" class="btn btn-sm btn-outline-primary">Notas</a>
               <a href="{% url 'cognitio:questions' ev.pk %}" class="btn btn-sm btn-outline-secondary" title="Questões ligadas a habilidades e resultado por questão">Questões</a>
-              <a href="{% url 'pedagogy:evaluation_edit' ev.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
               {% if ev.status == 'rascunho' %}
+                <a href="{% url 'pedagogy:evaluation_edit' ev.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
                 <form method="post" action="{% url 'pedagogy:evaluation_publish' ev.pk %}" class="d-inline"
                       data-confirm="A família e o estudante passam a ver as notas desta avaliação." data-confirm-title="Publicar avaliação?" data-confirm-ok="Publicar">
                   {% csrf_token %}

@@ -235,8 +235,8 @@
       <a href="{% url 'pedagogy:group_work_groups' work.pk %}" class="btn btn-sm btn-outline-primary">Organizar grupos</a>
       <a href="{% url 'pedagogy:group_work_deliveries' work.pk %}" class="btn btn-sm btn-outline-primary">Registrar entregas</a>
       {% if work.rubric_id %}<a href="{% url 'pedagogy:group_work_rubric_scores' work.pk %}" class="btn btn-sm btn-outline-primary">Avaliar com a rubrica</a>{% endif %}
-      <a href="{% url 'pedagogy:group_work_edit' work.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
       {% if work.status != 'cancelada' %}
+        <a href="{% url 'pedagogy:group_work_edit' work.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
         <a href="{% url 'pedagogy:group_work_cancel' work.pk %}" class="btn btn-sm btn-outline-danger">Cancelar trabalho</a>
       {% endif %}
     </div>

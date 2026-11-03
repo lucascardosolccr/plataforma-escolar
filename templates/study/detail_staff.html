@@ -22,7 +22,7 @@
           <form method="post" action="{% url 'study:status' guide.pk 'reabrir' %}">{% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-secondary">Reabrir</button></form>
         {% endif %}
       {% endif %}
-      <a href="{% url 'study:reuse' guide.pk %}" class="btn btn-sm btn-outline-secondary">Reutilizar</a>
+      {% if can_reuse %}<a href="{% url 'study:reuse' guide.pk %}" class="btn btn-sm btn-outline-secondary">Reutilizar</a>{% endif %}
     </div>
   </div>
 </div>

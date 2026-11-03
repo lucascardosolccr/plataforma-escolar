@@ -35,11 +35,13 @@ class GuideForm(forms.ModelForm):
         self.user = user
         school = user.school
         self.fields["class_group"].queryset = ClassGroup.objects.filter(
-            pk__in=teacher_class_ids(user, edit=True)).order_by("name")
+            pk__in=teacher_class_ids(user, edit=True)).select_related("school_year").order_by("name")
         self.fields["subject"].queryset = Subject.choices_for(school, keep=self.instance.subject_id).filter(
             pk__in=teacher_subject_ids(user, edit=True))
+        # select_related: o rótulo cita turma (com o ano) e disciplina; sem isto eram
+        # 3 consultas por avaliação ao montar a lista (117 consultas na página).
         self.fields["evaluation"].queryset = Evaluation.objects.filter(
-            school=school, class_group_id__in=teacher_class_ids(user, edit=True)).order_by("-date")
+            school=school, class_group_id__in=teacher_class_ids(user, edit=True))             .select_related("class_group__school_year", "subject").order_by("-date")
         self.fields["evaluation"].label_from_instance = lambda e: f"{e.title} — {e.class_group} · {e.subject} · {e.date:%d/%m/%Y}"
         self.fields["published_date"].required = False
         self.fields["exam_date"].required = False

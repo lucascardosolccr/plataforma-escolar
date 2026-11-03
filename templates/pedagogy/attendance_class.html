@@ -60,20 +60,9 @@
           <td class="text-end text-body-secondary">—</td>
           {% endif %}
           {% endwith %}
-          {% for d in dates %}
-            <td class="text-center small">
-              {% with r=grid|getitem:d|getitem:st.pk %}
-                {% if r %}
-                  <span class="{% if r.status == 'presente' %}text-success{% elif r.status == 'atraso' %}text-warning{% else %}text-danger{% endif %} fw-bold"
-                        title="{{ r.get_status_display }} em {{ r.date|date:'d/m/Y' }}">
-                    {{ r.get_status_display|first|upper }}
-                  </span>
-                {% else %}
-                  <span class="text-body-tertiary" title="Sem registro">·</span>
-                {% endif %}
-              {% endwith %}
-            </td>
-          {% endfor %}
+          {% comment %}Célula numa linha só: com o recuo do modelo repetido em cada uma (alunos × dias), a página
+          passava de 190 KB. A letra é visual; o leitor de tela ouve a palavra inteira.{% endcomment %}
+          {% for d in dates %}<td class="text-center small">{% with r=grid|getitem:d|getitem:st.pk %}{% if r %}<span class="{% if r.status == 'presente' %}text-success{% elif r.status == 'atraso' %}text-warning{% else %}text-danger{% endif %} fw-bold" title="{{ r.get_status_display }} em {{ r.date|date:'d/m/Y' }}"><span aria-hidden="true">{{ r.get_status_display|first|upper }}</span><span class="visually-hidden">{{ r.get_status_display }}</span></span>{% else %}<span class="text-body-tertiary" title="Sem registro"><span aria-hidden="true">·</span><span class="visually-hidden">sem registro</span></span>{% endif %}{% endwith %}</td>{% endfor %}
         </tr>
         {% empty %}
         <tr><td colspan="{{ dates|length|add:5 }}" class="text-center text-body-secondary py-4">Nenhum estudante matriculado.</td></tr>

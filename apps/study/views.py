@@ -543,6 +543,9 @@ def _staff_context(user, guide, topics):
     return {
         "practice": practice,
         "can_manage": can_manage,
+        # Reutilizar copia para uma turma do próprio professor: a gestão abre a
+        # prova, mas não tem para onde copiar (o link levava a 403).
+        "can_reuse": access.can_create(user),
         "students": students,
         "questions": questions,
         "open_questions": [q for q in questions if q.is_open],

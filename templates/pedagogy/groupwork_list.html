@@ -89,7 +89,7 @@
           <td class="text-end cell-actions">
             {% if r.can_manage %}
               <a href="{% url 'pedagogy:group_work_groups' r.work.pk %}" class="btn btn-sm btn-outline-primary">Grupos</a>
-              <a href="{% url 'pedagogy:group_work_edit' r.work.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
+              {% if r.work.status != 'cancelada' %}<a href="{% url 'pedagogy:group_work_edit' r.work.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>{% endif %}
             {% else %}
               <a href="{% url 'pedagogy:group_work_detail' r.work.pk %}" class="btn btn-sm btn-outline-secondary">Abrir</a>
             {% endif %}

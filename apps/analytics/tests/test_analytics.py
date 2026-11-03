@@ -484,7 +484,7 @@ class AttendanceReportByClassTests(AnalyticsBase):
         resp = self.client.get(reverse("analytics:report_detail", args=["frequencia"]) + f"?class={self.turma.pk}")
         self.assertIsNone(resp.context["error"])
         rows = resp.context["result"].rows
-        self.assertIn(["Ana", 3, 0, 1, "75.0%"], [[str(c) if i == 0 else c for i, c in enumerate(r)] for r in rows])
+        self.assertIn(["Ana", 3, 0, 1, "75,0%"], [[str(c) if i == 0 else c for i, c in enumerate(r)] for r in rows])
 
     def test_student_without_records_shows_dash_not_zero(self):
         caio = Student.objects.create(school=self.school, first_name="Caio")
@@ -500,4 +500,4 @@ class AttendanceReportByClassTests(AnalyticsBase):
         self.login("sec")
         resp = self.client.get(reverse("analytics:report_csv", args=["frequencia"]) + f"?class={self.turma.pk}")
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("50.0%", resp.content.decode("utf-8-sig"))
+        self.assertIn("50,0%", resp.content.decode("utf-8-sig"))

@@ -26,7 +26,8 @@
     {% include "analytics/bi/_kpi.html" with label="Estudantes ativos" value=r.students_active icon="id-card" hint=r.enrollments_active|cat:" matrícula(s) ativa(s)" %}
     {% include "analytics/bi/_kpi.html" with label="Turmas" value=r.classes|length icon="layers" %}
     {% include "analytics/bi/_kpi.html" with label="Média geral da escola" value=r.overall.mean|num:2 icon="graduation-cap" metric="overall_average" hint="Média das médias gerais dos estudantes" %}
-    {% with v=r.attendance|num:1|cat:"%" %}{% include "analytics/bi/_kpi.html" with label="Frequência média" value=v icon="calendar-check" metric="attendance_percent" hint="Taxa de faltas: "|cat:r.absence_rate|num:1|cat:"%" %}{% endwith %}
+    {% comment %}Os filtros rodam da esquerda para a direita: "texto"|cat:x|num:1 juntava o texto antes de formatar e saía "4.2%".{% endcomment %}
+    {% with v=r.attendance|num:1|cat:"%" faltas=r.absence_rate|pct_txt %}{% include "analytics/bi/_kpi.html" with label="Frequência média" value=v icon="calendar-check" metric="attendance_percent" hint="Taxa de faltas: "|cat:faltas %}{% endwith %}
     {% with v=r.delivery_rate|num:1|cat:"%" %}{% include "analytics/bi/_kpi.html" with label="Taxa de entrega" value=v icon="notebook-pen" metric="delivery_rate" %}{% endwith %}
     {% include "analytics/bi/_kpi.html" with label="Ingressos no período" value=r.movement.entries icon="user-check" metric="enrollment_movement" hint=r.movement.transferred|cat:" transferência(s), "|cat:r.movement.dropped|cat:" desistência(s)" %}
   </div>

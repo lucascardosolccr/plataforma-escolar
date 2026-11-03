@@ -69,3 +69,18 @@ class TeacherPanelFilterTests(BIAccessBase):
         self.assertEqual(rows(f"&turma={self.t2.pk}"), [("5º B", "Matemática")])
         self.assertEqual(len(rows(f"&disciplina={self.mat.pk}")), 2)
         self.assertEqual(rows(f"&disciplina={self.por.pk}"), [])
+
+
+class DecimalCommaTests(BIAccessBase):
+    """Porcentagens montadas em texto saíam com ponto ("Taxa de faltas: 33.3%")."""
+
+    def test_institutional_absence_rate_uses_comma(self):
+        from apps.pedagogy.models import AttendanceRecord
+
+        for day, st in ((2, "presente"), (3, "falta"), (4, "presente")):
+            AttendanceRecord.objects.create(school=self.school, class_group=self.t1, student=self.ana,
+                                            date=date(2026, 3, day), status=st)
+        self.client.login(username="direcao", password=PW)
+        html = self.client.get(reverse("analytics:institutional_dashboard") + Q).content.decode()
+        self.assertRegex(html, r"Taxa de faltas: \d+,\d%")
+        self.assertNotRegex(html, r"Taxa de faltas: \d+\.\d")

@@ -19,6 +19,8 @@ from dataclasses import dataclass, field
 
 from django.utils import timezone
 
+from apps.core.fmt import dec
+
 STATES = OrderedDict([
     ("nao_avaliado", ("Não avaliada", 1, "Nenhum registro ligado a esta habilidade.")),
     ("insuficiente", ("Sem evidência suficiente", 1, "Há registros, mas poucos para concluir.")),
@@ -145,11 +147,11 @@ def assess(evidences, scale, today=None):
         else:
             a.trend = "estavel"
     t1, t2, t3 = float(scale.t1), float(scale.t2), float(scale.t3)
-    a.reasons.append(f"Média ponderada {mean:.2f} em {len(valid)} evidência(s) válida(s) de "
-                     f"{len({e.source_type for e in valid})} tipo(s); peso total {a.weight:.1f}.")
+    a.reasons.append(f"Média ponderada {dec(mean)} em {len(valid)} evidência(s) válida(s) de "
+                     f"{len({e.source_type for e in valid})} tipo(s); peso total {dec(a.weight, 1)}.")
     if len(valid) < scale.min_evidence or a.weight < float(scale.min_weight):
         a.reasons.append(f"Critério: são precisas ao menos {scale.min_evidence} evidências e peso "
-                         f"{float(scale.min_weight):.1f} para concluir.")
+                         f"{dec(scale.min_weight, 1)} para concluir.")
         return a
     ratios = [e.ratio for e in valid]
     if max(ratios) - min(ratios) >= 0.5 and sd >= 0.25:
@@ -164,8 +166,8 @@ def assess(evidences, scale, today=None):
         a.state = "consolidacao"
     else:
         a.state = "consolidada"
-    a.reasons.append(f"Cortes da escola: dificuldade < {t1:.2f}; em desenvolvimento < {t2:.2f}; "
-                     f"em consolidação < {t3:.2f}; consolidada a partir de {t3:.2f}.")
+    a.reasons.append(f"Cortes da escola: dificuldade < {dec(t1)}; em desenvolvimento < {dec(t2)}; "
+                     f"em consolidação < {dec(t3)}; consolidada a partir de {dec(t3)}.")
     return a
 
 

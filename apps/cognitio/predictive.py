@@ -30,6 +30,8 @@ import random
 
 from django.utils import timezone
 
+from apps.core.fmt import dec
+
 from .mastery import assess
 from .models import MasteryScale, ModelRun, SkillEvidence
 
@@ -124,7 +126,7 @@ def metrics(y, scores, threshold=0.5):
     for lo in (0.0, 0.2, 0.4, 0.6, 0.8):
         sel = [(a, s) for a, s in zip(y, scores) if lo <= s < lo + 0.2 or (lo == 0.8 and s == 1.0)]
         if sel:
-            bins.append({"faixa": f"{lo:.1f}–{lo + 0.2:.1f}", "n": len(sel),
+            bins.append({"faixa": f"{dec(lo, 1)}–{dec(lo + 0.2, 1)}", "n": len(sel),
                          "previsto": sum(s for _, s in sel) / len(sel), "observado": sum(a for a, _ in sel) / len(sel)})
     out["calibracao"] = bins
     return out

@@ -130,6 +130,16 @@ def _monthly_attendance(records):
     return buckets
 
 
+def _pct(value):
+    """Porcentagem no padrão brasileiro ("93,9%"); sem dado, "—" (nunca 0%).
+
+    Estes textos vão para a tela e para o CSV (separado por ponto e vírgula, aberto pelo Excel em
+    português, onde a vírgula é o separador decimal)."""
+    if value is None:
+        return "—"
+    return f"{float(value):.1f}".replace(".", ",") + "%"
+
+
 def _attendance_rows(records, extra_label=None):
     buckets = _monthly_attendance(records)
     rows = []
@@ -137,9 +147,9 @@ def _attendance_rows(records, extra_label=None):
         buckets.items(), key=lambda kv: (kv[0][3:], kv[0][:2])
     ):
         total = present + late + absent
-        pct = round((present + late) / total * 100, 1) if total else 0
+        pct = (present + late) / total * 100 if total else None
         label = extra_label or "Mês"
-        rows.append([key, present, late, absent, f"{pct}%"])
+        rows.append([key, present, late, absent, _pct(pct)])
     return rows
 
 
@@ -225,7 +235,7 @@ def _r_frequencia(user, params):
         summary = services.attendance_stats(student, start, end)
         criteria = (
             f"Estudante: {student}. Presença = presentes + atrasos. "
-            f"Limite de faltas: {summary['limit']}%."
+            f"Limite de faltas: {_pct(summary['limit'])}."
         )
         title = f"Frequência — {student}"
     elif class_group:
@@ -244,7 +254,7 @@ def _r_frequencia(user, params):
             c = counts.get(s.pk, {"presente": 0, "atraso": 0, "falta": 0})
             total = c["presente"] + c["atraso"] + c["falta"]
             # Sem registro no período: "—", nunca 0% (seria afirmar ausência total).
-            pct = f"{round((c['presente'] + c['atraso']) / total * 100, 1)}%" if total else "—"
+            pct = _pct((c['presente'] + c['atraso']) / total * 100) if total else "—"
             rows.append([str(s), c["presente"], c["atraso"], c["falta"], pct])
         criteria = f"Turma: {class_group}. Presença = presentes + atrasos."
         title = f"Frequência — {class_group}"
@@ -552,7 +562,7 @@ def _r_turma_indicadores(user, params):
     att = services.class_attendance_percent(
         class_group, params["start"], params["end"]
     )
-    rows.append(["Frequência da turma", f"{att}%" if att is not None else "—", "—", "—"])
+    rows.append(["Frequência da turma", _pct(att), "—", "—"])
     criteria = (
         f"Turma: {class_group}. Médias por disciplina (notas publicadas) e "
         "frequência global da turma."

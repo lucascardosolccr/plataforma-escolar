@@ -497,11 +497,13 @@ def notify_attendance_limit(student, class_group, percent):
         dedupe_key=key,
     )
     # A família também é avisada (se a escola mantiver a regra ligada).
+    from apps.core.fmt import pct
+
     from .family_events import notify_family
 
     notify_family(
         student, "limite_faltas", f"Faltas de {student.first_name} perto do limite",
-        body=f"{student.first_name} chegou a {percent:.1f}% de faltas na turma {class_group.name}. "
+        body=f"{student.first_name} chegou a {pct(percent)} de faltas na turma {class_group.name}. "
              "Procure a escola ou envie justificativas, se houver.",
         url=url, dedupe_key=key, include_student=False,
     )

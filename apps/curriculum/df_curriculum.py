@@ -15,6 +15,8 @@ from pathlib import Path
 
 from django.db import transaction
 
+from apps.core.fmt import dec
+
 from .models import CurriculumCorrespondence, CurriculumItem
 
 DATA = Path(__file__).resolve().parent / "data" / "curriculo_em_movimento_df_ef.json"
@@ -124,7 +126,7 @@ def import_for_school(school, user):
                                else CurriculumCorrespondence.Confidence.LOW),
                 "origin": CurriculumCorrespondence.Origin.AUTO,
                 "rationale": (f"{'Texto quase igual ao da habilidade. ' if score >= SAME_TEXT else ''}"
-                              f"Semelhança de palavras {score:.2f} (raízes em comum: {', '.join(shared)})")[:300],
+                              f"Semelhança de palavras {dec(score)} (raízes em comum: {', '.join(shared)})")[:300],
             })
             suggestions += 1
     return {"created": created, "updated": updated, "kept": kept, "suggestions": suggestions}

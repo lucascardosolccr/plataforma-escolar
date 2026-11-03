@@ -18,6 +18,8 @@ from collections import defaultdict
 
 from django.db.models import Q
 
+from apps.core.fmt import dec
+
 STOP = set("""a o e é de da do das dos em no na nos nas um uma uns umas para por com sem como que se ao aos à às
 ou seu sua seus suas entre sobre até mais menos outros outras outro outra diferentes diferente diversos diversas
 partir meio meios modo forma formas uso usar utilizar utilizando base bem ser ter isso esta este estes estas
@@ -81,7 +83,7 @@ def build_progressions(CurriculumItem, SkillRelation, threshold=0.20, per_target
                     defaults={"kind": "progressao", "confidence": "media" if sim >= 0.35 else "baixa",
                               "status": "proposta", "origin": "automatica",
                               "rationale": f"Mesma unidade temática ({unit}), ano seguinte; similaridade "
-                                           f"{sim:.2f}; termos em comum: {common}.",
+                                           f"{dec(sim)}; termos em comum: {common}.",
                               # campos do Prompt 17; as migrações antigas usam o modelo sem eles
                               **({"reference": PROGRESSION_SOURCE, "stage_year": f"{s.years}º → {t.years}º ano"[:40]}
                                  if has_source else {})})

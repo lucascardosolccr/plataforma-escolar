@@ -13,6 +13,8 @@ import datetime
 
 from django.utils import timezone
 
+from apps.core.fmt import dec
+
 from .mastery import apply_judgments, assess, group_evidence
 from .models import LearningAlert, MasteryScale, SkillEvidence
 
@@ -88,8 +90,8 @@ def generate_for_class(class_group, today=None):
         if a.state == "dificuldade" and a.n_valid >= 3 and span >= 14:
             _, n = _upsert(school, f"persist:{sid}:{item.pk}", seen, rule="dificuldade_persistente",
                            level="importante", title=f"{name}: dificuldade persistente em {item.code}",
-                           explanation=f"{a.n_valid} evidências em {span} dias, média {a.mean:.2f} (abaixo do corte "
-                                       f"de {float(scale.t1):.2f}).",
+                           explanation=f"{a.n_valid} evidências em {span} dias, média {dec(a.mean)} (abaixo do corte "
+                                       f"de {dec(scale.t1)}).",
                            factors=[f"{e.observed_on:%d/%m} {e.source_label}: "
                                     f"{'—' if e.ratio is None else round(e.ratio * 100)}%" for e in a.evidence][-6:],
                            next_action="Retomar a habilidade com outra abordagem e verificar os pré-requisitos "

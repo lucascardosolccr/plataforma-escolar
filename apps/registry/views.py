@@ -133,6 +133,7 @@ def _store_photo(obj, upload, form=None):
 
 
 def student_detail(request, student_id):
+    from .views_documents import can_issue
     from .views_history import can_view_school_record
 
     student = get_object_or_404(Student.objects.select_related("school"), pk=student_id)
@@ -202,6 +203,7 @@ def student_detail(request, student_id):
             "can_view_birth": can_view_birth_date(request.user),
             "can_view_notes": can_view_student_notes(request.user),
             "can_view_record": can_view_school_record(request.user, student),
+            "can_issue_document": can_issue(request.user),
             "can_create_student_account": can_create_student_account(
                 request.user, student
             ),

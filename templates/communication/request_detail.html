@@ -40,6 +40,7 @@
     {% if form %}
     <div class="card mb-3"><div class="card-body">
       <h2 class="h6 text-body-secondary text-uppercase">Atender solicitação</h2>
+      {% if can_issue_document %}<p><a class="btn btn-sm btn-primary" href="{% url 'document_new' request_.student_id %}?solicitacao={{ request_.pk }}">{% icon "file-text" %}Emitir declaração para esta solicitação</a></p>{% endif %}
       <form method="post" novalidate>
         {% csrf_token %}
         {% include "partials/_form_fields.html" with f=form %}

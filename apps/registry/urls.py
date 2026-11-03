@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_application, views_history, views_import, views_rollover
+from . import views, views_application, views_documents, views_history, views_import, views_rollover
 
 urlpatterns = [
     path("estudantes/", views.student_list, name="student_list"),
@@ -33,6 +33,10 @@ urlpatterns = [
     path("estudantes/<int:student_id>/", views.student_detail, name="student_detail"),
     path("estudantes/<int:student_id>/editar/", views.student_edit, name="student_edit"),
     path("estudantes/<int:student_id>/historico-escolar/", views_history.school_record, name="school_record"),
+    path("estudantes/<int:student_id>/declaracao/", views_documents.document_new, name="document_new"),
+    path("declaracoes/", views_documents.document_list, name="document_list"),
+    path("declaracoes/<int:pk>/", views_documents.document_print, name="document_print"),
+    path("declaracoes/dados/", views_documents.document_settings, name="document_settings"),
     path("estudantes/<int:student_id>/foto/", views.student_photo, name="student_photo"),
     path(
         "estudantes/<int:student_id>/acesso/",

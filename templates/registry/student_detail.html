@@ -25,6 +25,7 @@
   <div class="page-actions record-actions">
     <a href="{% url 'analytics:student_dashboard' student.pk %}" class="btn btn-primary">{% icon "chart-column" %}Painel do estudante</a>
     {% if can_view_record %}<a href="{% url 'school_record' student.pk %}" class="btn btn-outline-secondary">{% icon "file-text" %}Histórico escolar</a>{% endif %}
+    {% if can_issue_document %}<a href="{% url 'document_new' student.pk %}" class="btn btn-outline-secondary">{% icon "file-text" %}Emitir declaração</a>{% endif %}
     {% if can_manage %}<a href="{% url 'student_edit' student.pk %}" class="btn btn-outline-secondary">{% icon "pencil" %}Editar dados</a>{% endif %}
     {% if can_request_link %}<a href="{% url 'link_request' %}" class="btn btn-outline-secondary">{% icon "link" %}Solicitar vínculo</a>{% endif %}
   </div>

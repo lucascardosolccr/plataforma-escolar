@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Declarações — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Declarações</h1>
+    <p>Declarações de matrícula e de frequência emitidas pela escola. Para emitir, abra a ficha do estudante e use <strong>Emitir declaração</strong>.</p>
+  </div>
+  <a href="{% url 'document_settings' %}" class="btn btn-outline-secondary">{% icon "settings" %}Dados das declarações</a>
+</div>
+
+<form method="get" class="filter-bar" aria-label="Verificar declaração">
+  <div class="filter-field">
+    <label for="f-codigo">Código de verificação</label>
+    <input id="f-codigo" name="codigo" class="form-control form-control-sm" value="{{ code }}" placeholder="ABCD-2345" maxlength="9">
+  </div>
+  <button type="submit" class="btn btn-sm btn-outline-primary">Verificar</button>
+</form>
+{% if searched %}
+  {% if found %}
+  <div class="alert alert-success" role="status"><div><strong>Declaração válida:</strong> {{ found }}, emitida em {{ found.issued_at|date:"d/m/Y" }} para {{ found.student.full_name }}. <a href="{% url 'document_print' found.pk %}">Ver o texto emitido</a>.</div></div>
+  {% else %}
+  <div class="alert alert-danger" role="alert"><div><strong>Nenhuma declaração com este código.</strong> Confira as letras; se o código estiver certo, o documento não foi emitido por esta plataforma.</div></div>
+  {% endif %}
+{% endif %}
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 table-stack">
+      <thead><tr><th scope="col">Número</th><th scope="col">Tipo</th><th scope="col">Estudante</th><th scope="col">Emitida</th><th scope="col">Código</th></tr></thead>
+      <tbody>
+        {% for d in page %}
+        <tr>
+          <td><a class="fw-semibold" href="{% url 'document_print' d.pk %}">{{ d.number }}</a></td>
+          <td data-label="Tipo">{{ d.get_kind_display }}</td>
+          <td data-label="Estudante">{{ d.student.full_name }}</td>
+          <td data-label="Emitida" class="text-nowrap">{{ d.issued_at|date:"d/m/Y" }} · {{ d.issued_by.get_full_name|default:d.issued_by.username|default:"—" }}</td>
+          <td data-label="Código"><code>{{ d.code }}</code></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5"><div class="empty-state py-4">{% icon "file-text" %}<strong>Nenhuma declaração emitida</strong><span>Emita pela ficha do estudante.</span></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/_pager.html" %}
+{% endblock %}

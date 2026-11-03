@@ -307,6 +307,12 @@ def message_attachment(request, pk):
     )
 
 
+def _can_issue(user):
+    from apps.registry.views_documents import can_issue
+
+    return can_issue(user)
+
+
 # ---------- Comunicados ----------
 
 def announcement_list(request):
@@ -519,7 +525,10 @@ def request_detail(request, pk):
     return render(
         request,
         "communication/request_detail.html",
-        {"request_": req, "form": form, "history": history},
+        {"request_": req, "form": form, "history": history,
+         # Pedido de documento sobre um estudante: a declaração sai daqui e responde a solicitação.
+         "can_issue_document": bool(form) and req.student_id and req.category == ServiceRequest.Category.DOCUMENTO
+         and _can_issue(user)},
     )
 
 

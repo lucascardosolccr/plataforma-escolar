@@ -562,3 +562,64 @@ class PhotoException(models.Model):
     class Meta:
         verbose_name = "dispensa de fotografia"
         verbose_name_plural = "dispensas de fotografia"
+
+
+class DocumentSettings(models.Model):
+    """Dados institucionais das declarações (preenchidos uma vez pela escola).
+
+    A plataforma não inventa endereço, INEP ou quem assina: enquanto os campos
+    estiverem vazios, a declaração mostra a lacuna para ser preenchida à mão.
+    """
+
+    school = models.OneToOneField("core.School", on_delete=models.CASCADE, related_name="document_settings")
+    header = models.TextField("cabeçalho", blank=True,
+                              help_text="Uma informação por linha: mantenedora, endereço, telefone, código INEP, CNPJ.")
+    city = models.CharField("cidade (para a data)", max_length=80, blank=True)
+    signer_name = models.CharField("quem assina", max_length=120, blank=True)
+    signer_role = models.CharField("cargo de quem assina", max_length=120, blank=True, default="Secretaria escolar")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def for_school(cls, school):
+        return cls.objects.filter(school=school).first() or cls(school=school)
+
+
+class IssuedDocument(models.Model):
+    """Declaração emitida: número, código de verificação e o texto exato que saiu.
+
+    Nada é apagado nem reescrito: reimprimir mostra o mesmo texto, e uma nova
+    declaração é um novo registro com outro número.
+    """
+
+    class Kind(models.TextChoices):
+        ENROLLMENT = "matricula", "Declaração de matrícula"
+        ATTENDANCE = "frequencia", "Declaração de frequência"
+
+    school = models.ForeignKey("core.School", on_delete=models.CASCADE, related_name="issued_documents")
+    student = models.ForeignKey(Student, on_delete=models.PROTECT, related_name="issued_documents")
+    kind = models.CharField("tipo", max_length=12, choices=Kind.choices)
+    year = models.PositiveSmallIntegerField("ano da numeração")
+    sequence = models.PositiveIntegerField("número")
+    code = models.CharField("código de verificação", max_length=9, unique=True)
+    purpose = models.CharField("finalidade", max_length=120, blank=True)
+    period_start = models.DateField(null=True, blank=True)
+    period_end = models.DateField(null=True, blank=True)
+    body = models.TextField("texto emitido")
+    issued_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+                                  related_name="documents_issued")
+    issued_at = models.DateTimeField(auto_now_add=True)
+    request = models.ForeignKey("communication.ServiceRequest", on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name="documents")
+
+    class Meta:
+        ordering = ["-issued_at", "-pk"]
+        constraints = [models.UniqueConstraint(fields=["school", "year", "sequence"], name="uniq_document_number")]
+        verbose_name = "declaração emitida"
+        verbose_name_plural = "declarações emitidas"
+
+    @property
+    def number(self):
+        return f"{self.sequence:04d}/{self.year}"
+
+    def __str__(self):
+        return f"{self.get_kind_display()} nº {self.number}"

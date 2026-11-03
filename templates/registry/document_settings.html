@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Dados das declarações — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url 'document_list' as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Declarações" heading="Dados das declarações" %}
+  <p class="form-lead">Aparecem no topo e na assinatura de todas as declarações. A plataforma não preenche nada sozinha: o que ficar vazio sai como lacuna para completar à mão.</p>
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Salvar" hint="" %}
+  </form>
+</div>
+{% endblock %}

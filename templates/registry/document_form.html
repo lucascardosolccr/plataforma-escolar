@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Emitir declaração — {{ student.full_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url 'student_detail' student.pk as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Ficha do estudante" heading="Emitir declaração" subheading=student.full_name %}
+  <p class="form-lead">O texto sai dos registros da plataforma: matrícula ativa{% if enrollment %} ({{ enrollment.class_group.name }}, {{ enrollment.school_year.name }}){% endif %} ou chamada registrada no período. A declaração recebe número e código de verificação e fica guardada exatamente como foi emitida.</p>
+  {% if req %}<div class="alert alert-info" role="status"><div>Atende à solicitação <a href="{% url 'communication:request_detail' req.pk %}">“{{ req.title }}”</a>: ao emitir, a solicitação é respondida e a família é avisada.</div></div>{% endif %}
+  {% if settings_missing %}<div class="alert alert-warning" role="note"><div>Os dados da escola para as declarações (cabeçalho, cidade, quem assina) ainda não foram preenchidos. A declaração sai com lacunas para completar à mão. <a href="{% url 'document_settings' %}">Preencher agora</a>.</div></div>{% endif %}
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    {% if req %}<input type="hidden" name="solicitacao" value="{{ req.pk }}">{% endif %}
+    <div class="card-body">
+      {% include "partials/_form_fields.html" with f=form %}
+    </div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Emitir e imprimir" hint="" %}
+  </form>
+</div>
+{% endblock %}

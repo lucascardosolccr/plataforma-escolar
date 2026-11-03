@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ doc }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="d-print-none page-head">
+  <div>
+    <a href="{% url 'document_list' %}" class="back-link">{% icon "arrow-left" %}Declarações</a>
+    <h1>{{ doc }}</h1>
+    <p>Emitida por {{ doc.issued_by.get_full_name|default:doc.issued_by.username|default:"—" }} em {{ doc.issued_at|date:"d/m/Y H:i" }}. Imprima, assine e carimbe.</p>
+  </div>
+  <div class="page-actions"><button type="button" class="btn btn-primary" data-print>{% icon "printer" %}Imprimir</button></div>
+</div>
+
+<article class="declaration card" aria-label="Declaração para impressão">
+  <div class="card-body">
+    <header class="declaration-head">
+      <p class="declaration-school">{{ doc.school.name }}</p>
+      {% for line in header_lines %}<p class="declaration-meta">{{ line }}</p>{% empty %}<p class="declaration-meta declaration-gap">(endereço, telefone e código INEP da escola)</p>{% endfor %}
+    </header>
+    <h2 class="declaration-title">{{ doc.get_kind_display }}</h2>
+    <p class="declaration-body">{{ doc.body }}</p>
+    <p class="declaration-body">Por ser verdade, firmamos a presente declaração.</p>
+    <p class="declaration-date">{% if cfg.city %}{{ cfg.city }}{% else %}<span class="declaration-gap">(cidade)</span>{% endif %}, {{ when }}.</p>
+    <div class="declaration-sign">
+      <span class="declaration-line" aria-hidden="true"></span>
+      <p>{% if cfg.signer_name %}{{ cfg.signer_name }}{% else %}<span class="declaration-gap">(nome de quem assina)</span>{% endif %}</p>
+      <p class="declaration-meta">{{ cfg.signer_role|default:"Secretaria escolar" }}</p>
+    </div>
+    <p class="declaration-foot">Declaração nº {{ doc.number }} · código de verificação <strong>{{ doc.code }}</strong>. A escola confirma a autenticidade pelo código.</p>
+  </div>
+</article>
+{% endblock %}

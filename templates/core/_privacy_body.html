@@ -1,0 +1,47 @@
+{% load ui %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">LGPD (Lei 13.709/2018)</span>
+    <h1>Privacidade e dados pessoais</h1>
+    <p>Quem responde pelos dados de estudantes e famílias nesta plataforma e como pedir acesso, correção ou informação sobre eles.</p>
+  </div>
+  {% if can_edit %}<div class="page-actions"><a class="btn btn-outline-secondary" href="{% url 'privacy_edit' %}">{% icon "pencil" %}Editar os dados da escola</a></div>{% endif %}
+</div>
+
+{% if own %}
+<section class="card mb-3" aria-labelledby="h-own"><div class="card-body">
+  <h2 id="h-own" class="h6">{{ own.school.name }}</h2>
+  <dl class="row small mb-0">
+    <dt class="col-sm-4 text-body-secondary fw-normal">Controlador dos dados</dt><dd class="col-sm-8">{{ own.controller }}</dd>
+    <dt class="col-sm-4 text-body-secondary fw-normal">Encarregado (art. 41)</dt><dd class="col-sm-8">{{ own.officer_name }}{% if own.officer_email %} · <a href="mailto:{{ own.officer_email }}">{{ own.officer_email }}</a>{% endif %}{% if own.officer_phone %} · {{ own.officer_phone }}{% endif %}</dd>
+    {% if own.responders %}<dt class="col-sm-4 text-body-secondary fw-normal">Quem responde aos pedidos</dt><dd class="col-sm-8">{{ own.responders }}</dd>{% endif %}
+    {% if own.channel %}<dt class="col-sm-4 text-body-secondary fw-normal">Como pedir</dt><dd class="col-sm-8">{{ own.channel|linebreaksbr }}</dd>{% endif %}
+  </dl>
+</div></section>
+{% elif can_edit %}
+<div class="callout mb-3">{% icon "info" %}<div><strong>A escola ainda não informou o encarregado.</strong> A LGPD pede que o nome e o contato sejam públicos (art. 41, § 1º). <a href="{% url 'privacy_edit' %}">Informar agora</a>.</div></div>
+{% endif %}
+
+<section class="card mb-3" aria-labelledby="h-dir"><div class="card-body small">
+  <h2 id="h-dir" class="h6">Seus direitos (art. 18)</h2>
+  <p>O titular, e o responsável no caso de criança e adolescente, pode pedir: confirmação de que a escola trata os dados; acesso a eles; correção; anonimização, bloqueio ou eliminação do que for desnecessário ou excessivo; portabilidade; informação sobre com quem são compartilhados; e informação sobre o consentimento e as consequências de negá-lo.</p>
+  <p class="mb-0">{% if is_family %}Faça o pedido em <a href="{% url 'communication:request_create' %}?categoria=lgpd">Solicitações → Pedido sobre dados pessoais</a>. {% endif %}A escola tem 15 dias como prazo de referência para a confirmação e o acesso completos (art. 19, II). Registros que a escola é obrigada a manter, como a vida escolar, podem não ser eliminados (art. 16, I); nesse caso, a resposta explica o motivo.</p>
+</div></section>
+
+<section class="card mb-3" aria-labelledby="h-plat"><div class="card-body small">
+  <h2 id="h-plat" class="h6">Como a plataforma trata os dados</h2>
+  <ul class="mb-0">
+    <li>Funciona no servidor da escola, sem serviços pagos ou de terceiros, e não envia dados de estudantes a outras empresas.</li>
+    <li>Cada família vê só os próprios filhos; cada profissional, só o que o perfil e o vínculo permitem. Consultas a dados sensíveis, exportações e alterações ficam na auditoria.</li>
+    <li>Os indicadores pedagógicos servem para a equipe planejar apoio. Não usam laudo, saúde, cor, renda ou dado da família, e nenhuma decisão sobre o estudante é tomada só por eles.</li>
+  </ul>
+</div></section>
+
+{% if contacts %}
+<section class="card" aria-labelledby="h-outras"><div class="card-body small">
+  <h2 id="h-outras" class="h6">{% if own %}Outras escolas nesta plataforma{% else %}Escolas nesta plataforma{% endif %}</h2>
+  <ul class="list-unstyled mb-0">
+    {% for c in contacts %}<li class="mb-2"><strong>{{ c.school.name }}</strong> · controlador: {{ c.controller }} · encarregado: {{ c.officer_name }}{% if c.officer_email %} · <a href="mailto:{{ c.officer_email }}">{{ c.officer_email }}</a>{% endif %}{% if c.officer_phone %} · {{ c.officer_phone }}{% endif %}</li>{% endfor %}
+  </ul>
+</div></section>
+{% endif %}

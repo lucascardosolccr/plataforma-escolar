@@ -155,7 +155,7 @@
 {% if user.is_authenticated %}
     <footer class="app-footer">
       <span>Plataforma Escolar Integrada — software livre, sem custos de assinatura.</span>
-      <span>{% now "Y" %} · Dados escolares protegidos (LGPD)</span>
+      <span>{% now "Y" %} · <a href="{% url 'privacy' %}">Privacidade e dados pessoais (LGPD)</a></span>
     </footer>
   </div>
 </div>

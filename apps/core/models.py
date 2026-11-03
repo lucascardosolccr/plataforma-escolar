@@ -171,6 +171,35 @@ def audit_trail(obj):
     return qs.select_related("user")
 
 
+class PrivacyContact(models.Model):
+    """Controlador e encarregado pelo tratamento de dados pessoais da escola (LGPD, art. 5º, VI e VIII, e art. 41).
+
+    A identidade e o contato do encarregado devem ser divulgados publicamente, de forma clara (art. 41, § 1º):
+    por isso a página de privacidade abre sem login. Quem preenche é a direção ou a administração."""
+
+    school = models.OneToOneField(School, on_delete=models.CASCADE, related_name="privacy_contact")
+    controller = models.CharField("controlador dos dados", max_length=200,
+                                  help_text="Quem decide sobre o tratamento dos dados. Em escola pública, em geral "
+                                            "a secretaria de educação; em escola particular, a mantenedora.")
+    officer_name = models.CharField("encarregado (LGPD, art. 41)", max_length=150,
+                                    help_text="Pessoa ou setor que atende os titulares e a ANPD.")
+    officer_email = models.EmailField("e-mail do encarregado", blank=True)
+    officer_phone = models.CharField("telefone do encarregado", max_length=40, blank=True)
+    channel = models.TextField("como fazer um pedido", blank=True,
+                               help_text="Ex.: pela plataforma, em Solicitações; na secretaria; por e-mail.")
+    responders = models.CharField("quem responde aos pedidos na escola", max_length=200, blank=True,
+                                  help_text="Ex.: direção e secretaria escolar.")
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "contato de privacidade"
+        verbose_name_plural = "contatos de privacidade"
+
+    def __str__(self):
+        return f"{self.school}: {self.officer_name}"
+
+
 class UserPreference(models.Model):
     """Favoritos do menu e filtros salvos, guardados na conta.
 

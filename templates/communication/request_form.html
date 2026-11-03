@@ -7,6 +7,7 @@
 <div class="form-page">
   {% include "partials/_form_head.html" with back_url=back back_label="Solicitações" heading="Nova solicitação" %}
   <p class="form-lead">A secretaria analisa o pedido e responde por aqui. Você acompanha o andamento na lista de solicitações.</p>
+  {% if privacy %}<div class="callout mb-3">{% icon "shield" %}<div>Pedidos sobre dados pessoais (LGPD): encarregado <strong>{{ privacy.officer_name }}</strong>{% if privacy.officer_email %} · {{ privacy.officer_email }}{% endif %}{% if privacy.officer_phone %} · {{ privacy.officer_phone }}{% endif %}. <a href="{% url 'privacy' %}">Seus direitos</a>.</div></div>{% endif %}
   
   <form method="post" novalidate class="card form-card">
     {% csrf_token %}

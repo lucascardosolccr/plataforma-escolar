@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Encarregado de dados — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url "privacy" as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Privacidade e dados pessoais" heading="Controlador e encarregado de dados" %}
+  <p class="form-lead">Estes dados aparecem na página pública de privacidade, no rodapé da plataforma, e para as famílias que fazem um pedido sobre dados pessoais. A LGPD pede que a identidade e o contato do encarregado sejam públicos (art. 41, § 1º).</p>
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Publicar" hint="" %}
+  </form>
+</div>
+{% endblock %}

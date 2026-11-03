@@ -1,13 +1,15 @@
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
-from . import views, views_followup, views_photo, views_prefs, views_recovery
+from . import views, views_followup, views_photo, views_prefs, views_privacy, views_recovery
 from .forms import ThrottledAuthenticationForm
 
 urlpatterns = [
     path("", views.home, name="home"),
     path("busca/", views.global_search, name="global_search"),
     path("ajuda/", views.help_page, name="help"),
+    path("privacidade/", views_privacy.privacy_page, name="privacy"),
+    path("privacidade/editar/", views_privacy.privacy_edit, name="privacy_edit"),
     path("preferencias/", views_prefs.save_preferences, name="save_preferences"),
     path("falhas-tecnicas/", views.error_log, name="error_log"),
     path("minha-foto/", views_photo.my_photo, name="my_photo"),

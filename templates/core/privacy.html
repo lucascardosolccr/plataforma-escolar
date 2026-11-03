@@ -1,0 +1,6 @@
+{% extends layout %}
+{% load ui %}
+{% block title %}Privacidade e dados pessoais — Plataforma Escolar{% endblock %}
+
+{% block content %}{% include "core/_privacy_body.html" %}{% endblock %}
+{% block auth %}<div class="auth-card">{% include "core/_privacy_body.html" %}<p class="mt-3 mb-0"><a href="{% url 'login' %}">Voltar para a entrada</a></p></div>{% endblock %}

@@ -491,7 +491,9 @@ def request_create(request):
             notify_request_created(req)
         messages.success(request, "Solicitação enviada. Acompanhe o andamento.")
         return redirect("communication:request_list")
-    return render(request, "communication/request_form.html", {"form": form})
+    from apps.core.views_privacy import contact_for
+
+    return render(request, "communication/request_form.html", {"form": form, "privacy": contact_for(user.school)})
 
 
 def request_detail(request, pk):

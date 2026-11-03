@@ -35,7 +35,7 @@
   <section class="card mb-3" aria-labelledby="t-{{ g.cg.pk }}">
     <div class="card-header bg-transparent d-flex flex-wrap justify-content-between gap-2">
       <h2 id="t-{{ g.cg.pk }}" class="h6 mb-0">{{ g.cg.name }}</h2>
-      <span class="small"><span class="chip chip-state text-success">{{ g.yes }} autorizam</span> <span class="chip chip-state text-danger">{{ g.no }} não autorizam</span> <span class="chip chip-state">{{ g.none }} sem resposta</span></span>
+      <span class="small"><span class="chip chip-state text-success">{{ g.yes }} autoriza{{ g.yes|pluralize:"m" }}</span> <span class="chip chip-state text-danger">{{ g.no }} não autoriza{{ g.no|pluralize:"m" }}</span> <span class="chip chip-state">{{ g.none }} sem resposta</span></span>
     </div>
     <div class="table-responsive">
       <table class="table table-sm align-middle mb-0 table-stack">

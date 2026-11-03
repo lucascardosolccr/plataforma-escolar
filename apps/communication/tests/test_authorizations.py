@@ -57,7 +57,7 @@ class AuthorizationTests(CommunicationBase):
         self.assertNotContains(self.client.get(reverse("pending_center")), "Autorizações de passeio aguardando")
         self.login("prof")
         detail = self.client.get(reverse("communication:authorization_detail", args=[auth.pk]))
-        self.assertContains(detail, "1 autorizam")
+        self.assertContains(detail, "1 autoriza<")
         printed = self.client.get(reverse("communication:authorization_detail", args=[auth.pk]) + "?imprimir=1")
         self.assertContains(printed, "Ana")
         self.assertContains(printed, "Alérgica a amendoim")

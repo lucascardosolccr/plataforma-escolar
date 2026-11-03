@@ -20,6 +20,7 @@ from . import access
 from .models import InterventionStrategy, LearningAlert, LearningIntervention, LearningTrail
 from .recommend import (RESULT_LABELS, build_trail, comparison, error_types_for, next_step, outcomes, recommend,
                         strategy_histories, strategy_history)
+from .trajectory import intervention_response
 
 DATE = forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"})
 
@@ -198,7 +199,7 @@ def intervention_detail(request, pk):
     results = outcomes(iv)
     return render(request, "cognitio/intervention_detail.html", {
         "iv": iv, "results": results, "labels": RESULT_LABELS, "can_edit": can_edit, "cmp": comparison(iv),
-        "next": next_step(iv, results), "grouping": grouping(iv),
+        "next": next_step(iv, results), "grouping": grouping(iv), "response": intervention_response(iv),
         "status_choices": LearningIntervention.Status.choices,
         "history": strategy_history(iv.strategy, user.school) if iv.strategy else None})
 

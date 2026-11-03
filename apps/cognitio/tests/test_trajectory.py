@@ -198,3 +198,45 @@ class ThresholdTests(TrajectoryDataBase):
         self.assertTrue(a.missing)
         self.assertFalse(a.items)
 
+
+class InterventionResponseTests(TrajectoryDataBase):
+    def test_segment_change_reads_level_and_rhythm_on_each_side(self):
+        cut = D0 + dt.timedelta(days=30)
+        c = t.segment_change(series([0.4, 0.42, 0.38, 0.7, 0.72, 0.74]), cut)
+        self.assertTrue(c["ok"])
+        self.assertEqual(c["label"], "subiu")
+        self.assertAlmostEqual(c["change"], 0.32, places=2)
+        self.assertFalse(t.segment_change(series([0.4, 0.5, 0.7, 0.8]), cut)["ok"])  # 3 antes, 1 depois
+
+    def test_intervention_page_compares_with_classmates(self):
+        from apps.cognitio.models import LearningIntervention
+        from apps.registry.models import Enrollment, Student
+
+        for name in ("Davi", "Eva", "Fábio", "Gil"):  # colegas fora da intervenção (referência precisa de 5)
+            st = Student.objects.create(school=self.school, first_name=name)
+            Enrollment.objects.create(school=self.school, student=st, class_group=self.cg, school_year=self.cg.school_year)
+        start = self.today - dt.timedelta(days=70)
+        others = {s: [6, 6, 6, 6, 6.5, 6.5, 6.5, 6.5] for s in Student.objects.exclude(pk=self.ana.pk)}
+        self.grades({self.ana: [3, 3, 3, 3, 6, 6.5, 7, 7], **others}, start=start)
+        iv = LearningIntervention.objects.create(
+            school=self.school, class_group=self.cg, subject=self.mat, item=self.h1, title="Retomada",
+            objective="o", activity="a", starts_on=start + dt.timedelta(days=35), review_on=self.today,
+            created_by=self.prof)
+        iv.students.add(self.ana)
+        r = t.intervention_response(iv)
+        ana = r["rows"][0]
+        self.assertEqual((ana["student"], ana["label"]), (self.ana, "subiu"))
+        self.assertEqual(r["reference"], 0.05)  # colegas subiram meio ponto
+        self.assertAlmostEqual(ana["vs_peers"], 0.3625 - 0.05, places=2)  # 3,625 − 0,5 pontos
+        self.login(self.prof)
+        page = self.client.get(reverse("cognitio:intervention_detail", args=[iv.pk]))
+        self.assertContains(page, "regressão à média")
+        self.assertContains(page, "+3,1")  # 3,625 pontos menos 0,5 dos colegas, na escala de 0 a 10
+
+    def test_class_council_shows_early_signals(self):
+        self.grades({self.ana: [8, 7, 6, 5, 4.5, 4, 3, 2], self.bia: [8] * 8})
+        self.login(self.prof)
+        page = self.client.get(reverse("cognitio:class_council", args=[self.cg.pk]))
+        self.assertContains(page, "Trajetória em queda")
+        self.assertContains(page, "com algum indicador precoce")
+

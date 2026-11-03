@@ -287,8 +287,19 @@ def class_council(request, class_id):
                                          observed_on__gt=OuterRef("observed_on"))
     rechecks = Counter(SkillObservation.objects.filter(class_group=cg, recheck_on__lte=today)
                        .exclude(Exists(newer)).values_list("student_id", flat=True))
+    # Trajetória e indicadores precoces até o fim do período, desde o início do ano letivo (trajectory.py).
+    from apps.analytics.bi import _school_year_dates
+    from apps.pedagogy.access import can_view_occurrences
+
+    from .trajectory import TRENDS, class_overview
+
+    year_start = min(_school_year_dates(user.school, end)[0], start)
+    signals = {r["student"].pk: r for r in class_overview(cg, year_start, end, today=end,
+                                                         behavior=can_view_occurrences(user),
+                                                         subject_ids=subjects)["rows"]}
     rows, item_diff = [], Counter()
     for st in students:
+        sig = signals.get(st.pk)
         mine = {iid: a for (sid, iid), a in assessed.items() if sid == st.pk}
         comps = {}
         confirmed = []
@@ -316,11 +327,14 @@ def class_council(request, class_id):
             "judgments": sum(1 for a in mine.values() if a.computed_state),
             "rechecks": rechecks.get(st.pk, 0),
             "no_evidence": not mine,
+            "signals": sig["indicators"] if sig else [],
+            "trend": TRENDS[sig["overall"]["trend"]] if sig else None,
         })
     retake = [(code, n) for code, n in item_diff.most_common() if n * 10 >= 3 * max(len(students), 1)]
     summary = {"students": len(students), "with_evidence": sum(1 for r in rows if not r["no_evidence"]),
                "confirmed": sum(len(r["confirmed"]) for r in rows),
                "ivs_active": sum(1 for iv in ivs if iv.status in ("aceita", "andamento")),
+               "with_signals": sum(1 for r in rows if r["signals"]),
                # lista de pares: um Counter no template vira Counter["items"] == 0
                "next": sorted(Counter(next_step(iv, iv_out[iv.pk])["label"] for iv in ivs).items())}
     create_audit_log(user=user, action="view", request=request, target=cg,

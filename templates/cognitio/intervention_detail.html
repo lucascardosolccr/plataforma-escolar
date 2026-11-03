@@ -56,6 +56,15 @@
       {% endif %}
       <p class="text-secondary mb-0">É uma comparação descritiva, não prova de efeito. Os grupos não foram sorteados: quem participou foi escolhido, em geral por precisar mais, e quem começa mais baixo tende a subir mais de qualquer jeito. Use como mais um elemento para a conversa pedagógica.</p>
     </div></section>
+    <section class="card mb-3" aria-labelledby="resp"><div class="card-body small">
+      <h2 id="resp" class="h6">Notas de {{ iv.subject.name }} antes e depois do início ({{ response.cut|date:"d/m/Y" }})</h2>
+      <div class="table-responsive"><table class="table table-sm mb-2">
+        <thead><tr><th scope="col">Estudante</th><th scope="col" class="text-end">Média antes</th><th scope="col" class="text-end">Média depois</th><th scope="col" class="text-end">Mudança</th><th scope="col" class="text-end">Ritmo antes → depois (por mês)</th><th scope="col" class="text-end">Em relação aos colegas</th></tr></thead>
+        <tbody>{% for r in response.rows %}<tr><td><a href="{% url 'cognitio:student_trajectory' r.student.pk %}">{{ r.student }}</a></td>{% if r.ok %}<td class="text-end">{{ r.show.before }}</td><td class="text-end">{{ r.show.after }}</td><td class="text-end"><strong>{{ r.show.change }}</strong> ({{ r.label }})</td><td class="text-end">{{ r.show.slope_before }} → {{ r.show.slope_after }}</td><td class="text-end">{{ r.show.vs_peers }}</td>{% else %}<td colspan="5" class="text-body-secondary">Poucos resultados: {{ r.n_before }} antes e {{ r.n_after }} depois (são precisos {{ response.min_side }} de cada lado).</td>{% endif %}</tr>{% endfor %}</tbody>
+      </table></div>
+      <p class="mb-1">Colegas da turma sem esta intervenção, no mesmo período: {% if response.reference_show %}mudança média de <strong>{{ response.reference_show }}</strong> ({{ response.peers }} com notas suficientes).{% else %}só {{ response.peers }} com notas suficientes antes e depois; a referência precisa de {{ response.min_peers }}.{% endif %}</p>
+      <p class="text-secondary mb-0">Escala de 0 a 10; janela de 120 dias antes do início. Leitura de série temporal interrompida: nível e ritmo de cada lado (Wagner et al., 2002). A coluna "em relação aos colegas" desconta a mudança média de quem não participou, porque quem foi escolhido por estar com nota baixa tende a subir um pouco de qualquer jeito (regressão à média; Barnett, van der Pols &amp; Dobson, 2005). Continua sendo associação no tempo, não prova de efeito.</p>
+    </div></section>
     {% if history and history.uses %}<section class="card"><div class="card-body small"><h2 class="h6">Histórico desta estratégia na escola</h2>{{ history.uses }} uso(s) com resultado: {{ history.improved }} com melhora nas evidências posteriores, {{ history.unchanged }} sem melhora, {{ history.no_data }} sem evidência nova.</div></section>{% endif %}
     {% if can_edit %}
     <form method="post" class="card"><div class="card-body">{% csrf_token %}

@@ -220,6 +220,83 @@ def auc(scores_pos, scores_neg):
     return wins / (len(scores_pos) * len(scores_neg))
 
 
+# --------------------------------------------------------------------------- resposta à intervenção
+
+MIN_SIDE = 3
+RESPONSE_WINDOW = 120
+
+
+def segment_change(points, cut):
+    """Antes × depois de uma data: nível médio e ritmo (Theil–Sen a cada 30 dias) de cada lado.
+
+    É a leitura da série temporal interrompida (Wagner, Soumerai, Zhang & Ross-Degnan, 2002, J Clin Pharm Ther
+    27(4), 299–309, doi:10.1046/j.1365-2710.2002.00430.x), com estimador robusto em vez de mínimos quadrados.
+    Precisa de ``MIN_SIDE`` resultados de cada lado."""
+    before = sorted(p for p in points if p[0] < cut)
+    after = sorted(p for p in points if p[0] >= cut)
+    out = {"n_before": len(before), "n_after": len(after), "ok": len(before) >= MIN_SIDE and len(after) >= MIN_SIDE}
+    if not out["ok"]:
+        return out
+
+    def rate(seg):
+        return theil_sen([(d - seg[0][0]).days for d, _ in seg], [v for _, v in seg])[0] * 30
+
+    mb, ma = statistics.fmean(v for _, v in before), statistics.fmean(v for _, v in after)
+    change = ma - mb
+    out.update(mean_before=round(mb, 3), mean_after=round(ma, 3), change=round(change, 3),
+               slope_before=round(rate(before), 4), slope_after=round(rate(after), 4),
+               label="subiu" if change >= MIN_SHIFT else "caiu" if change <= -MIN_SHIFT else "sem mudança clara")
+    return out
+
+
+def intervention_response(iv, today=None):
+    """Notas da disciplina da intervenção antes e depois do início, para cada estudante atendido, e a mesma
+    variação média dos colegas da turma que não estavam nela, como referência.
+
+    A referência existe por causa da regressão à média: quem é escolhido para apoio por estar com nota baixa
+    tende a melhorar um pouco mesmo sem apoio (Barnett, van der Pols & Dobson, 2005, Int J Epidemiol 34(1),
+    215–220, doi:10.1093/ije/dyh299). Mesmo assim, é associação no tempo, não prova de efeito."""
+    from apps.analytics import bi
+    from apps.registry.models import Enrollment
+
+    today = today or timezone.localdate()
+    start = iv.starts_on - timedelta(days=RESPONSE_WINDOW)
+    rules, _ = bi.school_rules(iv.school)
+    top = _top(rules.get(iv.subject_id))
+    targets = {s.pk: s for s in iv.students.all()}
+    members = set(Enrollment.objects.filter(class_group=iv.class_group, status="ativo")
+                  .values_list("student_id", flat=True))
+    grades = bi.load_grades_light(members | set(targets), start, today, class_group=iv.class_group,
+                                  subject_ids=[iv.subject_id])
+
+    def series(sid):
+        return [(g.evaluation.date, min(max(float(g.value) / top, 0.0), 1.0)) for g in grades.get(sid, [])]
+
+    peers = [c for c in (segment_change(series(sid), iv.starts_on) for sid in members - set(targets)) if c["ok"]]
+    ref = statistics.fmean(c["change"] for c in peers) if len(peers) >= MIN_PEERS else None
+    from apps.core.fmt import dec
+
+    def ten(v, signed=False):  # na escala de 0 a 10, com vírgula
+        if v is None:
+            return "—"
+        text = dec(abs(v) * 10 if signed else v * 10, 1)
+        return ("+" if v > 0 else "−" if v < 0 else "") + text if signed else text
+
+    rows = []
+    for sid, st in sorted(targets.items(), key=lambda kv: kv[1].full_name):
+        c = segment_change(series(sid), iv.starts_on)
+        if c["ok"]:
+            if ref is not None:
+                c["vs_peers"] = round(c["change"] - ref, 3)
+            c["show"] = {"before": ten(c["mean_before"]), "after": ten(c["mean_after"]),
+                         "change": ten(c["change"], True), "slope_before": ten(c["slope_before"], True),
+                         "slope_after": ten(c["slope_after"], True), "vs_peers": ten(c.get("vs_peers"), True)}
+        rows.append({"student": st, **c})
+    return {"rows": rows, "peers": len(peers), "reference": round(ref, 3) if ref is not None else None,
+            "reference_show": ten(ref, True) if ref is not None else None, "start": start, "cut": iv.starts_on,
+            "min_side": MIN_SIDE, "min_peers": MIN_PEERS}
+
+
 # --------------------------------------------------------------------------- dados da turma
 
 

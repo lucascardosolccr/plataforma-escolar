@@ -1192,6 +1192,8 @@ class RubricScore(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = "nível na rubrica da atividade"
+        verbose_name_plural = "níveis na rubrica da atividade"
         constraints = [models.UniqueConstraint(fields=["activity", "student", "criterion"], name="uniq_rubric_score")]
 
 class GroupWorkRubricScore(models.Model):

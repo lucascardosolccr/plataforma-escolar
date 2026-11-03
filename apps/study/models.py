@@ -291,6 +291,8 @@ class TopicCheck(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = "marcação de tópico (como estou)"
+        verbose_name_plural = "marcações de tópico (como estou)"
         constraints = [models.UniqueConstraint(fields=["topic", "student"], name="uniq_topic_check")]
 
 
@@ -308,6 +310,8 @@ class StudyQuestion(models.Model):
     answered_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        verbose_name = "dúvida sobre a prova"
+        verbose_name_plural = "dúvidas sobre a prova"
         ordering = ["-created_at"]
 
     @property
@@ -360,5 +364,7 @@ class PracticeAttempt(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        verbose_name = "tentativa em exercício de prática"
+        verbose_name_plural = "tentativas em exercício de prática"
         ordering = ["created_at", "pk"]
         indexes = [models.Index(fields=["question", "student", "created_at"])]

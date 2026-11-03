@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Dados guardados — {{ student.full_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'student_detail' student.pk %}" class="back-link d-print-none">{% icon "arrow-left" %}{{ student.full_name }}</a>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">LGPD, art. 18 e 19</span>
+    <h1>O que a plataforma guarda sobre {{ student.full_name }}</h1>
+    <p>Base para responder a um pedido de confirmação, acesso ou portabilidade. Gerado em {% now "d/m/Y H:i" %}. A consulta fica registrada na auditoria.</p>
+  </div>
+  <div class="page-actions d-print-none"><button type="button" class="btn btn-outline-secondary" data-print>{% icon "printer" %}Imprimir</button></div>
+</div>
+
+<div class="callout mb-3">{% icon "info" %}<div>
+  Este inventário mostra <strong>que tipo de registro existe e quantos</strong>. Antes de entregar à família, confira o
+  conteúdo de cada área na própria tela e retire o que identifica outras pessoas (colegas citados numa
+  ocorrência, por exemplo). Registros que a escola é obrigada a manter, como a vida escolar, podem não ser
+  eliminados (LGPD, art. 16, I).
+</div></div>
+
+<div class="row g-3">
+  <section class="col-lg-6" aria-labelledby="h-cad"><div class="card h-100"><div class="card-body">
+    <h2 id="h-cad" class="h6">Cadastro</h2>
+    <dl class="row small mb-0">
+      {% for label, value in fields %}<dt class="col-sm-5 text-body-secondary fw-normal">{{ label|capfirst }}</dt><dd class="col-sm-7">{{ value }}</dd>{% endfor %}
+      <dt class="col-sm-5 text-body-secondary fw-normal">Responsáveis com vínculo aprovado</dt>
+      <dd class="col-sm-7">{% for g in guardians %}{{ g.get_full_name|default:g.username }}{% if not forloop.last %}, {% endif %}{% empty %}nenhum{% endfor %}</dd>
+    </dl>
+  </div></div></section>
+
+  <section class="col-lg-6" aria-labelledby="h-reg"><div class="card h-100"><div class="card-body">
+    <h2 id="h-reg" class="h6">Registros ligados ao estudante</h2>
+    <div class="table-responsive"><table class="table table-sm mb-0">
+      <thead><tr><th scope="col">Área</th><th scope="col">Registro</th><th scope="col" class="text-end">Quantidade</th></tr></thead>
+      <tbody>
+        {% for r in rows %}<tr><td>{{ r.area }}</td><td>{{ r.label|capfirst }}</td><td class="text-end">{{ r.count }}</td></tr>
+        {% empty %}<tr><td colspan="3" class="text-body-secondary">Nenhum registro além do cadastro.</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </div></div></section>
+
+  <section class="col-12" aria-labelledby="h-comp"><div class="card"><div class="card-body">
+    <h2 id="h-comp" class="h6">Compartilhamento (art. 18, VII)</h2>
+    <ul class="small mb-0">
+      <li>A plataforma não envia dados de estudantes a outras empresas nem a serviços externos: funciona no servidor da escola, sem serviços pagos ou de terceiros.</li>
+      <li>Se a escola ligar o aviso por e-mail, quem escolheu essa preferência recebe um e-mail curto, sem nenhum dado do estudante, pelo provedor de e-mail configurado pela escola.</li>
+      <li>Exportações em planilha feitas pela equipe ficam registradas na auditoria com quem exportou e quando. Envios a órgãos públicos (por exemplo, o Censo Escolar) acontecem fora da plataforma e devem ser informados pela escola.</li>
+    </ul>
+  </div></div></section>
+</div>
+{% endblock %}

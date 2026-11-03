@@ -252,7 +252,21 @@ class ServiceRequest(models.Model):
         MATRICULA = "matricula", "Matrícula/transferência"
         DUVIDA = "duvida", "Dúvida"
         CONTATO = "contato", "Solicitar reunião/contato"
+        LGPD = "lgpd", "Dados pessoais (LGPD)"
         OUTRO = "outro", "Outro"
+
+    class DataRight(models.TextChoices):
+        """Direitos do titular (LGPD, art. 18). Para criança e adolescente, quem pede é o responsável."""
+
+        CONFIRM = "confirmacao", "Confirmar se a escola trata os dados (art. 18, I)"
+        ACCESS = "acesso", "Receber os dados que a escola guarda (art. 18, II)"
+        CORRECT = "correcao", "Corrigir dados incompletos, inexatos ou desatualizados (art. 18, III)"
+        ERASE = "eliminacao", "Anonimizar, bloquear ou eliminar dados (art. 18, IV e VI)"
+        PORTABILITY = "portabilidade", "Levar os dados a outra instituição (art. 18, V)"
+        SHARING = "compartilhamento", "Saber com quem os dados são compartilhados (art. 18, VII)"
+        CONSENT = "consentimento", "Consentimento: consequências de negar ou revogar (art. 18, VIII e IX)"
+
+    LGPD_DAYS = 15  # art. 19, II: declaração completa em até 15 dias do requerimento (acesso e confirmação)
 
     class Status(models.TextChoices):
         RECEIVED = "recebida", "Recebida"
@@ -282,6 +296,7 @@ class ServiceRequest(models.Model):
     category = models.CharField(
         "categoria", max_length=15, choices=Category.choices, default=Category.OUTRO
     )
+    data_right = models.CharField("direito pedido (LGPD)", max_length=20, choices=DataRight.choices, blank=True)
     title = models.CharField("assunto", max_length=200)
     description = models.TextField("detalhes")
     status = models.CharField(
@@ -303,6 +318,28 @@ class ServiceRequest(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.get_status_display()})"
+
+    @property
+    def is_lgpd(self):
+        return self.category == self.Category.LGPD
+
+    @property
+    def due_on(self):
+        """Prazo de referência do pedido sobre dados pessoais (15 dias corridos do pedido)."""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        if not self.is_lgpd or not self.created_at:
+            return None
+        return timezone.localdate(self.created_at) + timedelta(days=self.LGPD_DAYS)
+
+    @property
+    def overdue(self):
+        from django.utils import timezone
+
+        return bool(self.due_on and self.status in (self.Status.RECEIVED, self.Status.UNDER_REVIEW)
+                    and timezone.localdate() > self.due_on)
 
 class NotificationRule(models.Model):
     """Liga ou desliga um tipo de aviso automático para a escola inteira.

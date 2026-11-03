@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.core.params import id_param
-from apps.core.models import AuditLog, Role, create_audit_log
+from apps.core.models import Role, audit_trail, create_audit_log
 from apps.core.pagination import Sort, paginate
 from apps.core.uploads import attachment_content_type
 from apps.registry.models import Student
@@ -433,6 +433,8 @@ def request_list(request):
         qs = qs.filter(
             Q(student_id__in=acc._teacher_student_ids(user)) | Q(requester=user)
         )
+    if user.role not in acc.LGPD_STAFF:
+        qs = qs.exclude(Q(category=ServiceRequest.Category.LGPD) & ~Q(requester=user))
     status = request.GET.get("status")
     if status in dict(ServiceRequest.Status.choices):
         qs = qs.filter(status=status)
@@ -460,6 +462,8 @@ def request_list(request):
             "status_choices": ServiceRequest.Status.choices,
             "can_manage": acc.can_manage_requests(user),
             "can_create": acc.can_create_request(user),
+            "lgpd_open": (qs.filter(category=ServiceRequest.Category.LGPD, status__in=["recebida", "em_analise"])
+                          .count() if user.role in acc.LGPD_STAFF else 0),
         },
     )
 
@@ -474,6 +478,8 @@ def request_create(request):
         initial["category"] = request.GET["categoria"]
     if request.GET.get("estudante", "").isdigit():
         initial["student"] = int(request.GET["estudante"])
+    if initial.get("category") == ServiceRequest.Category.LGPD:
+        initial.setdefault("title", "Pedido sobre dados pessoais")
     form = ServiceRequestForm(request.POST or None, user=user, initial=initial)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
@@ -497,7 +503,7 @@ def request_detail(request, pk):
     )
     acc.require(acc.can_view_request(user, req))
     form = None
-    if acc.can_manage_requests(user):
+    if acc.can_manage_requests(user) and (not req.is_lgpd or user.role in acc.LGPD_STAFF):
         original_status = req.status
         form = RequestResolutionForm(request.POST or None, instance=req)
         if request.method == "POST" and form.is_valid():
@@ -519,16 +525,16 @@ def request_detail(request, pk):
             # Redireciona depois de salvar: sem isso, atualizar a página
             # reenviava o formulário (auditoria e aviso à família em dobro).
             return redirect("communication:request_detail", pk=req.pk)
-    history = AuditLog.objects.filter(
-        target_type="ServiceRequest", target_id=str(req.pk)
-    ).order_by("-created_at")[:50]
+    history = audit_trail(req).order_by("-created_at")[:50]
     return render(
         request,
         "communication/request_detail.html",
         {"request_": req, "form": form, "history": history,
          # Pedido de documento sobre um estudante: a declaração sai daqui e responde a solicitação.
          "can_issue_document": bool(form) and req.student_id and req.category == ServiceRequest.Category.DOCUMENTO
-         and _can_issue(user)},
+         and _can_issue(user),
+         # O inventário mostra até o que a secretaria não lê (observações, apoio à inclusão): só a direção.
+         "can_inventory": bool(form) and req.is_lgpd and req.student_id and user.role == Role.DIRECAO.value},
     )
 
 

@@ -150,6 +150,27 @@ def create_audit_log(*, user, action, request=None, target=None, detail="", scho
     )
 
 
+def audit_trail(obj):
+    """Registros da auditoria sobre ``obj``: da mesma escola e de depois que ele foi criado.
+
+    Tipo e número não bastam. No SQLite, quando uma migração recria uma tabela vazia, a numeração recomeça,
+    e um registro novo herdava o histórico de outro já apagado, até de outra escola (visto em 03/11/2026
+    numa solicitação). Entradas sem escola (conta de sistema) continuam aparecendo.
+    """
+    from datetime import timedelta
+
+    from django.db.models import Q
+
+    qs = AuditLog.objects.filter(target_type=obj.__class__.__name__, target_id=str(obj.pk))
+    school_id = getattr(obj, "school_id", None)
+    if school_id:
+        qs = qs.filter(Q(school_id=school_id) | Q(school__isnull=True))
+    created = getattr(obj, "created_at", None)
+    if created:
+        qs = qs.filter(created_at__gte=created - timedelta(minutes=1))
+    return qs.select_related("user")
+
+
 class UserPreference(models.Model):
     """Favoritos do menu e filtros salvos, guardados na conta.
 

@@ -24,6 +24,9 @@ MANAGE_STAFF = (
     Role.SECRETARIA.value,
     Role.ADMIN.value,
 )
+# Pedidos sobre dados pessoais (LGPD): só quem pediu e quem responde pela escola. Professor e coordenação
+# não veem nem o pedido: dizer que uma família pediu eliminação ou cópia dos dados já é informação sensível.
+LGPD_STAFF = (Role.DIRECAO.value, Role.SECRETARIA.value, Role.ADMIN.value)
 
 
 def require(ok):
@@ -328,6 +331,8 @@ def can_view_requests(user):
 def can_view_request(user, req):
     if not user.is_authenticated or req.school_id != user.school_id:
         return False
+    if req.category == "lgpd":
+        return req.requester_id == user.pk or user.role in LGPD_STAFF
     if user.role in MANAGE_STAFF:
         return True
     if user.role == Role.PROFESSOR.value:

@@ -14,7 +14,7 @@ from django.views.decorators.http import require_POST
 
 from apps.communication.services import notify_link_resolved
 from apps.core.params import id_param
-from apps.core.models import AuditLog, Role, User, create_audit_log
+from apps.core.models import Role, User, audit_trail, create_audit_log
 from apps.core.pagination import Sort, paginate
 from apps.core.uploads import ALLOWED_PHOTO_EXTENSIONS
 
@@ -156,7 +156,7 @@ def student_detail(request, student_id):
         if request.user.role in (Role.ADMIN.value, Role.DIRECAO.value, Role.COORDENACAO.value, Role.SECRETARIA.value, Role.PROFESSOR.value)
         else None
     )
-    logs = AuditLog.objects.filter(target_type="Student", target_id=str(student.pk)).select_related("user")         .order_by("-created_at")[:50]
+    logs = audit_trail(student).order_by("-created_at")[:50]
     show_logs = can_manage_registry(request.user) or request.user.role == Role.ADMIN.value
 
     comm = _student_comms(request.user, student)
@@ -203,6 +203,7 @@ def student_detail(request, student_id):
             "can_view_birth": can_view_birth_date(request.user),
             "can_view_notes": can_view_student_notes(request.user),
             "can_view_record": can_view_school_record(request.user, student),
+            "can_inventory": request.user.role == Role.DIRECAO.value,
             "can_issue_document": can_issue(request.user),
             "can_create_student_account": can_create_student_account(
                 request.user, student

@@ -26,7 +26,7 @@ from apps.communication.services import (
 )
 from apps.academics.permissions import pairs_q, teacher_class_ids, teacher_pairs, teacher_subject_ids
 from apps.core.params import id_param, name_q
-from apps.core.models import AuditLog, Role, create_audit_log
+from apps.core.models import Role, audit_trail, create_audit_log
 from apps.core.pagination import Sort, paginate
 from apps.core.uploads import attachment_content_type
 from apps.registry.models import Enrollment, GuardianLink, Student
@@ -2370,9 +2370,7 @@ def occurrence_detail(request, pk):
         Occurrence.objects.select_related("student", "recorded_by"), pk=pk, school=user.school
     )
     acc.require(acc.can_view_occurrences(user, occ.student))
-    history = AuditLog.objects.filter(target_type="Occurrence", target_id=str(occ.pk)).select_related(
-        "user"
-    ).order_by("-created_at")[:50]
+    history = audit_trail(occ).order_by("-created_at")[:50]
     form = None
     if acc.can_manage_occurrences(user, occ.student):
         form = OccurrenceUpdateForm(request.POST or None, instance=occ)

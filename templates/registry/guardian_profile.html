@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load ui %}
 {% block title %}{% if is_self %}Meus dados de contato{% else %}Perfil do responsável{% endif %} — Plataforma Escolar{% endblock %}
 
 {% block content %}
@@ -30,6 +31,9 @@
         {% include "partials/_form_fields.html" with f=form %}
         <button type="submit" class="btn btn-primary w-100 mt-2">Salvar perfil</button>
       </form>
+      {% if is_self and user.role == "responsavel" %}
+      <p class="small text-body-secondary mt-3 mb-0">{% icon "shield" %} Quer saber o que a escola guarda sobre você ou seu filho, corrigir ou pedir a eliminação de algum dado? <a href="{% url 'communication:request_create' %}?categoria=lgpd">Faça um pedido sobre dados pessoais (LGPD)</a>.</p>
+      {% endif %}
     </div>
   </div>
 

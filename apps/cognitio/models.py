@@ -128,6 +128,8 @@ class QuestionResponse(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = "resposta por questão"
+        verbose_name_plural = "respostas por questão"
         constraints = [models.UniqueConstraint(fields=["question", "student"], name="uniq_question_response")]
 
 
@@ -162,6 +164,8 @@ class SkillObservation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        verbose_name = "observação de habilidade"
+        verbose_name_plural = "observações de habilidade"
         ordering = ["-observed_on", "-pk"]
 
 
@@ -201,6 +205,8 @@ class SkillEvidence(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = "evidência de habilidade"
+        verbose_name_plural = "evidências de habilidade"
         ordering = ["observed_on", "pk"]
         indexes = [models.Index(fields=["student", "item"]), models.Index(fields=["class_group", "item"])]
         constraints = [models.UniqueConstraint(fields=["student", "item", "source_type", "source_id"],
@@ -238,6 +244,8 @@ class TextAnalysis(models.Model):
     reviewed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        verbose_name = "análise de produção escrita"
+        verbose_name_plural = "análises de produção escrita"
         ordering = ["-produced_on", "-pk"]
 
 
@@ -475,6 +483,8 @@ class LearningTrail(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        verbose_name = "trilha de aprendizagem"
+        verbose_name_plural = "trilhas de aprendizagem"
         ordering = ["-created_at"]
 
 

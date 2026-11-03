@@ -33,6 +33,8 @@ def for_user(user):
         items += _active_search(user)
     if role == Role.RESPONSAVEL.value:
         items += _family(user)
+    if role in (Role.DIRECAO.value, Role.SECRETARIA.value, Role.ADMIN.value):
+        items += _lgpd(user)
     if role in [r.value for r in STAFF_ROLES]:
         from .views_followup import open_follow_ups
 
@@ -177,6 +179,19 @@ def _secretaria(user):
             reverse("printing:queue") + "?ver=impressao"),
         _item("Estudantes ativos sem foto", no_photo, reverse("photo_pending"), "Não bloqueia nada.", "info"),
     ]
+
+
+def _lgpd(user):
+    """Pedidos do titular sobre dados pessoais: prazo de referência de 15 dias (LGPD, art. 19, II)."""
+    from apps.communication.models import ServiceRequest
+
+    open_ = [r for r in ServiceRequest.objects.filter(school=user.school, category=ServiceRequest.Category.LGPD,
+                                                       status__in=["recebida", "em_analise"])]
+    late = sum(1 for r in open_ if r.overdue)
+    return [_item("Pedidos sobre dados pessoais (LGPD)", len(open_),
+                  reverse("communication:request_list") + "?categoria=lgpd",
+                  f"{late} com prazo vencido." if late else "Prazo de referência: 15 dias do pedido.",
+                  "attention" if late else "info")]
 
 
 def _coordination(user):

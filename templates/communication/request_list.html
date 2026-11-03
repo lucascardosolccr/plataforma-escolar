@@ -13,9 +13,15 @@
     </p>
   </div>
   {% if can_create %}
-    <a href="{% url 'communication:request_create' %}" class="btn btn-primary">{% icon "plus" %}Nova solicitação</a>
+    <div class="page-actions">
+      <a href="{% url 'communication:request_create' %}?categoria=lgpd" class="btn btn-outline-secondary">{% icon "shield" %}Pedido sobre dados pessoais</a>
+      <a href="{% url 'communication:request_create' %}" class="btn btn-primary">{% icon "plus" %}Nova solicitação</a>
+    </div>
   {% endif %}
 </div>
+{% if lgpd_open %}
+<div class="callout mb-3">{% icon "shield" %}<div><strong>{{ lgpd_open }} pedido{{ lgpd_open|pluralize }} sobre dados pessoais (LGPD) em aberto.</strong> Prazo de referência de 15 dias a partir do pedido (art. 19, II). <a href="?categoria=lgpd">Ver os pedidos</a></div></div>
+{% endif %}
 
 <form method="get" class="filter-bar" aria-label="Filtrar solicitações">
   {% if request.GET.ordem %}<input type="hidden" name="ordem" value="{{ request.GET.ordem }}">{% endif %}
@@ -41,7 +47,7 @@
         <tr>
           <td>
             <a class="fw-semibold text-decoration-none" href="{% url 'communication:request_detail' r.pk %}">{{ r.title }}</a>
-            <div class="text-body-secondary small">{{ r.get_category_display }}</div>
+            <div class="text-body-secondary small">{{ r.get_category_display }}{% if r.is_lgpd %} · responder até {{ r.due_on|date:"d/m/Y" }}{% if r.overdue %} <span class="chip chip-state text-danger">prazo vencido</span>{% endif %}{% endif %}</div>
           </td>
           {% if user_role != ROLE_RESPONSAVEL %}<td>{{ r.requester.get_full_name|default:r.requester.username }}</td>{% endif %}
           <td>{{ r.student.full_name|default:"—" }}</td>

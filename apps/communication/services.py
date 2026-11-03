@@ -440,17 +440,22 @@ def notify_request_created(req):
     from apps.core.models import Role
 
     User = get_user_model()
+    roles = [Role.SECRETARIA.value]
+    title = f"Nova solicitação: {req.title}"
+    if req.category == "lgpd":  # pedido do titular: a direção responde pela escola e acompanha o prazo
+        roles.append(Role.DIRECAO.value)
+        title = f"Pedido sobre dados pessoais (LGPD), prazo {req.due_on:%d/%m/%Y}: {req.title}"[:200]
     sec = User.objects.filter(
-        school=req.school, role=Role.SECRETARIA.value, is_active=True
+        school=req.school, role__in=roles, is_active=True
     )
     notify_many(
         req.school,
         sec,
         Notification.Kind.REQUEST,
-        f"Nova solicitação: {req.title}",
+        title,
         body=f"{req.requester.get_full_name() or req.requester.username}: "
              f"{req.description[:120]}",
-        url=reverse("communication:request_list"),
+        url=reverse("communication:request_detail", args=[req.pk]),
     )
 
 

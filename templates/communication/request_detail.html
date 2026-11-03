@@ -24,6 +24,10 @@
   <div class="col-lg-7">
     <div class="card"><div class="card-body">
       <h2 class="h6 text-body-secondary text-uppercase">Detalhes da solicitação</h2>
+      {% if request_.is_lgpd %}
+      <p class="mb-2"><strong>Direito pedido:</strong> {{ request_.get_data_right_display|default:"não informado" }}</p>
+      <p class="small text-body-secondary">Prazo de referência: <strong>{{ request_.due_on|date:"d/m/Y" }}</strong> (15 dias do pedido, LGPD art. 19, II){% if request_.overdue %} · <span class="text-danger fw-semibold">vencido</span>{% endif %}. Só quem pediu, a direção, a secretaria e a administração veem este pedido.</p>
+      {% endif %}
       <div class="mb-3">{{ request_.description|linebreaks }}</div>
       {% if request_.response %}
         <h3 class="h6 text-body-secondary text-uppercase">Resposta da equipe</h3>
@@ -40,6 +44,8 @@
     {% if form %}
     <div class="card mb-3"><div class="card-body">
       <h2 class="h6 text-body-secondary text-uppercase">Atender solicitação</h2>
+      {% if can_inventory %}<p><a class="btn btn-sm btn-primary" href="{% url 'student_data_inventory' request_.student_id %}">{% icon "shield" %}O que a plataforma guarda sobre o estudante</a></p>{% endif %}
+      {% if request_.is_lgpd and not can_inventory %}<p class="small text-body-secondary">O inventário completo dos dados do estudante é aberto pela direção, porque inclui registros que a secretaria não lê.</p>{% endif %}
       {% if can_issue_document %}<p><a class="btn btn-sm btn-primary" href="{% url 'document_new' request_.student_id %}?solicitacao={{ request_.pk }}">{% icon "file-text" %}Emitir declaração para esta solicitação</a></p>{% endif %}
       <form method="post" novalidate>
         {% csrf_token %}

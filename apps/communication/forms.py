@@ -164,13 +164,19 @@ class AnnouncementForm(forms.ModelForm):
 class ServiceRequestForm(forms.ModelForm):
     class Meta:
         model = ServiceRequest
-        fields = ["student", "category", "title", "description"]
+        fields = ["student", "category", "data_right", "title", "description"]
         widgets = {"description": forms.Textarea(attrs={"rows": 4})}
         labels = {
             "student": "Estudante (opcional)",
             "category": "Categoria",
+            "data_right": "O que você quer sobre os dados (só para a categoria LGPD)",
             "title": "Assunto",
             "description": "Detalhes",
+        }
+        help_texts = {
+            "data_right": "Pela LGPD (art. 18), você pode pedir isso sobre os seus dados e os do seu filho. Prazo de "
+                          "referência da escola: 15 dias. Registros que a escola é obrigada a manter, como a vida "
+                          "escolar, podem não ser eliminados (art. 16, I); nesse caso a resposta explica o motivo.",
         }
 
     def __init__(self, *args, user=None, **kwargs):
@@ -183,6 +189,14 @@ class ServiceRequestForm(forms.ModelForm):
             self.fields["student"].required = False
             self.fields["category"].required = False
             self.fields["category"].initial = ServiceRequest.Category.OUTRO
+
+    def clean(self):
+        data = super().clean()
+        if data.get("data_right"):
+            data["category"] = ServiceRequest.Category.LGPD  # escolheu o direito: o pedido é sobre dados
+        elif data.get("category") == ServiceRequest.Category.LGPD:
+            self.add_error("data_right", "Escolha o que você quer sobre os dados.")
+        return data
 
 
 class RequestResolutionForm(forms.ModelForm):

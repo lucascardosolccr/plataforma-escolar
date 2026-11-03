@@ -1,10 +1,13 @@
 from django.urls import path
 
-from . import views, views_application, views_documents, views_history, views_import, views_rollover
+from . import (views, views_application, views_data_inventory, views_documents, views_history, views_import,
+               views_rollover)
 
 urlpatterns = [
     path("estudantes/", views.student_list, name="student_list"),
     path("estudantes/novo/", views.student_create, name="student_create"),
+    path("estudantes/<int:student_id>/dados-guardados/", views_data_inventory.student_data_inventory,
+         name="student_data_inventory"),
     path("estudantes/importar/", views_import.import_home, name="student_import"),
     path("estudantes/importar/modelo.xlsx", views_import.import_template, name="student_import_template"),
     path("estudantes/importar/<int:batch_id>/", views_import.import_detail, name="student_import_detail"),

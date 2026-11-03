@@ -966,6 +966,7 @@ def activity_create(request):
     turma = id_param(request, "turma")
     if request.method != "POST" and turma and form.fields["class_group"].queryset.filter(pk=turma).exists():
         form.initial["class_group"] = int(turma)
+        form.refocus_curriculum(user)
     if request.method == "POST" and form.is_valid():
         publish = bool(request.POST.get("_publish"))
         with transaction.atomic():

@@ -7,6 +7,7 @@ por componente e ano, com filtro de texto (ds.js, data-filter-list).
   <fieldset class="curriculum-picker"{% if field.help_text %} aria-describedby="{{ field.auto_id }}_ajuda"{% endif %}>
     <legend class="form-label fs-6">{{ field.label }}</legend>
     {% if field.help_text %}<div id="{{ field.auto_id }}_ajuda" class="form-text mb-2">{{ field.help_text }}</div>{% endif %}
+    {% if field.form.curriculum_focus %}<p class="form-text mb-2">Mostrando as habilidades da turma escolhida. Para outra turma ou outro ano, digite o código em "Outros códigos".</p>{% endif %}
     <label for="{{ field.auto_id }}_filtro" class="visually-hidden">Filtrar habilidades por código ou palavra</label>
     <input type="search" id="{{ field.auto_id }}_filtro" class="form-control form-control-sm mb-2" placeholder="Filtrar por código ou palavra (ex.: EF06MA03, frações)" data-filter-list="{{ field.auto_id }}_lista">
     <div id="{{ field.auto_id }}_lista" class="curriculum-groups">

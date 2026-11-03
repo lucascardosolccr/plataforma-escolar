@@ -34,7 +34,8 @@ class CurriculumFormMixin:
         field.help_text = ("Marque o que esta proposta trabalha. Não é obrigatório; ajuda a acompanhar o que já foi "
                            "trabalhado e o que falta.")
         self.curriculum_school = user.school
-        self.curriculum_groups = picker_groups(user, selected)
+        self.curriculum_focus = self._curriculum_focus_class()
+        self.curriculum_groups = picker_groups(user, selected, self.curriculum_focus)
         if self.is_bound:
             self.curriculum_selected = set(self.data.getlist("curriculum")) if hasattr(self.data, "getlist") else set()
         else:
@@ -42,6 +43,26 @@ class CurriculumFormMixin:
         self.fields["curriculum_codes"] = forms.CharField(
             required=False, label="Outros códigos (BNCC ou da escola)", max_length=300,
             help_text="Separados por vírgula. Ex.: EF67EF01, EF69LP05")
+
+    def refocus_curriculum(self, user):
+        """Refaz os grupos depois que a view definiu a turma em ``initial`` (ex.: ?turma=)."""
+        if hasattr(self, "curriculum_groups"):
+            selected = [int(s) for s in self.curriculum_selected if str(s).isdigit()]
+            self.curriculum_focus = self._curriculum_focus_class()
+            self.curriculum_groups = picker_groups(user, selected, self.curriculum_focus)
+
+    def _curriculum_focus_class(self):
+        """Turma já definida no formulário (dados enviados, instância ou valor inicial), ou None."""
+        if "class_group" not in self.fields:
+            return None
+        raw = self.data.get("class_group") if self.is_bound else None
+        if not raw:
+            raw = getattr(self.instance, "class_group_id", None) or self.initial.get("class_group")
+        raw = getattr(raw, "pk", raw)
+        try:
+            return int(raw) if raw else None
+        except (TypeError, ValueError):
+            return None
 
     def clean_curriculum_codes(self):
         raw = self.cleaned_data.get("curriculum_codes", "")

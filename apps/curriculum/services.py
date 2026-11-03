@@ -61,7 +61,7 @@ PICKER_SOURCES = [
 ]
 
 
-def picker_groups(user, selected=()):
+def picker_groups(user, selected=(), focus_class=None):
     """Grupos de itens para marcar no formulário (atividade, prova, plano).
 
     Para o professor, um grupo por par turma+disciplina com as habilidades do
@@ -71,7 +71,12 @@ def picker_groups(user, selected=()):
     school = user.school
     groups, used = [], set()
     seen_keys = set()
-    for cg, subject in pair_options(user):
+    pairs = pair_options(user)
+    if focus_class:
+        # Com a turma já definida (edição, ou criação a partir da turma), só os grupos dela: um professor
+        # de 22 turmas recebia 390 KB de habilidades de todos os anos. Turma sem par: lista completa.
+        pairs = [p for p in pairs if p[0].pk == focus_class] or pairs
+    for cg, subject in pairs:
         comp, year = component_for(subject), year_for(cg)
         if not comp:
             continue

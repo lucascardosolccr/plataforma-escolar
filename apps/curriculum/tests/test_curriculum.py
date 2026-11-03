@@ -285,3 +285,35 @@ class DataQualityTests(Base):
         robo.save()
         r = self.client.get(reverse("analytics:data_quality"))
         self.assertEqual(r.context["q"]["subjects_no_component"], [])
+
+
+class PickerFocusTests(Base):
+    """Com a turma definida, o seletor mostra só as habilidades dela (um professor de muitas turmas recebia
+    centenas de KB); o que já estava marcado continua visível e "Outros códigos" aceita qualquer código."""
+
+    def setUp(self):
+        super().setUp()
+        from apps.academics.models import TeacherAssignment
+
+        self.c1 = ClassGroup.objects.create(school=self.school, school_year=self.year, name="1º Ano C")
+        TeacherAssignment.objects.create(school=self.school, school_year=self.year, teacher=self.prof,
+                                         class_group=self.c1, subject=self.mat)
+
+    def test_new_activity_from_a_class_and_edit_show_only_that_class(self):
+        self.login(self.prof)
+        url = reverse("pedagogy:activity_create")
+        all_labels = [label for label, _ in self.client.get(url).context["form"].curriculum_groups]
+        self.assertIn("Matemática — 1º ano", all_labels)
+        self.assertIn("Matemática — 6º ano", all_labels)
+        page = self.client.get(url + f"?turma={self.c1.pk}")
+        labels = [label for label, _ in page.context["form"].curriculum_groups]
+        self.assertIn("Matemática — 1º ano", labels)
+        self.assertNotIn("Matemática — 6º ano", labels)
+        self.assertContains(page, "Mostrando as habilidades da turma escolhida")
+        act = Activity.objects.create(school=self.school, class_group=self.c1, subject=self.mat, title="Contagem",
+                                      created_by=self.prof, class_date=self.today)
+        act.curriculum.add(self.h1)  # habilidade do 6º ano marcada antes: continua visível
+        form = self.client.get(reverse("pedagogy:activity_edit", args=[act.pk])).context["form"]
+        groups = dict(form.curriculum_groups)
+        self.assertNotIn("Matemática — 6º ano", groups)
+        self.assertIn(self.h1, groups["Já selecionados"])

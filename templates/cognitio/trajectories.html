@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load ui bi_tags %}
+{% block title %}Trajetórias — {{ cg.name }} — EIA-Cognitio{% endblock %}
+
+{% block content %}
+<a href="{% url 'cognitio:class_view' cg.pk %}" class="back-link">{% icon "arrow-left" %}{{ cg.name }}</a>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">EIA-Cognitio · trajetória e indicadores precoces</span>
+    <h1>Trajetórias de {{ cg.name }}</h1>
+    <p>{{ period.label }}. {{ flagged }} de {{ rows|length }} estudante{{ rows|length|pluralize }} com algum indicador. Cada indicador tem regra explícita e fonte; nenhum vira nota ou classificação do estudante.{% if only_own_subjects %} Notas só das suas disciplinas.{% endif %}</p>
+  </div>
+</div>
+{% include "analytics/bi/_filters.html" %}
+
+{% if validation %}
+<div class="callout mb-3">{% icon "circle-check" %}<div><strong>Indicadores validados nesta escola</strong> (aprovado em {{ validation.run.decided_at|date:"d/m/Y" }}): dos estudantes com 2 ou mais indicadores, {{ validation.precision2|pct_txt:0 }} terminaram os 60 dias seguintes com desfecho adverso; a taxa geral foi {{ validation.base|pct_txt:0 }}. AUC {{ validation.auc|num:2 }} em {{ validation.n }} casos.</div></div>
+{% else %}
+<div class="callout mb-3">{% icon "info" %}<div><strong>Indicadores ainda não validados com os dados desta escola.</strong> São sinais da pesquisa sobre alerta precoce (frequência, comportamento e desempenho), não uma previsão. A coordenação e a direção rodam a validação em <a href="{% url 'cognitio:models' %}">Modelos e validação</a>.</div></div>
+{% endif %}
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead><tr>
+        <th scope="col">Estudante</th>
+        <th scope="col">Indicadores precoces</th>
+        <th scope="col">Notas <span class="visually-hidden">(tendência geral)</span></th>
+        <th scope="col">Presença</th>
+        {% for s in subjects %}<th scope="col" class="text-center small">{{ s.name }}</th>{% endfor %}
+      </tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td><a href="{% url 'cognitio:student_trajectory' r.student.pk %}?{{ period.querystring }}" class="fw-semibold text-decoration-none">{{ r.student.full_name }}</a></td>
+          <td>
+            {% for i in r.indicators %}<span class="chip chip-state{% if i.level == 'importante' %} text-danger{% else %} text-warning{% endif %} me-1 mb-1" title="{{ i.detail }}">{{ i.label }}</span>{% empty %}<span class="text-body-secondary small">nenhum</span>{% endfor %}
+          </td>
+          <td class="text-nowrap">{% with a=r.overall %}<span class="traj-arrow is-{{ a.trend }}" aria-hidden="true">{{ a.arrow }}</span> {{ a.label }}{% if a.drop_on %}<span class="d-block small text-danger">queda desde {{ a.drop_on|date:"d/m" }}</span>{% endif %}{% endwith %}</td>
+          <td class="text-nowrap">{{ r.att_pct|pct_txt:0 }}{% if r.attendance.drop_on %}<span class="d-block small text-danger">caindo desde {{ r.attendance.drop_on|date:"d/m" }}</span>{% endif %}</td>
+          {% for x in r.cells %}<td class="text-center">{% if x %}<span class="traj-arrow is-{{ x.trend }}" title="{{ x.subject.name }}: {{ x.label }} ({{ x.n }} nota{{ x.n|pluralize }})">{{ x.arrow }}</span><span class="visually-hidden">{{ x.subject.name }}: {{ x.label }}</span>{% else %}<span class="text-body-tertiary">—</span>{% endif %}</td>{% endfor %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="{{ subjects|length|add:4 }}"><div class="empty-state py-4">{% icon "users" %}<strong>Nenhum estudante ativo na turma</strong></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<section class="card mt-3" aria-labelledby="h-met"><div class="card-body small">
+  <h2 id="h-met" class="h6">Como ler</h2>
+  <ul class="mb-0">
+    <li><strong>Setas:</strong> ↗ melhora, → estável, ↘ queda, ↕ oscilante, · dados insuficientes. A tendência é a inclinação de Theil–Sen (Sen, 1968), resistente a uma prova atípica. Só é afirmada quando o teste de Mann–Kendall (Mann, 1945) dá p &lt; 0,10 e a variação passa de 0,2 ponto por mês. São precisos {{ min_points }} resultados; abaixo de {{ solid_points }}, a tendência é preliminar (Christ et al., 2012).</li>
+    <li><strong>Queda desde:</strong> mudança persistente detectada pelo CUSUM (Page, 1954) em relação ao início do próprio estudante, que continua nos resultados mais recentes.</li>
+    <li><strong>Frequência, comportamento e desempenho</strong> são os indicadores "ABC" (Balfanz, Herzog &amp; Mac Iver, 2007). Frequência abaixo de 90% é ausência crônica (Balfanz &amp; Byrnes, 2012).{% if not behavior %} As ocorrências não aparecem para o seu perfil.{% endif %}</li>
+    <li><strong>Nível e ritmo abaixo da turma:</strong> a "dupla discrepância" (Fuchs, 2003). É relativa à turma, então sempre marca uma parte dela: use-a para decidir quem observar primeiro, nunca como diagnóstico.</li>
+    <li>Nenhum indicador usa laudo, saúde, cor, renda ou dado da família.</li>
+  </ul>
+</div></section>
+{% endblock %}

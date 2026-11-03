@@ -31,6 +31,7 @@ RULES = {
     "queda": "Queda persistente nas evidências recentes",
     "retomada_coletiva": "Habilidade que demanda retomada com a turma",
     "acompanhamento": "Sinais combinados: frequência, entregas e habilidades",
+    "trajetoria": "Trajetória em queda: notas ou presença",
 }
 
 
@@ -178,6 +179,7 @@ def generate_for_class(class_group, today=None):
                            next_action="Replanejar: retomada coletiva com estratégia diferente e nova verificação.")
             new += n
     new += _general_signals(class_group, students, states, today, seen)
+    new += _trajectory_signals(class_group, students, today, seen)
     # Condições que deixaram de ocorrer.
     stale_alerts = LearningAlert.objects.filter(school=school, class_group=class_group, active=True).exclude(
         fingerprint__in=seen)
@@ -255,6 +257,37 @@ def _general_signals(class_group, students, states, today, seen):
                            uncertainty="Combinação de indicadores simples, sem modelo estatístico.",
                            next_action="Conversar com o estudante e a família; articular com a coordenação.")
             new += n
+    return new
+
+
+def _trajectory_signals(class_group, students, today, seen):
+    """Queda em curso (CUSUM) ou confirmada (Mann–Kendall) nas notas ou na presença semanal, desde o início
+    do ano letivo. Métodos e referências em ``trajectory.py``. Ocorrências não entram aqui."""
+    from apps.analytics.bi import _school_year_dates
+
+    from .trajectory import class_overview
+
+    if not students:
+        return 0
+    start = _school_year_dates(class_group.school, today)[0]
+    new = 0
+    for r in class_overview(class_group, start, today, today=today, behavior=False, students=set(students))["rows"]:
+        ind = next((i for i in r["indicators"] if i["key"] == "trajetoria"), None)
+        if ind is None:
+            continue
+        st = r["student"]
+        _, n = _upsert(class_group.school, f"trajetoria:{st.pk}:{class_group.pk}", seen, rule="trajetoria",
+                       level="atencao", student=st, class_group=class_group, subject=None, item=None,
+                       title=f"{st.first_name}: trajetória em queda", explanation=ind["detail"], factors=[ind["detail"]],
+                       evidence_ids=[], period_start=start, period_end=today,
+                       method="Tendência robusta (Theil–Sen), teste de Mann–Kendall e CUSUM sobre notas e presença "
+                              "semanal (sinalização exploratória; não é previsão estatística validada)",
+                       limitations=LIMITS + " Mudança de critério de correção ou prova de recuperação também mudam a "
+                                            "série.",
+                       uncertainty="Queda confirmada estatisticamente nos registros; a causa não aparece nos dados.",
+                       next_action="Abrir a trajetória do estudante, conversar com ele e com os professores sobre o que "
+                                   "mudou e combinar uma verificação curta.")
+        new += n
     return new
 
 

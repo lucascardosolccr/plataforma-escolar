@@ -9,7 +9,7 @@
     <h1>Modelos e validação</h1>
     <p>Transparência algorítmica: o que roda, com que dados e com que resultado. Um modelo só sai do modo exploratório com dados reais suficientes (pelo menos {{ mins.0 }} exemplos de treino, {{ mins.2 }} de teste e {{ mins.1 }} casos de dificuldade), validação com separação temporal e aprovação registrada pela direção. Dados de demonstração ou sintéticos não demonstram eficácia.</p>
   </div>
-  <form method="post" class="d-flex flex-wrap gap-2">{% csrf_token %}<button class="btn btn-outline-primary" name="acao" value="treinar">{% icon "chart-line" %}Validar o modelo de risco</button><button class="btn btn-outline-primary" name="acao" value="treinar_bkt">{% icon "chart-line" %}Validar o BKT</button></form>
+  <form method="post" class="d-flex flex-wrap gap-2">{% csrf_token %}<button class="btn btn-outline-primary" name="acao" value="treinar">{% icon "chart-line" %}Validar o modelo de risco</button><button class="btn btn-outline-primary" name="acao" value="treinar_bkt">{% icon "chart-line" %}Validar o BKT</button><button class="btn btn-outline-primary" name="acao" value="validar_indicadores">{% icon "chart-line" %}Validar os indicadores precoces</button></form>
 </div>
 
 <section class="card mb-3" aria-labelledby="niveis"><div class="card-body">
@@ -46,7 +46,8 @@
   <article class="border rounded p-2 mb-2">
     <div class="d-flex flex-wrap justify-content-between gap-2"><strong>{{ r.name }} v{{ r.version }} · {{ r.created_at|date:"d/m/Y H:i" }}</strong><span class="chip chip-state state-{% if r.status == 'aprovado' %}validado{% elif r.status == 'experimental' %}aguardando{% else %}rascunho{% endif %}">{{ r.get_status_display }}</span></div>
     <p class="small mb-1">{{ r.notes }}</p>
-    {% if r.metrics %}
+    {% if r.name == "indicadores_precoces" %}{% include "cognitio/_ews_run.html" %}
+    {% elif r.metrics %}
     <div class="table-responsive"><table class="table table-sm small mb-1"><thead><tr><th scope="col">Métrica (teste, período posterior)</th><th scope="col">Modelo</th><th scope="col">Regra simples</th><th scope="col">Taxa base</th></tr></thead>
       <tbody>
         <tr><td>Precisão</td><td>{{ r.metrics.precisao|floatformat:2|default:"—" }}</td><td>{{ r.baseline.regra.precisao|floatformat:2|default:"—" }}</td><td>{{ r.baseline.taxa_base.precisao|floatformat:2|default:"—" }}</td></tr>
@@ -59,7 +60,7 @@
     <p class="small text-secondary mb-1">Treino: {{ r.n_train }} · teste: {{ r.n_test }} (a partir de {{ r.cutoff|date:"d/m/Y" }}) · casos de dificuldade: {{ r.positives }}. Falsos positivos: {{ r.metrics.fp }}, falsos negativos: {{ r.metrics.fn }}.</p>
     {% if r.metrics.calibracao %}<p class="small mb-1">Calibração: {% for b in r.metrics.calibracao %}{{ b.faixa }} → previsto {{ b.previsto|floatformat:2 }}, observado {{ b.observado|floatformat:2 }} (n={{ b.n }}){% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
     {% else %}<p class="small text-secondary mb-1">Exemplos disponíveis: {{ r.n_train }} · casos de dificuldade: {{ r.positives }}.</p>{% endif %}
-    {% if is_direction %}<form method="post" class="d-flex gap-2">{% csrf_token %}<input type="hidden" name="id" value="{{ r.pk }}">{% if r.status == 'experimental' %}<button class="btn btn-sm btn-outline-primary" name="acao" value="aprovar" data-confirm="A aprovação permite mostrar probabilidades estimadas nos alertas. Confirme que a validação foi discutida com professores e coordenação." data-confirm-title="Aprovar o modelo?" data-confirm-ok="Aprovar">Aprovar uso</button>{% endif %}{% if r.status == 'aprovado' or r.status == 'experimental' %}<button class="btn btn-sm btn-outline-danger" name="acao" value="desativar">Desativar</button>{% endif %}</form>{% endif %}
+    {% if is_direction %}<form method="post" class="d-flex gap-2">{% csrf_token %}<input type="hidden" name="id" value="{{ r.pk }}">{% if r.status == 'experimental' %}<button class="btn btn-sm btn-outline-primary" name="acao" value="aprovar" data-confirm="{% if r.name == 'indicadores_precoces' %}As telas de trajetória passam a mostrar quanto os indicadores acertaram nesta escola. Confirme que o resultado foi discutido com professores e coordenação.{% else %}A aprovação permite mostrar probabilidades estimadas nos alertas. Confirme que a validação foi discutida com professores e coordenação.{% endif %}" data-confirm-title="Aprovar o modelo?" data-confirm-ok="Aprovar">Aprovar uso</button>{% endif %}{% if r.status == 'aprovado' or r.status == 'experimental' %}<button class="btn btn-sm btn-outline-danger" name="acao" value="desativar">Desativar</button>{% endif %}</form>{% endif %}
   </article>
   {% empty %}<p class="small text-secondary mb-0">Nenhuma execução registrada. Use “Executar validação agora”.</p>{% endfor %}
 </div></section>

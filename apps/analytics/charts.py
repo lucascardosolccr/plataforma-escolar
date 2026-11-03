@@ -242,3 +242,63 @@ def gauge(percent, *, limit=None, label=""):
         f'<div class="chart-gauge-value">{_fmt(pct)}% {escape(label)}</div>'
         f"</div>"
     )
+
+
+def trend_chart(points, *, line=None, projection=None, reference=None, mark=None, suffix="", scale=10,
+                width=560, height=220):
+    """Série no tempo com a tendência robusta (cognitio.trajectory).
+
+    points: [(data, valor de 0 a 1)]; line: (data inicial, intercepto, inclinação por dia);
+    projection: {"date", "value", "low", "high"}; reference: valor de 0 a 1 (média de aprovação);
+    mark: data em que a queda em curso começou. Os valores aparecem multiplicados por ``scale``."""
+    if not points:
+        return _empty()
+    pad_l, pad_r, pad_t, pad_b = 40, 16, 16, 34
+    plot_w, plot_h = width - pad_l - pad_r, height - pad_t - pad_b
+    d0 = points[0][0]
+    d1 = max([points[-1][0]] + ([projection["date"]] if projection else []))
+    span = max((d1 - d0).days, 1)
+
+    def x(d):
+        return pad_l + plot_w * (d - d0).days / span
+
+    def y(v):
+        return pad_t + plot_h - plot_h * min(max(v, 0.0), 1.0)
+
+    def val(v):
+        return _fmt(round(v * scale, 1))
+
+    out = [_grid_lines(pad_l, pad_t, plot_w, plot_h),
+           f'<line x1="{pad_l}" y1="{pad_t}" x2="{pad_l}" y2="{pad_t + plot_h}" class="chart-axis"/>',
+           f'<line x1="{pad_l}" y1="{pad_t + plot_h}" x2="{pad_l + plot_w}" y2="{pad_t + plot_h}" class="chart-axis"/>',
+           f'<text x="{pad_l - 6}" y="{pad_t + 4}" class="chart-tick" text-anchor="end">{_fmt(scale)}</text>',
+           f'<text x="{pad_l - 6}" y="{pad_t + plot_h}" class="chart-tick" text-anchor="end">0</text>']
+    if reference is not None:
+        out.append(f'<line x1="{pad_l}" y1="{y(reference):.1f}" x2="{pad_l + plot_w}" y2="{y(reference):.1f}" '
+                   f'class="chart-ref"><title>Média de aprovação: {val(reference)}{escape(suffix)}</title></line>')
+    if projection and line:
+        last = points[-1][0]
+        ly = line[1] + line[2] * (last - line[0]).days
+        out.append(f'<polygon points="{x(last):.1f},{y(ly):.1f} {x(projection["date"]):.1f},{y(projection["high"]):.1f} '
+                   f'{x(projection["date"]):.1f},{y(projection["low"]):.1f}" class="chart-band">'
+                   f'<title>Faixa se a tendência continuar: {val(projection["low"])} a {val(projection["high"])}'
+                   f'{escape(suffix)}</title></polygon>')
+        out.append(f'<line x1="{x(last):.1f}" y1="{y(ly):.1f}" x2="{x(projection["date"]):.1f}" '
+                   f'y2="{y(projection["value"]):.1f}" class="chart-proj"/>')
+    if line:
+        first, last = points[0][0], points[-1][0]
+        out.append(f'<line x1="{x(first):.1f}" y1="{y(line[1] + line[2] * (first - line[0]).days):.1f}" '
+                   f'x2="{x(last):.1f}" y2="{y(line[1] + line[2] * (last - line[0]).days):.1f}" class="chart-trend">'
+                   f'<title>Tendência (Theil–Sen)</title></line>')
+    if mark:
+        out.append(f'<line x1="{x(mark):.1f}" y1="{pad_t}" x2="{x(mark):.1f}" y2="{pad_t + plot_h}" class="chart-mark">'
+                   f'<title>Queda em curso desde {mark:%d/%m/%Y}</title></line>')
+    for d, v in points:
+        out.append(f'<circle cx="{x(d):.1f}" cy="{y(v):.1f}" r="3" class="chart-dot">'
+                   f'<title>{d:%d/%m/%Y}: {val(v)}{escape(suffix)}</title></circle>')
+    out.append(f'<text x="{pad_l}" y="{height - 12}" class="chart-tick" text-anchor="start">{d0:%d/%m}</text>'
+               f'<text x="{pad_l + plot_w}" y="{height - 12}" class="chart-tick" text-anchor="end">{d1:%d/%m}</text>')
+    nome = escape(f"Evolução de {len(points)} resultados entre {d0:%d/%m/%Y} e {points[-1][0]:%d/%m/%Y}"
+                  + (f"; queda em curso desde {mark:%d/%m/%Y}" if mark else ""))
+    return mark_safe(f'<svg viewBox="0 0 {width} {height}" class="chart-svg" role="img" aria-label="{nome}">'
+                     + "".join(out) + "</svg>")

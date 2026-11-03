@@ -1,0 +1,23 @@
+{% load bi_tags %}{% with m=r.metrics %}
+{% if m.aviso %}<div class="callout small mb-2"><div><strong>Não aprovável.</strong> {{ m.aviso }}</div></div>{% endif %}
+<p class="small mb-1">{{ m.n }} casos (estudante × data de corte: {% for c in m.cortes %}{{ c }}{% if not forloop.last %}, {% endif %}{% endfor %}), {{ m.positivos }} com desfecho adverso nos {{ m.horizonte_dias }} dias seguintes (taxa base {{ m.taxa_base|floatformat:2|default:"—" }}). AUC do número de indicadores: <strong>{{ m.auc_contagem|floatformat:2|default:"—" }}</strong> (0,5 = acaso).</p>
+<div class="table-responsive"><table class="table table-sm small mb-1">
+  <thead><tr><th scope="col">Sinal</th><th scope="col" class="text-end">Sinalizados</th><th scope="col" class="text-end">Sensibilidade</th><th scope="col" class="text-end">Precisão</th><th scope="col" class="text-end">Especificidade</th></tr></thead>
+  <tbody>
+    {% with c=m.pelo_menos_1 %}<tr><td><strong>1 ou mais indicadores</strong></td><td class="text-end">{{ c.sinalizados }}</td><td class="text-end">{{ c.sensibilidade|floatformat:2|default:"—" }}</td><td class="text-end">{{ c.precisao|floatformat:2|default:"—" }}</td><td class="text-end">{{ c.especificidade|floatformat:2|default:"—" }}</td></tr>{% endwith %}
+    {% with c=m.pelo_menos_2 %}<tr><td><strong>2 ou mais indicadores</strong></td><td class="text-end">{{ c.sinalizados }}</td><td class="text-end">{{ c.sensibilidade|floatformat:2|default:"—" }}</td><td class="text-end">{{ c.precisao|floatformat:2|default:"—" }}</td><td class="text-end">{{ c.especificidade|floatformat:2|default:"—" }}</td></tr>{% endwith %}
+    {% for k, c in m.por_indicador.items %}<tr><td>{{ c.rotulo }}</td><td class="text-end">{{ c.sinalizados }}</td><td class="text-end">{{ c.sensibilidade|floatformat:2|default:"—" }}</td><td class="text-end">{{ c.precisao|floatformat:2|default:"—" }}</td><td class="text-end">{{ c.especificidade|floatformat:2|default:"—" }}</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+<details class="small mb-1"><summary>Equidade: os mesmos números por turno e por turma (2 ou mais indicadores)</summary>
+  <p class="mb-1">Maior diferença de sensibilidade entre turnos: {{ m.por_turno.maior_diferenca_sensibilidade|floatformat:2|default:"—" }}; entre turmas: {{ m.por_turma.maior_diferenca_sensibilidade|floatformat:2|default:"—" }}. Diferença grande quer dizer que o indicador deixa de ver estudantes de um grupo (Gardner, Brooks &amp; Baker, 2019). Grupos com menos de 10 desfechos aparecem sem taxa.</p>
+  <div class="table-responsive"><table class="table table-sm mb-0">
+    <thead><tr><th scope="col">Grupo</th><th scope="col" class="text-end">Casos</th><th scope="col" class="text-end">Desfechos</th><th scope="col" class="text-end">Sensibilidade</th><th scope="col" class="text-end">AUC</th></tr></thead>
+    <tbody>
+      {% for g in m.por_turno.grupos %}<tr><td>Turno {{ g.grupo }}</td><td class="text-end">{{ g.n }}</td><td class="text-end">{{ g.positivos }}</td><td class="text-end">{{ g.sensibilidade|floatformat:2|default:"—" }}</td><td class="text-end">{{ g.auc|floatformat:2|default:"—" }}</td></tr>{% endfor %}
+      {% for g in m.por_turma.grupos %}<tr><td>{{ g.grupo }}</td><td class="text-end">{{ g.n }}</td><td class="text-end">{{ g.positivos }}</td><td class="text-end">{{ g.sensibilidade|floatformat:2|default:"—" }}</td><td class="text-end">{{ g.auc|floatformat:2|default:"—" }}</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</details>
+<p class="small text-secondary mb-1">Desfecho adverso: presença abaixo de 75%, alguma disciplina abaixo da média ou desistência nos 60 dias depois da data de corte; os indicadores usam só dados até ela. Aprovar não cria probabilidade: só passa a mostrar, nas telas de trajetória, quanto os indicadores acertaram nesta escola.</p>
+{% endwith %}

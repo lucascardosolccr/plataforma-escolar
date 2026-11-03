@@ -9,6 +9,7 @@
     <h1>{{ cg.name }} · {{ subject.name }}</h1>
     <p>Mapa coletivo de competências ({{ students_count }} estudante{{ students_count|pluralize }}, {{ period_label }}). Toque numa habilidade para ver quem precisa de acompanhamento e as evidências.</p>
   </div>
+  <a class="btn btn-outline-secondary" href="{% url 'cognitio:class_trajectories' cg.pk %}">{% icon "chart-line" %}Trajetórias e sinais precoces</a>
   <a class="btn btn-outline-secondary" href="{% url 'cognitio:class_council' cg.pk %}">{% icon "users-round" %}Conselho de classe</a>
   {% if can_record %}<a class="btn btn-primary" href="{% url 'cognitio:observation_create' cg.pk subject.pk %}">{% icon "plus" %}Registrar observação</a>{% endif %}
 </div>

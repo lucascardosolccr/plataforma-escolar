@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load ui bi_tags %}
+{% block title %}Trajetória — {{ student.full_name }} — EIA-Cognitio{% endblock %}
+
+{% block content %}
+<a href="{% url 'cognitio:student_projection' student.pk %}" class="back-link">{% icon "arrow-left" %}Mapa de aprendizagem e projeção</a>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">EIA-Cognitio · trajetória acadêmica</span>
+    <h1>{{ student.full_name }}</h1>
+    <p>{% if cg %}{{ cg.name }} · {% endif %}{{ period.label }}. Evolução das notas e da presença, com a tendência e o que ela indica se continuar. Projeção não é previsão: mostra o caminho se nada mudar, e o apoio existe justamente para mudá-lo.{% if only_own_subjects %} Notas só das suas disciplinas.{% endif %}</p>
+  </div>
+  {% if cg %}<div class="page-actions"><a class="btn btn-outline-secondary" href="{% url 'cognitio:class_trajectories' cg.pk %}?{{ period.querystring }}">{% icon "users-round" %}Trajetórias da turma</a></div>{% endif %}
+</div>
+{% include "analytics/bi/_filters.html" %}
+
+{% if not row %}
+<div class="empty-state py-5">{% icon "chart-line" %}<strong>Sem matrícula ativa com dados no período</strong><span>A trajetória usa notas e frequência da turma atual do estudante.</span></div>
+{% else %}
+<section class="card mb-3" aria-labelledby="h-ind"><div class="card-body">
+  <h2 id="h-ind" class="h6">Indicadores precoces</h2>
+  {% if row.indicators %}
+  <ul class="list-unstyled mb-2">
+    {% for i in row.indicators %}<li class="mb-2"><span class="chip chip-state{% if i.level == 'importante' %} text-danger{% else %} text-warning{% endif %} me-2">{{ i.label }}</span>{{ i.detail }}</li>{% endfor %}
+  </ul>
+  {% else %}<p class="mb-2">Nenhum indicador precoce aceso no período.</p>{% endif %}
+  <p class="small text-body-secondary mb-0">{% if validation %}Validados nesta escola: dos estudantes com 2 ou mais indicadores, {{ validation.precision2|pct_txt:0 }} tiveram desfecho adverso nos 60 dias seguintes (taxa geral {{ validation.base|pct_txt:0 }}).{% else %}Ainda não validados com os dados desta escola: são sinais da pesquisa, não previsão.{% endif %} Indicador aceso pede conversa e observação, não rótulo.</p>
+</div></section>
+
+<div class="traj-grid">
+  {% for c in charts %}
+  <section class="card" aria-label="{{ c.name }}"><div class="card-body">
+    <h2 class="h6 d-flex justify-content-between gap-2"><span>{{ c.name }}</span><span class="text-nowrap"><span class="traj-arrow is-{{ c.a.trend }}" aria-hidden="true">{{ c.a.arrow }}</span> {{ c.a.label }}</span></h2>
+    {{ c.svg }}
+    <p class="small text-body-secondary mb-0">
+      {% if c.a.trend == "insuficiente" %}{{ c.a.n }} resultado{{ c.a.n|pluralize }}; a tendência precisa de pelo menos {{ min_points }}.
+      {% else %}{{ c.a.n }} resultados{% if c.a.preliminary %} (tendência preliminar: menos de {{ solid_points }}){% endif %}. Variação de {{ c.slope|signed:1 }} {% if c.attendance %}pontos percentuais{% else %}ponto{% endif %} a cada 30 dias; p = {{ c.a.p|num:3 }} (Mann–Kendall).{% endif %}
+      {% if c.a.drop_on %}<span class="d-block text-danger">Queda em curso desde {{ c.a.drop_on|date:"d/m/Y" }} (CUSUM).</span>{% endif %}
+      {% if c.a.projection %}<span class="d-block">Se a tendência continuar, em {{ c.a.projection.date|date:"d/m" }}: entre {{ c.proj_low|num:1 }} e {{ c.proj_high|num:1 }}.</span>{% endif %}
+      {% if c.a.average is not None %}<span class="d-block">Média no período: {{ c.a.average|num:1 }}{% if c.a.below %} (abaixo da aprovação){% endif %}.</span>{% endif %}
+    </p>
+  </div></section>
+  {% endfor %}
+</div>
+
+<section class="card mt-3" aria-labelledby="h-lim"><div class="card-body small">
+  <h2 id="h-lim" class="h6">Limites</h2>
+  <ul class="mb-0">
+    <li>Usa só notas publicadas, frequência registrada, entregas e ocorrências desta turma. Prova de recuperação, mudança de professor ou de critério de correção mudam a série sem mudar a aprendizagem.</li>
+    <li>A linha tracejada é a média de aprovação; a vertical vermelha marca o início de uma queda que continua; a faixa é onde o resultado tende a ficar se nada mudar (±2 desvios robustos).</li>
+    <li>Nada aqui usa laudo, saúde, cor, renda ou dado da família, e nada aparece para a família ou o estudante.</li>
+  </ul>
+</div></section>
+{% endif %}
+{% endblock %}

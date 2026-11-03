@@ -10,7 +10,8 @@
     <p><strong>{{ student }}</strong> · onde está, aonde precisa chegar, o que sustenta esse caminho, o que pode acontecer se uma lacuna persistir e o que fazer agora.{% if subject_limited %} Você vê só as disciplinas que leciona a este estudante.{% endif %}</p>
   </div>
   <div class="d-flex flex-wrap gap-2">
-    <a class="btn btn-outline-secondary btn-sm" href="{% url 'cognitio:student_map' student.pk %}">{% icon "chart-line" %}Mapa detalhado e trajetória</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'cognitio:student_map' student.pk %}">{% icon "chart-line" %}Mapa detalhado</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'cognitio:student_trajectory' student.pk %}">{% icon "chart-line" %}Trajetória acadêmica</a>
     <a class="btn btn-outline-secondary btn-sm" href="{% url 'analytics:student_dashboard' student.pk %}">{% icon "layout-dashboard" %}Painel do estudante</a>
     <button type="button" class="btn btn-outline-secondary btn-sm" data-print>{% icon "printer" %}Imprimir / PDF</button>
   </div>

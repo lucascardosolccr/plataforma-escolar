@@ -90,10 +90,11 @@ class ForgotPasswordHelpTests(Round2Base):
             self.login(user)
             body = self.client.get(reverse("help")).content.decode()
             self.assertEqual(body.count("Esqueci minha senha."), 1, role)
+            self.assertIn("códigos de recuperação", body, role)  # todos podem recuperar sem a escola
             if can_reset_password(self.users[Role.SECRETARIA], user) or role == Role.ESTUDANTE:
-                self.assertIn("Procure a secretaria", body, role)
+                self.assertIn("procure a secretaria", body.lower(), role)
             else:
-                self.assertNotIn("Procure a secretaria", body, role)
+                self.assertNotIn("procure a secretaria", body.lower(), role)
 
 
 class FamilyOwnContactTests(Round2Base):

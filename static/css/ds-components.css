@@ -921,3 +921,10 @@ th[aria-sort] .th-sort .ds-icon { opacity: 1; color: var(--ds-primary); }
 .setup-text { flex: 1; display: flex; flex-direction: column; font-size: var(--ds-fs-sm); min-width: 0; }
 .setup-text span { color: var(--ds-text-muted); }
 .setup-step.is-done .setup-text strong { color: var(--ds-text-muted); text-decoration: line-through; }
+
+/* Códigos de recuperação: legíveis, fáceis de copiar e de imprimir. */
+.recovery-codes { columns: 2; column-gap: 2rem; padding-left: 1.5rem; font-size: 1.05rem; }
+.recovery-codes li { margin-bottom: .35rem; break-inside: avoid; }
+.recovery-codes code { letter-spacing: .08em; }
+.chat-attachment { margin: .25rem 0 0; }
+@media (max-width: 420px) { .recovery-codes { columns: 1; } }

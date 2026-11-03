@@ -172,7 +172,8 @@ class ThrottledAuthenticationForm(AuthenticationForm):
         "invalid_login": "Usuário ou senha incorretos. Verifique os dados e tente novamente.",
         "locked": (
             "Muitas tentativas sem sucesso. Por segurança, o acesso foi pausado por "
-            "15 minutos. Se esqueceu a senha, peça uma nova à secretaria ou à administração da escola."
+            "15 minutos. Se esqueceu a senha, use um código de recuperação ou peça uma nova à "
+            "secretaria ou à administração da escola."
         ),
     }
 

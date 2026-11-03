@@ -243,3 +243,23 @@ class FollowUpEvent(models.Model):
         ordering = ["at", "pk"]
         verbose_name = "histórico da pendência"
         verbose_name_plural = "históricos das pendências"
+
+
+class RecoveryCode(models.Model):
+    """Código de recuperação de senha, de uso único (Prompt 2 §5.25).
+
+    A plataforma não envia e-mail (custo zero), então "esqueci a senha" dependia
+    sempre da escola. Com estes códigos, a própria pessoa gera uma folha na
+    conta, guarda em papel e, se esquecer a senha, define outra com o usuário e
+    um código. Só o hash fica no banco (HMAC-SHA-256 com a SECRET_KEY; o código
+    tem cerca de 49 bits e as tentativas são limitadas como as do login).
+    """
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="recovery_codes")
+    code_hash = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "código de recuperação"
+        verbose_name_plural = "códigos de recuperação"

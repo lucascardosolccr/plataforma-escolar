@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Códigos de recuperação — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url 'password_change' as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Alterar senha" heading="Códigos de recuperação" %}
+  <p class="form-lead">Se esquecer a senha, você pode criar outra na tela de entrada ("Esqueci minha senha") com o seu usuário e um destes códigos, sem depender da escola. Cada código vale uma vez. Guarde a folha em lugar seguro, como guardaria uma chave.</p>
+
+  {% if codes %}
+  <section class="card form-card mb-3" aria-labelledby="h-codes">
+    <div class="card-body">
+      <h2 class="h5" id="h-codes">Seus códigos</h2>
+      <div class="alert alert-warning" role="note"><div>Eles aparecem <strong>só agora</strong>. Imprima ou anote antes de sair desta página. Os códigos anteriores deixaram de valer.</div></div>
+      <ol class="recovery-codes">{% for c in codes %}<li><code>{{ c }}</code></li>{% endfor %}</ol>
+      <p class="small text-body-secondary mb-2">Conta: {{ user.username }} · gerados em {% now "d/m/Y H:i" %}</p>
+      <button type="button" class="btn btn-outline-secondary d-print-none" data-print>{% icon "printer" %}Imprimir</button>
+    </div>
+  </section>
+  {% else %}
+  <p>{% if generated_at %}Você tem <strong>{{ unused }}</strong> código{{ unused|pluralize }} sem uso, gerado{{ unused|pluralize }} em {{ generated_at|date:"d/m/Y" }}.{% else %}Você ainda não gerou códigos.{% endif %}</p>
+  {% endif %}
+
+  <form method="post" novalidate class="card form-card d-print-none">
+    {% csrf_token %}
+    <div class="card-body">
+      <p class="mb-3">{% if generated_at %}Gerar uma folha nova invalida os códigos anteriores.{% else %}Confirme sua senha para gerar 8 códigos.{% endif %}</p>
+      {% include "partials/_form_fields.html" with f=form %}
+    </div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Gerar códigos" hint="" %}
+  </form>
+</div>
+{% endblock %}

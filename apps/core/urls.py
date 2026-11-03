@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
-from . import views, views_followup, views_photo, views_prefs
+from . import views, views_followup, views_photo, views_prefs, views_recovery
 from .forms import ThrottledAuthenticationForm
 
 urlpatterns = [
@@ -33,6 +33,8 @@ urlpatterns = [
         views.ForcedPasswordChangeView.as_view(),
         name="password_change",
     ),
+    path("senha/codigos/", views_recovery.recovery_codes, name="recovery_codes"),
+    path("senha/recuperar/", views_recovery.password_recover, name="password_recover"),
     path(
         "senha/trocar/feito/",
         auth_views.PasswordChangeDoneView.as_view(),

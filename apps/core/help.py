@@ -336,14 +336,14 @@ FAQ = [
     # Quem redefine é regra de passwords.can_reset_password: a secretaria só
     # cuida de contas de família (e do acesso do estudante, pela ficha).
     ("Esqueci minha senha.",
-     "Procure a secretaria da escola: ela gera uma senha temporária, que você troca no primeiro acesso.",
+     "Se você gerou seus códigos de recuperação (Alterar senha → Códigos de recuperação), use “Esqueci minha senha” na tela de entrada: usuário, um código e a senha nova, sem depender de ninguém. Sem códigos, procure a secretaria da escola: ela gera uma senha temporária, que você troca no primeiro acesso.",
      (RESPONSAVEL, ESTUDANTE)),
     ("Esqueci minha senha.",
-     "Peça à administração da escola: ela gera uma senha temporária, que você troca no primeiro acesso. "
+     "Se você gerou seus códigos de recuperação (Alterar senha → Códigos de recuperação), use “Esqueci minha senha” na tela de entrada: usuário, um código e a senha nova, sem depender de ninguém. Sem códigos, peça à administração da escola: ela gera uma senha temporária, que você troca no primeiro acesso. "
      "A secretaria só redefine senhas de famílias.",
      GESTAO + (SECRETARIA, PROFESSOR)),
     ("Esqueci minha senha.",
-     "Outra conta da administração da escola gera uma senha temporária. Se não houver outra, quem instalou a "
+     "Se você gerou seus códigos de recuperação (Alterar senha → Códigos de recuperação), use “Esqueci minha senha” na tela de entrada: usuário, um código e a senha nova, sem depender de ninguém. Sem códigos, outra conta da administração da escola gera uma senha temporária. Se não houver outra, quem instalou a "
      "plataforma pode definir uma nova pelo comando changepassword.",
      (ADMIN,)),
     ("Quem vê os dados do meu filho?",

@@ -300,11 +300,14 @@ def load_grades_light(student_ids, start, end):
         student_id__in=list(student_ids), evaluation__status=PUBLISHED, evaluation__date__gte=start,
         evaluation__date__lte=end, value__isnull=False,
     ).order_by("evaluation__date", "evaluation_id").values_list(
-        "student_id", "value", "evaluation__subject_id", "evaluation__weight", "evaluation__date"))
-    subjects = Subject.objects.in_bulk({r[2] for r in rows})
-    out = defaultdict(list)
-    for sid, value, subj_id, weight, d in rows:
-        out[sid].append(_LightGrade(value, _Ev(subjects[subj_id], weight, d)))
+        "student_id", "value", "evaluation__subject_id", "evaluation__subject__name", "evaluation__weight",
+        "evaluation__date"))
+    # Disciplina montada da mesma consulta (só id e nome, o que as telas usam): uma consulta a mais aqui
+    # mudava o número de consultas conforme houvesse notas, e o teste de orçamento vigia isso.
+    subjects, out = {}, defaultdict(list)
+    for sid, value, subj_id, subj_name, weight, d in rows:
+        subj = subjects.get(subj_id) or subjects.setdefault(subj_id, Subject(pk=subj_id, name=subj_name))
+        out[sid].append(_LightGrade(value, _Ev(subj, weight, d)))
     return out
 
 

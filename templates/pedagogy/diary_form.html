@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{% if obj %}Corrigir registro de aula{% else %}Registrar aula{% endif %} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url 'pedagogy:diary_list' as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Diário de classe" heading=obj|yesno:"Corrigir registro de aula,Registrar aula" %}
+  <p class="form-lead">Escreva o que foi trabalhado como contaria à família: ela e o estudante leem este texto. O que for só da equipe vai em "observações".</p>
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Salvar no diário" hint="" %}
+  </form>
+</div>
+{% endblock %}

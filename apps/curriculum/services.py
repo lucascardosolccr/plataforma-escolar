@@ -100,7 +100,7 @@ def picker_groups(user, selected=()):
 
 def coverage(class_group, subject, today=None):
     """Indicadores do par turma+disciplina no ano letivo da turma."""
-    from apps.pedagogy.models import Activity, Evaluation, GroupWork, LessonPlan
+    from apps.pedagogy.models import Activity, Evaluation, GroupWork, LessonPlan, LessonRecord
 
     today = today or timezone.localdate()
     year = class_group.school_year
@@ -136,6 +136,10 @@ def coverage(class_group, subject, today=None):
     for w in works:
         for item in w.curriculum.all():
             mark(item, w.published_date, worked)
+    # Diário de classe: o que o professor registrou como trabalhado em aula.
+    for rec in LessonRecord.objects.filter(**base, date__gte=start, date__lte=min(today, end))             .prefetch_related("curriculum"):
+        for item in rec.curriculum.all():
+            mark(item, rec.date, worked)
     assessed = {}
     for e in evals:
         for item in e.curriculum.all():

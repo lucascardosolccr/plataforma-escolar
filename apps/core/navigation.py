@@ -177,6 +177,10 @@ ITEMS = {
                          ("printing:queue", "printing:detail"), "Analisar, imprimir e entregar"),
     "lesson_plans": Item("Planejamento", "pedagogy:lessonplan_list", "clipboard-check",
                          ("pedagogy:lessonplan_",), "Planos de aula e devolutivas da coordenação"),
+    "diary": Item("Diário de classe", "pedagogy:diary_list", "notebook-pen", ("pedagogy:diary_",),
+                  "O que foi trabalhado em cada aula"),
+    "fam_diary": Item("Conteúdo das aulas", "pedagogy:diary_list", "notebook-pen", ("pedagogy:diary_",),
+                      "O que foi trabalhado em cada aula"),
     "coord_panel": Item("Painel da coordenação", "coordination:panel", "layout-dashboard",
                         ("coordination:panel",), "Turmas, alertas e intervenções que você acompanha"),
     "coord_records": Item("Registros da coordenação", "coordination:records", "notebook-pen",
@@ -238,7 +242,7 @@ COMMUNICATION_ADMIN = ("Comunicação", ["threads_staff", "announcements", "requ
 LAYOUT = {
     RESPONSAVEL: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
-        ("Acompanhamento", ["children", "fam_activities", "fam_works", "fam_exam_prep", "fam_grades",
+        ("Acompanhamento", ["children", "fam_diary", "fam_activities", "fam_works", "fam_exam_prep", "fam_grades",
                             "fam_attendance"]),
         ("Escola", ["threads_family", "announcements", "requests", "meetings", "notifications"]),
         ("Secretaria", ["fam_applications", "justify", "links", "fam_support"]),
@@ -246,14 +250,14 @@ LAYOUT = {
     ],
     ESTUDANTE: [
         (None, ["home", "calendar", "schedule", "menu", "my_dashboard"]),
-        ("Meus estudos", ["my_activities", "my_works", "my_exam_prep", "my_grades", "my_attendance"]),
+        ("Meus estudos", ["fam_diary", "my_activities", "my_works", "my_exam_prep", "my_grades", "my_attendance"]),
         # Comunicados da escola e da turma (a regra de acesso já os mostrava ao
         # estudante, mas o menu não tinha o caminho).
         ("Escola", ["announcements", "notifications"]),
     ],
     PROFESSOR: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
-        ("Sala de aula", ["classrooms", "lesson_plans", "curriculum", "cognitio", "attendance", "evaluations",
+        ("Sala de aula", ["classrooms", "lesson_plans", "diary", "curriculum", "cognitio", "attendance", "evaluations",
                           "exam_prep", "library", "activities", "rubrics", "prints_mine", "works"]),
         ("Acompanhamento", ["occurrences", "observations", "support_guidance", "justifications"]),
         COMMUNICATION_STAFF,
@@ -271,7 +275,8 @@ LAYOUT = {
     ],
     COORDENACAO: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
-        ("Coordenação", ["coord_panel", "lesson_plans", "curriculum", "cognitio", "prints_queue", "coord_records"]),
+        ("Coordenação", ["coord_panel", "lesson_plans", "diary", "curriculum", "cognitio", "prints_queue",
+                         "coord_records"]),
         ("Pedagógico", ["students", "evaluations", "exam_prep", "library", "activities", "works", "attendance",
                         "occurrences", "observations", "plans", "support", "justifications",
                         "active_search"]),
@@ -281,7 +286,8 @@ LAYOUT = {
     ],
     DIRECAO: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
-        ("Coordenação", ["coord_panel", "lesson_plans", "curriculum", "cognitio", "prints_queue", "coord_designations"]),
+        ("Coordenação", ["coord_panel", "lesson_plans", "diary", "curriculum", "cognitio", "prints_queue",
+                         "coord_designations"]),
         ("Análises", ["institutional", "goals", "subject_bi", "quality", "reports", "methodology", "norms"]),
         ("Pedagógico", ["students", "evaluations", "exam_prep", "library", "activities", "works", "attendance",
                         "occurrences", "observations", "plans", "support", "justifications",

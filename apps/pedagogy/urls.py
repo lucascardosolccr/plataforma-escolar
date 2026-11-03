@@ -1,10 +1,13 @@
 from django.urls import path
 
-from . import views, views_active_search, views_planning, views_reuse, views_rubrics
+from . import views, views_active_search, views_diary, views_planning, views_reuse, views_rubrics
 
 app_name = "pedagogy"
 
 urlpatterns = [
+    path("diario/", views_diary.diary_list, name="diary_list"),
+    path("diario/nova-aula/", views_diary.diary_form, name="diary_create"),
+    path("diario/<int:pk>/", views_diary.diary_form, name="diary_edit"),
     path("avaliacoes/", views.evaluation_list, name="evaluation_list"),
     path("avaliacoes/nova/", views.evaluation_create, name="evaluation_create"),
     path("avaliacoes/<int:pk>/editar/", views.evaluation_edit, name="evaluation_edit"),

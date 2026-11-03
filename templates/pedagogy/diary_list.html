@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{% if family %}Conteúdo das aulas{% else %}Diário de classe{% endif %} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{% if family %}Conteúdo das aulas{% else %}Diário de classe{% endif %}</h1>
+    <p>{% if family %}O que foi trabalhado em cada aula nas últimas semanas. Se faltou, veja aqui o que retomar em casa.{% else %}O que foi trabalhado em cada aula: o executado, ao lado do planejado. As habilidades marcadas contam como trabalhadas nos indicadores do currículo. As observações são só da equipe.{% endif %}</p>
+  </div>
+  {% if can_create %}<a href="{% url 'pedagogy:diary_create' %}" class="btn btn-primary">{% icon "plus" %}Registrar aula</a>{% endif %}
+</div>
+
+{% if class_choices|length > 1 %}
+<form method="get" class="filter-bar" aria-label="Filtrar o diário">
+  {% include "partials/_filter_select.html" with name="turma" label="Turma" options=class_choices selected=turma %}
+  {% include "partials/_filter_end.html" with count=page.paginator.count noun="aula(s)" %}
+</form>
+{% endif %}
+
+<div class="d-grid gap-3">
+  {% for r in page %}
+  <article class="card"><div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between gap-2 align-items-baseline">
+      <h2 class="h6 mb-0">{{ r.date|date:"l, d/m/Y"|capfirst }} · {{ r.class_group.name }} · {{ r.subject.name }}</h2>
+      <span class="small text-body-secondary">{{ r.teacher.get_full_name|default:r.teacher.username|default:"—" }}</span>
+    </div>
+    <div class="mt-2">{{ r.content|linebreaks }}</div>
+    {% if r.curriculum.all %}<p class="small mb-1">{% for i in r.curriculum.all %}<span class="chip" title="{{ i.text|truncatechars:160 }}">{{ i.code }}</span> {% endfor %}</p>{% endif %}
+    {% if not family and r.notes %}<p class="small text-body-secondary mb-1"><strong>Observações da equipe:</strong> {{ r.notes|linebreaksbr }}</p>{% endif %}
+    {% if not family %}{% for c, s in editable %}{% if c == r.class_group_id and s == r.subject_id %}<a class="small" href="{% url 'pedagogy:diary_edit' r.pk %}">Corrigir ou completar</a>{% endif %}{% endfor %}{% endif %}
+  </div></article>
+  {% empty %}
+  <div class="card"><div class="empty-state py-5">{% icon "notebook-pen" %}<strong>Nenhuma aula registrada</strong><span>{% if can_create %}Registre o conteúdo da aula logo depois da chamada: leva um minuto.{% elif family %}Quando os professores registrarem o conteúdo das aulas, ele aparece aqui.{% else %}Os professores ainda não registraram aulas no seu alcance.{% endif %}</span></div></div>
+  {% endfor %}
+</div>
+{% include "partials/_pager.html" %}
+{% endblock %}

@@ -1216,3 +1216,38 @@ class GroupWorkRubricScore(models.Model):
             models.UniqueConstraint(fields=["group_work", "student", "criterion"], condition=Q(student__isnull=False),
                                     name="uniq_gw_rubric_student"),
         ]
+
+
+class LessonRecord(models.Model):
+    """Diário de classe: o que foi trabalhado em cada aula.
+
+    O plano de aula diz o previsto; este registro diz o executado. Um por aula
+    (turma, disciplina e dia). O conteúdo é visto pela família e pelo estudante
+    da turma (quem faltou sabe o que perdeu); as observações são só da equipe.
+    As habilidades marcadas contam como "trabalhadas" nos indicadores
+    curriculares (``curriculum.services.coverage``).
+    """
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, verbose_name="escola")
+    class_group = models.ForeignKey(ClassGroup, on_delete=models.CASCADE, verbose_name="turma")
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, verbose_name="disciplina")
+    teacher = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="lesson_records",
+                                verbose_name="professor(a)")
+    date = models.DateField("data da aula", default=timezone.localdate)
+    content = models.TextField("conteúdo trabalhado",
+                               help_text="O que foi trabalhado na aula, em linguagem que a família entenda.")
+    curriculum = models.ManyToManyField("curriculum.CurriculumItem", blank=True, related_name="lesson_records",
+                                        verbose_name="habilidades e objetivos")
+    notes = models.TextField("observações da equipe", blank=True,
+                             help_text="Só a equipe vê: o que funcionou, o que retomar, ocorrências da aula.")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-date", "class_group__name", "subject__name"]
+        constraints = [models.UniqueConstraint(fields=["class_group", "subject", "date"], name="uniq_lesson_record")]
+        verbose_name = "registro de aula"
+        verbose_name_plural = "diário de classe"
+
+    def __str__(self):
+        return f"Aula de {self.subject} · {self.class_group} · {_br(self.date)}"

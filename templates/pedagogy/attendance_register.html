@@ -12,6 +12,7 @@
   </div>
   <div class="page-actions">
     <a href="{% url 'pedagogy:attendance_class' class_group.pk %}" class="btn btn-outline-secondary">{% icon "calendar-days" %}Mapa da turma</a>
+    {% if user_role == ROLE_PROFESSOR %}<a href="{% url 'pedagogy:diary_create' %}" class="btn btn-outline-secondary">{% icon "notebook-pen" %}Registrar o conteúdo da aula</a>{% endif %}
   </div>
 </div>
 

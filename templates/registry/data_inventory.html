@@ -33,10 +33,10 @@
   <section class="col-lg-6" aria-labelledby="h-reg"><div class="card h-100"><div class="card-body">
     <h2 id="h-reg" class="h6">Registros ligados ao estudante</h2>
     <div class="table-responsive"><table class="table table-sm mb-0">
-      <thead><tr><th scope="col">Área</th><th scope="col">Registro</th><th scope="col" class="text-end">Quantidade</th></tr></thead>
+      <thead><tr><th scope="col">Registro</th><th scope="col" class="text-end">Quantidade</th></tr></thead>
       <tbody>
-        {% for r in rows %}<tr><td>{{ r.area }}</td><td>{{ r.label|capfirst }}</td><td class="text-end">{{ r.count }}</td></tr>
-        {% empty %}<tr><td colspan="3" class="text-body-secondary">Nenhum registro além do cadastro.</td></tr>{% endfor %}
+        {% for r in rows %}<tr><td>{{ r.label|capfirst }}<span class="d-block small text-body-secondary">{{ r.area }}</span></td><td class="text-end">{{ r.count }}</td></tr>
+        {% empty %}<tr><td colspan="2" class="text-body-secondary">Nenhum registro além do cadastro.</td></tr>{% endfor %}
       </tbody>
     </table></div>
   </div></div></section>

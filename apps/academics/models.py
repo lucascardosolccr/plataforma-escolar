@@ -33,6 +33,14 @@ class SchoolYear(models.Model):
         return self.name
 
 
+class ClassGroupManager(models.Manager):
+    """O nome da turma leva o ano letivo (``__str__``). Sem o ano junto, toda lista de turmas num formulário
+    fazia uma consulta por turma (24 a mais no painel da coordenação de uma escola com 24 turmas)."""
+
+    def get_queryset(self):
+        return super().get_queryset().select_related("school_year")
+
+
 class ClassGroup(models.Model):
     TURNO_CHOICES = [
         ("manha", "Manhã"),
@@ -57,6 +65,8 @@ class ClassGroup(models.Model):
     grade = models.CharField("série", max_length=40, blank=True)
     turn = models.CharField("turno", max_length=10, choices=TURNO_CHOICES, default="manha")
     created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = ClassGroupManager()
 
     class Meta:
         verbose_name = "turma"

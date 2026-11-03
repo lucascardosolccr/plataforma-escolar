@@ -76,6 +76,7 @@ def picker_groups(user, selected=(), focus_class=None):
         # Com a turma já definida (edição, ou criação a partir da turma), só os grupos dela: um professor
         # de 22 turmas recebia 390 KB de habilidades de todos os anos. Turma sem par: lista completa.
         pairs = [p for p in pairs if p[0].pk == focus_class] or pairs
+    by_comp = {}  # uma consulta por componente; o ano é filtrado aqui (antes, duas por componente × ano)
     for cg, subject in pairs:
         comp, year = component_for(subject), year_for(cg)
         if not comp:
@@ -84,7 +85,9 @@ def picker_groups(user, selected=(), focus_class=None):
         if key in seen_keys:
             continue
         seen_keys.add(key)
-        items = list(CurriculumItem.for_pair(school, comp, year).order_by("code"))
+        if comp not in by_comp:
+            by_comp[comp] = list(CurriculumItem.for_pair(school, comp, None).order_by("code"))
+        items = [i for i in by_comp[comp] if not year or year in i.year_list or not i.year_list]
         label = f"{comp} — {year}º ano" if year else comp
         # um grupo por fonte, BNCC primeiro: com o Currículo em Movimento importado, um grupo único
         # passaria de cem itens e abriria pelos conteúdos

@@ -152,7 +152,7 @@ def panel(request):
     designations = list(active_designations(user).prefetch_related("class_groups", "subjects", "teachers")) \
         if user.role == Role.COORDENACAO.value else []
     no_designation = user.role == Role.COORDENACAO.value and not designations
-    classes = ClassGroup.objects.filter(school=school).select_related("school_year")
+    classes = ClassGroup.objects.filter(school=school)
     current_year = classes.filter(school_year__is_current=True)
     classes = (current_year if current_year.exists() else classes)
     if scope is not None:
@@ -167,8 +167,9 @@ def panel(request):
     # alfabética, e os alertas das demais nunca apareciam. Cada turma custa ~10 consultas
     # (≈16 ms com 18 estudantes), então 40 turmas ficam abaixo de 1 s.
     class_rows, alerts = [], []
+    rules = bi.school_rules(school)  # uma vez para todas as turmas
     for cg in classes[:MAX_PANEL_CLASSES]:
-        r = bi.class_report(cg, period)
+        r = bi.class_report(cg, period, rules=rules)
         class_rows.append({"cg": cg, "active": r["active"], "mean": r["overall"]["mean"],
                            "attendance": r["attendance"]["percent"], "delivery": r["delivery_rate"],
                            "follow": len(r["follow_up"])})

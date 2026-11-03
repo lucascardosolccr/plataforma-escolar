@@ -853,13 +853,17 @@ def student_insights(student, report, *, show_observations=False, only_subjects=
 # --------------------------------------------------------------------------- #
 # Painel da turma
 # --------------------------------------------------------------------------- #
-def class_report(class_group, period, *, min_subjects_below=1, min_delivery=60, only_subjects=None):
+def school_rules(school):
+    """(regras por disciplina, limite de faltas em %): o que ``class_report`` lê da escola. Quem monta o
+    relatório de muitas turmas calcula uma vez e passa em ``rules=``."""
+    return rules_by_subject(school), float(school_max_absences(school))
+
+
+def class_report(class_group, period, *, min_subjects_below=1, min_delivery=60, only_subjects=None, rules=None):
     from apps.registry.models import Student
 
     today = timezone.localdate()
-    school = class_group.school
-    rules = rules_by_subject(school)
-    limit = float(school_max_absences(school))
+    rules, limit = rules or school_rules(class_group.school)
     min_att = 100 - limit
 
     enrollments = list(Enrollment.objects.filter(class_group=class_group).select_related("student"))

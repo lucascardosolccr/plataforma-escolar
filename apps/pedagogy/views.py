@@ -2370,9 +2370,9 @@ def occurrence_detail(request, pk):
         Occurrence.objects.select_related("student", "recorded_by"), pk=pk, school=user.school
     )
     acc.require(acc.can_view_occurrences(user, occ.student))
-    history = AuditLog.objects.filter(target_type="Occurrence", target_id=str(occ.pk)).order_by(
-        "-created_at"
-    )[:50]
+    history = AuditLog.objects.filter(target_type="Occurrence", target_id=str(occ.pk)).select_related(
+        "user"
+    ).order_by("-created_at")[:50]
     form = None
     if acc.can_manage_occurrences(user, occ.student):
         form = OccurrenceUpdateForm(request.POST or None, instance=occ)

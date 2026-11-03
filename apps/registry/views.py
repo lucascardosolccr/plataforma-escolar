@@ -156,7 +156,7 @@ def student_detail(request, student_id):
         if request.user.role in (Role.ADMIN.value, Role.DIRECAO.value, Role.COORDENACAO.value, Role.SECRETARIA.value, Role.PROFESSOR.value)
         else None
     )
-    logs = AuditLog.objects.filter(target_type="Student", target_id=str(student.pk)).order_by("-created_at")[:50]
+    logs = AuditLog.objects.filter(target_type="Student", target_id=str(student.pk)).select_related("user")         .order_by("-created_at")[:50]
     show_logs = can_manage_registry(request.user) or request.user.role == Role.ADMIN.value
 
     comm = _student_comms(request.user, student)

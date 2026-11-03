@@ -207,7 +207,9 @@ a:hover { color: var(--ds-primary-hover); }
 .form-select-sm { padding-right: 2rem; }
 .form-control::placeholder { color: var(--ds-text-muted); opacity: 1; } /* com .8 caía para 3,8:1 */
 .form-control:hover, .form-select:hover { border-color: var(--ds-text-muted); }
-.form-control:focus, .form-select:focus {
+/* :focus-within: no campo de data, o botão do calendário recebe o foco e o campo deixa de casar
+   com :focus; sem isto o anel sumia e só restava o contorno fino do ícone. */
+.form-control:focus, .form-control:focus-within, .form-select:focus {
   border-color: var(--ds-primary);
   box-shadow: 0 0 0 4px var(--bs-focus-ring-color);
   background-color: var(--ds-surface);

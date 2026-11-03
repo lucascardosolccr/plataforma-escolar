@@ -299,7 +299,9 @@ REQS = [
       "Auditoria própria com Playwright; rótulos e cabeçalhos",
       ["../docs/RELATORIO_FINAL_REDESIGN.md", "../docs/AUDITORIA_LIGHTHOUSE_2026-11-02.md"], "PARCIAL", prioridade="P2",
       pendencia="Verificação automática feita em 02/11/2026 (Lighthouse/axe: 100 em 13 páginas de 5 perfis, depois de "
-                "corrigir nome do botão de busca, nome do botão de perfil e alvos de toque). Falta teste com leitor "
+                "corrigir nome do botão de busca, nome do botão de perfil e alvos de toque). Prompt 20: mais 11 telas "
+                "novas com 100 e teste de teclado (pulo para o conteúdo, ordem do Tab, foco visível), que achou e corrigiu "
+                "o foco invisível no botão do calendário dos campos de data. Falta teste com leitor "
                 "de tela real (NVDA ou Narrador), que nenhuma ferramenta automática substitui."),
     R("P3-16", "P3 §12; P6 §4.3", "Estados de erro, permissão, sessão expirada e página não encontrada",
       "403 explica o motivo; 404 amigável; 500 sem detalhes internos; formulário expirado",

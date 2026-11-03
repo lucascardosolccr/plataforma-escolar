@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from apps.academics.models import ClassGroup, Subject
 from apps.core.models import Role, create_audit_log
+from apps.core.pagination import paginate
 from apps.curriculum.models import CurriculumItem
 from apps.registry.models import Enrollment, Student
 
@@ -78,12 +79,15 @@ def intervention_list(request):
     elif status in dict(LearningIntervention.Status.choices):
         qs = qs.filter(status=status)
     today = timezone.localdate()
+    # Paginado: antes só as 60 mais recentes apareciam, sem aviso, e o contador dizia 60. O resultado
+    # (antes e depois) é calculado só para a página exibida.
+    page = paginate(request, qs, per_page=20)
     rows = []
-    for iv in qs[:60]:
+    for iv in page:
         res = outcomes(iv)
         rows.append({"iv": iv, "results": res, "due": iv.review_on <= today and iv.status in ("aceita", "andamento")})
     return render(request, "cognitio/interventions.html", {
-        "rows": rows, "status": status, "labels": RESULT_LABELS,
+        "rows": rows, "page": page, "status": status, "labels": RESULT_LABELS,
         "status_choices": [("abertas", "Abertas")] + list(LearningIntervention.Status.choices)})
 
 

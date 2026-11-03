@@ -19,7 +19,7 @@
   <div class="kpi"><span class="kpi-label">{% icon "layers" %}Turmas acompanhadas</span><span class="kpi-value">{{ classes_total }}</span></div>
   <div class="kpi"><span class="kpi-label">{% icon "user-cog" %}Professores</span><span class="kpi-value">{{ teachers_count }}</span></div>
   <div class="kpi"><span class="kpi-label">{% icon "users" %}Estudantes</span><span class="kpi-value">{{ students_count }}</span></div>
-  <div class="kpi{% if alerts %} is-attention{% endif %}"><span class="kpi-label">{% icon "triangle-alert" %}Alertas de acompanhamento</span><span class="kpi-value">{{ alerts|length }}</span><span class="kpi-hint">Pelos critérios dos painéis (até 3 por turma)</span></div>
+  <div class="kpi{% if alerts_total %} is-attention{% endif %}"><span class="kpi-label">{% icon "triangle-alert" %}Alertas de acompanhamento</span><span class="kpi-value">{{ alerts_total }}</span><span class="kpi-hint">Estudantes em acompanhamento pelos critérios dos painéis, em todas as turmas</span></div>
   <div class="kpi{% if plans_waiting %} is-attention{% endif %}"><span class="kpi-label">{% icon "clipboard-check" %}Planejamentos a analisar</span><span class="kpi-value">{{ plans_waiting }}</span><a class="stretched-link kpi-hint" href="{% url 'pedagogy:lessonplan_list' %}">Abrir o planejamento</a></div>
   <div class="kpi"><span class="kpi-label">{% icon "calendar-check" %}Planejamento desta semana</span><span class="kpi-value">{{ coverage.covered }} de {{ coverage.total }}</span><span class="kpi-hint">Turma e disciplina com plano enviado</span></div>
   {% for s in support_items %}<div class="kpi{% if s.count %} is-attention{% endif %}"><span class="kpi-label">{% icon "heart-handshake" %}{{ s.label }}</span><span class="kpi-value">{{ s.count }}</span>{% if s.count %}<a class="stretched-link kpi-hint" href="{{ s.url }}">Abrir apoio à inclusão</a>{% endif %}</div>{% endfor %}
@@ -49,11 +49,11 @@
           </tbody>
         </table>
       </div>
-      {% if classes_total > 15 %}<p class="small text-body-secondary p-3 mb-0">Mostrando 15 de {{ classes_total }} turmas. As demais estão no painel de cada turma.</p>{% endif %}
+      {% if classes_total > max_panel_classes %}<p class="small text-body-secondary p-3 mb-0">Mostrando {{ max_panel_classes }} de {{ classes_total }} turmas. As demais estão no painel de cada turma.</p>{% endif %}
     </section>
 
     <section class="card mb-3" aria-labelledby="h-alertas">
-      <div class="card-header bg-transparent"><h2 id="h-alertas" class="h6 mb-0">Estudantes que precisam de atenção</h2></div>
+      <div class="card-header bg-transparent"><h2 id="h-alertas" class="h6 mb-0">Estudantes que precisam de atenção</h2>{% if alerts_total > alerts|length %}<p class="small text-body-secondary mb-0">Os {{ alerts|length }} com mais motivos, de {{ alerts_total }}. A lista completa de cada turma está no painel da turma (coluna "Em acompanhamento").</p>{% endif %}</div>
       <ul class="feed">
         {% for a in alerts %}
         <li class="feed-item"><div class="feed-body flex-grow-1"><p class="feed-title"><a href="{% url 'analytics:student_dashboard' a.student.pk %}">{{ a.student.full_name }}</a> <span class="small text-body-secondary fw-normal">· {{ a.cg.name }}</span></p><p class="feed-meta">{{ a.reasons|join:"; " }}</p></div></li>

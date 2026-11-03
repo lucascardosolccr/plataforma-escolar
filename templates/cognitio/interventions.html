@@ -13,7 +13,7 @@
 </div>
 <form method="get" class="filter-bar" aria-label="Filtrar">
   {% include "partials/_filter_select.html" with name="situacao" label="Situação" options=status_choices selected=status all_label="Todas" %}
-  {% include "partials/_filter_end.html" with count=rows|length noun="intervenção(ões)" %}
+  {% include "partials/_filter_end.html" with count=page.paginator.count noun="intervenção(ões)" %}
 </form>
 <div class="d-grid gap-3">
   {% for row in rows %}{% with iv=row.iv %}
@@ -29,4 +29,5 @@
   <div class="card"><div class="empty-state py-5">{% icon "heart-handshake" %}<strong>Nenhuma intervenção</strong><span>Planeje a partir de um alerta ou de uma habilidade no mapa da turma.</span></div></div>
   {% endfor %}
 </div>
+{% include "partials/_pager.html" %}
 {% endblock %}

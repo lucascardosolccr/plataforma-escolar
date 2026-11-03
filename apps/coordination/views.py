@@ -135,6 +135,9 @@ def _can_use_panel(user):
     return user.is_authenticated and user.role in (Role.COORDENACAO.value, Role.DIRECAO.value)
 
 
+MAX_PANEL_CLASSES = 60  # trava de segurança do custo do painel
+
+
 def panel(request):
     user = request.user
     if not _can_use_panel(user):
@@ -160,14 +163,20 @@ def panel(request):
     students_count = (len(sids) if sids is not None else
                       Enrollment.objects.filter(school=school, status="ativo").values("student").distinct().count())
     period = bi.resolve_period(request.GET, school)
+    # Todas as turmas do alcance (até MAX_PANEL_CLASSES): antes eram as 15 primeiras em ordem
+    # alfabética, e os alertas das demais nunca apareciam. Cada turma custa ~10 consultas
+    # (≈16 ms com 18 estudantes), então 40 turmas ficam abaixo de 1 s.
     class_rows, alerts = [], []
-    for cg in classes[:15]:  # custo: um relatório por turma
+    for cg in classes[:MAX_PANEL_CLASSES]:
         r = bi.class_report(cg, period)
         class_rows.append({"cg": cg, "active": r["active"], "mean": r["overall"]["mean"],
                            "attendance": r["attendance"]["percent"], "delivery": r["delivery_rate"],
                            "follow": len(r["follow_up"])})
-        for row in r["follow_up"][:3]:
+        for row in r["follow_up"]:
             alerts.append({"student": row["student"], "cg": cg, "reasons": row["reasons"]})
+    alerts_total = len(alerts)
+    # Quem tem mais motivos primeiro (não a turma que vem antes no alfabeto).
+    alerts.sort(key=lambda a: (-len(a["reasons"]), a["cg"].name, a["student"].first_name))
     obs = PedagogicalObservation.objects.filter(school=school).select_related("student", "teacher", "subject")
     plans = InterventionPlan.objects.filter(school=school, status=InterventionPlan.Status.ACTIVE) \
         .select_related("student")
@@ -189,7 +198,8 @@ def panel(request):
         "designations": designations, "no_designation": no_designation, "class_rows": class_rows,
         "classes_total": len(classes), "teachers_count": len(teachers) if teachers is not None else
         User.objects.filter(school=school, role=Role.PROFESSOR.value, is_active=True).count(),
-        "students_count": students_count, "alerts": alerts[:12], "observations": obs.order_by("-observed_at")[:6],
+        "students_count": students_count, "alerts": alerts[:12], "alerts_total": alerts_total,
+        "max_panel_classes": MAX_PANEL_CLASSES, "observations": obs.order_by("-observed_at")[:6],
         "plans": plans.order_by("-created_at")[:6], "records": records[:8],
         "follow_ups": records.filter(follow_up_on__isnull=False, follow_up_on__gte=today).order_by("follow_up_on")[:5],
         "upcoming": upcoming, "period": period, "presets": bi.PRESETS, "form": form,

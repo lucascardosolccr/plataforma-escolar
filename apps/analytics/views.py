@@ -723,7 +723,7 @@ def report_csv(request, slug):
     writer.writerow([])
     writer.writerow([_csv_safe(c) for c in result.columns])
     for row in result.rows:
-        writer.writerow([_csv_safe(c) for c in row])
+        writer.writerow([_csv_safe(_csv_value(c)) for c in row])
     if not result.rows:
         writer.writerow(["(sem registros para os critérios informados)"])
     return response
@@ -778,9 +778,17 @@ def _bi_export(request, *, title, context, period, sheets, fmt, target=None):
 
 
 def _csv_value(v):
+    """Valor de célula para o CSV aberto pelo Excel em português (separador ";", decimal ",").
+
+    Decimal também: as médias saem das regras como Decimal, e "7.50" o Excel brasileiro lê como
+    texto (ou data), e a soma da coluna deixa de funcionar."""
+    from decimal import Decimal
+
     if v is None:
         return ""
-    if isinstance(v, float):
+    if isinstance(v, bool):
+        return "sim" if v else "não"
+    if isinstance(v, (float, Decimal)):
         return f"{v}".replace(".", ",")
     if hasattr(v, "strftime"):
         return v.strftime("%d/%m/%Y")

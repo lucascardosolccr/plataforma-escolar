@@ -335,6 +335,10 @@ class ReportTests(AnalyticsBase):
         self.assertIn("text/csv", response["Content-Type"])
         self.assertTrue(response.content.startswith(codecs.BOM_UTF8))
         self.assertIn(b"Disciplina;", response.content)
+        # Média com vírgula decimal (Excel em português): antes saía "9.00".
+        body = response.content.decode("utf-8-sig")
+        self.assertIn(";9,00;", body)
+        self.assertNotIn(";9.00;", body)
 
     def test_cross_school_student_not_found(self):
         self.login("adm")

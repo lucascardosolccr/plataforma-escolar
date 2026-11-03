@@ -20,7 +20,7 @@
   <div class="card"><div class="table-responsive">
     <table class="table align-middle mb-0">
       <caption class="visually-hidden">Nível de cada {% if by_group %}grupo{% else %}integrante{% endif %} em cada critério</caption>
-      <thead><tr><th scope="col">{% if by_group %}Grupo{% else %}Integrante{% endif %}</th>{% for c in criteria %}<th scope="col" class="min-w-11">{{ c.name }}</th>{% endfor %}</tr></thead>
+      <thead><tr><th scope="col">{% if by_group %}Grupo{% else %}Integrante{% endif %}</th>{% for c in criteria %}<th scope="col" class="min-w-11">{{ c.name }}{% if c.item_id %}<span class="d-block small fw-normal text-body-secondary" title="O nível marcado vira evidência desta habilidade no EIA-Cognitio">{{ c.item.code }}</span>{% endif %}</th>{% endfor %}</tr></thead>
       <tbody>
         {% for row in table %}
           <tr>

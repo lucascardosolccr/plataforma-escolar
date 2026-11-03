@@ -16,9 +16,23 @@ Pesos (escolha metodológica documentada, configurável no código):
 
 from decimal import Decimal
 
+from django.utils import timezone
+
 from .models import QuestionResponse, SkillEvidence, SkillObservation
 
 W_MAIN, W_SECONDARY, W_OBS, W_TEXT, W_ACTIVITY, W_EVAL, W_GROUP = 1.0, 0.5, 1.0, 0.8, 0.7, 0.5, 0.4
+# Rubrica: critério descrito e nível marcado pelo professor para a habilidade (quase uma questão).
+# Prática: exercício que o próprio estudante faz em casa; só a primeira tentativa e com peso baixo,
+# para contar como sinal formativo sem pesar como prova.
+W_RUBRIC, W_PRACTICE = 0.9, 0.3
+
+
+def _level_ratio(level, levels_by_rubric):
+    """Posição do nível na escala da rubrica: o primeiro vale 0, o último vale 1."""
+    order = levels_by_rubric.get(level.rubric_id) or []
+    if len(order) < 2 or level.pk not in order:
+        return None
+    return order.index(level.pk) / (len(order) - 1)
 
 
 def _grade_max(school, subject):
@@ -105,6 +119,54 @@ def _collect_class(class_group):
                     add(sid, it.pk, "trabalho", d.pk, f"{work.title} (grupo)",
                         d.delivered_at or work.deadline or work.published_date, _clip(d.grade / top), W_GROUP,
                         work.subject_id)
+
+    # Rubricas com critério ligado a habilidade (atividades e trabalhos em grupo).
+    from apps.pedagogy.models import GroupWorkRubricScore, RubricLevel, RubricScore
+
+    levels_by_rubric = {}
+    for lv in RubricLevel.objects.filter(rubric__school=school).order_by("rubric_id", "order", "pk"):
+        levels_by_rubric.setdefault(lv.rubric_id, []).append(lv.pk)
+    for s in RubricScore.objects.filter(activity__class_group=class_group, criterion__item__isnull=False,
+                                        activity__status=Activity.Status.PUBLISHED)             .select_related("activity", "criterion", "level"):
+        ratio = _level_ratio(s.level, levels_by_rubric)
+        if ratio is not None:
+            act = s.activity
+            add(s.student_id, s.criterion.item_id, "rubrica", s.pk, f"Rubrica: {s.criterion.name} ({act.title})",
+                act.deadline or act.class_date or act.published_date, ratio, W_RUBRIC, act.subject_id)
+    for s in GroupWorkRubricScore.objects.filter(group_work__class_group=class_group, criterion__item__isnull=False,
+                                                 group_work__status=GroupWork.Status.PUBLISHED)             .select_related("group_work", "criterion", "level", "group"):
+        ratio = _level_ratio(s.level, levels_by_rubric)
+        if ratio is None:
+            continue
+        work = s.group_work
+        day = work.deadline or work.published_date
+        # Origem própria: o id vem de outra tabela que o da rubrica de atividade e poderia coincidir.
+        if s.student_id:  # entrega por integrante: nível individual
+            add(s.student_id, s.criterion.item_id, "rubrica_trab", s.pk, f"Rubrica: {s.criterion.name} ({work.title})",
+                day, ratio, W_RUBRIC, work.subject_id)
+        elif s.group_id:  # nível do grupo: vale para cada integrante com o peso de evidência de grupo
+            for m in s.group.members.all():
+                if m.removed_at is None:
+                    add(m.student_id, s.criterion.item_id, "rubrica_trab", s.pk,
+                        f"Rubrica do grupo: {s.criterion.name} ({work.title})", day, ratio, W_GROUP, work.subject_id)
+
+    # Exercícios de prática: a primeira tentativa de cada estudante em cada questão.
+    from apps.study.models import PracticeAttempt
+
+    first = {}
+    for att in PracticeAttempt.objects.filter(question__guide__class_group=class_group)             .select_related("question__guide").order_by("created_at", "pk"):
+        first.setdefault((att.question_id, att.student_id), att)
+    if first:
+        from apps.study.models import PracticeQuestion
+
+        items_by_q = {}
+        for q in PracticeQuestion.objects.filter(pk__in={q for q, _ in first}).prefetch_related("curriculum"):
+            items_by_q[q.pk] = [i.pk for i in q.curriculum.all()]
+        for (qid, sid), att in first.items():
+            for iid in items_by_q.get(qid, []):
+                add(sid, iid, "pratica", att.pk, f"Exercício de prática ({att.question.guide.title})",
+                    timezone.localtime(att.created_at).date(), 1.0 if att.is_correct else 0.0, W_PRACTICE,
+                    att.question.guide.subject_id)
 
     for o in SkillObservation.objects.filter(class_group=class_group):
         add(o.student_id, o.item_id, "observacao", o.pk, f"Observação: {o.context}", o.observed_on,

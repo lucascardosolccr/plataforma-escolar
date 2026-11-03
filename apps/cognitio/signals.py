@@ -44,7 +44,8 @@ def _flush():
 
 def _class_of(instance):
     for path in ("class_group_id", "evaluation.class_group_id", "activity.class_group_id",
-                 "group_work.class_group_id", "question.evaluation.class_group_id"):
+                 "group_work.class_group_id", "question.evaluation.class_group_id",
+                 "question.guide.class_group_id", "guide.class_group_id"):
         obj = instance
         try:
             for part in path.split("."):
@@ -61,15 +62,19 @@ def _on_change(sender, instance, **kwargs):
 
 
 def connect():
-    from apps.pedagogy.models import Activity, Evaluation, GroupWork, GroupWorkDelivery, Grade, Submission
+    from apps.pedagogy.models import (Activity, Evaluation, GroupWork, GroupWorkDelivery, GroupWorkRubricScore,
+                                      Grade, RubricScore, Submission)
+    from apps.study.models import PracticeAttempt, PracticeQuestion
 
     from .models import QuestionResponse, QuestionSkill, SkillObservation, TextAnalysis
 
     for model in (Grade, Submission, GroupWorkDelivery, QuestionResponse, QuestionSkill, SkillObservation,
-                  TextAnalysis, Evaluation, Activity, GroupWork):
+                  TextAnalysis, Evaluation, Activity, GroupWork, RubricScore, GroupWorkRubricScore,
+                  PracticeAttempt):
         post_save.connect(_on_change, sender=model, dispatch_uid=f"cognitio-save-{model.__name__}")
         post_delete.connect(_on_change, sender=model, dispatch_uid=f"cognitio-del-{model.__name__}")
     for model in (Activity, Evaluation, GroupWork):
         m2m_changed.connect(_on_change, sender=model.curriculum.through,
                             dispatch_uid=f"cognitio-m2m-{model.__name__}")
     m2m_changed.connect(_on_change, sender=TextAnalysis.items.through, dispatch_uid="cognitio-m2m-text")
+    m2m_changed.connect(_on_change, sender=PracticeQuestion.curriculum.through, dispatch_uid="cognitio-m2m-practice")

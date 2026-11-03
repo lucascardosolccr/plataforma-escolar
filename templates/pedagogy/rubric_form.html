@@ -30,6 +30,8 @@
           <legend class="visually-hidden">Critério {{ forloop.counter }}</legend>
           <label class="form-label small" for="criterio_{{ c.j }}">Critério {{ forloop.counter }}</label>
           <input id="criterio_{{ c.j }}" name="criterio_{{ c.j }}" value="{{ c.name }}" maxlength="150" class="form-control form-control-sm mb-2" placeholder="Ex.: Organização das ideias">
+          <label class="form-label small" for="habilidade_{{ c.j }}">Habilidade observada (código, opcional)</label>
+          <input id="habilidade_{{ c.j }}" name="habilidade_{{ c.j }}" value="{{ c.code|default:"" }}" maxlength="30" class="form-control form-control-sm mb-2" placeholder="Ex.: EF15LP05" aria-describedby="habilidade_ajuda">
           <div class="row g-2">
             {% for lv, text in c.cell_pairs %}
               <div class="col-sm-6 col-lg-3">
@@ -41,6 +43,7 @@
         </fieldset>
       {% endfor %}
       <p class="small text-body-secondary mb-0">Até {{ max_levels }} níveis e {{ max_criteria }} critérios: depois de salvar, novas linhas em branco aparecem ao editar.</p>
+      <p id="habilidade_ajuda" class="small text-body-secondary mb-0">Com a habilidade informada, o nível marcado em cada critério vira evidência no EIA-Cognitio: o primeiro nível conta como "não demonstrou" e o último como "demonstrou".</p>
     </div>
     {% include "partials/_form_actions.html" with cancel_url=back submit_label="Salvar rubrica" %}
   </form>

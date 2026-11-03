@@ -181,6 +181,9 @@ class SkillEvidence(models.Model):
         GROUP_WORK = "trabalho", "Trabalho em grupo"
         OBSERVATION = "observacao", "Observação do professor"
         TEXT = "texto", "Produção escrita (análise revisada pelo professor)"
+        RUBRIC = "rubrica", "Critério de rubrica ligado à habilidade"
+        RUBRIC_GROUP = "rubrica_trab", "Critério de rubrica em trabalho em grupo"
+        PRACTICE = "pratica", "Exercício de prática (primeira tentativa do estudante)"
 
     school = models.ForeignKey(School, on_delete=models.CASCADE)
     student = models.ForeignKey("registry.Student", on_delete=models.CASCADE, related_name="skill_evidence")

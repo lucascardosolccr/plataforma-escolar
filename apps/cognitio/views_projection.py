@@ -43,6 +43,16 @@ def evidence_url(e):
             return reverse("pedagogy:group_work_detail", args=[d.group_work_id]) if d else None
         if e.source_type == "texto":
             return reverse("cognitio:text_detail", args=[e.source_id])
+        if e.source_type == "rubrica":
+            from apps.pedagogy.models import RubricScore
+
+            s = RubricScore.objects.filter(pk=e.source_id).first()
+            return reverse("pedagogy:activity_detail", args=[s.activity_id]) if s else None
+        if e.source_type == "rubrica_trab":
+            from apps.pedagogy.models import GroupWorkRubricScore
+
+            s = GroupWorkRubricScore.objects.filter(pk=e.source_id).first()
+            return reverse("pedagogy:group_work_detail", args=[s.group_work_id]) if s else None
     except NoReverseMatch:
         return None
     return None

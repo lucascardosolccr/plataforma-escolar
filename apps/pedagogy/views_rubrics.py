@@ -54,9 +54,20 @@ class RubricForm(forms.Form):
         for j in range(MAX_CRITERIA):
             name = (data.get(f"criterio_{j}") or "").strip()[:150]
             if name:
-                criteria.append({"j": j, "name": name, "cells": [
-                    (data.get(f"desc_{j}_{lv['i']}") or "").strip()[:300] for lv in levels]})
+                criteria.append({"j": j, "name": name,
+                                 "code": (data.get(f"habilidade_{j}") or "").strip().upper()[:30],
+                                 "cells": [(data.get(f"desc_{j}_{lv['i']}") or "").strip()[:300] for lv in levels]})
         return levels, criteria
+
+
+def _resolve_codes(criteria, school):
+    """{código: habilidade} dos códigos digitados e a lista dos que não existem no catálogo."""
+    from apps.curriculum.models import CurriculumItem
+
+    codes = {c["code"] for c in criteria if c.get("code")}
+    found = {i.code.upper(): i for i in CurriculumItem.objects.filter(
+        CurriculumItem.visible_q(school), active=True, code__in=codes)}
+    return found, sorted(codes - set(found))
 
 
 def _grid_errors(levels, criteria):
@@ -103,12 +114,16 @@ def rubric_form(request, pk=None, duplicate=False):
                    "subject": source.subject_id, "shared": source.shared and not duplicate}
         lvs, rows = source.grid()
         levels = [{"i": i, "label": lv.label, "points": lv.points} for i, lv in enumerate(lvs)]
-        criteria = [{"j": j, "name": c.name, "cells": cells} for j, (c, cells) in enumerate(rows)]
+        criteria = [{"j": j, "name": c.name, "code": c.item.code if c.item_id else "", "cells": cells}
+                    for j, (c, cells) in enumerate(rows)]
     form = RubricForm(request.POST or None, initial=initial, school=user.school)
     errors = []
     if request.method == "POST":
         levels, criteria = form.grid_from(request.POST)
         errors = _grid_errors(levels, criteria)
+        items, missing = _resolve_codes(criteria, user.school)
+        if missing:
+            errors.append(f"Código de habilidade não encontrado no catálogo: {', '.join(missing)}.")
         if form.is_valid() and not errors:
             with transaction.atomic():
                 r = editing or Rubric(school=user.school, created_by=user)
@@ -121,7 +136,8 @@ def rubric_form(request, pk=None, duplicate=False):
                 lv_objs = [RubricLevel.objects.create(rubric=r, label=lv["label"], points=lv["points"], order=n)
                            for n, lv in enumerate(levels)]
                 for n, c in enumerate(criteria):
-                    crit = RubricCriterion.objects.create(rubric=r, name=c["name"], order=n)
+                    crit = RubricCriterion.objects.create(rubric=r, name=c["name"], order=n,
+                                                          item=items.get(c.get("code") or ""))
                     RubricDescriptor.objects.bulk_create([
                         RubricDescriptor(criterion=crit, level=lv, text=text)
                         for lv, text in zip(lv_objs, c["cells"]) if text])

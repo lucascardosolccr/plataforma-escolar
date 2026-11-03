@@ -1140,13 +1140,17 @@ class Rubric(models.Model):
         """[(critério, [descrição por nível])] na ordem dos níveis."""
         levels = list(self.levels.all())
         texts = {(d.criterion_id, d.level_id): d.text for d in RubricDescriptor.objects.filter(criterion__rubric=self)}
-        return levels, [(c, [texts.get((c.pk, lv.pk), "") for lv in levels]) for c in self.criteria.all()]
+        return levels, [(c, [texts.get((c.pk, lv.pk), "") for lv in levels]) for c in self.criteria.select_related("item")]
 
 
 class RubricCriterion(models.Model):
     rubric = models.ForeignKey(Rubric, on_delete=models.CASCADE, related_name="criteria")
     name = models.CharField("critério", max_length=150)
     order = models.PositiveSmallIntegerField(default=0)
+    # Habilidade que o critério observa (opcional). Com ela, o nível marcado vira evidência no
+    # EIA-Cognitio: uma atividade avaliada por rubrica informa cada habilidade em separado.
+    item = models.ForeignKey("curriculum.CurriculumItem", on_delete=models.SET_NULL, null=True, blank=True,
+                             related_name="rubric_criteria", verbose_name="habilidade observada")
 
     class Meta:
         ordering = ["order", "pk"]

@@ -28,7 +28,10 @@
     <div class="mt-2">{{ r.content|linebreaks }}</div>
     {% if r.curriculum.all %}<p class="small mb-1">{% for i in r.curriculum.all %}<span class="chip" title="{{ i.text|truncatechars:160 }}">{{ i.code }}</span> {% endfor %}</p>{% endif %}
     {% if not family and r.notes %}<p class="small text-body-secondary mb-1"><strong>Observações da equipe:</strong> {{ r.notes|linebreaksbr }}</p>{% endif %}
-    {% if not family %}{% for c, s in editable %}{% if c == r.class_group_id and s == r.subject_id %}<a class="small" href="{% url 'pedagogy:diary_edit' r.pk %}">Corrigir ou completar</a>{% endif %}{% endfor %}{% endif %}
+    {% if not family %}{% for c, s in editable %}{% if c == r.class_group_id and s == r.subject_id %}
+      {% if r.curriculum.all %}<p class="small mb-1">Observar a turma em: {% for i in r.curriculum.all %}<a href="{% url 'cognitio:observation_create' r.class_group_id r.subject_id %}?item={{ i.pk }}">{{ i.code }}</a>{% if not forloop.last %} · {% endif %}{% endfor %} <span class="text-body-secondary">(vira evidência no EIA-Cognitio)</span></p>{% endif %}
+      <a class="small" href="{% url 'pedagogy:diary_edit' r.pk %}">Corrigir ou completar</a>
+    {% endif %}{% endfor %}{% endif %}
   </div></article>
   {% empty %}
   <div class="card"><div class="empty-state py-5">{% icon "notebook-pen" %}<strong>Nenhuma aula registrada</strong><span>{% if can_create %}Registre o conteúdo da aula logo depois da chamada: leva um minuto.{% elif family %}Quando os professores registrarem o conteúdo das aulas, ele aparece aqui.{% else %}Os professores ainda não registraram aulas no seu alcance.{% endif %}</span></div></div>

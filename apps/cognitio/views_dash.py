@@ -78,11 +78,12 @@ def _periods(school):
 
 def _worked(class_ids, pairs, today):
     """{(turma, disciplina, habilidade): (última data, origem)} do que já foi trabalhado: planejamento
-    encerrado ou atividade com aula já dada."""
-    from apps.pedagogy.models import Activity, LessonPlan
+    encerrado, atividade com aula já dada ou aula registrada no diário de classe."""
+    from apps.pedagogy.models import Activity, LessonPlan, LessonRecord
 
     last_worked = {}
-    for model, field, origin in ((LessonPlan, "ends_on", "planejamento"), (Activity, "class_date", "atividade")):
+    for model, field, origin in ((LessonPlan, "ends_on", "planejamento"), (Activity, "class_date", "atividade"),
+                                 (LessonRecord, "date", "diário")):
         qs = model.objects.filter(class_group_id__in=class_ids, **{f"{field}__lte": today})
         if pairs is not None:
             q = Q(pk__in=[])

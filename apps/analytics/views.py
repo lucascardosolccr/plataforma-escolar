@@ -455,8 +455,11 @@ def class_dashboard(request, class_group_id):
     rows = report["follow_up"] if only_follow else report["rows"]
     qs = period.querystring() + f"&disciplinas={n_below}&entrega={min_delivery}"
     classes = _visible_classes(request.user)
+    from .views_report_cards import can_print_report_cards
+
     return render(request, "analytics/class_dashboard.html", {
         "class_group": class_group,
+        "can_print_cards": can_print_report_cards(request.user, class_group),
         "report": report,
         "subject_limited": only_subjects is not None,
         "rows": rows,

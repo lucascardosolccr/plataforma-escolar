@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import views, views_report_cards
 
 app_name = "analytics"
 
@@ -26,6 +26,8 @@ urlpatterns = [
         views.class_dashboard,
         name="class_dashboard",
     ),
+    path("paineis/turma/<int:class_group_id>/boletins/", views_report_cards.class_report_cards,
+         name="class_report_cards"),
     path(
         "paineis/estudante/<int:student_id>/exportar.<str:fmt>",
         views.student_export,

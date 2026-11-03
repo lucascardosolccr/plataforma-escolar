@@ -12,6 +12,7 @@
     <span class="eyebrow">Painel da turma</span>
     <h1>{{ class_group.name }}</h1>
     <p>Ano letivo {{ class_group.school_year }}{% if class_group.grade %} · {{ class_group.grade }}{% endif %}{% if class_group.turn %} · {{ class_group.get_turn_display }}{% endif %}</p>
+    {% if can_print_cards %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'analytics:class_report_cards' class_group.pk %}?{{ period.querystring }}">{% icon "printer" %}Boletins da turma para imprimir</a>{% endif %}
   </div>
   {% if class_options|length > 1 %}
   <div><label class="visually-hidden" for="troca-turma">Trocar de turma</label>

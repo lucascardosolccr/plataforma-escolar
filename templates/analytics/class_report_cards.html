@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load static ui bi_tags %}
+{% block title %}Boletins — {{ class_group.name }} — Plataforma Escolar{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/bi.css' %}">{% endblock %}
+
+{% block content %}
+<div class="d-print-none">
+  <a href="{% url 'analytics:class_dashboard' class_group.pk %}?{{ period.querystring }}" class="back-link">{% icon "arrow-left" %}Painel da turma</a>
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Boletins da turma</span>
+      <h1>{{ class_group.name }}</h1>
+      <p>{{ cards|length }} estudante{{ cards|length|pluralize }} com matrícula ativa · um boletim por página na impressão. Médias pela regra de cada disciplina, só com avaliações publicadas no período.</p>
+    </div>
+  </div>
+  {% include "analytics/bi/_filters.html" with presets=presets period=period %}
+</div>
+
+{% for c in cards %}
+<section class="report-card card" aria-labelledby="rc-{{ c.student.pk }}">
+  <div class="card-body">
+    <header class="report-card-head">
+      <p class="report-card-school">{{ class_group.school.name }}</p>
+      <h2 id="rc-{{ c.student.pk }}" class="h5 mb-1">Boletim — {{ c.student.full_name }}</h2>
+      <p class="small text-body-secondary mb-0">Turma {{ class_group.name }} · {{ class_group.school_year.name }}{% if class_group.grade %} · {{ class_group.grade }}{% endif %} · turno {{ class_group.get_turn_display|lower }}{% if c.enrollment.enrollment_number %} · matrícula nº {{ c.enrollment.enrollment_number }}{% endif %}</p>
+      <p class="small text-body-secondary mb-0">Período: <strong>{{ period.label }}</strong> ({{ period.start|date:"d/m/Y" }} a {{ period.end|date:"d/m/Y" }})</p>
+    </header>
+    {% if c.subjects %}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-2">
+        <thead><tr><th scope="col">Disciplina</th><th scope="col" class="text-end">Média</th><th scope="col" class="text-end">Referência</th><th scope="col" class="text-end">Notas</th></tr></thead>
+        <tbody>
+          {% for s in c.subjects %}
+          <tr><td>{{ s.subject.name }}</td><td class="text-end fw-semibold">{{ s.average|num:2 }}{% if s.below %} <span class="chip chip-state">abaixo da referência</span>{% endif %}</td><td class="text-end">{{ s.passing|num:1 }}</td><td class="text-end">{{ s.count }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-body-secondary">Nenhuma nota publicada no período. Ausência de nota não é nota zero.</p>
+    {% endif %}
+    <p class="mb-3"><strong>Frequência:</strong> {% if c.attendance.total %}{{ c.attendance.percent|pct_txt }} de presença em {{ c.attendance.total }} registro{{ c.attendance.total|pluralize }} de chamada ({{ c.attendance.absent }} falta{{ c.attendance.absent|pluralize }}; mínimo da escola: {{ c.attendance.min_percent|pct_txt }}).{% else %}sem chamada registrada no período.{% endif %}</p>
+    <div class="report-card-sign">
+      <div><span class="declaration-line" aria-hidden="true"></span><p class="small mb-0">Assinatura do(a) responsável</p></div>
+      <div><span class="declaration-line" aria-hidden="true"></span><p class="small mb-0">Escola</p></div>
+    </div>
+    <p class="report-card-foot">Gerado em {{ generated_at|date:"d/m/Y H:i" }}. Documento de acompanhamento: não declara aprovação nem reprovação.</p>
+  </div>
+</section>
+{% empty %}
+<div class="empty-state py-5">{% icon "users" %}<strong>Nenhum estudante com matrícula ativa nesta turma</strong></div>
+{% endfor %}
+{% endblock %}

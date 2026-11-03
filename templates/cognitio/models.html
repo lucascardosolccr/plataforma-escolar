@@ -28,15 +28,15 @@
   <ul class="small mb-2">{% for key, label in rules.items %}<li>{{ label }}</li>{% endfor %}</ul>
   <h3 class="h6">Revisão humana dos alertas</h3>
   <p class="small text-secondary">Quantos alertas cada regra gerou e quantos os professores descartaram. Muitos descartes indicam regra a ajustar.</p>
-  <table class="table table-sm"><thead><tr><th scope="col">Regra</th><th scope="col">Gerados</th><th scope="col">Descartados</th></tr></thead>
-    <tbody>{% for label, total, dismissed in alert_rows %}<tr><td>{{ label }}</td><td>{{ total }}</td><td>{{ dismissed }}</td></tr>{% empty %}<tr><td colspan="3" class="text-secondary">Nenhum alerta gerado ainda.</td></tr>{% endfor %}</tbody></table>
+  <div class="table-responsive"><table class="table table-sm"><thead><tr><th scope="col">Regra</th><th scope="col">Gerados</th><th scope="col">Descartados</th></tr></thead>
+    <tbody>{% for label, total, dismissed in alert_rows %}<tr><td>{{ label }}</td><td>{{ total }}</td><td>{{ dismissed }}</td></tr>{% empty %}<tr><td colspan="3" class="text-secondary">Nenhum alerta gerado ainda.</td></tr>{% endfor %}</tbody></table></div>
 </div></section>
 
 <section class="card mb-3" aria-labelledby="pln"><div class="card-body">
   <h2 id="pln" class="h6">Analisador de produções escritas (regras, versão {{ "regras-1.0" }})</h2>
   <p class="small text-secondary">Concordância dos professores com cada tipo de indício. Abaixo de 70% de concordância, a regra precisa ser revista.</p>
-  <table class="table table-sm"><thead><tr><th scope="col">Indício</th><th scope="col">Avaliações</th><th scope="col">Concordâncias</th><th scope="col">%</th></tr></thead>
-    <tbody>{% for kind, n, agree, pct in analyzer %}<tr><td>{{ kind }}</td><td>{{ n }}</td><td>{{ agree }}</td><td>{{ pct }}%{% if pct < 70 %} <span class="chip chip-state state-ajustes">revisar regra</span>{% endif %}</td></tr>{% empty %}<tr><td colspan="4" class="text-secondary">Nenhuma avaliação de indício registrada ainda.</td></tr>{% endfor %}</tbody></table>
+  <div class="table-responsive"><table class="table table-sm"><thead><tr><th scope="col">Indício</th><th scope="col">Avaliações</th><th scope="col">Concordâncias</th><th scope="col">%</th></tr></thead>
+    <tbody>{% for kind, n, agree, pct in analyzer %}<tr><td>{{ kind }}</td><td>{{ n }}</td><td>{{ agree }}</td><td>{{ pct }}%{% if pct < 70 %} <span class="chip chip-state state-ajustes">revisar regra</span>{% endif %}</td></tr>{% empty %}<tr><td colspan="4" class="text-secondary">Nenhuma avaliação de indício registrada ainda.</td></tr>{% endfor %}</tbody></table></div>
 </div></section>
 
 <section class="card" aria-labelledby="runs"><div class="card-body">

@@ -18,7 +18,7 @@
   <div class="col-xl-8 d-grid gap-3 align-content-start">
     {% for s, h in rows %}
     <article class="card"><div class="card-body">
-      <div class="d-flex flex-wrap justify-content-between gap-2"><h2 class="h6 mb-0">{{ s.title }}</h2><span class="chip chip-state state-{% if s.evidence_level == 'pesquisa' %}validado{% elif s.evidence_level == 'pratica' %}publicada{% else %}ajustes{% endif %}">{{ s.get_evidence_level_display }}</span></div>
+      <div class="d-flex flex-wrap justify-content-between gap-2"><h2 class="h6 mb-0">{{ s.title }}</h2><span class="chip chip-state chip-wrap state-{% if s.evidence_level == 'pesquisa' %}validado{% elif s.evidence_level == 'pratica' %}publicada{% else %}ajustes{% endif %}">{{ s.get_evidence_level_display }}</span></div>
       <p class="small text-secondary mb-1">{{ s.component|default:"Qualquer componente" }}{% if s.dimension %} · {{ s.dimension.name }}{% endif %} · {{ s.minutes }} min{% if s.school %} · cadastrada pela escola{% endif %}</p>
       <p class="small mb-1"><strong>Objetivo:</strong> {{ s.objective }}</p>
       <details class="small"><summary>Procedimentos, acompanhamento e referências</summary>

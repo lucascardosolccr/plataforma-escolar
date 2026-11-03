@@ -416,6 +416,8 @@ th[data-sort]:not([aria-sort]) .sort-ind::after { content: "↕"; opacity: .45; 
   line-height: 1.6;
   white-space: nowrap;
 }
+/* Etiqueta com frase (ex.: nível de respaldo no banco de estratégias): quebra a linha em vez de vazar. */
+.chip-wrap { white-space: normal; text-align: start; max-width: 100%; }
 /* Situação: a cor reforça, o texto sempre diz (não depende só de cor). */
 .chip-state { font-weight: 700; }
 .chip-state.state-a_vencer { background: var(--ds-warning-bg); border-color: var(--ds-warning-line); color: var(--ds-warning); }

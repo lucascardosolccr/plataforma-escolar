@@ -26,7 +26,7 @@ Métodos (Python puro, sem dependência nova):
   doi:10.1080/01621459.1961.10482090). Na tela, cada disciplina mostra a própria tendência.
 - **Dupla discrepância:** nível abaixo do quartil inferior da turma e ritmo de evolução abaixo da mediana
   da turma ao mesmo tempo. Responder pouco à aula, e não só ter nota baixa, é o critério mais informativo
-  para decidir apoio (Fuchs, 2003, Learning Disabilities Research & Practice 18(3), 172–186,
+  para decidir apoio (Fuchs, 2003, Learning Disabilities Research & Practice 18(3),
   doi:10.1111/1540-5826.00073). Só com ``MIN_PEERS`` colegas com tendência calculada.
 
 Indicadores precoces, todos com regra explícita e nenhuma pontuação:

@@ -116,7 +116,7 @@ class EvidenceForm(forms.ModelForm):
         widgets = {"observed_on": forms.DateInput(format="%Y-%m-%d", attrs={"type": "date"}),
                    "description": forms.Textarea(attrs={"rows": 4})}
 
-    def __init__(self, *args, user=None, pairs=(), item_qs=None, **kwargs):
+    def __init__(self, *args, user=None, pairs=(), item_qs=None, focus=None, **kwargs):
         super().__init__(*args, **kwargs)
         from apps.pedagogy.models import Activity, Evaluation
 
@@ -128,7 +128,13 @@ class EvidenceForm(forms.ModelForm):
         # 737 KB de HTML e quase 1 s para desenhar o formulário).
         chosen = [v for v in (self.data.get("item") if self.is_bound else self.initial.get("item"),)
                   if str(v or "").isdigit()]
-        groups = picker_groups(user, chosen) if user is not None else []
+        groups = picker_groups(user, chosen, focus[0].pk if focus else None) if user is not None else []
+        if focus:  # turma e disciplina fixas: só o componente da disciplina (mais o item já escolhido)
+            from .models import component_for
+
+            comp = component_for(focus[1])
+            groups = [(label, items) for label, items in groups
+                      if label.startswith(comp) or label in ("Já selecionados", "Competências gerais da BNCC")] or groups
         visible = set(item_qs.filter(pk__in={i.pk for _, items in groups for i in items})
                       .values_list("pk", flat=True))
         self.fields["item"].queryset = item_qs.filter(pk__in=visible)

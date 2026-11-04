@@ -167,11 +167,16 @@ def evidence_create(request):
     _require(bool(pairs))
     item_qs = CurriculumItem.objects.filter(CurriculumItem.visible_q(user.school), active=True)
     initial = {}
-    if request.GET.get("par"):
+    # Vindo de uma turma e disciplina (?par=), o formulário fica nelas: só as habilidades daquele ano e
+    # componente (antes, todas as das turmas do professor: 172 KB na base de escala).
+    focused = [(cg, s) for cg, s in pairs if f"{cg.pk}:{s.pk}" == request.GET.get("par")]
+    if focused:
+        pairs = focused
         initial["pair"] = request.GET["par"]
     if request.GET.get("item", "").isdigit():
         initial["item"] = request.GET["item"]
-    form = EvidenceForm(request.POST or None, user=user, pairs=pairs, item_qs=item_qs, initial=initial)
+    form = EvidenceForm(request.POST or None, user=user, pairs=pairs, item_qs=item_qs, initial=initial,
+                        focus=focused[0] if focused else None)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             ev = form.save(commit=False)
@@ -183,7 +188,7 @@ def evidence_create(request):
                                         f"{ev.class_group} — {ev.subject}")
         messages.success(request, "Evidência registrada.")
         return redirect(f"{_coverage_url()}?par={ev.class_group_id}:{ev.subject_id}")
-    return render(request, "curriculum/evidence_form.html", {"form": form})
+    return render(request, "curriculum/evidence_form.html", {"form": form, "focused": focused[0] if focused else None})
 
 
 def _coverage_url():

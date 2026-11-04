@@ -12,7 +12,7 @@ from apps.curriculum.models import CurriculumItem
 from apps.pedagogy.models import Activity
 
 
-class LazyPickerTests(CommunicationBase):
+class PickerBase(CommunicationBase):
     def setUp(self):
         super().setUp()
         port = Subject.objects.create(school=self.school, name="Língua Portuguesa")
@@ -23,6 +23,8 @@ class LazyPickerTests(CommunicationBase):
                                                  class_group=cg, subject=subject)
         self.client.force_login(self.prof)
 
+
+class LazyPickerTests(PickerBase):
     def boxes(self, html):
         return re.findall(r'name="curriculum" value="(\d+)"', html)
 
@@ -57,3 +59,17 @@ class LazyPickerTests(CommunicationBase):
         self.assertTrue(full)  # o grupo com a escolha veio completo...
         self.assertNotIn(full[0], form.curriculum_lazy)  # ...e não sob demanda
         self.assertTrue(form.curriculum_lazy)  # os demais grupos grandes, sim
+
+
+class FocusedEvidenceFormTests(PickerBase):
+    def test_coming_from_a_class_lists_only_that_class_and_component(self):
+        cg = self.turma
+        url = reverse("curriculum:evidence_create") + f"?par={cg.pk}:{self.mat.pk}"
+        page = self.client.get(url)
+        form = page.context["form"]
+        self.assertEqual([v for v, _ in form.fields["pair"].choices], [f"{cg.pk}:{self.mat.pk}"])
+        labels = [label for label, _ in form.fields["item"].choices[1:]]
+        self.assertTrue(labels and all(lb.startswith("Matemática") or lb.startswith("Competências") for lb in labels))
+        self.assertContains(page, "Escolher outra turma ou disciplina")
+        full = self.client.get(reverse("curriculum:evidence_create")).context["form"]
+        self.assertGreater(len(full.fields["pair"].choices), 1)  # sem par: todas as turmas, como antes

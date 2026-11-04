@@ -6,6 +6,7 @@
 <div class="form-page">
   {% url 'curriculum:coverage' as back %}
   {% include "partials/_form_head.html" with heading="Registrar evidência de aprendizagem" subheading="Registro sobre a turma, não sobre um estudante: o que foi observado e em que situação a turma está nesta habilidade ou objetivo. A família e os estudantes não veem." back_url=back back_label="Acompanhamento" %}
+  {% if focused %}<p class="form-lead">Turma <strong>{{ focused.0.name }}</strong>, {{ focused.1.name }}. <a href="{% url 'curriculum:evidence_create' %}">Escolher outra turma ou disciplina</a>.</p>{% endif %}
   <form method="post" class="card form-card" novalidate>
     {% csrf_token %}
     <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>

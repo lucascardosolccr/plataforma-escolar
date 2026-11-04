@@ -298,6 +298,50 @@ GUIDES = [
          "communication:notification_preferences"),
         ("Avisos de ocorrência e de vínculo sempre chegam.", None),
     ]),
+    # Carteirinha e portaria
+    ("Emitir e imprimir as carteirinhas", "id-card", (SECRETARIA, DIRECAO, ADMIN), [
+        ("Em Carteirinhas, abra a turma e use “Emitir as que faltam”.", "gate:cards"),
+        ("Cadastre a foto antes: sem foto, a carteirinha sai com as iniciais e a portaria não confere o rosto.",
+         "photo_pending"),
+        ("Use “Imprimir a turma”, em tamanho real (100%). Recorte frente e verso, cole e plastifique.", None),
+        ("Perdeu? Na carteirinha do estudante, “Emitir segunda via” com o motivo: a anterior deixa de valer.", None),
+    ]),
+    ("Registrar a entrada e a saída na portaria", "id-card", (SECRETARIA, COORDENACAO, DIRECAO, ADMIN), [
+        ("Abra Portaria e escolha Entrada ou Saída.", "gate:station"),
+        ("Leia a carteirinha com o leitor (QR Code ou código de barras) ou digite o código de 9 caracteres.", None),
+        ("Confira a foto que aparece. Sem carteirinha, busque o nome em “Sem carteirinha”.", None),
+        ("Em Portaria hoje, veja quem chegou, quem atrasou e quem ainda não chegou, por turma.", "gate:today"),
+    ]),
+    ("Definir o horário de entrada e a tolerância de atraso", "clock", (DIRECAO, ADMIN), [
+        ("Em Portaria hoje, abra “Horários e tolerância”.", "gate:today"),
+        ("Cada turma usa o horário do seu turno. Depois do horário mais a tolerância, a chegada vira atraso e a "
+         "família é avisada.", None),
+    ]),
+    ("Ver a carteirinha e os horários de chegada", "id-card", (RESPONSAVEL, ESTUDANTE), [
+        ("Em Carteirinha e entradas, abra a carteirinha: dá para mostrá-la no celular na entrada.", "gate:mine"),
+        ("Ali também ficam as entradas, as saídas e os atrasos. Os avisos de chegada podem ser silenciados em "
+         "Notificações → Preferências.", None),
+    ]),
+    # Dados pessoais e indicadores
+    ("Pedir acesso, correção ou eliminação de dados pessoais (LGPD)", "shield", (RESPONSAVEL,), [
+        ("Em Solicitações, use “Pedido sobre dados pessoais” e escolha o que você quer.",
+         "communication:request_list"),
+        ("A escola tem 15 dias como prazo de referência e responde por ali. O contato do encarregado de dados "
+         "está na página Privacidade, no rodapé.", None),
+    ]),
+    ("Responder um pedido sobre dados pessoais", "shield", (DIRECAO, SECRETARIA, ADMIN), [
+        ("Em Solicitações, filtre por “Dados pessoais (LGPD)”: o prazo aparece em cada pedido.",
+         "communication:request_list"),
+        ("A direção abre “O que a plataforma guarda sobre o estudante” para responder a pedidos de acesso. Antes "
+         "de entregar, retire o que identifica outras pessoas.", None),
+    ]),
+    ("Acompanhar a trajetória e os sinais precoces", "chart-line", (PROFESSOR, COORDENACAO, DIRECAO), [
+        ("No EIA-Cognitio, abra a turma e use “Trajetórias e sinais precoces”.", "cognitio:home"),
+        ("Cada estudante mostra os indicadores acesos (frequência, comportamento, desempenho, entregas, "
+         "trajetória em queda, atrasos) e a tendência por disciplina.", None),
+        ("Indicador aceso pede conversa e observação, não rótulo. Professores e coordenação recebem um resumo "
+         "semanal com os sinais novos.", None),
+    ]),
 ]
 
 # Perguntas comuns a todos os perfis: (pergunta, resposta, perfis)

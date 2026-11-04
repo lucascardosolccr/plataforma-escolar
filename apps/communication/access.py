@@ -119,13 +119,13 @@ def guardian_recipients(user, student=None):
     """Responsáveis com quem um profissional pode conversar."""
     if student is not None:
         qs = GuardianLink.objects.filter(student=student, status="aprovado")
+    elif _coord_scope(user) is not None:  # coordenação restrita: famílias das turmas da designação
+        ids = Enrollment.objects.filter(class_group_id__in=_coord_scope(user), status="ativo").values("student_id")
+        qs = GuardianLink.objects.filter(student_id__in=ids, status="aprovado")
+    elif user.role in MANAGE_STAFF:
+        qs = GuardianLink.objects.filter(school=user.school, status="aprovado")
     else:
-        class_ids = _teacher_class_ids(user)
-        student_ids = _teacher_student_ids(user)
-        if user.role in MANAGE_STAFF:
-            qs = GuardianLink.objects.filter(school=user.school, status="aprovado")
-        else:
-            qs = GuardianLink.objects.filter(student_id__in=student_ids, status="aprovado")
+        qs = GuardianLink.objects.filter(student_id__in=_teacher_student_ids(user), status="aprovado")
     return User.objects.filter(
         pk__in=qs.values("guardian_id"), is_active=True
     ).order_by("username")
@@ -155,9 +155,25 @@ def own_thread_ids(user):
 
 # ---------- Comunicados ----------
 
+def _coord_scope(user):
+    """Turmas da designação da coordenação restrita; None para os demais (inclusive "escola toda")."""
+    from apps.coordination.scope import class_scope
+
+    return class_scope(user) if user.role == Role.COORDENACAO.value else None
+
+
 def can_create_announcement(user, scope, class_group=None, student=None):
     if not user.is_authenticated or user.school_id is None:
         return False
+    restricted = _coord_scope(user)
+    if restricted is not None:  # coordenação restrita: só as turmas e os estudantes da designação
+        if scope == Announcement.Scope.TURMA:
+            return class_group is None or class_group.pk in restricted
+        if scope == Announcement.Scope.INDIVIDUAL:
+            from apps.coordination.scope import reaches_student
+
+            return student is None or reaches_student(user, student)
+        return False  # comunicado para a escola toda: só com designação "escola toda"
     if scope == Announcement.Scope.INSTITUCIONAL:
         return user.role in (Role.DIRECAO.value, Role.COORDENACAO.value, Role.ADMIN.value)
     if scope == Announcement.Scope.TURMA:

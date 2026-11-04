@@ -140,7 +140,7 @@ def _pct(value):
     return f"{float(value):.1f}".replace(".", ",") + "%"
 
 
-def _attendance_rows(records, extra_label=None):
+def _attendance_rows(records):
     buckets = _monthly_attendance(records)
     rows = []
     for key, (present, late, absent) in sorted(
@@ -148,7 +148,6 @@ def _attendance_rows(records, extra_label=None):
     ):
         total = present + late + absent
         pct = (present + late) / total * 100 if total else None
-        label = extra_label or "Mês"
         rows.append([key, present, late, absent, _pct(pct)])
     return rows
 

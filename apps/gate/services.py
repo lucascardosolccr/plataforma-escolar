@@ -18,7 +18,7 @@ import hmac
 import secrets
 
 from django.conf import settings
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.urls import reverse
 from django.utils import timezone
 
@@ -204,11 +204,16 @@ def register(student, kind, method, user, card=None, when=None):
         return existing, True
     cg = active_class(student)
     expected, late = (lateness(student.school, cg, when) if kind == GateEvent.Kind.ENTRY else (None, None))
-    with transaction.atomic():
-        event = GateEvent.objects.create(
-            school=student.school, student=student, card=card, class_group=cg, kind=kind, method=method, day=day,
-            at=when, expected=expected, late=late is not None, minutes_late=late, recorded_by=user)
-        if kind == GateEvent.Kind.ENTRY:
-            _fill_attendance(event, user)
+    try:
+        with transaction.atomic():
+            event = GateEvent.objects.create(
+                school=student.school, student=student, card=card, class_group=cg, kind=kind, method=method,
+                day=day, at=when, expected=expected, late=late is not None, minutes_late=late, recorded_by=user)
+            if kind == GateEvent.Kind.ENTRY:
+                _fill_attendance(event, user)
+    except IntegrityError:
+        # Duas leituras ao mesmo tempo (dois leitores, Enter duplo): a outra gravou primeiro. Sem erro 500 e
+        # sem segundo aviso.
+        return GateEvent.objects.get(student=student, day=day, kind=kind), True
     _notify(event)
     return event, False

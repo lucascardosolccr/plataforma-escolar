@@ -25,7 +25,7 @@ class CalendarIcsTests(CalendarBase):
         Occurrence.objects.create(school=self.school, student=self.ana, description="Ocorrência da Ana", date=self.today)
         body = self._ics("resp")
         self.assertTrue(body.startswith("BEGIN:VCALENDAR\r\n") and body.endswith("END:VCALENDAR\r\n"))
-        self.assertIn("SUMMARY:Atividade de casa: Atividade de frações\, com vírgula\; e ponto e vírgula", body.replace("\r\n ", ""))
+        self.assertIn(r"SUMMARY:Atividade de casa: Atividade de frações\, com vírgula\; e ponto e vírgula", body.replace("\r\n ", ""))
         self.assertIn("Avaliação: Prova de frações", body.replace("\r\n ", ""))
         self.assertIn(f"DTSTART;VALUE=DATE:{self.today + timedelta(days=2):%Y%m%d}", body)
         self.assertNotIn("outra turma", body)          # mesmo alcance do calendário
@@ -33,6 +33,12 @@ class CalendarIcsTests(CalendarBase):
         for line in body.split("\r\n"):
             self.assertLessEqual(len(line.encode("utf-8")), 75, line)
         self.assertTrue(AuditLog.objects.filter(action="export", detail__startswith="Baixou a agenda").exists())
+
+    def test_line_breaks_inside_text_are_escaped(self):
+        from apps.school_calendar.views import _ics_text
+
+        self.assertEqual(_ics_text("linha 1\r\nlinha 2\nlinha 3"), r"linha 1\nlinha 2\nlinha 3")
+        self.assertNotIn("\n", _ics_text("a\rb\nc"))  # quebra crua no valor partiria a propriedade do .ics
 
     def test_link_on_calendar_and_login_required(self):
         url = reverse("school_calendar:calendar_ics")

@@ -530,8 +530,10 @@ ICS_KINDS = ("activity", "group_work", "evaluation", "school", "meeting")
 
 def _ics_text(value):
     """Escapa texto para o formato iCalendar (RFC 5545, seção 3.3.11)."""
-    return (str(value).replace("\\", "\\\\").replace(";", "\;").replace(",", "\,")
-            .replace("\r\n", "\n").replace("\n", "\n"))
+    # Quebra de linha vira "\n" literal (barra e n): sem isso, um texto com Enter quebrava o arquivo, porque a
+    # linha seguinte era lida como uma propriedade nova e inválida.
+    return (str(value).replace("\\", "\\\\").replace(";", r"\;").replace(",", r"\,")
+            .replace("\r\n", "\n").replace("\r", "\n").replace("\n", r"\n"))
 
 
 def _ics_fold(line):

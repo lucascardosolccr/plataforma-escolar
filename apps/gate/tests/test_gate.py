@@ -191,3 +191,13 @@ class IntegrationTests(GateBase):
         self.client.force_login(self.sec)
         self.assertContains(self.client.get(reverse("pending_center")), "Estudantes ativos sem carteirinha")
 
+    def test_simultaneous_reads_do_not_crash_or_notify_twice(self):
+        services.register(self.ana, "entrada", "barras", self.sec, card=self.card, when=at(7, 20))
+        # Simula a corrida: a conferência "já existe?" não vê o registro que a outra leitura acabou de gravar.
+        with mock.patch.object(services.GateEvent.objects, "filter") as check:
+            check.return_value.first.return_value = None
+            event, existed = services.register(self.ana, "entrada", "qr", self.sec, card=self.card, when=at(7, 21))
+        self.assertTrue(existed)
+        self.assertEqual((GateEvent.objects.count(), event.at.minute), (1, 20))
+        self.assertEqual(Notification.objects.filter(user=self.resp, kind="portaria").count(), 1)
+

@@ -139,9 +139,16 @@ class AnnouncementForm(forms.ModelForm):
                     "class_group"
                 ].queryset.filter(pk__in=acc._teacher_class_ids(user))
                 students = students.filter(pk__in=acc._teacher_student_ids(user))
+            elif acc._coord_scope(user) is not None:
+                scope = acc._coord_scope(user)
+                self.fields["class_group"].queryset = self.fields["class_group"].queryset.filter(pk__in=scope)
+                students = students.filter(enrollments__class_group_id__in=scope,
+                                           enrollments__status="ativo").distinct()
             self.fields["student"].queryset = students
         self.fields["scope"].required = False
         self.fields["scope"].initial = Announcement.Scope.INSTITUCIONAL
+        if user is not None and acc._coord_scope(user) is not None:
+            self.fields["scope"].initial = Announcement.Scope.TURMA
         self.fields["audience"].required = False
         self.fields["audience"].initial = Announcement.Audience.FAMILIA
 

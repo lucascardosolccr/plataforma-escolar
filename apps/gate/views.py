@@ -59,7 +59,7 @@ def _student_for(user, student_id):
 
 def _card_context(card):
     cg = services.active_class(card.student)
-    return {"card": card, "cg": cg, "qr": qr_svg(services.qr_payload(card), label=f"QR Code da carteirinha"),
+    return {"card": card, "cg": cg, "qr": qr_svg(services.qr_payload(card), label="QR Code da carteirinha"),
             "barcode": code128_svg(card.code), "expired": card.valid_until < timezone.localdate()}
 
 

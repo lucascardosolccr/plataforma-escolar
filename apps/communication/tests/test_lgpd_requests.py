@@ -83,3 +83,16 @@ class DataInventoryTests(CommunicationBase):
         self.assertContains(page, "?categoria=lgpd")
         form = self.client.get(reverse("communication:request_create") + "?categoria=lgpd").context["form"]
         self.assertEqual(form.initial["category"], "lgpd")
+
+
+class RequestResolutionTests(CommunicationBase):
+    def test_invalid_resolution_shows_what_is_saved_not_the_rejected_text(self):
+        req = ServiceRequest.objects.create(school=self.school, requester=self.resp, student=self.ana,
+                                            title="Atestado", description="x")
+        self.client.force_login(self.sec)
+        page = self.client.post(reverse("communication:request_detail", args=[req.pk]),
+                                {"status": "situacao-inexistente", "response": "Texto que não foi salvo"})
+        self.assertEqual(page.status_code, 200)  # antes: erro 500
+        self.assertNotContains(page, "Resposta da equipe</h3>")
+        req.refresh_from_db()
+        self.assertEqual((req.status, req.response), ("recebida", ""))

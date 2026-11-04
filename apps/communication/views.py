@@ -527,6 +527,10 @@ def request_detail(request, pk):
             # Redireciona depois de salvar: sem isso, atualizar a página
             # reenviava o formulário (auditoria e aviso à família em dobro).
             return redirect("communication:request_detail", pk=req.pk)
+        if request.method == "POST":
+            # O ModelForm copia os dados enviados para o objeto mesmo quando a validação falha: sem recarregar,
+            # a tela mostrava como "resposta da equipe" um texto não salvo, sem autor (e dava erro 500).
+            req.refresh_from_db()
     history = audit_trail(req).order_by("-created_at")[:50]
     return render(
         request,

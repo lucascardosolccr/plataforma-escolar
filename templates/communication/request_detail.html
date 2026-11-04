@@ -33,7 +33,7 @@
         <h3 class="h6 text-body-secondary text-uppercase">Resposta da equipe</h3>
         <div class="mb-1">{{ request_.response|linebreaks }}</div>
         <div class="text-body-secondary small">
-          {{ request_.responded_by.get_full_name|default:request_.responded_by.username }}
+          {% if request_.responded_by %}{{ request_.responded_by.get_full_name|default:request_.responded_by.username }}{% endif %}
           {{ request_.responded_at|date:"d/m/Y H:i" }}
         </div>
       {% endif %}

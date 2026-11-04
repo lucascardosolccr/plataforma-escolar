@@ -217,3 +217,25 @@ def register(student, kind, method, user, card=None, when=None):
         return GateEvent.objects.get(student=student, day=day, kind=kind), True
     _notify(event)
     return event, False
+
+
+def entered_but_absent(school, day, class_ids=None):
+    """Estudantes que passaram pela portaria no dia e estão com falta na chamada da turma.
+
+    Entrou na escola e não estava na sala: sinal de segurança (e de evasão dentro da escola) que a equipe
+    precisa ver no mesmo dia. A chegada nunca grava falta; só aparece aqui quem o professor marcou como falta
+    depois. Quem teve a saída registrada aparece com o horário, para a equipe julgar."""
+    from apps.pedagogy.models import AttendanceRecord
+
+    entries = GateEvent.objects.filter(school=school, day=day, kind=GateEvent.Kind.ENTRY, class_group__isnull=False)
+    if class_ids is not None:
+        entries = entries.filter(class_group_id__in=class_ids)
+    entries = {e.student_id: e for e in entries.select_related("student", "class_group")}
+    if not entries:
+        return []
+    absent = set(AttendanceRecord.objects.filter(date=day, student_id__in=entries, status=AttendanceRecord.Status.ABSENT)
+                 .values_list("student_id", "class_group_id"))
+    exits = {e.student_id: e for e in GateEvent.objects.filter(student_id__in=entries, day=day,
+                                                              kind=GateEvent.Kind.EXIT)}
+    return [{"entry": e, "exit": exits.get(sid)} for sid, e in sorted(entries.items(), key=lambda kv: kv[1].at)
+            if (sid, e.class_group_id) in absent]

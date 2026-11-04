@@ -258,6 +258,7 @@ def today(request):
                      "left": sum(1 for s in arrived if s.pk in exits)})
     return render(request, "gate/today.html", {
         "day": day, "rows": rows, "events": events, "cfg": cfg,
+        "mismatch": services.entered_but_absent(user.school, day, [c.pk for c in classes]),
         "totals": {"arrived": len(entries), "late": sum(1 for e in entries.values() if e.late),
                    "left": len(exits)},
         "prev": day - datetime.timedelta(days=1), "next": day + datetime.timedelta(days=1),

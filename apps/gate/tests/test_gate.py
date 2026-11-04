@@ -246,3 +246,16 @@ class RestrictedCoordinationGateTests(GateBase):
         self.client.force_login(self.coord)
         self.assertEqual(self.client.get(reverse("pedagogy:observation_edit", args=[mine.pk])).status_code, 200)
         self.assertEqual(self.client.get(reverse("pedagogy:observation_edit", args=[other.pk])).status_code, 403)
+
+
+class EnteredButAbsentTests(GateBase):
+    def test_gate_entry_with_absence_in_class_is_flagged(self):
+        services.register(self.ana, "entrada", "barras", self.sec, card=self.card, when=at(7, 20))
+        self.assertEqual(services.entered_but_absent(self.school, WED), [])  # a chegada marcou presente
+        AttendanceRecord.objects.filter(student=self.ana, date=WED).update(status="falta")  # o professor, depois
+        found = services.entered_but_absent(self.school, WED)
+        self.assertEqual([m["entry"].student for m in found], [self.ana])
+        self.client.force_login(self.direc)
+        self.assertContains(self.client.get(reverse("gate:today") + "?dia=2026-11-04"),
+                            "Entraram na escola e estão com falta na chamada")
+        self.assertEqual(services.entered_but_absent(self.school, WED, class_ids={self.turma_b.pk}), [])

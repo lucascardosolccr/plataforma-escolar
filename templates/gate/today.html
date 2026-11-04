@@ -15,6 +15,13 @@
   </div>
 </div>
 
+{% if mismatch %}
+<section class="card mb-3 gate-result is-error" aria-labelledby="h-mis"><div class="card-body">
+  <h2 id="h-mis" class="h6">Entraram na escola e estão com falta na chamada</h2>
+  <p class="small text-body-secondary">Passaram pela portaria, mas o professor registrou falta. Confira onde o estudante está e, se for engano, corrija a chamada.</p>
+  <ul class="list-unstyled mb-0">{% for m in mismatch %}<li class="py-1 border-bottom"><a href="{% url 'gate:history' m.entry.student.pk %}">{{ m.entry.student.full_name }}</a> · {{ m.entry.class_group.name }} · entrou às {{ m.entry.at|time:"H:i" }}{% if m.exit %} · saída registrada às {{ m.exit.at|time:"H:i" }}{% endif %}</li>{% endfor %}</ul>
+</div></section>
+{% endif %}
 <div class="card mb-3"><div class="table-responsive"><table class="table align-middle mb-0 table-stack">
   <thead><tr><th scope="col">Turma</th><th scope="col">Entrada</th><th scope="col" class="text-end">Chegaram</th><th scope="col">Atrasos</th><th scope="col">Ainda sem registro</th></tr></thead>
   <tbody>

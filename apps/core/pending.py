@@ -225,7 +225,17 @@ def _coordination(user):
         _item("Registros da coordenação com retorno vencido", CoordinationRecord.objects.filter(
             school=user.school, created_by=user, follow_up_on__lt=today).count(), reverse("coordination:records"),
             tone="info"),
-    ] + _support_team(user, today) + _cognitio(user)
+    ] + _support_team(user, today) + _cognitio(user) + _gate_mismatch(user, today)
+
+
+def _gate_mismatch(user, today):
+    """Entrou pela portaria e está com falta na chamada hoje (coordenação: só as turmas da designação)."""
+    from apps.coordination.scope import class_scope
+    from apps.gate.services import entered_but_absent
+
+    n = len(entered_but_absent(user.school, today, class_scope(user)))
+    return [_item("Entraram na escola e estão com falta na chamada", n, reverse("gate:today"),
+                  "Passaram pela portaria, mas o professor registrou falta: confira onde estão.")]
 
 
 def _active_search(user):

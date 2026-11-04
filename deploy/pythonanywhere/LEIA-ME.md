@@ -26,7 +26,10 @@ Foi escolhido entre as opções gratuitas conferidas em 04/11/2026:
   visita do dia, que demora uns segundos a mais. Backup e limpeza da LGPD viram rotina mensal (passo 8).
 - **Internet de saída restrita:** o aviso por e-mail provavelmente não funciona. Deixe desligado: as
   notificações continuam dentro da plataforma.
-- O endereço é do PythonAnywhere (`.pythonanywhere.com`). Domínio próprio só no plano pago.
+- O endereço é do PythonAnywhere (`.pythonanywhere.com`). Domínio próprio (`.com`, `.com.br`) não existe de graça:
+  o registro é pago todo ano, e o PythonAnywhere só aceita domínio próprio no plano pago. Consulta de
+  04/11/2026: `gestaoescolar.com` tem dono desde 2005; `gestaoescolar.com.br` (o Registro.br trata
+  `gestãoescolar.com.br` como o mesmo nome) tem dono desde 2018.
 
 ## Antes de começar: LGPD (leia com a direção)
 
@@ -55,8 +58,9 @@ algum deles entrar.
    EUA, use www.pythonanywhere.com.
 2. Clique em **Pricing & signup** e depois em **Create a Beginner account**. É o plano gratuito; não pede
    cartão.
-3. Escolha o **nome de usuário com cuidado**: ele vira o endereço. Por exemplo, `emefjoaocabral` vira
-   `emefjoaocabral.eu.pythonanywhere.com`.
+3. Escolha o **nome de usuário com cuidado**: ele vira o endereço. Por exemplo, `gestaoescolar` vira
+   `gestaoescolar.eu.pythonanywhere.com`. Se o nome já estiver em uso, tente uma variação (`gestaoescolarbr`,
+   o nome da escola).
 4. Use um e-mail institucional da escola, não o pessoal, e confirme o e-mail.
 
 ## Passo 3: enviar e descompactar o código

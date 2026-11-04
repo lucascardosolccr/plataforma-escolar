@@ -274,3 +274,19 @@ class WeeklyDigestTests(TrajectoryDataBase):
         self.assertFalse([q for q in ctx.captured_queries if q["sql"].startswith("UPDATE")])
         self.assertEqual(LearningAlert.objects.get(rule="trajetoria").updated_at, stamp)
 
+
+
+class SafeRedirectTests(TrajectoryDataBase):
+    def test_alert_review_never_redirects_outside_the_platform(self):
+        self.grades({self.ana: [8, 7, 6, 5, 4.5, 4, 3, 2], self.bia: [8] * 8})
+        generate_for_class(self.cg, self.today)
+        alert = LearningAlert.objects.get(rule="trajetoria")
+        self.login(self.prof)
+        url = reverse("cognitio:alert_review", args=[alert.pk])
+        for bad in ("//site-externo.example/phishing", "https://site-externo.example/", "/\\site-externo.example"):
+            r = self.client.post(url, {"decisao": "analisar", "next": bad})
+            self.assertEqual(r["Location"], reverse("cognitio:alerts"), bad)
+            r = self.client.post(url, {"decisao": "descartar", "next": bad})  # sem motivo: volta com erro
+            self.assertEqual(r["Location"], reverse("cognitio:alerts"), bad)
+        r = self.client.post(url, {"decisao": "analisar", "next": "/cognitio/alertas/?turma=1"})
+        self.assertEqual(r["Location"], "/cognitio/alertas/?turma=1")  # endereço da plataforma continua valendo

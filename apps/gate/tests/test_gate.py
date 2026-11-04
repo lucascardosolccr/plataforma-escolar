@@ -201,3 +201,20 @@ class IntegrationTests(GateBase):
         self.assertEqual((GateEvent.objects.count(), event.at.minute), (1, 20))
         self.assertEqual(Notification.objects.filter(user=self.resp, kind="portaria").count(), 1)
 
+
+
+class RestrictedCoordinationGateTests(GateBase):
+    coordenacao_restrita = True
+
+    def test_restricted_coordination_sees_only_students_of_the_designation(self):
+        from django.utils import timezone
+
+        from apps.coordination.models import CoordinatorAssignment
+
+        CoordinatorAssignment.objects.create(school=self.school, coordinator=self.coord,
+                                             starts_on=timezone.localdate()).class_groups.add(self.turma)
+        self.client.force_login(self.coord)
+        self.assertEqual(self.client.get(reverse("gate:history", args=[self.ana.pk])).status_code, 200)
+        self.assertEqual(self.client.get(reverse("gate:history", args=[self.bea.pk])).status_code, 403)
+        self.assertEqual(self.client.get(reverse("gate:card", args=[self.bea.pk])).status_code, 403)
+        self.assertEqual(self.client.get(reverse("gate:station")).status_code, 200)  # a portaria segue aberta

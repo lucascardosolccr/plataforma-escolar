@@ -51,7 +51,15 @@ def _family_can_see(user, student):
 
 
 def _student_for(user, student_id):
+    """Carteirinha e histórico: equipe da portaria (coordenação restrita só na designação), família e o
+    próprio estudante. A leitura na portaria vale para a escola toda: a pessoa está ali na frente."""
     student = get_object_or_404(Student, pk=student_id, school=user.school)
+    if user.role == Role.COORDENACAO.value:
+        from apps.coordination.scope import reaches_student
+
+        if reaches_student(user, student):
+            return student
+        raise PermissionDenied
     if user.role in STATION or _family_can_see(user, student):
         return student
     raise PermissionDenied

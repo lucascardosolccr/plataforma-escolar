@@ -32,3 +32,15 @@ def name_q(text, prefix=""):
     for term in (text or "")[:60].split()[:5]:
         q &= Q(**{f"{prefix}first_name__icontains": term}) | Q(**{f"{prefix}last_name__icontains": term})
     return q
+
+
+def safe_next(request, default):
+    """Destino ``next`` enviado no formulário, só se for desta plataforma; senão ``default`` (nome de rota ou
+    caminho). Começar com "/" não basta: "//outro-site" é endereço de outro site para o navegador."""
+    from django.utils.http import url_has_allowed_host_and_scheme
+
+    nxt = request.POST.get("next") or request.GET.get("next") or ""
+    if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()},
+                                               require_https=request.is_secure()):
+        return nxt
+    return default

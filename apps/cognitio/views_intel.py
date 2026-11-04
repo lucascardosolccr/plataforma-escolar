@@ -9,6 +9,7 @@ from django.views.decorators.http import require_POST
 
 from apps.academics.models import ClassGroup, Subject
 from apps.core.models import Role, create_audit_log
+from apps.core.params import safe_next
 from apps.curriculum.models import CurriculumItem
 
 from . import access, alerts, graph, predictive
@@ -221,7 +222,7 @@ def alert_review(request, pk):
     note = (request.POST.get("registro") or "").strip()[:400]
     if decision == "descartar" and not note:
         messages.error(request, "Para descartar, registre o motivo (ex.: a situação já foi resolvida em sala).")
-        return redirect(request.POST.get("next") or "cognitio:alerts")
+        return redirect(safe_next(request, "cognitio:alerts"))
     mapping = {"analisar": "analise", "descartar": "descartado", "resolvido": "resolvido"}
     if decision in mapping:
         alert.status = mapping[decision]
@@ -233,8 +234,7 @@ def alert_review(request, pk):
         messages.success(request, "Revisão registrada.")
     if decision == "intervir":
         return redirect(f"{_url('cognitio:intervention_create')}?alerta={alert.pk}")
-    nxt = request.POST.get("next", "")
-    return redirect(nxt if nxt.startswith("/") else "cognitio:alerts")
+    return redirect(safe_next(request, "cognitio:alerts"))
 
 
 def _url(name):

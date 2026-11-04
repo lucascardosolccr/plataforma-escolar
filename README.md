@@ -224,13 +224,23 @@ lado do projeto): visão geral, primeiro acesso, e o que cada perfil faz —
 professor, secretaria, coordenação, direção, administração e responsável —, com
 as rotinas de notas, frequência, comunicados, solicitações, painéis e relatórios.
 
-### 7.4 Publicar para a internet (opcional)
+### 7.4 Publicar para a internet sem custo
 
-A operação normal é **em rede local**, de custo zero. Expor à internet exige
-infraestrutura própria da escola (HTTPS, proxy reverso e liberação segura) —
-avalie a segurança antes. Nesse caso, ajuste `DJANGO_ALLOWED_HOSTS` e o
-`.env` conforme a seção 3. **Nunca** exponha o banco (`db.sqlite3`) nem a porta
-diretamente.
+Passo a passo completo em **`deploy/pythonanywhere/LEIA-ME.md`**:
+
+- **PythonAnywhere, conta gratuita (sem cartão):** endereço `https://SEUUSUARIO.eu.pythonanywhere.com`, com
+  HTTPS, sem depender do computador da escola. Renovação mensal com um clique, 512 MB de disco.
+  - `tools/empacotar_hospedagem.py` gera o pacote só com o código: banco, fotos, backups, chave e `.env` ficam
+    de fora.
+  - `deploy/pythonanywhere/instalar.sh`, `atualizar.sh` e `manutencao.sh` fazem a instalação, a atualização
+    (com backup) e a rotina mensal (backup e retenção da LGPD).
+  - `DJANGO_HOSPEDAGEM` faz as páginas de privacidade e de dados guardados dizerem onde os dados estão
+    (operadora e transferência internacional, arts. 33 e 39 da LGPD).
+- **Alternativa B, Tailscale Funnel:** o computador da escola ganha um endereço HTTPS público e os dados não
+  saem da escola; o computador precisa ficar ligado.
+
+**Nunca** exponha o banco (`db.sqlite3`) nem a porta 8000 diretamente, e nunca rode `seeddemo` num endereço
+público: as contas de demonstração têm senhas conhecidas.
 
 > Observação: o comando `manage.py runserver` é o servidor embutido do Django,
 > indicado para uso interno/escolar de baixo volume. Para maior volume de

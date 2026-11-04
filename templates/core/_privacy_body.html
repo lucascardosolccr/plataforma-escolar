@@ -31,7 +31,7 @@
 <section class="card mb-3" aria-labelledby="h-plat"><div class="card-body small">
   <h2 id="h-plat" class="h6">Como a plataforma trata os dados</h2>
   <ul class="mb-0">
-    <li>Funciona no servidor da escola, sem serviços pagos ou de terceiros, e não envia dados de estudantes a outras empresas.</li>
+    {% if hosting_provider %}<li>Fica hospedada em {{ hosting_provider }}, sem custo para a escola. A hospedagem guarda os dados em nome da escola e só para manter a plataforma no ar (operadora, art. 5º, VII, e art. 39). A plataforma não envia dados de estudantes a nenhuma outra empresa.</li>{% else %}<li>Funciona no servidor da escola, sem serviços pagos ou de terceiros, e não envia dados de estudantes a outras empresas.</li>{% endif %}
     <li>Cada família vê só os próprios filhos; cada profissional, só o que o perfil e o vínculo permitem. Consultas a dados sensíveis, exportações e alterações ficam na auditoria.</li>
     <li>Os indicadores pedagógicos servem para a equipe planejar apoio. Não usam laudo, saúde, cor, renda ou dado da família, e nenhuma decisão sobre o estudante é tomada só por eles.</li>
   </ul>

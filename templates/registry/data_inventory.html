@@ -44,7 +44,7 @@
   <section class="col-12" aria-labelledby="h-comp"><div class="card"><div class="card-body">
     <h2 id="h-comp" class="h6">Compartilhamento (art. 18, VII)</h2>
     <ul class="small mb-0">
-      <li>A plataforma não envia dados de estudantes a outras empresas nem a serviços externos: funciona no servidor da escola, sem serviços pagos ou de terceiros.</li>
+      {% if hosting_provider %}<li>Hospedagem: {{ hosting_provider }}. Ela guarda os dados em nome da escola, como operadora (art. 5º, VII, e art. 39), e não os usa para outro fim. Se os servidores ficam fora do Brasil, há transferência internacional (art. 33): a escola registra a base legal e informa as famílias nesta página e na de privacidade. Fora a hospedagem, a plataforma não envia dados de estudantes a outras empresas nem a serviços externos.</li>{% else %}<li>A plataforma não envia dados de estudantes a outras empresas nem a serviços externos: funciona no servidor da escola, sem serviços pagos ou de terceiros.</li>{% endif %}
       <li>Se a escola ligar o aviso por e-mail, quem escolheu essa preferência recebe um e-mail curto, sem nenhum dado do estudante, pelo provedor de e-mail configurado pela escola.</li>
       <li>Exportações em planilha feitas pela equipe ficam registradas na auditoria com quem exportou e quando. Envios a órgãos públicos (por exemplo, o Censo Escolar) acontecem fora da plataforma e devem ser informados pela escola.</li>
     </ul>

@@ -1,3 +1,5 @@
+from django.conf import settings
+
 from .models import Role
 
 
@@ -15,6 +17,7 @@ def platform_context(request):
         # Barra lateral recolhida (só ícones) lembrada por cookie, para a página
         # já vir no estado certo, sem "piscar".
         "sidebar_rail": request.COOKIES.get("sidebar") == "rail",
+        "hosting_provider": settings.HOSTING_PROVIDER,
     }
     if user.is_authenticated:
         ctx["user_role"] = user.role

@@ -77,6 +77,16 @@ class DataInventoryTests(CommunicationBase):
             meta = rel.related_model._meta
             self.assertNotEqual(str(meta.verbose_name), camel_case_to_spaces(meta.object_name), meta.label)
 
+    def test_inventory_names_the_external_host_and_the_international_transfer(self):
+        self.client.force_login(self.direc)
+        url = reverse("student_data_inventory", args=[self.ana.pk])
+        self.assertContains(self.client.get(url), "funciona no servidor da escola")
+        with self.settings(HOSTING_PROVIDER="PythonAnywhere, com servidores na União Europeia"):
+            page = self.client.get(url)
+        self.assertContains(page, "Hospedagem: PythonAnywhere")
+        self.assertContains(page, "transferência internacional (art. 33)")
+        self.assertNotContains(page, "funciona no servidor da escola")
+
     def test_family_profile_offers_the_request(self):
         self.client.force_login(self.resp)
         page = self.client.get(reverse("guardian_profile", args=[self.resp.pk]))

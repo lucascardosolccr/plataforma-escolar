@@ -41,3 +41,13 @@ class PrivacyContactTests(CommunicationBase):
         self.assertContains(self.client.get(reverse("pending_center")), "Informar o encarregado de dados")
         self._publish()
         self.assertNotContains(self.client.get(reverse("pending_center")), "Informar o encarregado de dados")
+
+    def test_privacy_page_names_the_external_host_when_there_is_one(self):
+        """Hospedada fora da escola, a página não pode dizer "servidor da escola" (04/11/2026)."""
+        self.client.logout()
+        self.assertContains(self.client.get(reverse("privacy")), "Funciona no servidor da escola")
+        with self.settings(HOSTING_PROVIDER="PythonAnywhere, com servidores na União Europeia"):
+            page = self.client.get(reverse("privacy"))
+        self.assertContains(page, "Fica hospedada em PythonAnywhere, com servidores na União Europeia")
+        self.assertContains(page, "operadora")
+        self.assertNotContains(page, "Funciona no servidor da escola")

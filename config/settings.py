@@ -10,6 +10,12 @@ Variáveis do ambiente (arquivo .env na raiz do projeto):
   DJANGO_SESSION_HOURS  horas sem uso até sair da conta (padrão 8)
   DJANGO_SESSION_KEEP   "1" mantém o login depois de fechar o navegador
   DJANGO_NOTIFY_EMAIL   "1" liga o aviso por e-mail (opcional; desligado por padrão)
+  DJANGO_SSL            "1" quando o endereço é HTTPS (cookies seguros, HSTS, origem confiável no CSRF)
+  DJANGO_SSL_REDIRECT   "0" desliga o redirecionamento para HTTPS do Django quando a hospedagem já força
+                        HTTPS (ex.: PythonAnywhere); padrão: igual a DJANGO_SSL
+  DJANGO_PROXY_SSL      "1" confia no cabeçalho X-Forwarded-Proto do proxy da hospedagem
+  DJANGO_DAILY_JOBS_BACKGROUND  "0" roda a rotina diária dentro da requisição (hospedagem sem threads)
+  DJANGO_HOSPEDAGEM     nome da hospedagem externa, se houver (aparece na página de privacidade)
   DJANGO_EMAIL_HOST, DJANGO_EMAIL_PORT, DJANGO_EMAIL_USER, DJANGO_EMAIL_PASSWORD,
   DJANGO_EMAIL_TLS ("1"), DJANGO_EMAIL_FROM   servidor SMTP da própria escola.
       Sem custo quando a escola usa uma conta de e-mail que já tem. O e-mail
@@ -44,7 +50,9 @@ def _secret_key() -> str:
 
     key_file = BASE_DIR / ".secret_key"
     if key_file.exists():
-        return key_file.read_text(encoding="utf-8").strip()
+        key = key_file.read_text(encoding="utf-8").strip()
+        if key:  # arquivo vazio (criado à mão ou cópia que falhou) gera chave nova em vez de derrubar o site
+            return key
     key = get_random_secret_key()
     key_file.write_text(key, encoding="utf-8")
     try:
@@ -185,12 +193,18 @@ X_FRAME_OPTIONS = "DENY"
 _SSL = os.environ.get("DJANGO_SSL", "0") == "1"
 
 if not DEBUG and _SSL:
-    SECURE_SSL_REDIRECT = True
+    # Atrás de um proxy que já força HTTPS, o redirecionamento do Django pode entrar em laço: desligável.
+    SECURE_SSL_REDIRECT = os.environ.get("DJANGO_SSL_REDIRECT", "1") == "1"
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = 31536000  # 1 ano
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+    # Formulários enviados de https://host: sem isto, atrás de proxy o Django pode ver a requisição como
+    # http e recusar todo POST (inclusive o login) na checagem de origem do CSRF.
+    CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS if h not in ("127.0.0.1", "localhost")]
+    if os.environ.get("DJANGO_PROXY_SSL", "0") == "1":
+        SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Nível do Django -> cor do alerta do Bootstrap. O mapa anterior estava
 # deslocado um nível: sucesso aparecia amarelo e aviso aparecia como erro.
@@ -202,13 +216,19 @@ MESSAGE_TAGS = {
     40: "danger",  # ERROR
 }
 
+# Rotina diária (lembretes, alertas do EIA, resumo semanal) numa thread, fora da primeira requisição do dia.
+# Os testes desligam (conftest.py): o banco de teste é transacional e a thread não enxergaria os dados.
+DAILY_JOBS_IN_BACKGROUND = os.environ.get("DJANGO_DAILY_JOBS_BACKGROUND", "1") == "1"
+
+# Onde a plataforma está hospedada, para a página de privacidade e o inventário de dados dizerem a verdade.
+# Vazio: servidor da própria escola. Preenchido (ex.: "PythonAnywhere, com servidores na União Europeia"):
+# as páginas dizem que a hospedagem guarda os dados em nome da escola, como operadora (LGPD, art. 5º, VII).
+HOSTING_PROVIDER = os.environ.get("DJANGO_HOSPEDAGEM", "").strip()
+
 # --- Aviso por e-mail (opcional) ------------------------------------------
 # Desligado por padrão: as notificações ficam na plataforma. Ligado, manda
 # um e-mail genérico ("há notificação nova") a quem escolheu e-mail como
 # preferência de comunicação. Sem servidor configurado, nada é enviado.
-# Rotina diária (lembretes, alertas do EIA, resumo semanal) numa thread, fora da primeira requisição do dia.
-# Os testes desligam (conftest.py): o banco de teste é transacional e a thread não enxergaria os dados.
-DAILY_JOBS_IN_BACKGROUND = True
 
 NOTIFY_BY_EMAIL = os.environ.get("DJANGO_NOTIFY_EMAIL", "0") == "1" and bool(os.environ.get("DJANGO_EMAIL_HOST"))
 if NOTIFY_BY_EMAIL:

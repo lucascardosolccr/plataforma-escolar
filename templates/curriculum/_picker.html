@@ -2,7 +2,7 @@
 Seleção de habilidades e objetivos curriculares. Recebe ``field`` (o campo
 ``curriculum`` de um formulário com CurriculumFormMixin). Grupos recolhíveis
 por componente e ano, com filtro de texto (ds.js, data-filter-list).
-{% endcomment %}
+{% endcomment %}{% load curriculum_picker %}
 <div class="col-12">
   <fieldset class="curriculum-picker"{% if field.help_text %} aria-describedby="{{ field.auto_id }}_ajuda"{% endif %}>
     <legend class="form-label fs-6">{{ field.label }}</legend>
@@ -11,10 +11,10 @@ por componente e ano, com filtro de texto (ds.js, data-filter-list).
     <label for="{{ field.auto_id }}_filtro" class="visually-hidden">Filtrar habilidades por código ou palavra</label>
     <input type="search" id="{{ field.auto_id }}_filtro" class="form-control form-control-sm mb-2" placeholder="Filtrar por código ou palavra (ex.: EF06MA03, frações)" data-filter-list="{{ field.auto_id }}_lista">
     <div id="{{ field.auto_id }}_lista" class="curriculum-groups">
-      {% for label, items in field.form.curriculum_groups %}
-      <details class="curriculum-group"{% if forloop.first and label == "Já selecionados" %} open{% endif %}>
-        <summary>{{ label }} <span class="text-secondary small">({{ items|length }})</span></summary>
-        <ul class="list-unstyled mb-0">
+      {% for label, items, lazy_url, count in field.form|picker_rows %}
+      <details class="curriculum-group"{% if forloop.first and label == "Já selecionados" %} open{% endif %}{% if lazy_url %} data-lazy-group="{{ lazy_url }}&amp;g={{ forloop.counter }}"{% endif %}>
+        <summary>{{ label }} <span class="text-secondary small">({{ count }})</span></summary>
+        <ul class="list-unstyled mb-0">{% if lazy_url %}<li class="text-body-secondary small js-hide">Sem JavaScript, digite os códigos em "Outros códigos".</li>{% endif %}
           {% for item in items %}
           <li class="form-check" data-filter-item>
             <input class="form-check-input" type="checkbox" name="{{ field.html_name }}" value="{{ item.pk }}" id="cur-{{ forloop.parentloop.counter }}-{{ item.pk }}"{% if item.pk|stringformat:"s" in field.form.curriculum_selected %} checked{% endif %}>

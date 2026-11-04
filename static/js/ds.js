@@ -381,10 +381,44 @@
    * Grupos recolhidos abrem quando têm resultado. Sem JavaScript, a lista
    * aparece inteira. */
   function plain(t) { return (t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase(); }
+
+  /* Grupos do seletor de habilidades que chegam vazios (data-lazy-group): os itens são buscados ao abrir.
+   * Grupo com algo já marcado vem sempre completo do servidor. */
+  var lazyLoads = new WeakMap();
+  function loadGroup(d) {
+    if (lazyLoads.has(d)) return lazyLoads.get(d);
+    var ul = d.querySelector("ul");
+    var p = fetch(d.getAttribute("data-lazy-group"), { credentials: "same-origin" })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then(function (html) { ul.innerHTML = html; d.removeAttribute("data-lazy-group"); })
+      .catch(function () {  // sai do filtro (sem laço de tentativas); reabrir o grupo tenta de novo
+        lazyLoads.delete(d);
+        d.setAttribute("data-lazy-failed", d.getAttribute("data-lazy-group"));
+        d.removeAttribute("data-lazy-group");
+        ul.innerHTML = '<li class="text-danger small">Não foi possível carregar. Feche e abra o grupo de novo.</li>';
+      });
+    lazyLoads.set(d, p);
+    return p;
+  }
+  $$("[data-lazy-group]").forEach(function (d) {
+    d.addEventListener("toggle", function () {
+      if (d.open && d.hasAttribute("data-lazy-failed")) {
+        d.setAttribute("data-lazy-group", d.getAttribute("data-lazy-failed"));
+        d.removeAttribute("data-lazy-failed");
+      }
+      if (d.open && d.hasAttribute("data-lazy-group")) loadGroup(d);
+    });
+  });
+
   $$("[data-filter-list]").forEach(function (input) {
     var list = document.getElementById(input.getAttribute("data-filter-list"));
     if (!list) return;
     input.addEventListener("input", function () {
+      var pending = $$("[data-lazy-group]", list);
+      if (input.value.trim() && pending.length) {  // filtrar precisa de todos os itens: carrega e filtra depois
+        Promise.all(pending.map(loadGroup)).then(function () { input.dispatchEvent(new Event("input")); });
+        return;
+      }
       var q = plain(input.value.trim());
       $$("[data-filter-item]", list).forEach(function (li) {
         li.hidden = q !== "" && plain(li.textContent).indexOf(q) === -1;

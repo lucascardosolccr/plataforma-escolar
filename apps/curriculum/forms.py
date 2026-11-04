@@ -10,6 +10,9 @@ from .models import COMPONENTS, CurriculumItem, LearningEvidence
 from .services import picker_groups
 
 CODE_RE = re.compile(r"[A-Za-z0-9.\-]+")
+#: Acima deste total de itens (professor de muitos componentes e anos, sem turma escolhida), os grupos sem nada
+#: marcado chegam vazios e são carregados ao abrir: o formulário passava de 175 KB.
+LAZY_MIN = 150
 
 
 class CurriculumFormMixin:
@@ -35,11 +38,11 @@ class CurriculumFormMixin:
                            "trabalhado e o que falta.")
         self.curriculum_school = user.school
         self.curriculum_focus = self._curriculum_focus_class()
-        self.curriculum_groups = picker_groups(user, selected, self.curriculum_focus)
         if self.is_bound:
             self.curriculum_selected = set(self.data.getlist("curriculum")) if hasattr(self.data, "getlist") else set()
         else:
             self.curriculum_selected = {str(pk) for pk in selected}
+        self.curriculum_groups = self._picker(user, selected)
         self.fields["curriculum_codes"] = forms.CharField(
             required=False, label="Outros códigos (BNCC ou da escola)", max_length=300,
             help_text="Separados por vírgula. Ex.: EF67EF01, EF69LP05")
@@ -49,7 +52,26 @@ class CurriculumFormMixin:
         if hasattr(self, "curriculum_groups"):
             selected = [int(s) for s in self.curriculum_selected if str(s).isdigit()]
             self.curriculum_focus = self._curriculum_focus_class()
-            self.curriculum_groups = picker_groups(user, selected, self.curriculum_focus)
+            self.curriculum_groups = self._picker(user, selected)
+
+    def _picker(self, user, selected):
+        """[(rótulo, itens)], como sempre; os grupos sob demanda vêm sem itens e ficam em
+        ``self.curriculum_lazy`` = {rótulo: (endereço, quantidade)}. Grupo com algo marcado vem sempre
+        completo: carregar sob demanda não pode fazer ninguém perder uma habilidade já escolhida."""
+        from urllib.parse import urlencode
+
+        from django.urls import reverse
+
+        groups = picker_groups(user, selected, self.curriculum_focus, with_keys=True)
+        chosen = {str(s) for s in selected} | set(self.curriculum_selected)
+        big = not self.curriculum_focus and sum(len(items) for _, items, _ in groups) > LAZY_MIN
+        out, self.curriculum_lazy = [], {}
+        for label, items, key in groups:
+            if big and key is not None and not any(str(i.pk) in chosen for i in items):
+                self.curriculum_lazy[label] = (reverse("curriculum:picker_group") + "?" + urlencode(key), len(items))
+                items = []
+            out.append((label, items))
+        return out
 
     def _curriculum_focus_class(self):
         """Turma já definida no formulário (dados enviados, instância ou valor inicial), ou None."""

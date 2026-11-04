@@ -1,0 +1,4 @@
+{% for item in items %}<li class="form-check" data-filter-item>
+  <input class="form-check-input" type="checkbox" name="{{ name }}" value="{{ item.pk }}" id="cur-{{ group }}-{{ item.pk }}">
+  <label class="form-check-label" for="cur-{{ group }}-{{ item.pk }}"><strong>{{ item.code }}</strong> {{ item.text }}</label>
+</li>{% empty %}<li class="text-body-secondary small">Nenhum item neste grupo.</li>{% endfor %}

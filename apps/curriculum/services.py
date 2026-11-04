@@ -61,7 +61,13 @@ PICKER_SOURCES = [
 ]
 
 
-def picker_groups(user, selected=(), focus_class=None):
+def group_items(school, comp, year, kind):
+    """Itens de um grupo do seletor (mesma regra de ``picker_groups``), para a carga sob demanda."""
+    items = CurriculumItem.for_pair(school, comp, None).filter(kind=kind).order_by("code")
+    return [i for i in items if not year or year in i.year_list or not i.year_list]
+
+
+def picker_groups(user, selected=(), focus_class=None, with_keys=False):
     """Grupos de itens para marcar no formulário (atividade, prova, plano).
 
     Para o professor, um grupo por par turma+disciplina com as habilidades do
@@ -94,16 +100,16 @@ def picker_groups(user, selected=(), focus_class=None):
         for kind, suffix in PICKER_SOURCES:
             part = [i for i in items if i.kind == kind]
             if part:
-                groups.append((label + suffix, part))
+                groups.append((label + suffix, part, {"comp": comp, "year": year or "", "kind": kind}))
                 used |= {i.pk for i in part}
     general = list(CurriculumItem.objects.filter(kind=CurriculumItem.Kind.GENERAL, active=True,
                                                  school__isnull=True).order_by("code"))
-    groups.append(("Competências gerais da BNCC", general))
+    groups.append(("Competências gerais da BNCC", general, None))
     used |= {i.pk for i in general}
     extra = [i for i in CurriculumItem.objects.filter(pk__in=selected).order_by("code") if i.pk not in used]
     if extra:
-        groups.insert(0, ("Já selecionados", extra))
-    return groups
+        groups.insert(0, ("Já selecionados", extra, None))
+    return groups if with_keys else [(label, items) for label, items, _key in groups]
 
 
 def coverage(class_group, subject, today=None):

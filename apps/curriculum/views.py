@@ -299,3 +299,17 @@ def references(request):
         "nature_choices": NormativeReference.Nature.choices, "topic_choices": [(t, t) for t in topics],
         "filtered": bool(nature or topic),
     })
+
+
+def picker_group(request):
+    """Itens de um grupo do seletor de habilidades, carregados quando a pessoa abre o grupo.
+
+    O catálogo é público (BNCC e itens da própria escola); só a equipe usa o seletor."""
+    user = request.user
+    if not user.is_staff_role:
+        raise PermissionDenied
+    comp, kind = request.GET.get("comp", ""), request.GET.get("kind", "")
+    year = int(request.GET["year"]) if (request.GET.get("year") or "").isdigit() else None
+    items = services.group_items(user.school, comp, year, kind) if comp and kind else []
+    return render(request, "curriculum/_picker_items.html", {
+        "items": items, "name": "curriculum", "group": (request.GET.get("g") or "0")[:4]})

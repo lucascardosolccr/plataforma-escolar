@@ -330,6 +330,8 @@ def student_edit(request, student_id):
     if not can_manage_registry(request.user):
         raise PermissionDenied
     student = get_object_or_404(Student, pk=student_id, school=request.user.school)
+    if not can_view_student(request.user, student):  # coordenação restrita: só a designação (como na ficha)
+        raise PermissionDenied
     form = StudentForm(
         request.POST or None, request.FILES or None, instance=student, school=request.user.school
     )

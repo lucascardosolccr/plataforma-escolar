@@ -218,3 +218,31 @@ class RestrictedCoordinationGateTests(GateBase):
         self.assertEqual(self.client.get(reverse("gate:history", args=[self.bea.pk])).status_code, 403)
         self.assertEqual(self.client.get(reverse("gate:card", args=[self.bea.pk])).status_code, 403)
         self.assertEqual(self.client.get(reverse("gate:station")).status_code, 200)  # a portaria segue aberta
+
+    def test_restricted_coordination_cannot_edit_a_student_outside_the_designation(self):
+        from django.utils import timezone
+
+        from apps.coordination.models import CoordinatorAssignment
+
+        CoordinatorAssignment.objects.create(school=self.school, coordinator=self.coord,
+                                             starts_on=timezone.localdate()).class_groups.add(self.turma)
+        self.client.force_login(self.coord)
+        self.assertEqual(self.client.get(reverse("student_edit", args=[self.bea.pk])).status_code, 403)
+        self.assertEqual(self.client.post(reverse("student_edit", args=[self.bea.pk]),
+                                          {"first_name": "Alterada"}).status_code, 403)
+
+    def test_restricted_coordination_cannot_edit_observations_outside_the_designation(self):
+        from django.utils import timezone
+
+        from apps.coordination.models import CoordinatorAssignment
+        from apps.pedagogy.models import PedagogicalObservation
+
+        CoordinatorAssignment.objects.create(school=self.school, coordinator=self.coord,
+                                             starts_on=timezone.localdate()).class_groups.add(self.turma)
+        mine = PedagogicalObservation.objects.create(school=self.school, student=self.ana, teacher=self.prof,
+                                                     subject=self.mat, content="Frações")
+        other = PedagogicalObservation.objects.create(school=self.school, student=self.bea, teacher=self.prof,
+                                                      subject=self.mat, content="Leitura")
+        self.client.force_login(self.coord)
+        self.assertEqual(self.client.get(reverse("pedagogy:observation_edit", args=[mine.pk])).status_code, 200)
+        self.assertEqual(self.client.get(reverse("pedagogy:observation_edit", args=[other.pk])).status_code, 403)

@@ -2462,7 +2462,9 @@ def observation_edit(request, pk):
     obs = get_object_or_404(
         PedagogicalObservation.objects.select_related("student"), pk=pk, school=user.school
     )
-    allowed = user.role == Role.COORDENACAO.value or (
+    # Coordenação só na designação (como na lista e na ficha); antes, qualquer coordenação editava qualquer
+    # observação da escola. Achado pela auditoria automática de escopo de 04/11/2026.
+    allowed = (user.role == Role.COORDENACAO.value and acc.can_manage_observations(user, obs.student)) or (
         user.role == Role.PROFESSOR.value and obs.teacher_id == user.pk
     )
     acc.require(allowed)

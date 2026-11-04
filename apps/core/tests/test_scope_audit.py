@@ -52,3 +52,28 @@ class ScopeAuditTests(CommunicationBase):
                     leaks.append(f"{name} {url}")
         self.assertGreater(checked, 15)  # a auditoria de fato percorreu as rotas
         self.assertEqual(leaks, [], "rotas que abrem fora da designação da coordenação")
+
+
+class TeacherAndFamilyScopeAuditTests(CommunicationBase):
+    """Professor só nas turmas em que leciona; família só nos filhos com vínculo aprovado."""
+
+    def _leaks(self, user, student, class_group):
+        self.client.force_login(user)
+        leaks = []
+        for name, params in _routes():
+            for key, outside in (("student_id", student.pk), ("class_id", class_group.pk)):
+                if params != {key} or name in ALLOWED:
+                    continue
+                try:
+                    url = reverse(name, kwargs={key: outside})
+                except NoReverseMatch:
+                    continue
+                if not any(part in url for part in SKIP_PARTS) and self.client.get(url).status_code == 200:
+                    leaks.append(f"{name} {url}")
+        return leaks
+
+    def test_teacher_routes_stay_in_own_classes(self):
+        self.assertEqual(self._leaks(self.prof, self.bea, self.turma_b), [])
+
+    def test_family_routes_stay_with_own_children(self):
+        self.assertEqual(self._leaks(self.resp, self.bea, self.turma_b), [])

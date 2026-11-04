@@ -71,6 +71,7 @@ MIN_ATT_RECORDS = 10
 MIN_PEERS = 5
 MAX_PROJECTION_DAYS = 60  # projetar além disso com poucas notas é extrapolação, não tendência
 OCCURRENCES = 2
+LATE_ARRIVALS, LATE_WINDOW = 3, 30  # regra da escola (portaria), não um corte da literatura
 MIN_DELIVERY, MIN_REGISTERED = 0.60, 3
 
 INDICATORS = {
@@ -78,6 +79,7 @@ INDICATORS = {
     "comportamento": "Comportamento",
     "desempenho": "Desempenho",
     "entregas": "Entregas",
+    "pontualidade": "Atrasos na entrada",
     "trajetoria": "Trajetória em queda",
     "dupla_discrepancia": "Nível e ritmo abaixo da turma",
 }
@@ -362,6 +364,12 @@ def class_overview(class_group, start, end, today=None, *, behavior=True, studen
         for sid in Occurrence.objects.filter(student_id__in=ids, date__gte=start, date__lte=end) \
                 .values_list("student_id", flat=True):
             occ[sid] += 1
+    from apps.gate.models import GateEvent
+
+    late = defaultdict(int)  # atrasos registrados na portaria nos últimos LATE_WINDOW dias até o fim do período
+    for sid in GateEvent.objects.filter(student_id__in=ids, kind="entrada", late=True, day__lte=end,
+                                        day__gt=end - timedelta(days=LATE_WINDOW)).values_list("student_id", flat=True):
+        late[sid] += 1
     rows, subjects = [], {}
     for sid in ids:
         if sid not in people:
@@ -393,6 +401,7 @@ def class_overview(class_group, start, end, today=None, *, behavior=True, studen
             "delivery": {"delivered": delivered, "registered": len(st),
                          "rate": delivered / len(st) if st else None},
             "occurrences": occ.get(sid, 0) if behavior else None,
+            "late_arrivals": late.get(sid, 0),
         }
         rows.append(row)
     _dual_discrepancy(rows)
@@ -439,6 +448,9 @@ def indicators(row, thresholds=None):
     if d["rate"] is not None and d["registered"] >= MIN_REGISTERED and d["rate"] < th["delivery"]:
         out.append({"key": "entregas", "level": "atencao",
                     "detail": f"{d['delivered']} de {d['registered']} atividades entregues."})
+    if row.get("late_arrivals", 0) >= LATE_ARRIVALS:
+        out.append({"key": "pontualidade", "level": "atencao",
+                    "detail": f"{row['late_arrivals']} chegadas com atraso na portaria nos últimos {LATE_WINDOW} dias."})
     tested = [s for s in row["subjects"].values() if s["trend"] != "insuficiente"]
     alpha = MK_ALPHA / max(len(tested), 1)  # Bonferroni pelo número de disciplinas testadas
     # O CUSUM por disciplina (poucas notas) fica só na tela; no indicador, a queda confirmada e corrigida.

@@ -42,12 +42,15 @@ EVENTS = {
     "limite_faltas": ("Faltas perto do limite", K.ATTENDANCE, True),
     "ocorrencia": ("Ocorrência registrada", K.OCCURRENCE, True),
     "observacao": ("Observação pedagógica compartilhada", K.OBSERVATION, True),
+    "entrada_escola": ("Chegada à escola registrada na portaria (carteirinha)", K.GATE, True),
+    "atraso_entrada": ("Chegada com atraso, além da tolerância do horário de entrada", K.ATTENDANCE, True),
+    "saida_escola": ("Saída da escola registrada na portaria", K.GATE, True),
 }
 #: Tipos que a família não pode silenciar (segurança e vínculo).
 ESSENTIAL_KINDS = {K.OCCURRENCE, K.LINK, K.REGISTRATION}
 #: Tipos que aparecem nas preferências pessoais.
 MUTABLE_KINDS = [K.EVALUATION, K.GRADE, K.ACTIVITY, K.EXAM, K.ATTENDANCE, K.OBSERVATION, K.ANNOUNCEMENT, K.MENU,
-                 K.CALENDAR, K.MESSAGE, K.EIA]
+                 K.CALENDAR, K.MESSAGE, K.EIA, K.GATE]
 
 
 def event_enabled(school, key):

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load static ui %}
+{% block title %}Carteirinha — {{ student.full_name }} — Plataforma Escolar{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/gate.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-head d-print-none">
+  <div>
+    <span class="eyebrow">Carteirinha do estudante</span>
+    <h1>{{ student.full_name }}</h1>
+    <p>Na entrada da escola, a carteirinha é lida de três formas: QR Code, código de barras ou o código único digitado.{% if not is_staff %} Você também pode mostrar esta tela no celular.{% endif %}</p>
+  </div>
+  <div class="page-actions">
+    {% if card %}<button type="button" class="btn btn-outline-secondary" data-print>{% icon "printer" %}Imprimir</button>{% endif %}
+    <a class="btn btn-outline-secondary" href="{% url 'gate:history' student.pk %}">{% icon "clock" %}Entradas e saídas</a>
+  </div>
+</div>
+
+{% if card %}
+  {% if expired %}<div class="callout mb-3 d-print-none">{% icon "info" %}<div>Esta carteirinha venceu em {{ card.valid_until|date:"d/m/Y" }}. Ela ainda é reconhecida, mas peça uma nova à secretaria.</div></div>{% endif %}
+  {% include "gate/_card.html" %}
+  <p class="small text-body-secondary mt-3 d-print-none">Emitida em {{ card.issued_at|date:"d/m/Y" }}. Imprima em tamanho real (100%), recorte a frente e o verso, cole um no outro e plastifique.</p>
+{% else %}
+  <div class="empty-state py-5">{% icon "id-card" %}<strong>Ainda sem carteirinha</strong><span>{% if can_issue %}Emita abaixo.{% else %}A secretaria da escola emite a carteirinha.{% endif %}</span></div>
+{% endif %}
+
+{% if can_issue %}
+<section class="card mt-3 d-print-none" aria-labelledby="h-emit"><div class="card-body">
+  <h2 id="h-emit" class="h6">{% if card %}Segunda via{% else %}Emitir carteirinha{% endif %}</h2>
+  <form method="post" action="{% url 'gate:card_issue' student.pk %}" class="row g-2 align-items-end">{% csrf_token %}
+    {% if card %}<div class="col-sm-8"><label class="form-label" for="motivo">Motivo</label><input class="form-control" id="motivo" name="motivo" maxlength="200" required placeholder="Perda, dano, foto nova…"></div>{% endif %}
+    <div class="col-sm-4"><button class="btn {% if card %}btn-outline-danger{% else %}btn-primary{% endif %}" type="submit"{% if card %} data-confirm="A carteirinha atual deixa de valer na hora: se alguém a apresentar, a portaria recusa e registra." data-confirm-title="Emitir segunda via?" data-confirm-ok="Emitir"{% endif %}>{% if card %}Emitir segunda via{% else %}Emitir{% endif %}</button></div>
+  </form>
+  {% if revoked %}<p class="small text-body-secondary mt-2 mb-0">Canceladas: {% for r in revoked %}{{ r.display_code }} em {{ r.revoked_at|date:"d/m/Y" }} ({{ r.revoked_reason }}){% if not forloop.last %}; {% endif %}{% endfor %}.</p>{% endif %}
+</div></section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Entradas e saídas — {{ student.full_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Portaria</span>
+    <h1>Entradas e saídas de {{ student.full_name }}</h1>
+    <p>Nos últimos 30 dias: {{ entries_30 }} entrada{{ entries_30|pluralize }} registrada{{ entries_30|pluralize }}, {{ late_30 }} com atraso.</p>
+  </div>
+  <div class="page-actions"><a class="btn btn-outline-secondary" href="{% url 'gate:card' student.pk %}">{% icon "id-card" %}Carteirinha</a></div>
+</div>
+<div class="card"><div class="table-responsive"><table class="table align-middle mb-0 table-stack">
+  <thead><tr><th scope="col">Dia</th><th scope="col">Registro</th><th scope="col">Horário</th><th scope="col">Situação</th>{% if is_staff %}<th scope="col">Forma</th>{% endif %}</tr></thead>
+  <tbody>
+    {% for e in events %}<tr>
+      <td data-label="Dia">{{ e.day|date:"D, d/m/Y" }}</td>
+      <td data-label="Registro">{{ e.get_kind_display }}</td>
+      <td data-label="Horário">{{ e.at|time:"H:i" }}</td>
+      <td data-label="Situação">{% if e.late %}<span class="text-warning fw-semibold">Atraso de {{ e.minutes_late }} min</span> (entrada às {{ e.expected|time:"H:i" }}){% elif e.kind == "entrada" %}No horário{% else %}—{% endif %}</td>
+      {% if is_staff %}<td data-label="Forma">{{ e.get_method_display }}</td>{% endif %}
+    </tr>{% empty %}<tr><td colspan="5" class="text-body-secondary">Nenhum registro de portaria ainda.</td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+{% endblock %}

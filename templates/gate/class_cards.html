@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Carteirinhas — {{ cg.name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'gate:cards' %}" class="back-link">{% icon "arrow-left" %}Carteirinhas</a>
+<div class="page-head">
+  <div>
+    <h1>Carteirinhas de {{ cg.name }}</h1>
+    <p>{{ rows|length }} estudante{{ rows|length|pluralize }}; {{ missing }} sem carteirinha.</p>
+  </div>
+  <div class="page-actions">
+    {% if missing %}<form method="post">{% csrf_token %}<button class="btn btn-primary" type="submit">{% icon "plus" %}Emitir as {{ missing }} que faltam</button></form>{% endif %}
+    <a class="btn btn-outline-secondary" href="?imprimir=1">{% icon "printer" %}Imprimir a turma</a>
+  </div>
+</div>
+<div class="card"><div class="table-responsive"><table class="table align-middle mb-0 table-stack">
+  <thead><tr><th scope="col">Estudante</th><th scope="col">Carteirinha</th><th scope="col">Foto</th><th scope="col"><span class="visually-hidden">Ações</span></th></tr></thead>
+  <tbody>
+    {% for r in rows %}<tr>
+      <th scope="row" data-label="Estudante">{{ r.student.full_name }}</th>
+      <td data-label="Carteirinha">{% if r.card %}<code>{{ r.card.display_code }}</code> · até {{ r.card.valid_until|date:"d/m/Y" }}{% else %}<span class="text-body-secondary">não emitida</span>{% endif %}</td>
+      <td data-label="Foto">{% if r.student.photo %}sim{% else %}<span class="text-warning">sem foto</span>{% endif %}</td>
+      <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{% url 'gate:card' r.student.pk %}">Abrir</a></td>
+    </tr>{% endfor %}
+  </tbody>
+</table></div></div>
+<p class="small text-body-secondary mt-2">Sem foto, a carteirinha sai com as iniciais e a portaria não tem como conferir o rosto: vale cadastrar a foto antes de imprimir.</p>
+{% endblock %}

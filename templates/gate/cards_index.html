@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Carteirinhas — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Carteirinhas</h1>
+    <p>Emita e imprima as carteirinhas por turma. Cada uma tem QR Code, código de barras e um código único, lidos na <a href="{% url 'gate:station' %}">portaria</a>.</p>
+  </div>
+</div>
+<div class="card"><div class="table-responsive"><table class="table align-middle mb-0 table-stack">
+  <thead><tr><th scope="col">Turma</th><th scope="col" class="text-end">Estudantes</th><th scope="col" class="text-end">Com carteirinha</th><th scope="col"><span class="visually-hidden">Ações</span></th></tr></thead>
+  <tbody>
+    {% for r in rows %}<tr><th scope="row" data-label="Turma">{{ r.cg.name }}</th><td data-label="Estudantes" class="text-end">{{ r.total }}</td><td data-label="Com carteirinha" class="text-end">{{ r.with_card }}{% if r.missing %} <span class="chip chip-state text-warning">faltam {{ r.missing }}</span>{% endif %}</td><td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{% url 'gate:class_cards' r.cg.pk %}">Abrir</a></td></tr>
+    {% empty %}<tr><td colspan="4" class="text-body-secondary">Nenhuma turma no ano letivo atual.</td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+{% endblock %}

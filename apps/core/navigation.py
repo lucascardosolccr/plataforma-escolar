@@ -112,6 +112,12 @@ ITEMS = {
                            ("student_import", "student_photo_batch"), "Planilha Excel e fotos em lote"),
     "registration_cfg": Item("Cadastro pelas famílias", "registration_settings", "sliders-horizontal",
                              ("registration_settings",), "O que a família pode cadastrar"),
+    "gate_station": Item("Portaria", "gate:station", "id-card", ("gate:station", "gate:today", "gate:settings"),
+                         "Entrada e saída com a carteirinha"),
+    "gate_cards": Item("Carteirinhas", "gate:cards", "id-card", ("gate:cards", "gate:class_cards"),
+                       "Emitir e imprimir por turma"),
+    "gate_mine": Item("Carteirinha e entradas", "gate:mine", "id-card", ("gate:mine", "gate:card", "gate:history"),
+                      "Carteirinha digital e horários de chegada"),
     "privacy_cfg": Item("Privacidade e encarregado", "privacy_edit", "shield", ("privacy",),
                         "Controlador e encarregado de dados (LGPD, art. 41)"),
     "staff_links": Item("Vínculos", "link_list", "link", ("link_",),
@@ -251,7 +257,7 @@ LAYOUT = {
     RESPONSAVEL: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Acompanhamento", ["children", "fam_diary", "fam_activities", "fam_works", "fam_exam_prep", "fam_grades",
-                            "fam_attendance"]),
+                            "fam_attendance", "gate_mine"]),
         ("Escola", ["threads_family", "announcements", "authorizations", "polls", "requests", "meetings",
                     "notifications"]),
         ("Secretaria", ["fam_applications", "justify", "links", "fam_support"]),
@@ -259,7 +265,8 @@ LAYOUT = {
     ],
     ESTUDANTE: [
         (None, ["home", "calendar", "schedule", "menu", "my_dashboard"]),
-        ("Meus estudos", ["fam_diary", "my_activities", "my_works", "my_exam_prep", "my_grades", "my_attendance"]),
+        ("Meus estudos", ["fam_diary", "my_activities", "my_works", "my_exam_prep", "my_grades", "my_attendance",
+                         "gate_mine"]),
         # Comunicados da escola e da turma (a regra de acesso já os mostrava ao
         # estudante, mas o menu não tinha o caminho).
         ("Escola", ["announcements", "notifications"]),
@@ -275,7 +282,8 @@ LAYOUT = {
     SECRETARIA: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Secretaria", ["students", "applications", "student_import", "photos", "guardians", "staff_links",
-                        "enrollments", "documents", "justifications", "active_search", "support"]),
+                        "enrollments", "documents", "gate_cards", "gate_station", "justifications", "active_search",
+                        "support"]),
         ("Acadêmico", ["classes", "subjects", "years", "official_calendar", "assignments", "teacher_perms"]),
         ("Pedagógico", ["evaluations", "activities", "prints_queue", "works", "attendance", "occurrences"]),
         COMMUNICATION_STAFF,
@@ -285,7 +293,7 @@ LAYOUT = {
     COORDENACAO: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Coordenação", ["coord_panel", "lesson_plans", "diary", "curriculum", "cognitio", "prints_queue",
-                         "coord_records"]),
+                         "coord_records", "gate_station"]),
         ("Pedagógico", ["students", "evaluations", "exam_prep", "library", "activities", "works", "attendance",
                         "occurrences", "observations", "plans", "support", "justifications",
                         "active_search"]),
@@ -296,7 +304,7 @@ LAYOUT = {
     DIRECAO: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Coordenação", ["coord_panel", "lesson_plans", "diary", "curriculum", "cognitio", "prints_queue",
-                         "coord_designations"]),
+                         "coord_designations", "gate_station", "gate_cards"]),
         ("Análises", ["institutional", "goals", "subject_bi", "quality", "reports", "methodology", "norms"]),
         ("Pedagógico", ["students", "evaluations", "exam_prep", "library", "activities", "works", "attendance",
                         "occurrences", "observations", "plans", "support", "justifications",
@@ -310,7 +318,7 @@ LAYOUT = {
         ("Administração", ["users", "coord_designations", "config", "registration_cfg", "privacy_cfg", "notif_rules",
                            "error_log"]),
         ("Cadastro", ["students", "applications", "student_import", "photos", "guardians", "staff_links",
-                      "enrollments", "documents"]),
+                      "enrollments", "documents", "gate_cards", "gate_station"]),
         ("Acadêmico", ["classes", "subjects", "years", "official_calendar", "assignments", "teacher_perms"]),
         ("Pedagógico", ["evaluations", "activities", "prints_queue", "works", "attendance", "occurrences",
                         "justifications"]),

@@ -1,0 +1,44 @@
+/* Carteirinha do estudante (tamanho CR80: 85,6 × 54 mm) e tela da portaria. */
+.id-card-pair { display: flex; flex-wrap: wrap; gap: 1rem; }
+.id-card {
+  width: 85.6mm; height: 54mm; max-width: 100%; border: 1px solid var(--ds-line, #cfd4dc); border-radius: 3mm;
+  background: #fff; color: #111; overflow: hidden; display: flex; box-sizing: border-box;
+  font-family: var(--ds-font-text, sans-serif);
+}
+.id-card-front { flex-direction: column; }
+.id-card-band { background: var(--ds-frame, #1b2338); color: #fff; padding: 2mm 3mm; display: flex; flex-direction: column; }
+.id-card-school { font-weight: 700; font-size: 3.2mm; line-height: 1.15; }
+.id-card-kind { font-size: 2.4mm; opacity: .85; }
+.id-card-body { display: flex; gap: 3mm; padding: 2.5mm 3mm; flex: 1; align-items: center; }
+.id-card-photo { width: 22mm; height: 28mm; object-fit: cover; border-radius: 1.5mm; border: 1px solid #ccd; flex: none; }
+.id-card-nophoto { display: flex; align-items: center; justify-content: center; font-size: 8mm; font-weight: 700;
+  background: #eef0f5; color: #556; }
+.id-card-data { margin: 0; font-size: 2.5mm; line-height: 1.25; }
+.id-card-data dt { color: #5a6070; font-weight: 400; font-size: 2.1mm; text-transform: uppercase; letter-spacing: .02em; }
+.id-card-data dd { margin: 0 0 1.2mm; font-weight: 600; }
+.id-card-name { font-size: 3.4mm; line-height: 1.15; }
+.id-card-back { padding: 3mm; gap: 3mm; align-items: center; }
+.id-card-qr { flex: none; width: 26mm; }
+.id-card-qr svg { width: 26mm; height: 26mm; display: block; }
+.id-card-right { flex: 1; min-width: 0; }
+.id-card-barcode svg { width: 100%; height: 14mm; display: block; }
+.card-code-text { font: 9px monospace; fill: #111; }
+.id-card-code { margin: 1.5mm 0 1mm; font-size: 2.4mm; }
+.id-card-code strong { font: 700 3.6mm/1 ui-monospace, Consolas, monospace; letter-spacing: .06em; }
+.id-card-note { margin: 0; font-size: 1.9mm; line-height: 1.25; color: #444; }
+.id-card-sheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(176mm, 1fr)); gap: 6mm; }
+.id-card-sheet .id-card-pair { break-inside: avoid; page-break-inside: avoid; }
+
+.gate-input { font: 600 1.5rem/1.2 ui-monospace, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+.gate-result { display: flex; gap: 1rem; align-items: center; }
+.gate-result-photo { width: 96px; height: 120px; object-fit: cover; border-radius: .5rem; border: 1px solid var(--ds-line, #ccd); }
+.gate-result.is-ok { border-left: 6px solid var(--ds-success, #17663f); }
+.gate-result.is-late { border-left: 6px solid var(--ds-warning, #a15c00); }
+.gate-result.is-error { border-left: 6px solid var(--ds-danger, #b42318); }
+.gate-video { width: 100%; max-width: 420px; border-radius: .5rem; background: #000; }
+
+@media print {
+  @page { size: A4; margin: 10mm; }
+  .id-card { border-color: #999; }
+  .id-card-band { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

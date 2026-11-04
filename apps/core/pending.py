@@ -185,6 +185,8 @@ def _secretaria(user):
             school=s, status__in=["aguardando", "imprimindo", "impressa", "retirada"]).count(),
             reverse("printing:queue") + "?ver=impressao"),
         _item("Estudantes ativos sem foto", no_photo, reverse("photo_pending"), "Não bloqueia nada.", "info"),
+        _item("Estudantes ativos sem carteirinha", _without_card(s), reverse("gate:cards"),
+              "A portaria lê QR Code, código de barras ou o código digitado.", "info"),
     ]
 
 
@@ -199,6 +201,14 @@ def _lgpd(user):
                   reverse("communication:request_list") + "?categoria=lgpd",
                   f"{late} com prazo vencido." if late else "Prazo de referência: 15 dias do pedido.",
                   "attention" if late else "info")]
+
+
+def _without_card(school):
+    from apps.gate.models import StudentCard
+    from apps.registry.models import Student
+
+    return Student.objects.filter(school=school, status="ativo").exclude(
+        Exists(StudentCard.objects.filter(student=OuterRef("pk"), revoked_at__isnull=True))).count()
 
 
 def _coordination(user):

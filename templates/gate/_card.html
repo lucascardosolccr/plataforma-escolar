@@ -1,0 +1,21 @@
+{% load ui %}<div class="id-card-pair">
+  <div class="id-card id-card-front" aria-label="Frente da carteirinha">
+    <div class="id-card-band"><span class="id-card-school">{{ card.school.name }}</span><span class="id-card-kind">Carteirinha do estudante</span></div>
+    <div class="id-card-body">
+      {% if card.student.photo %}<img class="id-card-photo" src="{% url 'student_photo' card.student.pk %}" alt="Foto de {{ card.student.full_name }}">{% else %}<div class="id-card-photo id-card-nophoto" aria-hidden="true">{{ card.student.first_name|first }}{{ card.student.last_name|first }}</div>{% endif %}
+      <dl class="id-card-data">
+        <dt>Estudante</dt><dd class="id-card-name">{{ card.student.full_name }}</dd>
+        <dt>Turma</dt><dd>{% if cg %}{{ cg.name }} · {{ cg.get_turn_display }}{% else %}—{% endif %}</dd>
+        <dt>Válida até</dt><dd>{{ card.valid_until|date:"d/m/Y" }}</dd>
+      </dl>
+    </div>
+  </div>
+  <div class="id-card id-card-back" aria-label="Verso da carteirinha">
+    <div class="id-card-qr">{{ qr }}</div>
+    <div class="id-card-right">
+      <div class="id-card-barcode">{{ barcode }}</div>
+      <p class="id-card-code"><span>Código</span> <strong>{{ card.display_code }}</strong></p>
+      <p class="id-card-note">Apresente na entrada da escola. Se perder, avise a secretaria: a carteirinha é cancelada e uma segunda via é emitida.</p>
+    </div>
+  </div>
+</div>

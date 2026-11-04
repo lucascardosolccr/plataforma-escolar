@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Portaria — {{ day|date:"d/m/Y" }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Portaria {% if is_today %}hoje{% else %}em {{ day|date:"d/m/Y" }}{% endif %}</h1>
+    <p>{{ totals.arrived }} chegada{{ totals.arrived|pluralize }} registrada{{ totals.arrived|pluralize }}, {{ totals.late }} com atraso, {{ totals.left }} saída{{ totals.left|pluralize }}. Tolerância de {{ cfg.tolerance }} minutos depois do horário de entrada do turno.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-outline-secondary" href="?dia={{ prev|date:'Y-m-d' }}">{% icon "arrow-left" %}Dia anterior</a>
+    {% if not is_today %}<a class="btn btn-outline-secondary" href="?dia={{ next|date:'Y-m-d' }}">Dia seguinte</a>{% endif %}
+    <a class="btn btn-primary" href="{% url 'gate:station' %}">{% icon "id-card" %}Ler carteirinhas</a>
+  </div>
+</div>
+
+<div class="card mb-3"><div class="table-responsive"><table class="table align-middle mb-0 table-stack">
+  <thead><tr><th scope="col">Turma</th><th scope="col">Entrada</th><th scope="col" class="text-end">Chegaram</th><th scope="col">Atrasos</th><th scope="col">Ainda sem registro</th></tr></thead>
+  <tbody>
+    {% for r in rows %}<tr>
+      <th scope="row" data-label="Turma">{{ r.cg.name }}</th>
+      <td data-label="Entrada">{{ r.expected|time:"H:i" }} · {{ r.cg.get_turn_display|lower }}</td>
+      <td data-label="Chegaram" class="text-end">{{ r.arrived }} de {{ r.total }}{% if r.left %} · {{ r.left }} saíram{% endif %}</td>
+      <td data-label="Atrasos">{% for e in r.late %}<span class="d-block"><a href="{% url 'gate:history' e.student.pk %}">{{ e.student.full_name }}</a> · {{ e.at|time:"H:i" }} ({{ e.minutes_late }} min)</span>{% empty %}—{% endfor %}</td>
+      <td data-label="Ainda sem registro">{% if r.missing %}<details><summary>{{ r.missing|length }} estudante{{ r.missing|length|pluralize }}</summary>{% for s in r.missing %}<span class="d-block small"><a href="{% url 'gate:history' s.pk %}">{{ s.full_name }}</a></span>{% endfor %}</details>{% else %}—{% endif %}</td>
+    </tr>{% empty %}<tr><td colspan="5" class="text-body-secondary">Nenhuma turma com estudantes no seu alcance.</td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+<p class="small text-body-secondary">"Ainda sem registro" aparece depois do horário de entrada da turma. Quem entrou sem passar pela leitura (esqueceu a carteirinha) pode ser registrado manualmente na tela da portaria. A falta de verdade é a da chamada do professor.{% if user_role == "direcao" or user_role == "admin" %} <a href="{% url 'gate:settings' %}">Horários e tolerância</a>.{% endif %}</p>
+{% endblock %}

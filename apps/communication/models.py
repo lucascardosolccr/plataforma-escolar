@@ -31,6 +31,7 @@ class Notification(models.Model):
         SUPPORT = "apoio", "Apoio à inclusão"
         MEETING = "reuniao", "Reunião ou atendimento"
         EIA = "eia", "Resumo semanal de sinais do EIA-Cognitio"
+        GATE = "portaria", "Entrada e saída na escola"
 
     class Priority(models.TextChoices):
         NORMAL = "normal", "Informativo"

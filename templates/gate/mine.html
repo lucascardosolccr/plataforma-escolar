@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Carteirinha e entradas — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Carteirinha e entradas</h1>
+    <p>A carteirinha digital pode ser mostrada no celular na entrada da escola. Quando a portaria lê a carteirinha, você recebe um aviso com o horário de chegada (e de atraso, se houver).</p>
+  </div>
+</div>
+<div class="card"><ul class="feed">
+  {% for r in rows %}
+  <li class="feed-item"><div class="feed-body flex-grow-1">
+    <p class="feed-title">{{ r.student.full_name }}</p>
+    <p class="feed-meta">{% if r.card %}Carteirinha {{ r.card.display_code }}, válida até {{ r.card.valid_until|date:"d/m/Y" }}{% else %}A escola ainda não emitiu a carteirinha{% endif %}{% if r.last %} · última chegada: {{ r.last.at|date:"d/m" }} às {{ r.last.at|time:"H:i" }}{% if r.last.late %} (atraso de {{ r.last.minutes_late }} min){% endif %}{% endif %}</p>
+    <p class="mb-0"><a href="{% url 'gate:card' r.student.pk %}">Ver a carteirinha</a> · <a href="{% url 'gate:history' r.student.pk %}">Entradas e saídas</a></p>
+  </div></li>
+  {% empty %}
+  <li><div class="empty-state py-4">{% icon "id-card" %}<strong>Nenhum estudante vinculado</strong><span>Quando a escola aprovar o vínculo com seu filho, a carteirinha aparece aqui.</span></div></li>
+  {% endfor %}
+</ul></div>
+{% endblock %}

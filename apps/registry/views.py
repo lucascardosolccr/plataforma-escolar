@@ -204,6 +204,8 @@ def student_detail(request, student_id):
             "can_view_notes": can_view_student_notes(request.user),
             "can_view_record": can_view_school_record(request.user, student),
             "can_inventory": request.user.role == Role.DIRECAO.value,
+            "can_gate": request.user.role in (Role.SECRETARIA.value, Role.COORDENACAO.value, Role.DIRECAO.value,
+                                              Role.ADMIN.value),
             "can_issue_document": can_issue(request.user),
             "can_create_student_account": can_create_student_account(
                 request.user, student

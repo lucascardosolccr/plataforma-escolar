@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load static ui %}
+{% block title %}Imprimir carteirinhas — {{ cg.name }} — Plataforma Escolar{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/gate.css' %}">{% endblock %}
+
+{% block content %}
+<div class="page-head d-print-none">
+  <div>
+    <a href="{% url 'gate:class_cards' cg.pk %}" class="back-link">{% icon "arrow-left" %}Carteirinhas de {{ cg.name }}</a>
+    <h1>Imprimir carteirinhas de {{ cg.name }}</h1>
+    <p>Imprima em tamanho real (100%, sem "ajustar à página"). Cada carteirinha tem frente e verso lado a lado: recorte os dois, cole um no outro e plastifique.{% if missing %} {{ missing }} estudante{{ missing|pluralize }} ainda sem carteirinha não aparece{{ missing|pluralize:"m" }} aqui.{% endif %}</p>
+  </div>
+  <div class="page-actions"><button type="button" class="btn btn-primary" data-print>{% icon "printer" %}Imprimir</button></div>
+</div>
+<div class="id-card-sheet">
+  {% for r in rows %}{% if r.card %}{% with card=r.card cg=r.cg qr=r.qr barcode=r.barcode %}{% include "gate/_card.html" %}{% endwith %}{% endif %}{% endfor %}
+</div>
+{% endblock %}

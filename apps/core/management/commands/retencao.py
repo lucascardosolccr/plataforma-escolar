@@ -5,7 +5,9 @@ Separa três grupos, e só o primeiro é apagado, e só com ``--aplicar``:
 1. **Dados operacionais, sem valor de registro escolar** (apagados com --aplicar):
    - avisos já lidos há mais de ``--avisos-dias`` (padrão 365);
    - execuções diárias dos lembretes com mais de ``--lembretes-dias`` (padrão 365);
-   - "Estou ciente" e marcações de autorrelato de provas com mais de 2 anos.
+   - "Estou ciente" e marcações de autorrelato de provas com mais de 2 anos;
+   - registros de portaria (horário de entrada e saída) com mais de 2 anos e carteirinhas canceladas há mais
+     de 2 anos. O atraso continua na chamada, que é o registro escolar.
 2. **Para revisão humana** (só relatados): contas inativas há mais de 2 anos,
    que a secretaria pode desativar; registros de auditoria com mais de 5 anos.
 3. **Registro escolar** (nunca tocado aqui): notas, frequência, ocorrências,
@@ -38,6 +40,7 @@ class Command(BaseCommand):
         parser.add_argument("--lembretes-dias", type=int, default=365)
 
     def handle(self, *args, aplicar, avisos_dias, lembretes_dias, **options):
+        from apps.gate.models import GateEvent, StudentCard
         from apps.pedagogy.models import ActivityAcknowledgement
         from apps.study.models import TopicCheck
 
@@ -50,6 +53,8 @@ class Command(BaseCommand):
                 day__lt=(now - timedelta(days=lembretes_dias)).date()),
             "“Estou ciente” antigos": ActivityAcknowledgement.objects.filter(created_at__lt=two_years),
             "autorrelatos de provas antigos": TopicCheck.objects.filter(updated_at__lt=two_years),
+            "registros de portaria antigos": GateEvent.objects.filter(day__lt=two_years.date()),
+            "carteirinhas canceladas antigas": StudentCard.objects.filter(revoked_at__lt=two_years),
         }
         self.stdout.write("Grupo 1 — dados operacionais (apagados com --aplicar):")
         counts = {}

@@ -16,9 +16,14 @@ def _avisos_agendados_sob_controle():
 
     from apps.core.middleware import ScheduledPublicationMiddleware
 
+    from django.conf import settings
+
     ScheduledPublicationMiddleware._last_run = time.monotonic()
     ScheduledPublicationMiddleware._last_day = timezone.localdate()
+    old = getattr(settings, "DAILY_JOBS_IN_BACKGROUND", False)
+    settings.DAILY_JOBS_IN_BACKGROUND = False  # síncrono nos testes (ver config/settings.py)
     yield
+    settings.DAILY_JOBS_IN_BACKGROUND = old
 
 
 @pytest.fixture(autouse=True)

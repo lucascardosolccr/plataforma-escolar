@@ -5,6 +5,7 @@ valendo indefinidamente — e quem a viu no caminho continuaria com acesso.
 """
 
 import logging
+import threading
 import time
 
 from django.shortcuts import redirect
@@ -93,15 +94,45 @@ class ScheduledPublicationMiddleware:
             # Lembretes: uma vez por dia (o registro em ReminderRun vale
             # entre processos; o dedupe_key de cada aviso cobre corridas).
             if ScheduledPublicationMiddleware._last_reminder_day != hoje:
-                from apps.communication import reminders
+                from django.conf import settings
 
-                try:
-                    if not reminders.done_today(hoje):
-                        reminders.run_daily(hoje)
+                if getattr(settings, "DAILY_JOBS_IN_BACKGROUND", False):
+                    # Em segundo plano: a rotina (lembretes, alertas do EIA, resumo semanal) levava segundos e
+                    # a primeira pessoa do dia esperava por ela (4 s na base de escala, 04/11/2026).
                     ScheduledPublicationMiddleware._last_reminder_day = hoje
-                except Exception:
-                    logger.exception("Falha ao processar os lembretes; nova tentativa no próximo intervalo")
+                    threading.Thread(target=self._daily_in_background, args=(hoje,), daemon=True,
+                                     name="rotina-diaria").start()
+                else:
+                    self._daily(hoje)
         return self.get_response(request)
+
+    _daily_lock = threading.Lock()
+
+    @staticmethod
+    def _daily(hoje):
+        from apps.communication import reminders
+
+        try:
+            if not reminders.done_today(hoje):
+                reminders.run_daily(hoje)
+            ScheduledPublicationMiddleware._last_reminder_day = hoje
+            return True
+        except Exception:
+            ScheduledPublicationMiddleware._last_reminder_day = None  # o dia não fica dado como feito
+            logger.exception("Falha ao processar os lembretes; nova tentativa no próximo intervalo")
+            return False
+
+    @classmethod
+    def _daily_in_background(cls, hoje):
+        from django.db import connections
+
+        if not cls._daily_lock.acquire(blocking=False):  # outra thread já está rodando a rotina
+            return
+        try:
+            cls._daily(hoje)
+        finally:
+            cls._daily_lock.release()
+            connections.close_all()  # a thread abriu as próprias conexões
 
 
 class ContentSecurityPolicyMiddleware:

@@ -206,6 +206,10 @@ MESSAGE_TAGS = {
 # Desligado por padrão: as notificações ficam na plataforma. Ligado, manda
 # um e-mail genérico ("há notificação nova") a quem escolheu e-mail como
 # preferência de comunicação. Sem servidor configurado, nada é enviado.
+# Rotina diária (lembretes, alertas do EIA, resumo semanal) numa thread, fora da primeira requisição do dia.
+# Os testes desligam (conftest.py): o banco de teste é transacional e a thread não enxergaria os dados.
+DAILY_JOBS_IN_BACKGROUND = True
+
 NOTIFY_BY_EMAIL = os.environ.get("DJANGO_NOTIFY_EMAIL", "0") == "1" and bool(os.environ.get("DJANGO_EMAIL_HOST"))
 if NOTIFY_BY_EMAIL:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"

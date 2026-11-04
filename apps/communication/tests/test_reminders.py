@@ -315,3 +315,32 @@ class PolicyAndCenterTests(Base):
         r = self.client.get(url)
         self.assertEqual(r.status_code, 200)
         self.assertTrue(all(n.user_id == self.aluna.pk for n in r.context["page"]))
+
+
+class DailyRunInBackgroundTests(Base):
+    def test_first_request_of_the_day_does_not_wait_for_the_routine(self):
+        from django.test import override_settings
+
+        from apps.core.middleware import ScheduledPublicationMiddleware as M
+
+        M._last_run = M._last_day = M._last_reminder_day = None
+        self.login(self.prof)
+        with override_settings(DAILY_JOBS_IN_BACKGROUND=True), \
+                mock.patch("apps.core.middleware.threading.Thread") as thread, \
+                mock.patch("apps.communication.reminders.run_daily") as run:
+            self.assertEqual(self.client.get(reverse("home")).status_code, 200)
+        run.assert_not_called()  # nada da rotina dentro da requisição
+        self.assertEqual(thread.call_args.kwargs["target"], M._daily_in_background)
+        thread.return_value.start.assert_called_once()
+        self.assertEqual(M._last_reminder_day, timezone.localdate())  # não dispara de novo no mesmo dia
+
+    def test_a_second_thread_does_not_run_the_routine_twice(self):
+        from apps.core.middleware import ScheduledPublicationMiddleware as M
+
+        M._daily_lock.acquire()
+        try:
+            with mock.patch("apps.communication.reminders.run_daily") as run:
+                M._daily_in_background(timezone.localdate())
+            run.assert_not_called()
+        finally:
+            M._daily_lock.release()

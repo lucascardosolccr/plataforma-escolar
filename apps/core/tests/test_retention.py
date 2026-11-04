@@ -39,3 +39,25 @@ class RetentionTests(TestCase):
         self.run_cmd("--aplicar")
         self.assertEqual(set(Notification.objects.values_list("title", flat=True)), {"velho não lido", "novo lido"})
         self.assertTrue(AuditLog.objects.filter(target_type="Retenção", detail__contains="avisos lidos: 1").exists())
+
+    def test_old_gate_records_go_but_the_attendance_stays(self):
+        import datetime as dt
+
+        from apps.academics.models import ClassGroup, SchoolYear
+        from apps.gate.models import GateEvent
+        from apps.pedagogy.models import AttendanceRecord
+        from apps.registry.models import Student
+
+        year = SchoolYear.objects.create(school=self.school, name="2023")
+        cg = ClassGroup.objects.create(school=self.school, school_year=year, name="6º Ano A")
+        st = Student.objects.create(school=self.school, first_name="Ana")
+        old_day, new_day = dt.date.today() - dt.timedelta(days=800), dt.date.today()
+        for day in (old_day, new_day):
+            when = timezone.make_aware(dt.datetime.combine(day, dt.time(7, 50)))
+            GateEvent.objects.create(school=self.school, student=st, class_group=cg, kind="entrada", method="qr",
+                                     day=day, at=when, late=True, minutes_late=20)
+        AttendanceRecord.objects.create(school=self.school, class_group=cg, student=st, date=old_day, status="atraso")
+        self.assertIn("registros de portaria antigos: 1", self.run_cmd())
+        self.run_cmd("--aplicar")
+        self.assertEqual(list(GateEvent.objects.values_list("day", flat=True)), [new_day])
+        self.assertTrue(AttendanceRecord.objects.filter(date=old_day, status="atraso").exists())  # registro escolar

@@ -91,6 +91,7 @@ class ScheduledPublicationMiddleware:
                 deliver_due_publications()
             except Exception:  # o aviso não pode quebrar a navegação
                 logger.exception("Falha ao entregar avisos de publicações agendadas")
+            self._gate_missing()
             # Lembretes: uma vez por dia (o registro em ReminderRun vale
             # entre processos; o dedupe_key de cada aviso cobre corridas).
             if ScheduledPublicationMiddleware._last_reminder_day != hoje:
@@ -107,6 +108,47 @@ class ScheduledPublicationMiddleware:
         return self.get_response(request)
 
     _daily_lock = threading.Lock()
+    _gate_lock = threading.Lock()
+
+    @classmethod
+    def _gate_missing(cls):
+        """Aviso de "ainda sem entrada na portaria": uma consulta para saber se alguma escola ligou; o trabalho
+        roda em segundo plano (ou síncrono nos testes)."""
+        from django.conf import settings
+
+        from apps.gate.models import GateSettings
+
+        try:
+            schools = [g.school for g in GateSettings.objects.filter(notify_missing_after__isnull=False)
+                       .select_related("school")]
+        except Exception:
+            logger.exception("Falha ao consultar a configuração da portaria")
+            return
+        if not schools:
+            return
+        if getattr(settings, "DAILY_JOBS_IN_BACKGROUND", False):
+            threading.Thread(target=cls._gate_missing_run, args=(schools, True), daemon=True,
+                             name="portaria-sem-entrada").start()
+        else:
+            cls._gate_missing_run(schools, False)
+
+    @classmethod
+    def _gate_missing_run(cls, schools, background):
+        from django.db import connections
+
+        from apps.gate.services import notify_missing
+
+        if not cls._gate_lock.acquire(blocking=False):
+            return
+        try:
+            for school in schools:
+                notify_missing(school)
+        except Exception:
+            logger.exception("Falha ao avisar famílias de estudantes sem entrada na portaria")
+        finally:
+            cls._gate_lock.release()
+            if background:
+                connections.close_all()
 
     @staticmethod
     def _daily(hoje):

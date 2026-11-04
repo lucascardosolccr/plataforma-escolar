@@ -259,3 +259,53 @@ class EnteredButAbsentTests(GateBase):
         self.assertContains(self.client.get(reverse("gate:today") + "?dia=2026-11-04"),
                             "Entraram na escola e estão com falta na chamada")
         self.assertEqual(services.entered_but_absent(self.school, WED, class_ids={self.turma_b.pk}), [])
+
+
+class MissingEntryTests(GateBase):
+    def missing(self, when):
+        return services.notify_missing(self.school, when)
+
+    def notes_missing(self):
+        return Notification.objects.filter(user=self.resp, dedupe_key__startswith="sem-entrada:")
+
+    def test_off_by_default_and_only_inside_the_window_on_school_days(self):
+        self.assertEqual(self.missing(at(8, 5)), 0)  # desligado
+        cfg = GateSettings.for_school(self.school)
+        cfg.notify_missing_after = 30
+        cfg.save()
+        self.assertEqual(self.missing(at(7, 55)), 0)  # antes de 07:30 + 30 min
+        self.assertEqual(self.missing(at(12, 0)), 0)  # passou da janela de 3 horas
+        self.assertEqual(self.missing(at(8, 5, WED + dt.timedelta(days=3))), 0)  # sábado
+        self.missing(at(8, 5))
+        self.assertEqual(self.notes_missing().count(), 1)
+        self.assertIn("Ainda não registramos a chegada de Ana", self.notes_missing().get().title)
+        self.missing(at(8, 20))
+        self.assertEqual(self.notes_missing().count(), 1)  # uma vez por dia
+
+    def test_entry_attendance_or_justification_prevent_the_notice(self):
+        from apps.pedagogy.models import AbsenceJustification
+
+        cfg = GateSettings.for_school(self.school)
+        cfg.notify_missing_after = 30
+        cfg.save()
+        services.register(self.ana, "entrada", "barras", self.sec, card=self.card, when=at(7, 20))
+        self.missing(at(8, 5))
+        self.assertFalse(self.notes_missing().exists())
+        GateEvent.objects.all().delete()
+        AttendanceRecord.objects.filter(student=self.ana).update(status="presente")  # o professor viu na sala
+        self.missing(at(8, 5))
+        self.assertFalse(self.notes_missing().exists())
+        AttendanceRecord.objects.all().delete()
+        AbsenceJustification.objects.create(school=self.school, student=self.ana, class_group=self.turma,
+                                            start_date=WED, end_date=WED, submitted_by=self.resp, reason="Consulta")
+        self.missing(at(8, 5))
+        self.assertFalse(self.notes_missing().exists())
+
+    def test_direction_turns_it_on_with_a_sane_range(self):
+        self.client.force_login(self.direc)
+        base = {"entry_morning": "07:30", "entry_afternoon": "13:00", "entry_full": "07:30", "entry_night": "19:00",
+                "tolerance": 10, "fill_attendance": "on"}
+        page = self.client.post(reverse("gate:settings"), {**base, "notify_missing_after": 5})
+        self.assertContains(page, "Use de 15 a 240 minutos")
+        self.client.post(reverse("gate:settings"), {**base, "notify_missing_after": 45})
+        self.assertEqual(GateSettings.for_school(self.school).notify_missing_after, 45)

@@ -279,9 +279,16 @@ def history(request, student_id):
 class GateSettingsForm(forms.ModelForm):
     class Meta:
         model = GateSettings
-        fields = ["entry_morning", "entry_afternoon", "entry_full", "entry_night", "tolerance", "fill_attendance"]
+        fields = ["entry_morning", "entry_afternoon", "entry_full", "entry_night", "tolerance", "fill_attendance",
+                  "notify_missing_after"]
         widgets = {f: forms.TimeInput(format="%H:%M", attrs={"type": "time"})
                    for f in ("entry_morning", "entry_afternoon", "entry_full", "entry_night")}
+
+    def clean_notify_missing_after(self):
+        value = self.cleaned_data.get("notify_missing_after")
+        if value is not None and not 15 <= value <= 240:
+            raise forms.ValidationError("Use de 15 a 240 minutos, ou deixe em branco para não avisar.")
+        return value
 
     def clean_tolerance(self):
         value = self.cleaned_data["tolerance"]

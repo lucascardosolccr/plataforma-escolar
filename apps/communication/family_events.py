@@ -45,6 +45,8 @@ EVENTS = {
     "entrada_escola": ("Chegada à escola registrada na portaria (carteirinha)", K.GATE, True),
     "atraso_entrada": ("Chegada com atraso, além da tolerância do horário de entrada", K.ATTENDANCE, True),
     "saida_escola": ("Saída da escola registrada na portaria", K.GATE, True),
+    "sem_entrada": ("Estudante sem entrada registrada na portaria (só se a direção ligar nos horários da portaria)",
+                    K.GATE, True),
 }
 #: Tipos que a família não pode silenciar (segurança e vínculo).
 ESSENTIAL_KINDS = {K.OCCURRENCE, K.LINK, K.REGISTRATION}

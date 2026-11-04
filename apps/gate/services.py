@@ -239,3 +239,49 @@ def entered_but_absent(school, day, class_ids=None):
                                                               kind=GateEvent.Kind.EXIT)}
     return [{"entry": e, "exit": exits.get(sid)} for sid, e in sorted(entries.items(), key=lambda kv: kv[1].at)
             if (sid, e.class_group_id) in absent]
+
+
+MISSING_WINDOW = datetime.timedelta(hours=3)  # depois disso o aviso perde o sentido (servidor ligado tarde)
+
+
+def notify_missing(school, when=None):
+    """Avisa a família de quem não tem entrada registrada até ``notify_missing_after`` minutos depois do
+    horário do turno. Desligado por padrão; só em dia letivo; uma vez por estudante e dia. Fica de fora quem
+    já tem presença (ou atraso) na chamada ou justificativa de falta para o dia."""
+    from apps.academics.models import ClassGroup
+    from apps.communication.family_events import notify_family
+    from apps.pedagogy.models import AbsenceJustification, AttendanceRecord
+    from apps.registry.models import Enrollment
+
+    cfg = GateSettings.for_school(school)
+    if cfg.notify_missing_after is None:
+        return 0
+    when = timezone.localtime(when or now())
+    day = when.date()
+    if not is_school_day(school, day):
+        return 0
+    sent = 0
+    classes = ClassGroup.objects.filter(school=school)
+    current = classes.filter(school_year__is_current=True)
+    for cg in (current if current.exists() else classes):  # sem ano marcado como atual, todas as turmas
+        deadline = datetime.datetime.combine(day, cfg.entry_for(cg.turn), tzinfo=when.tzinfo) \
+            + datetime.timedelta(minutes=cfg.notify_missing_after)
+        if not deadline <= when <= deadline + MISSING_WINDOW:
+            continue
+        ids = set(Enrollment.objects.filter(class_group=cg, status="ativo").values_list("student_id", flat=True))
+        ids -= set(GateEvent.objects.filter(student_id__in=ids, day=day, kind=GateEvent.Kind.ENTRY)
+                   .values_list("student_id", flat=True))
+        ids -= set(AttendanceRecord.objects.filter(student_id__in=ids, date=day).exclude(
+            status=AttendanceRecord.Status.ABSENT).values_list("student_id", flat=True))
+        ids -= set(AbsenceJustification.objects.filter(student_id__in=ids, start_date__lte=day, end_date__gte=day)
+                   .exclude(status=AbsenceJustification.Status.REFUSED).values_list("student_id", flat=True))
+        from apps.registry.models import Student
+
+        for st in Student.objects.filter(pk__in=ids):
+            sent += notify_family(
+                st, "sem_entrada", f"Ainda não registramos a chegada de {st.first_name} à escola hoje",
+                body=f"Entrada do turno às {cfg.entry_for(cg.turn):%H:%M}. Se {st.first_name} não vai à escola hoje, "
+                     "justifique a falta pela plataforma. Se chegou sem passar pela leitura da carteirinha, "
+                     "desconsidere.", url=reverse("gate:history", args=[st.pk]),
+                dedupe_key=f"sem-entrada:{st.pk}:{day.isoformat()}", include_student=False)
+    return sent

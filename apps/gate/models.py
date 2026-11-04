@@ -23,6 +23,11 @@ class GateSettings(models.Model):
         "registrar a chegada na chamada do dia", default=True,
         help_text="Marca presente (ou atraso) na chamada da turma se o professor ainda não registrou. Uma falta já "
                   "lançada vira atraso, porque o estudante chegou. Presença marcada pelo professor não muda.")
+    notify_missing_after = models.PositiveSmallIntegerField(
+        "avisar a família se não houver entrada até (minutos depois do horário)", null=True, blank=True,
+        help_text="Em branco, não avisa. Ligue só se TODA entrada passar pela leitura da carteirinha: senão a "
+                  "família recebe aviso de que o filho não chegou quando ele chegou. Quem já tem presença na "
+                  "chamada ou falta justificada para o dia não gera aviso.")
     updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name="+")
     updated_at = models.DateTimeField(auto_now=True)

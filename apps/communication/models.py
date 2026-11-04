@@ -30,6 +30,7 @@ class Notification(models.Model):
         EXAM = "prova", "Prova ou avaliação marcada"
         SUPPORT = "apoio", "Apoio à inclusão"
         MEETING = "reuniao", "Reunião ou atendimento"
+        EIA = "eia", "Resumo semanal de sinais do EIA-Cognitio"
 
     class Priority(models.TextChoices):
         NORMAL = "normal", "Informativo"

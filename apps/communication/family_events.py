@@ -47,7 +47,7 @@ EVENTS = {
 ESSENTIAL_KINDS = {K.OCCURRENCE, K.LINK, K.REGISTRATION}
 #: Tipos que aparecem nas preferências pessoais.
 MUTABLE_KINDS = [K.EVALUATION, K.GRADE, K.ACTIVITY, K.EXAM, K.ATTENDANCE, K.OBSERVATION, K.ANNOUNCEMENT, K.MENU,
-                 K.CALENDAR, K.MESSAGE]
+                 K.CALENDAR, K.MESSAGE, K.EIA]
 
 
 def event_enabled(school, key):

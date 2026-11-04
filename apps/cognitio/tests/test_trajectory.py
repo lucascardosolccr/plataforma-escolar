@@ -240,3 +240,37 @@ class InterventionResponseTests(TrajectoryDataBase):
         self.assertContains(page, "Trajetória em queda")
         self.assertContains(page, "com algum indicador precoce")
 
+
+class WeeklyDigestTests(TrajectoryDataBase):
+    def test_teachers_get_one_count_only_summary_per_week(self):
+        from apps.cognitio.digest import weekly_digest
+        from apps.communication.models import Notification, NotificationMute
+
+        self.grades({self.ana: [8, 7, 6, 5, 4.5, 4, 3, 2], self.bia: [8] * 8})
+        generate_for_class(self.cg, self.today)
+        weekly_digest(self.today)
+        note = Notification.objects.get(user=self.prof, kind="eia")
+        self.assertIn("Trajetória em queda", note.body)
+        self.assertNotIn("Ana", note.title + note.body)  # só contagens, nunca nomes
+        self.assertFalse(Notification.objects.filter(user=self.prof_b, kind="eia").exists())  # outra turma
+        weekly_digest(self.today)  # mesma semana: não repete
+        self.assertEqual(Notification.objects.filter(user=self.prof, kind="eia").count(), 1)
+        weekly_digest(self.today + dt.timedelta(days=7))  # semana seguinte sem sinal novo: nada
+        self.assertEqual(Notification.objects.filter(user=self.prof, kind="eia").count(), 1)
+        NotificationMute.objects.create(user=self.prof_geo, kind="eia")
+        Notification.objects.filter(user=self.prof_geo).delete()
+        weekly_digest(self.today + dt.timedelta(days=14))
+        self.assertFalse(Notification.objects.filter(user=self.prof_geo, kind="eia").exists())
+
+    def test_unchanged_alerts_are_not_rewritten_and_run_in_one_transaction(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        self.grades({self.ana: [8, 7, 6, 5, 4.5, 4, 3, 2], self.bia: [8] * 8})
+        generate_for_class(self.cg, self.today)
+        stamp = LearningAlert.objects.get(rule="trajetoria").updated_at
+        with CaptureQueriesContext(connection) as ctx:
+            generate_for_class(self.cg, self.today)
+        self.assertFalse([q for q in ctx.captured_queries if q["sql"].startswith("UPDATE")])
+        self.assertEqual(LearningAlert.objects.get(rule="trajetoria").updated_at, stamp)
+

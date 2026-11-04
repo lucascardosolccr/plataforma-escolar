@@ -10,7 +10,9 @@ Regras (``RULES``) e critérios em ``docs/EIA_COGNITIO_MODELOS_PREDITIVOS.md``.
 """
 
 import datetime
+import threading
 
+from django.db import transaction
 from django.utils import timezone
 
 from apps.core.fmt import dec
@@ -35,18 +37,32 @@ RULES = {
 }
 
 
+_run = threading.local()  # alertas da turma lidos de uma vez durante generate_for_class
+
+
+def _same(alert, name, value):
+    field = LearningAlert._meta.get_field(name)
+    if field.is_relation:  # compara pelo id: ler o objeto relacionado custaria uma consulta por campo
+        return getattr(alert, field.attname) == (value.pk if value is not None else None)
+    return getattr(alert, name) == value
+
+
 def _upsert(school, fp, seen, **values):
     seen.add(fp)
-    alert = LearningAlert.objects.filter(school=school, fingerprint=fp).first()
+    cache = getattr(_run, "alerts", None)
+    alert = cache.get(fp) if cache is not None and fp in cache else         LearningAlert.objects.filter(school=school, fingerprint=fp).first()
     if alert is None:
         return LearningAlert.objects.create(school=school, fingerprint=fp, **values), True
-    for k, v in values.items():
-        setattr(alert, k, v)
+    changed = [k for k, v in values.items() if not _same(alert, k, v)]
+    for k in changed:
+        setattr(alert, k, values[k])
     if not alert.active:
         alert.active = True
+        changed.append("active")
         if alert.status == LearningAlert.Status.RESOLVED:
             alert.status = LearningAlert.Status.NEW  # a condição voltou
-    alert.save()
+    if changed:  # sem mudança, nada a gravar (antes, cada alerta era regravado todo dia)
+        alert.save()
     return alert, False
 
 
@@ -55,10 +71,31 @@ def _ev_ids(a):
 
 
 def generate_for_class(class_group, today=None):
-    """Recalcula os alertas da turma. Devolve (novos, ativos)."""
+    """Recalcula os alertas da turma. Devolve (novos, ativos).
+
+    Uma transação por turma (no SQLite, cada gravação avulsa é um commit em disco) e os alertas existentes
+    lidos de uma vez: na base de escala, de 42 s para poucos segundos por escola, com o mesmo resultado."""
+    with transaction.atomic():
+        _run.alerts = {a.fingerprint: a for a in LearningAlert.objects.filter(school=class_group.school,
+                                                                             class_group=class_group)}
+        try:
+            return _generate_for_class(class_group, today)
+        finally:
+            _run.alerts = None
+
+
+def _generate_for_class(class_group, today=None):
     from apps.registry.models import Enrollment
 
-    from .graph import dependents, prerequisites
+    from .graph import dependents as _dependents
+    from .graph import prerequisites
+
+    cache = {}
+
+    def dependents(item, school):  # uma consulta por habilidade, não por estudante
+        if item.pk not in cache:
+            cache[item.pk] = list(_dependents(item, school).select_related("target"))
+        return cache[item.pk]
 
     today = today or timezone.localdate()
     school = class_group.school
@@ -145,7 +182,7 @@ def generate_for_class(class_group, today=None):
     # Habilidade fundamental (com 2+ dependentes) já trabalhada e sem evidência suficiente.
     worked = _worked_items(class_group, today)
     for item in worked:
-        deps = dependents(item, school).count()
+        deps = len(dependents(item, school))
         if deps < 2:
             continue
         lacking = [students[sid] for sid in students

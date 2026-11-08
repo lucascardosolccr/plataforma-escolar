@@ -288,6 +288,44 @@ class ClassMatrixTests(BIBase):
         self.assertEqual(len(poucos), len(muitos))
 
 
+class PreloadTests(BIBase):
+    """Painel da coordenação: várias turmas em consultas fixas, com o mesmo resultado de class_report."""
+
+    def summary(self, r):
+        return (r["active"], r["overall"], r["attendance"], r["delivery_rate"], r["monthly"],
+                [(x["student"].pk, x["overall"], x["attendance"]["percent"], x["delivery_rate"], tuple(x["reasons"]))
+                 for x in r["rows"]],
+                [(e["evaluation"].pk, e["mean"], e["missing"]) for e in r["evaluations"]])
+
+    def test_preloaded_reports_match_and_do_not_query_per_class(self):
+        turma_b = ClassGroup.objects.create(school=self.school, school_year=self.year, name="5º B")
+        movida = self.alunos[5]
+        Enrollment.objects.filter(student=movida).update(status="transferido")
+        Enrollment.objects.create(school=self.school, student=movida, class_group=turma_b, school_year=self.year)
+        e_a = self.evaluation(self.mat, date(2026, 3, 10))
+        e_b = Evaluation.objects.create(school=self.school, subject=self.por, class_group=turma_b, title="B1",
+                                        weight=Decimal("2"), date=date(2026, 4, 2), status=Evaluation.Status.PUBLISHED,
+                                        created_by=self.prof)
+        for i, s in enumerate(self.alunos):
+            self.grade(e_a, s, 4 + i)
+            self.attend(s, date(2026, 3, 10), "falta" if i % 3 == 0 else "presente")
+        self.grade(e_b, movida, 8)
+        AttendanceRecord.objects.create(school=self.school, class_group=turma_b, student=movida, date=date(2026, 4, 2),
+                                        status="atraso")
+        act = Activity.objects.create(school=self.school, class_group=self.turma, subject=self.mat, title="Lista",
+                                      created_by=self.prof, status=Activity.Status.PUBLISHED,
+                                      published_date=date(2026, 3, 1), deadline=date(2026, 3, 20))
+        Submission.objects.create(school=self.school, activity=act, student=self.ana, status="entregue")
+        classes = [self.turma, turma_b]
+        with CaptureQueriesContext(connection) as queries:
+            pre = bi.preload_classes(classes, P)
+            batched = [bi.class_report(cg, P, preload=pre) for cg in classes]
+        for cg, r in zip(classes, batched):
+            self.assertEqual(self.summary(r), self.summary(bi.class_report(cg, P)), cg.name)
+        self.assertEqual(batched[1]["rows"][0]["student"], movida)
+        self.assertLessEqual(len(queries), 12)  # 7 de carga + regras da escola, independente do número de turmas
+
+
 class InstitutionalAndQualityTests(BIBase):
     def test_small_groups_are_hidden_in_comparisons(self):
         pequena = ClassGroup.objects.create(school=self.school, school_year=self.year, name="Reforço")

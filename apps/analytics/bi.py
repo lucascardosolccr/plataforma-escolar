@@ -859,37 +859,88 @@ def school_rules(school):
     return rules_by_subject(school), float(school_max_absences(school))
 
 
-def class_report(class_group, period, *, min_subjects_below=1, min_delivery=60, only_subjects=None, rules=None):
+def _period_activities(period, today):
+    return Activity.objects.filter(status=Activity.Status.PUBLISHED, published_date__lte=today).filter(
+        Q(deadline__gte=period.start, deadline__lte=period.end)
+        | Q(deadline__isnull=True, published_date__gte=period.start, published_date__lte=period.end)
+    )
+
+
+def preload_classes(class_groups, period, only_subjects=None):
+    """Dados de várias turmas em consultas fixas, para ``class_report(..., preload=...)``.
+
+    O painel da coordenação montava o relatório de cada turma com ~7 consultas próprias (185 consultas e
+    0,6 s com 24 turmas). Aqui são 7 no total; o cálculo por turma continua sendo o de ``class_report``."""
+    from apps.registry.models import Student
+
+    today = timezone.localdate()
+    ids = [cg.pk for cg in class_groups]
+    out = {pk: {"enrollments": [], "grades": defaultdict(list), "records": defaultdict(list), "acts": [],
+                "subs": defaultdict(dict), "evals": []} for pk in ids}
+    enrollments = list(Enrollment.objects.filter(class_group_id__in=ids).select_related("student"))
+    for e in enrollments:
+        out[e.class_group_id]["enrollments"].append(e)
+    active = {e.student_id for e in enrollments if e.status == "ativo"}
+    ordered = list(Student.objects.filter(pk__in=active).order_by("first_name", "last_name"))
+    for data in out.values():
+        data["students"] = ordered
+    for sid, grades in load_grades_light(active, period.start, period.end, subject_ids=only_subjects,
+                                         class_ids=ids).items():
+        for g in grades:
+            out[g.evaluation.class_group_id]["grades"][sid].append(g)
+    for sid, cg_id, d, status in AttendanceRecord.objects.filter(
+            student_id__in=list(active), class_group_id__in=ids, date__gte=period.start, date__lte=period.end,
+    ).order_by("date").values_list("student_id", "class_group_id", "date", "status"):
+        out[cg_id]["records"][sid].append((d, status))
+    acts = [a for a in _period_activities(period, today).filter(class_group_id__in=ids)
+            if only_subjects is None or a.subject_id in only_subjects]
+    act_class = {}
+    for a in acts:
+        out[a.class_group_id]["acts"].append(a)
+        act_class[a.pk] = a.class_group_id
+    for s in Submission.objects.filter(activity__in=acts, student_id__in=list(active)).only(
+            "activity_id", "student_id", "status"):
+        out[act_class[s.activity_id]]["subs"][s.student_id][s.activity_id] = s.status
+    for ev in Evaluation.objects.filter(class_group_id__in=ids, status=PUBLISHED, date__gte=period.start,
+                                        date__lte=period.end).select_related("subject").order_by("-date"):
+        out[ev.class_group_id]["evals"].append(ev)
+    return out
+
+
+def class_report(class_group, period, *, min_subjects_below=1, min_delivery=60, only_subjects=None, rules=None,
+                 preload=None):
+    """``preload``: dados de ``preload_classes`` (mesmo período e disciplinas) para não consultar por turma."""
     from apps.registry.models import Student
 
     today = timezone.localdate()
     rules, limit = rules or school_rules(class_group.school)
     min_att = 100 - limit
 
-    enrollments = list(Enrollment.objects.filter(class_group=class_group).select_related("student"))
-    active_ids = sorted({e.student_id for e in enrollments if e.status == "ativo"})
-    students = {
-        s.pk: s for s in Student.objects.filter(pk__in=active_ids).order_by("first_name", "last_name")
-    }
-    grades = load_grades_light(active_ids, period.start, period.end, class_group=class_group,
-                               subject_ids=only_subjects)
-    records = load_attendance(active_ids, period.start, period.end, class_group=class_group)
+    if preload is not None:
+        pre = preload[class_group.pk]
+        enrollments = pre["enrollments"]
+        active_ids = sorted({e.student_id for e in enrollments if e.status == "ativo"})
+        wanted = set(active_ids)
+        students = {s.pk: s for s in pre["students"] if s.pk in wanted}
+        grades, records, acts, subs = pre["grades"], pre["records"], pre["acts"], pre["subs"]
+    else:
+        enrollments = list(Enrollment.objects.filter(class_group=class_group).select_related("student"))
+        active_ids = sorted({e.student_id for e in enrollments if e.status == "ativo"})
+        students = {
+            s.pk: s for s in Student.objects.filter(pk__in=active_ids).order_by("first_name", "last_name")
+        }
+        grades = load_grades_light(active_ids, period.start, period.end, class_group=class_group,
+                                   subject_ids=only_subjects)
+        records = load_attendance(active_ids, period.start, period.end, class_group=class_group)
 
-    acts = list(
-        Activity.objects.filter(
-            class_group=class_group, status=Activity.Status.PUBLISHED, published_date__lte=today,
-        ).filter(
-            Q(deadline__gte=period.start, deadline__lte=period.end)
-            | Q(deadline__isnull=True, published_date__gte=period.start, published_date__lte=period.end)
-        )
-    )
-    if only_subjects is not None:
-        acts = [a for a in acts if a.subject_id in only_subjects]
-    subs = defaultdict(dict)
-    for s in Submission.objects.filter(activity__in=acts, student_id__in=active_ids).only(
-        "activity_id", "student_id", "status"
-    ):
-        subs[s.student_id][s.activity_id] = s.status
+        acts = list(_period_activities(period, today).filter(class_group=class_group))
+        if only_subjects is not None:
+            acts = [a for a in acts if a.subject_id in only_subjects]
+        subs = defaultdict(dict)
+        for s in Submission.objects.filter(activity__in=acts, student_id__in=active_ids).only(
+            "activity_id", "student_id", "status"
+        ):
+            subs[s.student_id][s.activity_id] = s.status
 
     first_half, second_half = period.halves()
     subject_names = {}
@@ -954,7 +1005,7 @@ def class_report(class_group, period, *, min_subjects_below=1, min_delivery=60, 
     delivered_total = sum(r["delivered"] for r in rows)
     registered_total = sum(r["registered"] for r in rows)
 
-    evals = list(
+    evals = pre["evals"] if preload is not None else list(
         Evaluation.objects.filter(
             class_group=class_group, status=PUBLISHED, date__gte=period.start, date__lte=period.end,
         ).select_related("subject").order_by("-date")

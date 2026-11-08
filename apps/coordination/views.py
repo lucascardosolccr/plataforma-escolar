@@ -168,8 +168,10 @@ def panel(request):
     # (≈16 ms com 18 estudantes), então 40 turmas ficam abaixo de 1 s.
     class_rows, alerts = [], []
     rules = bi.school_rules(school)  # uma vez para todas as turmas
+    # Dados de todas as turmas em 7 consultas; o cálculo de cada turma é o mesmo de class_report.
+    preload = bi.preload_classes(classes[:MAX_PANEL_CLASSES], period)
     for cg in classes[:MAX_PANEL_CLASSES]:
-        r = bi.class_report(cg, period, rules=rules)
+        r = bi.class_report(cg, period, rules=rules, preload=preload)
         class_rows.append({"cg": cg, "active": r["active"], "mean": r["overall"]["mean"],
                            "attendance": r["attendance"]["percent"], "delivery": r["delivery_rate"],
                            "follow": len(r["follow_up"])})

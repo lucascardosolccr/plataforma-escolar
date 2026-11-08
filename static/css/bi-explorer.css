@@ -90,7 +90,7 @@ text.is-dim { opacity: .28; }
 .bx-dot.is-below { fill: var(--ds-chart-alert); }
 .bx-dot.is-alt { fill: var(--ds-chart-2); }
 .bx-dot.is-selected { stroke: var(--ds-text); stroke-width: 2.5; }
-.bx-class-mark { stroke: var(--ds-text); stroke-width: 2; }
+.bx-class-mark { fill: var(--ds-text); stroke: var(--ds-surface); stroke-width: 1.5; }
 .bx-brush { fill: rgba(var(--ds-primary-rgb), .14); stroke: var(--ds-primary); stroke-width: 1; }
 .bx-plot-bg { fill: transparent; cursor: crosshair; }
 .bx-quad { fill: var(--ds-danger-bg); opacity: .55; }
@@ -140,4 +140,25 @@ text.is-dim { opacity: .28; }
 @media print {
   .bx-slicers, .bx-card-tools, .bx-switch, .bx-clear { display: none !important; }
   .bx-card { break-inside: avoid; }
+}
+
+/* Segunda rodada: variação, leitura rápida, mapa de calor, modo foco e impressão */
+.bx-delta { font-size: .78rem; font-weight: 700; color: var(--ds-text-muted); }
+.bx-delta.is-up { color: var(--ds-success); }
+.bx-delta.is-down { color: var(--ds-danger); }
+.bx-narrative { margin: 0; padding-left: 1.1rem; display: grid; gap: .35rem; font-size: .9rem; }
+.bx-narrative li::marker { color: var(--ds-text-muted); }
+.bx-narrative li.is-alert::marker { color: var(--ds-danger); }
+.bx-narrative li.is-good::marker { color: var(--ds-success); }
+.bx-action { border: 0; background: none; padding: 0 .15rem; color: var(--ds-primary); text-decoration: underline;
+  font-size: .85rem; cursor: pointer; }
+.bx-heatmap td.bx-cell { padding: 0; }
+.bx-heatbtn { border: 0; background: none; width: 100%; padding: .3rem .45rem; font: inherit; color: inherit;
+  font-variant-numeric: tabular-nums; cursor: pointer; }
+.bx-heatbtn:focus-visible { outline: 3px solid var(--ds-primary); outline-offset: -3px; }
+.bx-matrix td.is-picked { box-shadow: inset 0 0 0 3px var(--ds-primary); }
+.bx-card.is-focus { grid-column: 1 / -1; }
+@media print {
+  .bx-print-hide { display: none !important; }
+  .bx-tip { display: none !important; }
 }

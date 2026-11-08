@@ -231,6 +231,10 @@
         var rx = labelW + (r.ref / max) * plotW;
         g.appendChild(s("line", { x1: rx, x2: rx, y1: y + 3, y2: y + rowH - 3, "class": "bx-ref" }));
       }
+      if (r.mark2 !== undefined && r.mark2 !== null) {  // ◆ referência extra (média da turma nas mesmas avaliações)
+        var mx = labelW + (Math.min(r.mark2, max) / max) * plotW, my = y + rowH / 2;
+        g.appendChild(s("path", { d: "M" + mx + " " + (my - 6) + " l5 6 l-5 6 l-5 -6 z", "class": "bx-class-mark" }));
+      }
       texts.push(s("text", { x: width - right + 6, y: y + rowH / 2 + 4, "class": "bx-value bx-passive", "aria-hidden": "true",
                              text: r.valueText !== undefined ? r.valueText : num(r.value, opt.digits === undefined ? 1 : opt.digits) }));
       if (r.dim) { g.classList.add("is-dim"); texts.forEach(function (t) { t.classList.add("is-dim"); }); }
@@ -421,8 +425,9 @@
     }));
     var body = h("tbody", null, rows.map(function (r) {
       var tr = h("tr", { "class": r.cls || null }, r.cells.map(function (c, i) {
-        return h("td", { "class": (head[i].num ? "num " : "") + (c && c.cls ? c.cls : "") },
-                 c && c.node ? c.node : (c && c.text !== undefined ? c.text : c));
+        var tdAttrs = { "class": (head[i].num ? "num " : "") + (c && c.cls ? c.cls : "") };
+        if (c && c.attrs) Object.keys(c.attrs).forEach(function (k) { tdAttrs[k] = c.attrs[k]; });
+        return h("td", tdAttrs, c && c.node ? c.node : (c && c.text !== undefined ? c.text : c));
       }));
       if (r.onClick) {
         // O teclado e o leitor de tela usam o botão da primeira célula; o mouse pode clicar em qualquer ponto.
@@ -442,32 +447,48 @@
   }
 
   // ------------------------------------------------------------------ moldura do painel
-  var app = { data: null, state: null, tableMode: {}, render: null };
+  var app = { data: null, state: null, tableMode: {}, render: null, focus: null };
 
-  function card(title, hint, size, draw, tabular) {
-    var key = title;
+  function card(title, hint, size, draw, tabular, opts) {
+    var key = (opts && opts.key) || title;
+    var focused = app.focus === key;
     var body = h("div");
     var tools = h("div", { "class": "bx-card-tools" });
     if (tabular) {
       tools.appendChild(h("button", { type: "button", "class": "bx-tool", "aria-pressed": String(!!app.tableMode[key]),
                                       text: "Tabela", on: { click: function () { app.tableMode[key] = !app.tableMode[key]; app.render(); } } }));
     }
-    var c = h("section", { "class": "bx-card " + (size || "") }, [
+    if (!(opts && opts.noFocus)) {
+      tools.appendChild(h("button", { type: "button", "class": "bx-tool", "aria-pressed": String(focused),
+                                      title: focused ? "Voltar ao painel (Esc)" : "Ver este visual sozinho, em largura total",
+                                      text: focused ? "Voltar" : "Ampliar",
+                                      on: { click: function () { app.focus = focused ? null : key; app.render(); window.scrollTo(0, root.offsetTop); } } }));
+    }
+    var c = h("section", { "class": "bx-card " + (focused ? "is-focus" : (size || "")) }, [
       h("div", { "class": "bx-card-head" }, [h("h3", { text: title }), tools]),
       hint ? h("p", { "class": "bx-card-hint", text: hint }) : null, body]);
-    return { node: c, fill: function () {
+    return { node: c, key: key, fill: function () {
       var width = Math.max(260, body.clientWidth || 600);
       var out = app.tableMode[key] && tabular ? tabular() : draw(width);
       add(body, out || h("p", { "class": "bx-empty", text: "Sem dados neste recorte." }));
     } };
   }
 
-  function kpi(label, value, note, cls, spark) {
+  function kpi(label, value, note, cls, spark, change) {
     return h("div", { "class": "bx-kpi " + (cls || "") }, [
       h("span", { "class": "bx-kpi-label", text: label }),
       h("span", { "class": "bx-kpi-value", text: value }),
+      change ? h("span", { "class": "bx-delta " + change.cls, text: change.text }) : null,
       note ? h("span", { "class": "bx-kpi-note", text: note }) : null,
       spark || null]);
+  }
+
+  /* Põe na tela os cartões: todos, ou só o ampliado (modo foco). */
+  function place(grid, cards) {
+    if (app.focus && !cards.some(function (c) { return c.key === app.focus; })) app.focus = null;
+    var shown = app.focus ? cards.filter(function (c) { return c.key === app.focus; }) : cards;
+    shown.forEach(function (c) { grid.appendChild(c.node); });
+    shown.forEach(function (c) { c.fill(); });
   }
 
   function chip(label, pressed, onClick, title) {
@@ -515,6 +536,8 @@
     var head = h("div", { "class": "bx-head" }, [
       h("div", null, [h("h2", { text: title }), h("p", { "class": "bx-sub", text: subtitle })]),
       h("div", { "class": "bx-switch" }, [
+        h("button", { type: "button", "class": "btn btn-sm btn-outline-secondary", text: "Imprimir esta visão",
+                      on: { click: printView } }),
         h("a", { "class": "btn btn-sm btn-outline-secondary", href: "#relatorio-detalhado", text: "Ir para o relatório detalhado" })])]);
     var slicers = h("div", { "class": "bx-slicers", role: "group", "aria-label": "Recortes do painel" });
     var filters = h("div", { "class": "bx-filters", "aria-live": "polite" });
@@ -567,6 +590,105 @@
   }
 
   function inRange(st, d) { return (!st.from || d >= st.from) && (!st.to || d <= st.to); }
+
+  /* Imprime só o painel interativo, no recorte atual (o resto da página some durante a impressão). */
+  function printView() {
+    var hidden = [], node = root;
+    while (node && node.parentElement && node !== document.body) {
+      Array.prototype.forEach.call(node.parentElement.children, function (sib) {
+        if (sib !== node && !sib.classList.contains("bx-print-hide")) { sib.classList.add("bx-print-hide"); hidden.push(sib); }
+      });
+      node = node.parentElement;
+    }
+    var done = false;
+    var restore = function () {
+      if (done) return;
+      done = true;
+      hidden.forEach(function (n) { n.classList.remove("bx-print-hide"); });
+      window.removeEventListener("afterprint", restore);
+    };
+    window.addEventListener("afterprint", restore);
+    window.print();
+    // Navegador que não avisa o fim da impressão: devolve a página mesmo assim.
+    setTimeout(restore, 1500);
+  }
+
+  function plural(n, one, many) { return n + " " + (n === 1 ? one : many); }
+  function listNames(names, max) {
+    var shown = names.slice(0, max || 4);
+    var text = shown.length > 1 ? shown.slice(0, -1).join(", ") + " e " + shown[shown.length - 1] : shown[0] || "";
+    return names.length > shown.length ? text + " e mais " + (names.length - shown.length) : text;
+  }
+
+  /* Janela anterior equivalente: o bimestre anterior, o mês anterior ou o mesmo número de dias logo antes. */
+  function previousWindow(st, meta) {
+    if (!st.from && !st.to) return null;
+    var from = st.from || meta.period.start, to = st.to || meta.period.end, terms = meta.terms || [];
+    for (var i = 0; i < terms.length; i++) {
+      if (terms[i].start === from && terms[i].end === to) {
+        return i ? { from: terms[i - 1].start, to: terms[i - 1].end, label: terms[i - 1].name } : null;
+      }
+    }
+    var pf, pt, label;
+    if (from.slice(8) === "01" && to === lastDay(monthKey(from))) {
+      var y = +from.slice(0, 4), m = +from.slice(5, 7) - 1;
+      if (m === 0) { m = 12; y -= 1; }
+      var key = y + "-" + (m < 10 ? "0" : "") + m;
+      pf = key + "-01"; pt = lastDay(key); label = monthLabel(key);
+    } else {
+      var len = day(to) - day(from) + 1;
+      pf = iso(day(from) - len); pt = iso(day(from) - 1); label = br(pf) + " a " + br(pt);
+    }
+    if (pt < meta.period.start) return null;
+    if (pf < meta.period.start) pf = meta.period.start;
+    return { from: pf, to: pt, label: label };
+  }
+  /* Variação contra a janela anterior, para o cartão de indicador. */
+  function change(now, before, digits, unit, prev) {
+    if (!prev || now === null || before === null || now === undefined || before === undefined) return null;
+    var d = round(now - before, digits);
+    return { text: (d > 0 ? "▲ +" : d < 0 ? "▼ −" : "= ") + num(Math.abs(d), digits) + unit + " vs " + prev.label,
+             cls: d > 0 ? "is-up" : d < 0 ? "is-down" : "" };
+  }
+
+  /* Leitura rápida: frases geradas por regras, cada uma com uma ação opcional. */
+  function narrative(items) {
+    if (!items.length) return h("p", { "class": "bx-empty", text: "Nenhum ponto de atenção neste recorte." });
+    return h("ul", { "class": "bx-narrative" }, items.map(function (it) {
+      return h("li", { "class": it.tone ? "is-" + it.tone : null }, [it.text,
+        it.action ? h("button", { type: "button", "class": "bx-action", text: it.action.label, on: { click: it.action.run } }) : null]);
+    }));
+  }
+
+  /* Mapa de calor disciplina × mês. value(idDisciplina, mês) -> {v, n}; onPick(id, mês) filtra os dois. */
+  function heatmap(subjects, months, value, isOn, onPick) {
+    if (!subjects.length || !months.length) return null;
+    var head = [{ label: "Disciplina" }].concat(months.map(function (m) { return { label: monthLabel(m), num: true }; }));
+    return table(head, subjects.map(function (x) {
+      return { cells: [x.name].concat(months.map(function (m) {
+        var c = value(x.id, m);
+        if (!c || c.v === null) return { text: "—", cls: "bx-cell" };
+        var heat = c.v < x.passing ? "bx-heat-0" : c.v < x.passing + 1 ? "bx-heat-1" : c.v < 8.5 ? "bx-heat-2" : "bx-heat-3";
+        var on = isOn(x.id, m);
+        return { cls: "bx-cell " + heat + (on ? " is-picked" : ""),
+                 node: h("button", { type: "button", "class": "bx-heatbtn", "aria-pressed": String(on),
+                                     title: x.name + " em " + monthLabel(m) + ": média " + num(c.v, 1) + " em " + plural(c.n, "nota", "notas"),
+                                     "aria-label": x.name + " em " + monthLabel(m) + ": média " + num(c.v, 1) + " em " + plural(c.n, "nota", "notas"),
+                                     text: num(c.v, 1), on: { click: function () { onPick(x.id, m); } } }) };
+      })) };
+    }), { cls: "bx-matrix bx-heatmap" });
+  }
+  function monthWindow(m, meta) {
+    var from = m + "-01" < meta.period.start ? meta.period.start : m + "-01";
+    var to = lastDay(m) > meta.period.end ? meta.period.end : lastDay(m);
+    return { from: from, to: to };
+  }
+  function pickSubjectMonth(st, meta, sid, m) {
+    var w = monthWindow(m, meta);
+    if (st.subjects.length === 1 && st.subjects[0] === sid && st.from === w.from && st.to === w.to) {
+      st.subjects = []; st.from = st.to = null;
+    } else { st.subjects = [sid]; st.from = w.from; st.to = w.to; }
+  }
 
   // ================================================================== estudante
   function studentApp(data) {
@@ -637,14 +759,28 @@
       // Nota mínima de referência: a das disciplinas, quando todas usam a mesma; senão 6.
       var passings = allSubj.map(function (r) { return r.passing; });
       var passingRef = passings.length && passings.every(function (p) { return p === passings[0]; }) ? passings[0] : 6;
+      var delivery = registered ? pct(delivered, registered) : null;
+      // Mesmos indicadores na janela anterior (bimestre, mês ou mesmo número de dias), com os mesmos recortes.
+      var prev = previousWindow(st, meta), before = null;
+      if (prev) {
+        var pg = G.filter(function (g) { return inRange(prev, g.d) && subjOk(g.s); });
+        var pa = A.filter(function (a) { return inRange(prev, a.d) && (st.weekday === null || weekday(a.d) === st.weekday); });
+        var pt = T.filter(function (t) { return inRange(prev, t.d) && subjOk(t.s); });
+        var pd = pt.filter(function (t) { return t.st === "E" || t.st === "T"; }).length;
+        var pr = pd + pt.filter(function (t) { return t.st === "N"; }).length;
+        before = { ov: overall(bySubject(pg)), freq: pct(pa.filter(function (a) { return a.st !== "F"; }).length, pa.length),
+                   delivery: pr ? pct(pd, pr) : null };
+      }
       add(f.kpis, [
         kpi("Média geral", num(ov, 1), gSel.length + " nota(s) em " + subjRows.length + " disciplina(s)",
-            ov !== null && ov < passingRef ? "is-alert" : "", sparkline(monthGrades)),
+            ov !== null && ov < passingRef ? "is-alert" : "", sparkline(monthGrades), before && change(ov, before.ov, 1, "", prev)),
         kpi("Frequência", freq === null ? "—" : num(freq, 1) + "%",
             absent + " falta(s)" + (justified ? ", " + justified + " justificada(s)" : "") + " em " + aSel.length + " registro(s)",
-            freq !== null && freq < meta.min_attendance ? "is-alert" : "", sparkline(monthFreq)),
-        kpi("Entrega de atividades", registered ? num(pct(delivered, registered), 1) + "%" : "—",
-            delivered + " de " + registered + " com registro" + (noRecord ? " · " + noRecord + " sem registro" : "")),
+            freq !== null && freq < meta.min_attendance ? "is-alert" : "", sparkline(monthFreq),
+            before && change(freq, before.freq, 1, " p.p.", prev)),
+        kpi("Entrega de atividades", registered ? num(delivery, 1) + "%" : "—",
+            delivered + " de " + registered + " com registro" + (noRecord ? " · " + noRecord + " sem registro" : ""), "", null,
+            before && change(delivery, before.delivery, 1, " p.p.", prev)),
         kpi("Tendência das notas", tr.slope === null ? "—" : (tr.slope > 0 ? "+" : "") + num(tr.slope, 2),
             tr.slope === null ? "precisa de 4 notas em 2 meses" : "pontos por mês · " + tr.label,
             tr.slope !== null && tr.slope <= -0.3 ? "is-alert" : tr.slope >= 0.3 ? "is-good" : ""),
@@ -652,15 +788,86 @@
             below.length ? below.map(function (b) { return b.name; }).slice(0, 3).join(", ") : "nenhuma abaixo da nota mínima",
             below.length ? "is-alert" : "")]);
 
+      // Comparação com a turma nas MESMAS avaliações (só a equipe recebe a média da turma, e só com 5+ notas).
+      var vsClass = {};
+      if (meta.class_comparison) {
+        gRange.forEach(function (g) {
+          if (g.cm === null) return;
+          var c = vsClass[g.s] = vsClass[g.s] || { cm: [], diff: [] };
+          c.cm.push(g.cm); c.diff.push(g.v - g.cm);
+        });
+      }
+
+      // ---- leitura rápida (regras transparentes sobre os números deste recorte)
+      var notes = [];
+      if (ov !== null) {
+        if (below.length) {
+          notes.push({ tone: "alert", text: "Média geral " + num(ov, 1) + ", abaixo da mínima em " +
+            listNames(below.map(function (b) { return b.name + " (" + num(b.avg, 1) + ")"; })) + ". " });
+        } else {
+          var best = subjRows.filter(function (r) { return r.avg !== null; }).sort(function (a, c) { return c.avg - a.avg; })[0];
+          notes.push({ tone: "good", text: "Média geral " + num(ov, 1) + ", acima da mínima " +
+            (subjRows.length === 1 ? "na única disciplina com notas" : "em todas as " + subjRows.length + " disciplinas") +
+            (best && subjRows.length > 1 ? "; a mais alta é " + best.name + " (" + num(best.avg, 1) + ")." : ".") });
+        }
+      }
+      if (tr.slope !== null && Math.abs(tr.slope) >= 0.3) {
+        notes.push({ tone: tr.slope < 0 ? "alert" : "good", text: "Notas " + tr.label + ": " + (tr.slope > 0 ? "+" : "−") +
+          num(Math.abs(tr.slope), 2) + " ponto por mês no recorte (reta de tendência sobre " + plural(gSel.length, "nota", "notas") + ")." });
+      }
+      if (prev && before && ov !== null && before.ov !== null && Math.abs(ov - before.ov) >= 0.5) {
+        notes.push({ tone: ov < before.ov ? "alert" : "good", text: "Em relação a " + prev.label + ", a média " +
+          (ov < before.ov ? "caiu" : "subiu") + " de " + num(before.ov, 1) + " para " + num(ov, 1) + "." });
+      }
+      if (freq !== null && freq < meta.min_attendance) {
+        notes.push({ tone: "alert", text: "Frequência de " + num(freq, 1) + "%, abaixo do mínimo de " + num(meta.min_attendance, 0) + "%." });
+      }
+      var run = { n: 0, best: 0, start: null, bStart: null, bEnd: null };
+      aSel.forEach(function (a) {
+        if (a.st === "F") {
+          if (!run.n) run.start = a.d;
+          run.n += 1;
+          if (run.n > run.best) { run.best = run.n; run.bStart = run.start; run.bEnd = a.d; }
+        } else run.n = 0;
+      });
+      if (run.best >= 2) {
+        notes.push({ tone: "alert", text: run.best + " faltas seguidas, de " + br(run.bStart) + " a " + br(run.bEnd) + " (maior sequência no recorte)." });
+      }
+      if (absent >= 3 && st.weekday === null) {
+        var byWd = {};
+        aRange.forEach(function (a) { if (a.st === "F") byWd[weekday(a.d)] = (byWd[weekday(a.d)] || 0) + 1; });
+        var topWd = Object.keys(byWd).sort(function (a, c) { return byWd[c] - byWd[a]; })[0];
+        if (topWd !== undefined && byWd[topWd] / absent >= 0.5 && byWd[topWd] >= 2) {
+          notes.push({ tone: "alert", text: byWd[topWd] + " das " + absent + " faltas foram às " + WEEKDAYS[topWd].toLowerCase() + "s. ",
+                       action: { label: "Ver só as " + WEEKDAYS[topWd].toLowerCase() + "s", run: function () { st.weekday = +topWd; update(); } } });
+        }
+      }
+      if (noRecord) notes.push({ tone: "alert", text: plural(noRecord, "atividade", "atividades") + " com prazo vencido e sem registro de entrega." });
+      if (delivery !== null && registered >= 3 && delivery < 60) {
+        notes.push({ tone: "alert", text: "Entrega de atividades em " + num(delivery, 0) + "% (" + delivered + " de " + registered + " com registro)." });
+      }
+      Object.keys(vsClass).forEach(function (sid) {
+        var d = mean(vsClass[sid].diff);
+        if (vsClass[sid].diff.length >= 2 && Math.abs(d) >= 1 && subjOk(+sid)) {
+          notes.push({ tone: d < 0 ? "alert" : "good", text: "Em " + (names[sid] || "?") + ", as notas ficaram em média " + num(Math.abs(d), 1) +
+            (d < 0 ? " abaixo" : " acima") + " da turma nas mesmas avaliações (" + plural(vsClass[sid].diff.length, "avaliação", "avaliações") + ")." });
+        }
+      });
+
       var cards = [];
-      cards.push(card("Média por disciplina", "Clique para filtrar o painel pela disciplina; a linha tracejada é a nota mínima.", "w-6",
+      cards.push(card("Leitura rápida", "Frases geradas por regras a partir dos números deste recorte. Não é previsão: é um resumo para orientar a conversa.", "",
+        function () { return narrative(notes); }, null, { noFocus: true }));
+      cards.push(card("Média por disciplina", "Clique para filtrar o painel pela disciplina. Tracejado: nota mínima" +
+                      (meta.class_comparison ? " · ◆ média da turma nas mesmas avaliações." : "."), "w-6",
         function (w) {
           if (!allSubj.length) return null;
           return hbars(w, allSubj.map(function (r) {
-            var on = st.subjects.indexOf(r.id) !== -1;
-            return { label: r.name, value: r.avg, ref: r.passing, cls: r.avg !== null && r.avg < r.passing ? "is-below" : "",
+            var on = st.subjects.indexOf(r.id) !== -1, cmp = vsClass[r.id];
+            var cm = cmp ? mean(cmp.cm) : null;
+            return { label: r.name, value: r.avg, ref: r.passing, mark2: cm, cls: r.avg !== null && r.avg < r.passing ? "is-below" : "",
                      selected: on, dim: st.subjects.length && !on,
-                     tip: r.name + ": média " + num(r.avg, 1) + " (" + r.n + " nota(s); mínima " + num(r.passing, 1) + ")",
+                     tip: r.name + ": média " + num(r.avg, 1) + " (" + r.n + " nota(s); mínima " + num(r.passing, 1) + ")" +
+                          (cm !== null ? "; turma nas mesmas avaliações: " + num(cm, 1) : ""),
                      onClick: function () { toggle(st.subjects, r.id); update(); } };
           }), { max: 10, aria: "Média por disciplina" });
         },
@@ -767,6 +974,19 @@
           return table([{ label: "Prazo" }, { label: "Disciplina" }, { label: "Atividade" }, { label: "Situação" }],
             tSel.map(function (t) { return { cells: [brFull(t.d), names[t.s] || "", t.t, ACT[t.st]] }; }));
         }));
+      cards.push(card("Disciplina × mês", "Média das notas de cada disciplina em cada mês. Clique numa célula para filtrar o painel por aquela disciplina e mês (clique de novo para desfazer).", "",
+        function () {
+          var hm = monthsBetween(firstDataDay(G.map(function (g) { return g.d; }), meta.period.start, meta.period.end), meta.period.end)
+            .filter(function (m) { return G.some(function (g) { return monthKey(g.d) === m; }); });
+          var subs = bySubject(G).map(function (r) { return { id: r.id, name: r.name, passing: r.passing }; });
+          return heatmap(subs, hm, function (sid, m) {
+            var v = G.filter(function (g) { return g.s === sid && monthKey(g.d) === m; }).map(function (g) { return g.v; });
+            return v.length ? { v: round(mean(v), 2), n: v.length } : null;
+          }, function (sid, m) {
+            var w = monthWindow(m, meta);
+            return st.subjects.length === 1 && st.subjects[0] === sid && st.from === w.from && st.to === w.to;
+          }, function (sid, m) { pickSubjectMonth(st, meta, sid, m); update(); });
+        }, null));
       cards.push(card("Avaliações do recorte", "Ordene clicando no cabeçalho.", "",
         function () {
           if (!gBand.length) return null;
@@ -785,8 +1005,7 @@
           }), { sortKey: st.sort.key, sortDir: st.sort.dir,
                 onSort: function (i) { st.sort = { key: i, dir: st.sort.key === i ? -st.sort.dir : (i === 0 ? -1 : 1) }; update(); } });
         }, null));
-      cards.forEach(function (c) { f.grid.appendChild(c.node); });
-      cards.forEach(function (c) { c.fill(); });
+      place(f.grid, cards);
       writeHash(st);
     }
     function update() { app.render(); }
@@ -812,13 +1031,13 @@
     var hs = readHash();
     var st = { from: hs.from || null, to: hs.to || null, subjects: hs.subjects || [],
                students: (hs.students || []).filter(function (id) { return id in idIndex; }),
-               band: null, weekday: null, follow: !!hs.follow, sort: { key: "name", dir: 1 } };
+               band: null, weekday: null, follow: !!hs.follow, sort: { key: "name", dir: 1 }, drill: null };
     function rule(sid) { return rules[String(sid)] || { formula: "aritmetica", passing: 6 }; }
 
-    function compute() {
+    function compute(win) {
       var subjOk = function (sid) { return !st.subjects.length || st.subjects.indexOf(sid) !== -1; };
-      var evalOk = E.map(function (e) { return inRange(st, e.d) && subjOk(e.s); });
-      var actOk = ACTS.map(function (a) { return inRange(st, a.d) && subjOk(a.s); });
+      var evalOk = E.map(function (e) { return inRange(win, e.d) && subjOk(e.s); });
+      var actOk = ACTS.map(function (a) { return inRange(win, a.d) && subjOk(a.s); });
       return S.map(function (stu, i) {
         var acc = {};
         gradesOf[i].forEach(function (g) {
@@ -832,7 +1051,7 @@
           subj[sid] = { avg: avg, passing: r.passing };
         });
         var vals = Object.keys(subj).map(function (k) { return subj[k].avg; }).filter(function (v) { return v !== null; });
-        var recs = attOf[i].filter(function (a) { return inRange(st, a.d); });
+        var recs = attOf[i].filter(function (a) { return inRange(win, a.d); });
         var pres = recs.filter(function (a) { return a.st !== "F"; }).length;
         var subs = subsOf[i].filter(function (x) { return actOk[x.a]; });
         var del = subs.filter(function (x) { return x.st === "E" || x.st === "T"; }).length;
@@ -849,8 +1068,17 @@
       });
     }
 
+    /* Média da turma (média das médias), frequência e entrega de um conjunto de linhas. */
+    function aggregate(list) {
+      var ov = list.map(function (r) { return r.overall; }).filter(function (v) { return v !== null; });
+      var recs = 0, pres = 0, reg = 0, del = 0;
+      list.forEach(function (r) { recs += r.records; pres += r.records - r.absences; reg += r.registered; del += r.delivered; });
+      return { n: ov.length, mean: ov.length ? round(mean(ov), 2) : null, freq: pct(pres, recs), recs: recs,
+               delivery: reg ? pct(del, reg) : null, reg: reg };
+    }
+
     function render() {
-      var rows = compute();
+      var rows = compute(st);
       var selected = st.students.map(function (id) { return idIndex[id]; });
       var focus = selected.length ? rows.filter(function (r) { return selected.indexOf(r.i) !== -1; }) : rows;
       var shownSubjects = data.subjects.filter(function (x) { return !st.subjects.length || st.subjects.indexOf(x.id) !== -1; });
@@ -884,34 +1112,132 @@
           f.selection.appendChild(r.url ? h("a", { href: r.url, text: r.name }) : h("span", { text: r.name }));
         });
         f.selection.appendChild(document.createTextNode(". Os indicadores abaixo valem para a seleção."));
+        if (focus.length === 1) {  // detalhamento acessível pelo teclado (o mouse também pode clicar na nota do mapa)
+          var only = focus[0];
+          var detail = h("div", { "class": "bx-slicer mt-2" }, [h("span", { "class": "bx-slicer-label", text: "Detalhar" })]);
+          data.subjects.forEach(function (x) {
+            if (!only.subj[x.id]) return;
+            var on = st.drill && st.drill.student === only.id && st.drill.subject === x.id;
+            detail.appendChild(chip(x.name, on, function () {
+              st.drill = on ? null : { student: only.id, subject: x.id }; update();
+            }));
+          });
+          if (detail.children.length > 1) f.selection.appendChild(detail);
+        }
       }
 
+      var agg = aggregate(focus);
+      var prev = previousWindow(st, meta), before = null;
+      if (prev) {
+        var prevRows = compute(prev);
+        before = aggregate(selected.length ? prevRows.filter(function (r) { return selected.indexOf(r.i) !== -1; }) : prevRows);
+      }
       var ov = focus.map(function (r) { return r.overall; }).filter(function (v) { return v !== null; });
-      var recs = 0, pres = 0, reg = 0, del = 0;
-      focus.forEach(function (r) {
-        recs += r.records; pres += r.records - r.absences;
-        reg += r.registered; del += r.delivered;
-      });
+      var recs = agg.recs, reg = agg.reg;
       var subjMeans = shownSubjects.map(function (x) {
         var v = focus.map(function (r) { return r.subj[x.id] ? r.subj[x.id].avg : null; }).filter(function (v) { return v !== null; });
         return { id: x.id, name: x.name, mean: v.length ? round(mean(v), 2) : null, n: v.length, passing: rule(x.id).passing,
                  below: v.filter(function (val) { return val < rule(x.id).passing; }).length };
       });
-      var classMean = ov.length ? round(mean(ov), 2) : null, freq = pct(pres, recs);
+      var classMean = agg.mean, freq = agg.freq;
       add(f.kpis, [
         kpi(selected.length ? "Selecionados" : "Estudantes ativos", String(focus.length), selected.length ? "de " + S.length + " na turma" : ""),
         kpi("Média da turma", num(classMean, 1), "média das médias de " + ov.length + " estudante(s)",
-            classMean !== null && classMean < 6 ? "is-alert" : ""),
+            classMean !== null && classMean < 6 ? "is-alert" : "", null, before && change(classMean, before.mean, 1, "", prev)),
         kpi("Frequência", freq === null ? "—" : num(freq, 1) + "%", recs + " registro(s) de chamada",
-            freq !== null && freq < meta.min_attendance ? "is-alert" : ""),
-        kpi("Entrega de atividades", reg ? num(pct(del, reg), 1) + "%" : "—", reg + " entrega(s) com registro"),
+            freq !== null && freq < meta.min_attendance ? "is-alert" : "", null, before && change(freq, before.freq, 1, " p.p.", prev)),
+        kpi("Entrega de atividades", reg ? num(agg.delivery, 1) + "%" : "—", reg + " entrega(s) com registro", "", null,
+            before && change(agg.delivery, before.delivery, 1, " p.p.", prev)),
         kpi("Em acompanhamento", String(focus.filter(function (r) { return r.reasons.length; }).length),
             "por nota, frequência ou entrega", follow.length ? "is-alert" : ""),
         kpi("Disciplinas com média baixa", String(subjMeans.filter(function (m) { return m.mean !== null && m.mean < m.passing; }).length),
             "de " + subjMeans.filter(function (m) { return m.mean !== null; }).length + " com notas")]);
 
+      // ---- leitura rápida da turma (regras transparentes)
+      var notes = [];
+      var flagged = focus.filter(function (r) { return r.reasons.length; });
+      if (flagged.length) {
+        var byGrade = flagged.filter(function (r) { return r.below; }).length;
+        var byAtt = flagged.filter(function (r) { return r.freq !== null && r.freq < meta.min_attendance; }).length;
+        var byDel = flagged.filter(function (r) { return r.delivery !== null && r.registered >= 3 && r.delivery < 60; }).length;
+        var why = [[byGrade, "por nota"], [byAtt, "por frequência"], [byDel, "por entrega"]]
+          .filter(function (x) { return x[0]; }).map(function (x) { return x[0] + " " + x[1]; });
+        notes.push({ tone: "alert", text: plural(flagged.length, "estudante", "estudantes") + " de " + focus.length + " em acompanhamento (" +
+          listNames(why, 3) + "; um estudante pode ter mais de um motivo). ",
+          action: selected.length ? null : { label: "Selecionar esses estudantes", run: function () {
+            st.students = flagged.map(function (r) { return r.id; }); st.follow = true; update(); } } });
+      }
+      var quadrant = focus.filter(function (r) { return r.overall !== null && r.freq !== null && r.overall < 6 && r.freq < meta.min_attendance; });
+      if (quadrant.length) {
+        notes.push({ tone: "alert", text: plural(quadrant.length, "estudante tem", "estudantes têm") + " média e frequência abaixo das mínimas ao mesmo tempo: " +
+          listNames(quadrant.map(function (r) { return r.name; })) + ". ",
+          action: { label: "Selecionar", run: function () { st.students = quadrant.map(function (r) { return r.id; }); st.follow = false; update(); } } });
+      }
+      var withMean = subjMeans.filter(function (m) { return m.mean !== null; }).sort(function (a, c) { return a.mean - c.mean; });
+      if (withMean.length > 1 && !st.subjects.length) {
+        var low = withMean[0];
+        notes.push({ tone: low.mean < low.passing ? "alert" : null, text: "Menor média: " + low.name + " (" + num(low.mean, 1) + "), com " +
+          low.below + " de " + low.n + " abaixo da mínima. ",
+          action: { label: "Filtrar " + low.name, run: function () { st.subjects = [low.id]; update(); } } });
+      }
+      if (prev && before && classMean !== null && before.mean !== null && Math.abs(classMean - before.mean) >= 0.3) {
+        notes.push({ tone: classMean < before.mean ? "alert" : "good", text: "Em relação a " + prev.label + ", a média da turma " +
+          (classMean < before.mean ? "caiu" : "subiu") + " de " + num(before.mean, 1) + " para " + num(classMean, 1) + "." });
+      }
+      if (prev && before && freq !== null && before.freq !== null && Math.abs(freq - before.freq) >= 3) {
+        notes.push({ tone: freq < before.freq ? "alert" : "good", text: "A frequência " + (freq < before.freq ? "caiu" : "subiu") +
+          " de " + num(before.freq, 1) + "% para " + num(freq, 1) + "% em relação a " + prev.label + "." });
+      }
+      var missing = E.map(function (e, j) { return { e: e, j: j }; }).filter(function (x) {
+        return inRange(st, x.e.d) && (!st.subjects.length || st.subjects.indexOf(x.e.s) !== -1);
+      }).map(function (x) {
+        var got = 0;
+        focus.forEach(function (r) { if (gradesOf[r.i].some(function (g) { return g.e === x.j; })) got += 1; });
+        return { e: x.e, miss: focus.length - got };
+      }).filter(function (x) { return x.miss >= 3; }).sort(function (a, c) { return c.miss - a.miss; });
+      if (missing.length) {
+        notes.push({ tone: "alert", text: plural(missing.length, "avaliação tem", "avaliações têm") + " 3 ou mais notas faltando; a maior é \u201c" +
+          missing[0].e.t + "\u201d (" + br(missing[0].e.d) + "), com " + missing[0].miss + " sem nota." });
+      }
+
       var cards = [];
-      cards.push(card("Mapa da turma", "Clique num estudante para selecioná-lo (clique de novo para tirar). Ordene pelo cabeçalho. Cores: vermelho abaixo da mínima, amarelo até 1 ponto acima.", "",
+      cards.push(card("Leitura rápida", "Frases geradas por regras a partir dos números deste recorte" + (selected.length ? " (só da seleção)" : "") +
+                      ". Não é previsão: é um resumo para orientar a conversa.", "",
+        function () { return narrative(notes); }, null, { noFocus: true }));
+      if (st.drill && st.drill.student in idIndex) {
+        var dr = rows[idIndex[st.drill.student]], dsub = st.drill.subject;
+        cards.push(card("Detalhe: " + dr.name + " · " + (names[dsub] || ""), "Avaliações do recorte nessa disciplina, com a média da turma em cada uma.", "",
+          function () {
+            var evs = E.map(function (e, j) { return { e: e, j: j }; }).filter(function (x) { return x.e.s === dsub && inRange(st, x.e.d); });
+            var wrap = h("div");
+            var c = dr.subj[dsub], classAvgs = rows.map(function (r) { return r.subj[dsub] ? r.subj[dsub].avg : null; })
+              .filter(function (v) { return v !== null; });
+            wrap.appendChild(h("p", { "class": "small mb-2" }, [
+              h("strong", { text: "Média do estudante: " + num(c ? c.avg : null, 1) }),
+              " · média da turma na disciplina (média das médias): " + num(classAvgs.length ? mean(classAvgs) : null, 1) +
+              " · mínima: " + num(rule(dsub).passing, 1) + " · fórmula: " + (rule(dsub).formula === "ponderada" ? "ponderada" :
+                rule(dsub).formula === "melhor_nota" ? "melhor nota" : rule(dsub).formula === "soma" ? "soma" : "aritmética")]));
+            wrap.appendChild(table([{ label: "Data" }, { label: "Avaliação" }, { label: "Tipo" }, { label: "Peso", num: true },
+                                    { label: "Nota", num: true }, { label: "Turma", num: true }, { label: "Diferença", num: true }],
+              evs.map(function (x) {
+                var mine = gradesOf[dr.i].filter(function (g) { return g.e === x.j; })[0];
+                var all = [];
+                S.forEach(function (stu, i) { gradesOf[i].forEach(function (g) { if (g.e === x.j) all.push(g.v); }); });
+                var cm = all.length ? mean(all) : null, diff = mine && cm !== null ? mine.v - cm : null;
+                return { cells: [brFull(x.e.d), x.e.t, x.e.k, num(x.e.w, 1),
+                                 { text: mine ? num(mine.v, 1) : "sem nota", cls: mine && mine.v < rule(dsub).passing ? "text-danger fw-semibold" : "" },
+                                 num(cm, 1), { text: diff === null ? "—" : (diff > 0 ? "+" : diff < 0 ? "−" : "") + num(Math.abs(diff), 1),
+                                               cls: diff !== null && diff <= -1 ? "text-danger fw-semibold" : "" }] };
+              })));
+            var actions = h("div", { "class": "d-flex flex-wrap gap-2 mt-2" }, [
+              h("button", { type: "button", "class": "btn btn-sm btn-outline-secondary", text: "Fechar o detalhe",
+                            on: { click: function () { st.drill = null; update(); } } }),
+              dr.url ? h("a", { "class": "btn btn-sm btn-outline-primary", href: dr.url, text: "Abrir o painel de " + dr.name.split(" ")[0] }) : null]);
+            wrap.appendChild(actions);
+            return wrap;
+          }, null, { key: "detalhe" }));
+      }
+      cards.push(card("Mapa da turma", "Clique no nome para selecionar o estudante; clique numa nota para ver o detalhe daquela disciplina. Ordene pelo cabeçalho. Cores: vermelho abaixo da mínima, amarelo até 1 ponto acima.", "",
         function () {
           var head = [{ label: "Estudante", key: "name" }].concat(shownSubjects.map(function (x) { return { label: x.name.length > 12 ? x.name.slice(0, 11) + "…" : x.name, key: "s" + x.id, num: true }; }))
             .concat([{ label: "Média", key: "overall", num: true }, { label: "Frequência", key: "freq", num: true }, { label: "Entrega", key: "delivery", num: true }]);
@@ -935,13 +1261,25 @@
               var c = r.subj[x.id];
               if (!c || c.avg === null) return { text: "—", cls: "bx-cell" };
               var heat = c.avg < c.passing ? "bx-heat-0" : c.avg < c.passing + 1 ? "bx-heat-1" : c.avg < 8.5 ? "bx-heat-2" : "bx-heat-3";
-              return { text: num(c.avg, 1), cls: "bx-cell " + heat };
+              var picked = st.drill && st.drill.student === r.id && st.drill.subject === x.id;
+              return { text: num(c.avg, 1), cls: "bx-cell " + heat + (picked ? " is-picked" : ""),
+                       attrs: { "data-subject": x.id, title: "Ver o detalhe de " + x.name } };
             })).concat([
               { text: num(r.overall, 1), cls: r.overall !== null && r.overall < 6 ? "text-danger fw-semibold" : "fw-semibold" },
               { text: r.freq === null ? "—" : num(r.freq, 1) + "%", cls: r.freq !== null && r.freq < meta.min_attendance ? "text-danger fw-semibold" : "" },
               { text: r.delivery === null ? "—" : num(r.delivery, 0) + "%", cls: r.delivery !== null && r.registered >= 3 && r.delivery < 60 ? "text-danger fw-semibold" : "" }]);
             return { cells: cells, selected: isSel, label: r.name, cls: isSel ? "is-selected" : (selected.length ? "is-dim" : null),
-                     onClick: function () { toggle(st.students, r.id); st.follow = false; update(); } };
+                     onClick: function (e) {
+                       var cell = e && e.target && e.target.closest ? e.target.closest("td[data-subject]") : null;
+                       if (cell) {  // clique numa nota: detalhe daquela disciplina para o estudante
+                         var sid = +cell.getAttribute("data-subject");
+                         var same = st.drill && st.drill.student === r.id && st.drill.subject === sid;
+                         st.drill = same ? null : { student: r.id, subject: sid };
+                         update();
+                         return;
+                       }
+                       toggle(st.students, r.id); st.follow = false; update();
+                     } };
           }), { cls: "bx-matrix", sortKey: head.map(function (c) { return c.key; }).indexOf(st.sort.key), sortDir: st.sort.dir,
                 onSort: function (i) { var k = head[i].key; st.sort = { key: k, dir: st.sort.key === k ? -st.sort.dir : (k === "name" ? 1 : -1) }; update(); } });
         }, null));
@@ -1033,6 +1371,24 @@
                      onClick: function () { st.students = on ? [] : who.map(function (r) { return r.id; }); st.follow = false; update(); } };
           }), { aria: "Distribuição das médias gerais" });
         }, null));
+      cards.push(card("Disciplina × mês", "Média das notas" + (selected.length ? " da seleção" : " da turma") +
+                      " em cada disciplina e mês. Clique numa célula para filtrar o painel por aquela disciplina e mês.", "",
+        function () {
+          var months = monthsBetween(firstDataDay(E.map(function (e) { return e.d; }), meta.period.start, meta.period.end), meta.period.end)
+            .filter(function (m) { return E.some(function (e) { return monthKey(e.d) === m; }); });
+          var subs = data.subjects.filter(function (x) { return E.some(function (e) { return e.s === x.id; }); })
+            .map(function (x) { return { id: x.id, name: x.name, passing: rule(x.id).passing }; });
+          return heatmap(subs, months, function (sid, m) {
+            var v = [];
+            focus.forEach(function (r) {
+              gradesOf[r.i].forEach(function (g) { var ev = E[g.e]; if (ev.s === sid && monthKey(ev.d) === m) v.push(g.v); });
+            });
+            return v.length ? { v: round(mean(v), 2), n: v.length } : null;
+          }, function (sid, m) {
+            var w = monthWindow(m, meta);
+            return st.subjects.length === 1 && st.subjects[0] === sid && st.from === w.from && st.to === w.to;
+          }, function (sid, m) { pickSubjectMonth(st, meta, sid, m); update(); });
+        }, null));
       cards.push(card("Avaliações do recorte", "Notas, pendências e estatística de cada avaliação" + (selected.length ? " (só da seleção)" : "") + ".", "",
         function () {
           var evs = E.map(function (e, j) { return { e: e, j: j }; }).filter(function (x) {
@@ -1050,8 +1406,7 @@
                                num(v.length ? Math.min.apply(null, v) : null, 1), num(v.length ? Math.max.apply(null, v) : null, 1)] };
             }));
         }, null));
-      cards.forEach(function (c) { f.grid.appendChild(c.node); });
-      cards.forEach(function (c) { c.fill(); });
+      place(f.grid, cards);
       writeHash(st);
     }
     function update() { app.render(); }
@@ -1072,6 +1427,9 @@
       if (data.kind === "class") classApp(data); else studentApp(data);
       var timer = null;
       window.addEventListener("resize", function () { clearTimeout(timer); timer = setTimeout(function () { app.render(); }, 180); });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && app.focus) { app.focus = null; app.render(); }
+      });
     })
     .catch(function () {
       root.textContent = "";

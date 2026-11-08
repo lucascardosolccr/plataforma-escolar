@@ -42,7 +42,7 @@
           <p class="h5 mb-1">Não registrado</p><p class="mb-0">{{ error }}</p>{% if student %}<p class="mb-0">Carteirinha de <strong>{{ student.full_name }}</strong>.</p>{% endif %}
         {% else %}
           <p class="h5 mb-1">{{ student.full_name }}</p>
-          <p class="mb-1">{% if existed %}{{ event.get_kind_display }} já registrada hoje às {{ event.at|time:"H:i" }}. Nada mudou.{% else %}{{ event.get_kind_display }} registrada às {{ event.at|time:"H:i" }} ({{ event.get_method_display|lower }}).{% endif %}
+          <p class="mb-1">{% if existed %}{{ event.get_kind_display }} já registrada hoje às {{ event.at|time:"H:i" }}. Nada mudou.{% else %}{{ event.get_kind_display }} registrada às {{ event.at|time:"H:i" }} ({% if event.method == "qr" %}QR Code{% else %}{{ event.get_method_display|lower }}{% endif %}).{% endif %}
           {% if event.class_group %} · {{ event.class_group.name }}{% endif %}</p>
           {% if event.late %}<p class="mb-1 fw-semibold">Atraso de {{ event.minutes_late }} minutos (entrada do turno às {{ event.expected|time:"H:i" }}). A família foi avisada.</p>{% elif not existed %}<p class="mb-1 text-body-secondary">A família foi avisada, se a escola mantém esse aviso ligado.</p>{% endif %}
           {% if expired %}<p class="mb-0 text-warning">A carteirinha está vencida: peça a nova na secretaria.</p>{% endif %}

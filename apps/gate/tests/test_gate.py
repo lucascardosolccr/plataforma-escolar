@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 from django.conf import settings
 from django.test import SimpleTestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.communication.models import Notification
 from apps.communication.tests.test_communication import CommunicationBase
@@ -149,6 +150,20 @@ class StationTests(GateBase):
         self.scan(self.card.code, when=at(8, 30))
         self.assertEqual(AttendanceRecord.objects.get(student=self.ana, date=WED).status, "atraso")
         self.assertTrue(AuditLog.objects.filter(detail__contains="a falta do dia virou atraso").exists())
+
+    def test_each_form_registers_entry_and_time_at_the_station(self):
+        """Pedido de 08/11/2026: QR Code, código de barras e código digitado registram a entrada e o horário."""
+        thu = WED + dt.timedelta(days=1)
+        page = self.scan(services.qr_payload(self.card), when=at(7, 20))
+        self.assertContains(page, "Entrada registrada às 07:20 (QR Code)")
+        self.assertContains(self.scan(self.card.code, kind="saida", when=at(12, 5)),
+                            "Saída registrada às 12:05 (código de barras)")
+        self.assertContains(self.scan(self.card.display_code, origin="teclado", when=at(7, 22, thu)),
+                            "Entrada registrada às 07:22 (código digitado)")
+        got = [(e.kind, e.method, timezone.localtime(e.at).strftime("%d %H:%M"))
+               for e in GateEvent.objects.order_by("at")]
+        self.assertEqual(got, [("entrada", "qr", f"{WED.day:02d} 07:20"), ("saida", "barras", f"{WED.day:02d} 12:05"),
+                               ("entrada", "codigo", f"{thu.day:02d} 07:22")])
 
     def test_weekend_entry_is_never_late_and_exit_notifies(self):
         sat = WED + dt.timedelta(days=3)

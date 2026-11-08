@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_active_search, views_diary, views_planning, views_reuse, views_rubrics
+from . import views, views_active_search, views_diary, views_outlook, views_planning, views_reuse, views_rubrics
 
 app_name = "pedagogy"
 
@@ -67,6 +67,7 @@ urlpatterns = [
         name="group_work_attachment",
     ),
     path("frequencia/", views.attendance_list, name="attendance_list"),
+    path("agenda-e-faltas/", views_outlook.student_outlook, name="outlook"),
     path(
         "frequencia/turma/<int:class_group_id>/",
         views.attendance_class,

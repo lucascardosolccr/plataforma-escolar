@@ -1,0 +1,18 @@
+{% load ui %}{# Próximas entregas. Recebe items (outlook.upcoming) e, opcional, limit. #}
+{% if items %}
+<ol class="ol-agenda list-unstyled mb-0">
+  {% for i in items %}{% if not limit or forloop.counter <= limit %}
+  <li class="ol-item ol-{{ i.tone }}">
+    <span class="ol-when"><strong>{{ i.when|capfirst }}</strong><span>{{ i.date|date:"D, d/m" }}</span></span>
+    <span class="ol-what">
+      <span class="ol-kind ol-kind-{{ i.kind }}">{{ i.kind_label }}</span>
+      <a href="{{ i.url }}">{{ i.title }}</a>
+      <span class="small text-body-secondary">{{ i.subject }}{% if i.note %} · <span class="ol-note">{{ i.note }}</span>{% endif %}</span>
+    </span>
+  </li>
+  {% endif %}{% endfor %}
+</ol>
+{% if limit and items|length > limit %}<p class="small text-body-secondary mt-2 mb-0">Mostrando {{ limit }} de {{ items|length }}.</p>{% endif %}
+{% else %}
+<p class="text-body-secondary small mb-0">{% icon "circle-check" %} Nada com prazo nas próximas semanas.</p>
+{% endif %}

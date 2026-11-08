@@ -136,6 +136,12 @@ def build(user):
 
         rows, children = _family_rows(user)
         data["children"] = _children_summary(rows, children)
+        # Agenda única (atividades, trabalhos e provas) e faltas que ainda cabem no ano, por filho.
+        from apps.pedagogy.outlook import attendance_outlook, upcoming
+
+        for c in data["children"]:
+            c["agenda"] = upcoming(c["student"], today, days=14)
+            c["att"] = attendance_outlook(c["student"], today)
         data["pending_links"] = GuardianLink.objects.filter(
             guardian=user, status="pendente"
         ).count()
@@ -154,6 +160,10 @@ def build(user):
             from apps.pedagogy.models import Evaluation, Grade
 
             student = students[0]
+            from apps.pedagogy.outlook import attendance_outlook, upcoming
+
+            data["agenda"] = upcoming(student, today, days=14)
+            data["att"] = attendance_outlook(student, today)
             data["recent_grades"] = list(
                 Grade.objects.filter(student=student, value__isnull=False,
                                      evaluation__status=Evaluation.Status.PUBLISHED)

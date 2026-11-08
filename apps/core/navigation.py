@@ -58,6 +58,8 @@ ITEMS = {
                       ("pedagogy:group_work_",), "O grupo de cada filho"),
     "fam_grades": Item("Notas", "pedagogy:evaluation_list", "graduation-cap",
                        ("pedagogy:evaluation_",), "Avaliações publicadas"),
+    "outlook": Item("Agenda e faltas", "pedagogy:outlook", "calendar-days", ("pedagogy:outlook",),
+                    "O que vence logo e quantas faltas ainda cabem no ano"),
     "fam_attendance": Item("Frequência", "pedagogy:attendance_list", "calendar-check",
                            ("pedagogy:attendance_",), "Presenças, atrasos e faltas"),
     "justify": Item("Justificar falta", "pedagogy:justification_create", "file-check",
@@ -260,8 +262,8 @@ COMMUNICATION_ADMIN = ("Comunicação", ["threads_staff", "announcements", "auth
 LAYOUT = {
     RESPONSAVEL: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
-        ("Acompanhamento", ["children", "fam_diary", "fam_activities", "fam_works", "fam_exam_prep", "fam_grades",
-                            "fam_attendance", "gate_mine"]),
+        ("Acompanhamento", ["children", "outlook", "fam_diary", "fam_activities", "fam_works", "fam_exam_prep",
+                            "fam_grades", "fam_attendance", "gate_mine"]),
         ("Escola", ["threads_family", "announcements", "authorizations", "polls", "requests", "meetings",
                     "notifications"]),
         ("Secretaria", ["fam_applications", "justify", "links", "fam_support"]),
@@ -269,8 +271,8 @@ LAYOUT = {
     ],
     ESTUDANTE: [
         (None, ["home", "calendar", "schedule", "menu", "my_dashboard"]),
-        ("Meus estudos", ["fam_diary", "my_activities", "my_works", "my_exam_prep", "my_grades", "my_attendance",
-                         "gate_mine"]),
+        ("Meus estudos", ["outlook", "fam_diary", "my_activities", "my_works", "my_exam_prep", "my_grades",
+                         "my_attendance", "gate_mine"]),
         # Comunicados da escola e da turma (a regra de acesso já os mostrava ao
         # estudante, mas o menu não tinha o caminho).
         ("Escola", ["announcements", "notifications"]),

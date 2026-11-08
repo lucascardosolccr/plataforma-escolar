@@ -474,17 +474,25 @@ def notify_request_resolved(req):
     )
 
 
-def notify_attendance_limit(student, class_group, percent):
-    """Aviso de faltas: quando um estudante alcança o limite configurado."""
+def notify_attendance_limit(student, class_group, situation):
+    """Aviso de faltas pelo limite do ANO (``pedagogy.outlook.attendance_outlook``): uma vez quando o estudante
+    usa 75% das faltas permitidas e outra quando passa do máximo, por ano letivo."""
     from django.contrib.auth import get_user_model
 
     from apps.core.models import Role
 
     User = get_user_model()
-    url = reverse("pedagogy:attendance_list") + f"?estudante={student.pk}"
-    # Um alerta por estudante e turma (antes: "já existe aviso de frequência com
-    # este link", o que os avisos de falta diária passariam a satisfazer).
-    key = f"limite-faltas-{student.pk}-{class_group.pk}"
+    url = reverse("pedagogy:outlook") + f"?estudante={student.pk}"
+    s = situation
+    over = s["level"] == "acima"
+    key = f"limite-faltas-{student.pk}-{s['year'].pk}-{s['level']}"
+    days = f"{s['total_days']} dias letivos" + (" (estimativa)" if s["estimated"] else "")
+    if over:
+        summary = (f"{s['absences']} faltas no ano, {s['over']} acima do máximo de {s['allowed']} "
+                   f"({s['limit']:g}% de {days}).")
+    else:
+        summary = (f"{s['absences']} das {s['allowed']} faltas permitidas no ano ({s['used_percent']}%); "
+                   f"ainda cabem {s['left']} ({s['limit']:g}% de {days}).")
     staff = User.objects.filter(
         school=student.school, role=Role.SECRETARIA.value, is_active=True
     )
@@ -492,24 +500,19 @@ def notify_attendance_limit(student, class_group, percent):
         student.school,
         staff,
         Notification.Kind.ATTENDANCE,
-        f"Alerta de faltas: {student.full_name}",
-        body=(
-            f"{student.full_name} ({class_group}) alcançou {percent}% de faltas. "
-            "Confira a frequência e, se necessário, comunique a família."
-        ),
+        f"{'Faltas acima do máximo' if over else 'Faltas perto do limite'}: {student.full_name}",
+        body=f"{student.full_name} ({class_group}): {summary} Confira as justificativas e, se necessário, fale com a família.",
         url=url,
         student=student,
         dedupe_key=key,
     )
     # A família também é avisada (se a escola mantiver a regra ligada).
-    from apps.core.fmt import pct
-
     from .family_events import notify_family
 
     notify_family(
-        student, "limite_faltas", f"Faltas de {student.first_name} perto do limite",
-        body=f"{student.first_name} chegou a {pct(percent)} de faltas na turma {class_group.name}. "
-             "Procure a escola ou envie justificativas, se houver.",
+        student, "limite_faltas",
+        f"Faltas de {student.first_name} {'acima do máximo do ano' if over else 'perto do limite do ano'}",
+        body=f"{summary} Procure a escola ou envie justificativas, se houver.",
         url=url, dedupe_key=key, include_student=False,
     )
 

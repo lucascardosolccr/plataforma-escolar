@@ -1,0 +1,22 @@
+{% load ui %}{# Faltas que ainda cabem no ano. Recebe att (outlook.attendance_outlook) e, opcional, compact=True. #}
+{% if att %}
+<div class="ol-abs ol-{{ att.level }}">
+  <div class="d-flex flex-wrap align-items-baseline gap-2">
+    {% if att.left >= 0 %}
+      <span class="ol-big">{{ att.left }}</span>
+      <span class="fw-semibold">falta{{ att.left|pluralize }} ainda {% if att.left == 1 %}cabe{% else %}cabem{% endif %} no ano</span>
+    {% else %}
+      <span class="ol-big">{{ att.absences }}</span>
+      <span class="fw-semibold">faltas: {{ att.over }} acima do máximo de {{ att.allowed }}</span>
+    {% endif %}
+  </div>
+  <div class="ol-bar" role="img" aria-label="{{ att.absences }} de {{ att.allowed }} faltas permitidas no ano ({{ att.used_percent|default:0 }}% do limite)"><span class="ol-bar-fill ol-w-{{ att.bar_step }}"></span></div>
+  <p class="small mb-1">{{ att.absences }} falta{{ att.absences|pluralize }} registrada{{ att.absences|pluralize }}{% if att.justified %} ({{ att.justified }} justificada{{ att.justified|pluralize }}){% endif %} de no máximo <strong>{{ att.allowed }}</strong> no ano · {{ att.level_label }}.</p>
+  {% if not compact %}
+  <p class="small text-body-secondary mb-0">Regra: frequência mínima de {{ att.min_frequency|floatformat:0 }}% dos {{ att.total_days }} dias letivos{% if att.estimated %} (estimativa: a escola ainda não publicou o calendário oficial; a LDB exige no mínimo 200 dias){% else %} do calendário oficial da escola{% if att.remaining_days is not None %}, dos quais faltam {{ att.remaining_days }}{% endif %}{% endif %}. LDB, art. 24, VI. Atraso conta como presença; falta justificada também conta para o limite, salvo regime especial (por exemplo, por saúde ou gestação), que a secretaria trata à parte.</p>
+  {% else %}
+  <p class="small text-body-secondary mb-0">Mínimo de {{ att.min_frequency|floatformat:0 }}% de frequência em {{ att.total_days }} dias letivos{% if att.estimated %} (estimativa){% endif %}.</p>
+  {% endif %}
+  {% if att.level == "alerta" or att.level == "acima" %}<p class="callout mt-2 mb-0">{% icon "triangle-alert" %}<span>{% if att.level == "acima" %}O máximo de faltas do ano foi ultrapassado. Procure a escola para entender as possibilidades (justificativas, compensação de ausências).{% else %}Já foram usadas {{ att.used_percent }}% das faltas permitidas no ano. Converse com a escola se houver motivo de saúde ou outro impedimento.{% endif %}</span></p>{% endif %}
+</div>
+{% endif %}

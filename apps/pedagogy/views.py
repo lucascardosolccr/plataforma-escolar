@@ -2277,20 +2277,18 @@ def _max_absences(school):
 
 
 def _flag_attendance_limits(class_group, tdate):
-    """Avisa a secretaria quando um estudante alcança o limite de faltas
-    configurado na escola (SchoolConfig.max_absences_percent)."""
-    limit = _max_absences(class_group.school)
-    for student in _enrolled_students(class_group):
-        records = AttendanceRecord.objects.filter(
-            class_group=class_group, student=student, date__lte=tdate
-        )
-        total = records.count()
-        if not total:
-            continue
-        absences = records.filter(status="falta").count()
-        percent = Decimal(absences * 100) / Decimal(total)
-        if percent >= limit:
-            notify_attendance_limit(student, class_group, float(percent))
+    """Avisa a secretaria e a família quando o estudante usa 75% das faltas permitidas no ano letivo e de novo
+    quando passa do máximo (``outlook.attendance_outlook``: dias letivos do calendário oficial × limite da escola).
+
+    Antes, o aviso saía quando as faltas passavam do limite sobre os dias JÁ registrados: no começo do ano, 2
+    faltas em 5 dias (40%) disparavam alarme. E só quem faltou neste dia é reavaliado: os demais não mudaram."""
+    from .outlook import attendance_outlook
+
+    for rec in AttendanceRecord.objects.filter(class_group=class_group, date=tdate,
+                                               status=AttendanceRecord.Status.ABSENT).select_related("student"):
+        situation = attendance_outlook(rec.student)
+        if situation and situation["level"] in ("alerta", "acima"):
+            notify_attendance_limit(rec.student, class_group, situation)
 
 
 # ---------- Ocorrências ----------

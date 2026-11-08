@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Agenda e faltas{% if student %} — {{ student.first_name }}{% endif %} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Agenda e faltas{% if student %} de {{ student.first_name }}{% endif %}</h1>
+    <p>O que vence nas próximas semanas e quantas faltas ainda cabem no ano letivo, pelo calendário da escola.</p>
+  </div>
+  {% if student %}<div class="page-actions"><a class="btn btn-outline-secondary" href="{% url 'analytics:student_dashboard' student.pk %}">{% icon "chart-line" %}Painel de desempenho</a></div>{% endif %}
+</div>
+
+{% if choices %}
+<nav class="d-flex flex-wrap gap-2 mb-3" aria-label="Escolher estudante">
+  {% for c in choices %}<a class="btn btn-sm {% if c.pk == student.pk %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?estudante={{ c.pk }}"{% if c.pk == student.pk %} aria-current="page"{% endif %}>{{ c.first_name }}</a>{% endfor %}
+</nav>
+{% endif %}
+
+{% if not student %}
+  <div class="card"><div class="empty-state">{% icon "users" %}<strong>Nenhum estudante vinculado ainda</strong></div></div>
+{% else %}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <section class="card h-100" aria-labelledby="h-agenda"><div class="card-body">
+      <h2 class="h5" id="h-agenda">Próximas entregas e provas</h2>
+      <p class="small text-body-secondary">Próximos 30 dias. Inclui o que venceu na última semana sem entrega registrada pelo professor.</p>
+      {% include "pedagogy/_outlook_agenda.html" with items=agenda %}
+    </div></section>
+  </div>
+  <div class="col-lg-5">
+    <section class="card mb-3" aria-labelledby="h-faltas"><div class="card-body">
+      <h2 class="h5" id="h-faltas">Faltas no ano</h2>
+      {% if att %}{% include "pedagogy/_outlook_absences.html" %}{% else %}<p class="text-body-secondary mb-0">Sem matrícula ativa.</p>{% endif %}
+    </div></section>
+    {% if att %}
+    <section class="card" aria-labelledby="h-disc"><div class="card-body">
+      <h2 class="h5" id="h-disc">Onde as faltas pesam</h2>
+      {% if att.subjects is None %}
+        <p class="small text-body-secondary mb-0">O quadro de horários da turma {{ att.class_group.name }} ainda não foi cadastrado pela escola, então não dá para dizer quais aulas foram perdidas em cada disciplina.</p>
+      {% elif not att.absences %}
+        <p class="small text-body-secondary mb-0">{% icon "circle-check" %} Nenhuma falta registrada no ano.</p>
+      {% else %}
+        <p class="small text-body-secondary">Aulas perdidas em cada disciplina, pelo quadro de horários da turma: cada dia de falta conta as aulas daquele dia da semana. É informativo: o limite legal vale para o total do ano.</p>
+        <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+          <thead><tr><th scope="col">Disciplina</th><th scope="col" class="text-end">Aulas perdidas</th><th scope="col" class="text-end">Das aulas até hoje</th>{% if not att.estimated %}<th scope="col" class="text-end">Aulas no ano</th>{% endif %}</tr></thead>
+          <tbody>{% for r in att.subjects %}<tr{% if forloop.first and r.missed %} class="fw-semibold"{% endif %}>
+            <th scope="row" class="fw-normal">{{ r.subject }}</th>
+            <td class="text-end">{{ r.missed }}</td>
+            <td class="text-end">{% if r.missed_percent is not None %}{{ r.missed_percent|floatformat:1 }}% de {{ r.given }}{% else %}—{% endif %}</td>
+            {% if not att.estimated %}<td class="text-end">{{ r.year_total|default:"—" }}</td>{% endif %}
+          </tr>{% endfor %}</tbody>
+        </table></div>
+      {% endif %}
+    </div></section>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

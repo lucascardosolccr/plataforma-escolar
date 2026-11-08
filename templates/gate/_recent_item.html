@@ -1,0 +1,1 @@
+<li class="py-1 border-bottom">{{ e.at|time:"H:i" }} · {{ e.get_kind_display }} · <a href="{% url 'gate:history' e.student.pk %}">{{ e.student.full_name }}</a>{% if e.late %} · <span class="text-warning">atraso de {{ e.minutes_late }} min</span>{% endif %}{% if e.offline %} · <span class="text-body-secondary">sem internet</span>{% endif %}</li>

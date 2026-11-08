@@ -324,3 +324,91 @@ class MissingEntryTests(GateBase):
         self.assertContains(page, "Use de 15 a 240 minutos")
         self.client.post(reverse("gate:settings"), {**base, "notify_missing_after": 45})
         self.assertEqual(GateSettings.for_school(self.school).notify_missing_after, 45)
+
+
+class ReaderToleranceTests(GateBase):
+    """Leitores reais (08/11/2026): o que chega além do conteúdo não pode impedir a leitura."""
+
+    def test_layout_aim_prefix_spaces_and_lowercase_are_accepted(self):
+        payload = services.qr_payload(self.card)
+        code = self.card.code
+        variants = {
+            payload.replace(":", "Ç"): GateEvent.Method.QR,  # leitor em teclado americano num Windows ABNT2
+            payload.replace(":", ";"): GateEvent.Method.QR,
+            "]Q1" + payload: GateEvent.Method.QR,  # identificador de simbologia AIM
+            payload.lower() + "\r\n": GateEvent.Method.QR,
+            "]C0" + code: None,
+            "  " + code.lower() + "\t": None,
+            self.card.display_code: None,
+        }
+        for raw, method in variants.items():
+            self.assertEqual(services.parse(raw), (code, method), repr(raw))
+
+    def test_forged_or_truncated_qr_is_still_refused(self):
+        payload = services.qr_payload(self.card)
+        self.assertIn("assinatura inválida", services.parse(payload[:-1] + ("A" if payload[-1] != "A" else "B"))[1])
+        self.assertIn("formato desconhecido", services.parse(payload[:-3])[1])
+        self.assertIn("Código inválido", services.parse(self.card.code[:8])[1])
+
+
+class ContinuousStationTests(GateBase):
+    """Leitura contínua sem recarregar, modo automático e leituras guardadas sem internet."""
+
+    def scan_json(self, raw, kind="entrada", when=at(7, 25), **extra):
+        self.client.force_login(self.sec)
+        with mock.patch("apps.gate.services.now", return_value=when):
+            return self.client.post(reverse("gate:station"), {"codigo": raw, "tipo": kind, "origem": "leitor", **extra},
+                                    HTTP_ACCEPT="application/json")
+
+    def test_json_answer_carries_the_result_and_the_server_clock(self):
+        data = self.scan_json(services.qr_payload(self.card)).json()
+        self.assertEqual(data["status"], "ok")
+        self.assertIn(self.ana.full_name, data["html"])
+        self.assertIn("Entrada registrada às 07:25 (QR Code)", data["html"])
+        self.assertIn(self.ana.full_name, data["recent_html"])
+        self.assertIsInstance(data["server_time"], int)
+        again = self.scan_json(self.card.code).json()
+        self.assertEqual(again["status"], "existed")
+        self.assertNotIn("recent_html", again)
+        self.assertEqual(self.scan_json("ABCD-EFGH-9").json()["status"], "error")
+        self.assertEqual(self.scan_json(self.card.code, kind="saida", when=at(7, 50)).json()["status"], "ok")
+        self.assertEqual(GateEvent.objects.count(), 2)
+
+    def test_late_status_is_reported(self):
+        data = self.scan_json(self.card.code, when=at(7, 52)).json()
+        self.assertEqual(data["status"], "late")
+        self.assertIn("Atraso de 22 minutos", data["html"])
+
+    def test_automatic_mode_enters_then_ignores_repeats_then_exits(self):
+        self.assertEqual(self.scan_json(self.card.code, kind="auto", when=at(7, 20)).json()["status"], "ok")
+        repeat = self.scan_json(self.card.code, kind="auto", when=at(7, 35)).json()
+        self.assertEqual(repeat["status"], "existed")
+        self.assertIn("Entrada já registrada", repeat["html"])
+        leave = self.scan_json(self.card.code, kind="auto", when=at(11, 50)).json()
+        self.assertIn("Saída registrada às 11:50", leave["html"])
+        self.assertEqual(sorted(GateEvent.objects.values_list("kind", flat=True)), ["entrada", "saida"])
+
+    def test_reading_kept_without_internet_arrives_later_with_its_own_time(self):
+        quando = at(7, 22).isoformat()
+        data = self.scan_json(self.card.code, when=at(9, 40), quando=quando).json()
+        self.assertEqual(data["status"], "ok")
+        event = GateEvent.objects.get()
+        self.assertEqual(timezone.localtime(event.at).strftime("%H:%M"), "07:22")
+        self.assertTrue(event.offline)
+        self.assertFalse(event.late)  # o atraso é calculado pelo horário da leitura, não do envio
+        self.assertIn("Lida sem internet", data["html"])
+        self.assertTrue(AuditLog.objects.filter(detail__contains="lida sem internet às").exists())
+        self.assertEqual(self.notes("chegou à escola às 07:22").count(), 1)
+
+    def test_kept_reading_too_old_in_the_future_or_without_timezone_is_refused(self):
+        for quando in (at(7, 0, WED - dt.timedelta(days=2)).isoformat(), at(9, 50).isoformat(),
+                       "2026-11-04T07:22:00", "ontem"):
+            data = self.scan_json(self.card.code, when=at(9, 40), quando=quando).json()
+            self.assertEqual(data["status"], "error", quando)
+        self.assertFalse(GateEvent.objects.exists())
+
+    def test_station_page_offers_the_automatic_mode_and_the_live_areas(self):
+        self.client.force_login(self.sec)
+        page = self.client.get(reverse("gate:station"))
+        for marker in ('value="auto"', "data-gate-results", "data-gate-offline", "data-gate-sound"):
+            self.assertContains(page, marker)

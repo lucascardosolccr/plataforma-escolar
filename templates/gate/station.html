@@ -19,50 +19,42 @@
       <input type="hidden" name="origem" value="teclado" data-gate-origin>
       <fieldset class="mb-3"><legend class="form-label">Registrar</legend>
         <div class="btn-group" role="group">
-          <input type="radio" class="btn-check" name="tipo" id="tipo-entrada" value="entrada"{% if kind == "entrada" %} checked{% endif %}><label class="btn btn-outline-primary" for="tipo-entrada">Entrada</label>
-          <input type="radio" class="btn-check" name="tipo" id="tipo-saida" value="saida"{% if kind == "saida" %} checked{% endif %}><label class="btn btn-outline-primary" for="tipo-saida">Saída</label>
+          <input type="radio" class="btn-check" name="tipo" id="tipo-entrada" value="entrada"{% if kind == "entrada" %} checked{% endif %} data-gate-kind><label class="btn btn-outline-primary" for="tipo-entrada">Entrada</label>
+          <input type="radio" class="btn-check" name="tipo" id="tipo-saida" value="saida"{% if kind == "saida" %} checked{% endif %} data-gate-kind><label class="btn btn-outline-primary" for="tipo-saida">Saída</label>
+          <input type="radio" class="btn-check" name="tipo" id="tipo-auto" value="auto"{% if kind == "auto" %} checked{% endif %} data-gate-kind aria-describedby="tipo-auto-ajuda"><label class="btn btn-outline-primary" for="tipo-auto">Automático</label>
         </div>
+        <p id="tipo-auto-ajuda" class="form-text mb-0">Automático: a primeira leitura do dia é a entrada; uma leitura 30 minutos ou mais depois é a saída. Bom para portão único com um leitor.</p>
       </fieldset>
       <label class="form-label" for="codigo">Carteirinha</label>
-      <input class="form-control form-control-lg gate-input" id="codigo" name="codigo" autocomplete="off" autocapitalize="characters" spellcheck="false" autofocus required placeholder="Leia ou digite o código" data-gate-input aria-describedby="codigo-ajuda">
-      <p id="codigo-ajuda" class="form-text">O leitor digita o código e confirma sozinho. Para digitar, use os 9 caracteres (com ou sem hífen).</p>
-      <div class="d-flex flex-wrap gap-2">
+      <input class="form-control form-control-lg gate-input" id="codigo" name="codigo" autocomplete="off" autocapitalize="characters" spellcheck="false" autofocus required placeholder="Leia ou digite o código" data-gate-input aria-describedby="codigo-ajuda codigo-dica">
+      <p id="codigo-ajuda" class="form-text mb-1">O leitor digita o código e confirma sozinho; pode ler um atrás do outro, sem esperar. Para digitar, use os 9 caracteres (com ou sem hífen).</p>
+      <p id="codigo-dica" class="small mb-2" data-gate-hint aria-live="polite"></p>
+      <div class="d-flex flex-wrap gap-2 align-items-center">
         <button type="submit" class="btn btn-primary">Registrar</button>
         <button type="button" class="btn btn-outline-secondary" data-gate-camera hidden>{% icon "eye" %}Ler com a câmera</button>
+        <div class="form-check form-switch ms-sm-auto mb-0"><input class="form-check-input" type="checkbox" role="switch" id="gate-som" data-gate-sound checked><label class="form-check-label" for="gate-som">Som a cada leitura</label></div>
       </div>
       <video class="gate-video mt-3" data-gate-video hidden muted playsinline></video>
       <p class="small text-body-secondary mt-2 mb-0" data-gate-camera-msg hidden></p>
     </div></form>
 
-    {% if error or event %}
-    <section class="card mb-3 gate-result {% if error %}is-error{% elif event.late %}is-late{% else %}is-ok{% endif %}" role="status" aria-live="polite"><div class="card-body d-flex gap-3 align-items-center">
-      {% if student and student.photo %}<img class="gate-result-photo" src="{% url 'student_photo' student.pk %}" alt="Foto de {{ student.full_name }}">{% endif %}
-      <div>
-        {% if error %}
-          <p class="h5 mb-1">Não registrado</p><p class="mb-0">{{ error }}</p>{% if student %}<p class="mb-0">Carteirinha de <strong>{{ student.full_name }}</strong>.</p>{% endif %}
-        {% else %}
-          <p class="h5 mb-1">{{ student.full_name }}</p>
-          <p class="mb-1">{% if existed %}{{ event.get_kind_display }} já registrada hoje às {{ event.at|time:"H:i" }}. Nada mudou.{% else %}{{ event.get_kind_display }} registrada às {{ event.at|time:"H:i" }} ({% if event.method == "qr" %}QR Code{% else %}{{ event.get_method_display|lower }}{% endif %}).{% endif %}
-          {% if event.class_group %} · {{ event.class_group.name }}{% endif %}</p>
-          {% if event.late %}<p class="mb-1 fw-semibold">Atraso de {{ event.minutes_late }} minutos (entrada do turno às {{ event.expected|time:"H:i" }}). A família foi avisada.</p>{% elif not existed %}<p class="mb-1 text-body-secondary">A família foi avisada, se a escola mantém esse aviso ligado.</p>{% endif %}
-          {% if expired %}<p class="mb-0 text-warning">A carteirinha está vencida: peça a nova na secretaria.</p>{% endif %}
-          {% if no_class %}<p class="mb-0 text-warning">Sem matrícula ativa numa turma: confira com a secretaria.</p>{% endif %}
-          {% if student.photo %}<p class="small text-body-secondary mb-0">Confira se a foto é de quem está na sua frente.</p>{% else %}<p class="small text-warning mb-0">Sem foto cadastrada: confira o nome com o estudante e peça a foto à secretaria.</p>{% endif %}
-        {% endif %}
-      </div>
+    <div class="gate-offline mb-3" data-gate-offline role="status" aria-live="polite" hidden></div>
+    <div data-gate-results role="status" aria-live="polite">{% if error or event %}{% include "gate/_result.html" %}{% endif %}</div>
+    <section class="card mb-3" data-gate-failed-box hidden aria-labelledby="h-falhas"><div class="card-body">
+      <h2 id="h-falhas" class="h6">Leituras guardadas sem internet que não foram aceitas</h2>
+      <ul class="list-unstyled small mb-0" data-gate-failed></ul>
     </div></section>
-    {% endif %}
   </div>
 
   <div class="col-lg-5">
     <section class="card mb-3" aria-labelledby="h-manual"><div class="card-body">
       <h2 id="h-manual" class="h6">Sem carteirinha</h2>
       <form method="get" class="d-flex gap-2 mb-2"><input type="hidden" name="tipo" value="{{ kind }}"><label class="visually-hidden" for="q">Nome</label><input class="form-control" id="q" name="q" value="{{ manual_q }}" placeholder="Nome do estudante"><button class="btn btn-outline-secondary" type="submit">Buscar</button></form>
-      {% if manual_q %}<ul class="list-unstyled mb-0">{% for s in manual %}<li class="d-flex justify-content-between align-items-center py-1 border-bottom"><span>{{ s.full_name }}</span><form method="post">{% csrf_token %}<input type="hidden" name="tipo" value="{{ kind }}"><input type="hidden" name="estudante" value="{{ s.pk }}"><button class="btn btn-sm btn-outline-primary" type="submit">Registrar {{ kind }}</button></form></li>{% empty %}<li class="text-body-secondary small">Ninguém encontrado.</li>{% endfor %}</ul>{% endif %}
+      {% if manual_q %}<ul class="list-unstyled mb-0">{% for s in manual %}<li class="d-flex justify-content-between align-items-center py-1 border-bottom"><span>{{ s.full_name }}</span><form method="post">{% csrf_token %}<input type="hidden" name="tipo" value="{{ kind }}"><input type="hidden" name="estudante" value="{{ s.pk }}"><button class="btn btn-sm btn-outline-primary" type="submit">Registrar {% if kind == "auto" %}(automático){% else %}{{ kind }}{% endif %}</button></form></li>{% empty %}<li class="text-body-secondary small">Ninguém encontrado.</li>{% endfor %}</ul>{% endif %}
     </div></section>
     <section class="card" aria-labelledby="h-rec"><div class="card-body">
       <h2 id="h-rec" class="h6">Últimos registros de hoje</h2>
-      <ul class="list-unstyled small mb-0">{% for e in recent %}<li class="py-1 border-bottom">{{ e.at|time:"H:i" }} · {{ e.get_kind_display }} · <a href="{% url 'gate:history' e.student.pk %}">{{ e.student.full_name }}</a>{% if e.late %} · <span class="text-warning">atraso de {{ e.minutes_late }} min</span>{% endif %}</li>{% empty %}<li class="text-body-secondary">Nenhum ainda.</li>{% endfor %}</ul>
+      <ul class="list-unstyled small mb-0" data-gate-recent>{% for e in recent %}{% include "gate/_recent_item.html" %}{% empty %}<li class="text-body-secondary" data-gate-recent-empty>Nenhum ainda.</li>{% endfor %}</ul>
     </div></section>
   </div>
 </div>

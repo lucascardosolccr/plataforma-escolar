@@ -17,7 +17,9 @@ from django import forms
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -167,16 +169,44 @@ def class_cards(request, class_id):
     })
 
 
+AUTO = "auto"  # modo automático: entrada na 1ª leitura do dia, saída 30 minutos ou mais depois
+
+
+def _wants_json(request):
+    return "application/json" in request.headers.get("Accept", "")
+
+
+def _json_result(request, ctx):
+    """Resposta da leitura feita pela tela sem recarregar (gate.js): o mesmo quadro de resultado do HTML."""
+    event = ctx.get("event")
+    if ctx.get("error"):
+        status = "error"
+    elif ctx.get("existed"):
+        status = "existed"
+    else:
+        status = "late" if event.late else "ok"
+    data = {"status": status, "server_time": int(timezone.now().timestamp() * 1000),
+            "html": render_to_string("gate/_result.html", ctx, request=request)}
+    if event and not ctx.get("existed"):
+        data["recent_html"] = render_to_string("gate/_recent_item.html", {"e": event}, request=request)
+    return JsonResponse(data)
+
+
 def station(request):
-    """Leitura da carteirinha: leitor USB (digita o código e Enter), câmera ou digitação."""
+    """Leitura da carteirinha: leitor USB (digita o código e Enter), câmera ou digitação.
+
+    A tela envia cada leitura sem recarregar a página (gate.js) e recebe o resultado em JSON; sem internet, a
+    leitura fica guardada no navegador e chega depois com o horário em que foi feita (campo ``quando``)."""
     user = request.user
     if user.role not in STATION:
         raise PermissionDenied
     ctx = {"kind": request.POST.get("tipo") or request.GET.get("tipo") or GateEvent.Kind.ENTRY}
-    if ctx["kind"] not in GateEvent.Kind.values:
+    if ctx["kind"] not in GateEvent.Kind.values and ctx["kind"] != AUTO:
         ctx["kind"] = GateEvent.Kind.ENTRY
     if request.method == "POST":
         ctx.update(_read(request, user, ctx["kind"]))
+        if _wants_json(request):
+            return _json_result(request, ctx)
     today = timezone.localdate()
     ctx["recent"] = GateEvent.objects.filter(school=user.school, day=today).select_related("student",
                                                                                           "class_group")[:8]
@@ -189,9 +219,20 @@ def station(request):
 
 
 def _read(request, user, kind):
+    when, offline = None, False
+    if request.POST.get("quando"):  # leitura guardada sem internet, enviada agora
+        when = services.offline_moment(request.POST["quando"])
+        if when is None:
+            reason = "Leitura guardada sem internet há mais de 24 horas ou com horário inválido: registre à mão."
+            _refused(request, user, reason)
+            return {"error": reason}
+        offline = True
     if request.POST.get("estudante", "").isdigit():  # registro manual, sem carteirinha
         student = get_object_or_404(Student, pk=int(request.POST["estudante"]), school=user.school)
-        event, existed = services.register(student, kind, GateEvent.Method.MANUAL, user)
+        if kind == AUTO:
+            kind = services.auto_kind(student, when)
+        event, existed = services.register(student, kind, GateEvent.Method.MANUAL, user, when=when,
+                                           offline=offline)
         return {"event": event, "existed": existed, "student": student}
     raw = request.POST.get("codigo", "")
     code, info = services.parse(raw)
@@ -209,7 +250,13 @@ def _read(request, user, kind):
         return {"error": msg, "student": card.student}
     method = info or (GateEvent.Method.BARCODE if request.POST.get("origem") in ("leitor", "camera-barras")
                       else GateEvent.Method.CODE)
-    event, existed = services.register(card.student, kind, method, user, card=card)
+    if kind == AUTO:
+        kind = services.auto_kind(card.student, when)
+    event, existed = services.register(card.student, kind, method, user, card=card, when=when, offline=offline)
+    if offline and not existed:
+        create_audit_log(user=user, action="create", request=request, target=card.student,
+                         detail=f"Portaria: {event.get_kind_display().lower()} lida sem internet às "
+                                f"{timezone.localtime(event.at):%d/%m %H:%M} e enviada depois")
     return {"event": event, "existed": existed, "student": card.student,
             "expired": card.valid_until < timezone.localdate(), "no_class": event.class_group is None}
 

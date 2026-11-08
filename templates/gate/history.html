@@ -19,7 +19,7 @@
       <td data-label="Registro">{{ e.get_kind_display }}</td>
       <td data-label="Horário">{{ e.at|time:"H:i" }}</td>
       <td data-label="Situação">{% if e.late %}<span class="text-warning fw-semibold">Atraso de {{ e.minutes_late }} min</span> (entrada às {{ e.expected|time:"H:i" }}){% elif e.kind == "entrada" %}No horário{% else %}—{% endif %}</td>
-      {% if is_staff %}<td data-label="Forma">{{ e.get_method_display }}</td>{% endif %}
+      {% if is_staff %}<td data-label="Forma">{{ e.get_method_display }}{% if e.offline %} · lida sem internet{% endif %}</td>{% endif %}
     </tr>{% empty %}<tr><td colspan="5" class="text-body-secondary">Nenhum registro de portaria ainda.</td></tr>{% endfor %}
   </tbody>
 </table></div></div>

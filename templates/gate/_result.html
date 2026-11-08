@@ -1,0 +1,17 @@
+<section class="card mb-3 gate-result {% if error %}is-error{% elif existed %}is-existed{% elif event.late %}is-late{% else %}is-ok{% endif %}"><div class="card-body d-flex gap-3 align-items-center">
+  {% if student and student.photo %}<img class="gate-result-photo" src="{% url 'student_photo' student.pk %}" alt="Foto de {{ student.full_name }}">{% elif student %}<div class="gate-result-photo gate-result-nophoto" aria-hidden="true">{{ student.first_name|first }}{{ student.last_name|first }}</div>{% endif %}
+  <div>
+    {% if error %}
+      <p class="h5 mb-1">Não registrado</p><p class="mb-0">{{ error }}</p>{% if student %}<p class="mb-0">Carteirinha de <strong>{{ student.full_name }}</strong>.</p>{% endif %}
+    {% else %}
+      <p class="h5 mb-1">{{ student.full_name }}</p>
+      <p class="mb-1">{% if existed %}{{ event.get_kind_display }} já registrada hoje às {{ event.at|time:"H:i" }}. Nada mudou.{% else %}{{ event.get_kind_display }} registrada às {{ event.at|time:"H:i" }} ({% if event.method == "qr" %}QR Code{% else %}{{ event.get_method_display|lower }}{% endif %}).{% endif %}
+      {% if event.class_group %} · {{ event.class_group.name }}{% endif %}</p>
+      {% if event.offline and not existed %}<p class="mb-1 small">Lida sem internet e enviada agora, com o horário da leitura.</p>{% endif %}
+      {% if event.late %}<p class="mb-1 fw-semibold">Atraso de {{ event.minutes_late }} minutos (entrada do turno às {{ event.expected|time:"H:i" }}). A família foi avisada.</p>{% elif not existed %}<p class="mb-1 text-body-secondary">A família foi avisada, se a escola mantém esse aviso ligado.</p>{% endif %}
+      {% if expired %}<p class="mb-0 text-warning">A carteirinha está vencida: peça a nova na secretaria.</p>{% endif %}
+      {% if no_class %}<p class="mb-0 text-warning">Sem matrícula ativa numa turma: confira com a secretaria.</p>{% endif %}
+      {% if student.photo %}<p class="small text-body-secondary mb-0">Confira se a foto é de quem está na sua frente.</p>{% else %}<p class="small text-warning mb-0">Sem foto cadastrada: confira o nome com o estudante e peça a foto à secretaria.</p>{% endif %}
+    {% endif %}
+  </div>
+</div></section>

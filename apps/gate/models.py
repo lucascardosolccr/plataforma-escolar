@@ -108,6 +108,7 @@ class GateEvent(models.Model):
     minutes_late = models.PositiveSmallIntegerField("minutos de atraso", null=True, blank=True)
     recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
                                     related_name="+")
+    offline = models.BooleanField("lida sem internet e enviada depois", default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

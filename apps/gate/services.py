@@ -75,18 +75,34 @@ def qr_payload(card):
     return f"{QR_PREFIX}:{card.code}:{_signature(card.code)}"
 
 
+QR_LENGTH = len(QR_PREFIX) + 9 + 10  # prefixo, código e assinatura, sem os separadores
+
+
+def _compact(raw):
+    """Só letras e algarismos ASCII, em maiúsculas.
+
+    Tolera o que leitores reais mandam além do conteúdo: identificador de simbologia AIM no início
+    (``]Q1``, ``]C0``), espaços, caracteres de controle e separadores trocados pelo layout do teclado. Leitor
+    configurado como teclado americano num Windows ABNT2 digita ``Ç`` no lugar de ``:`` (mesma tecla física).
+    """
+    raw = "".join(ch for ch in (raw or "") if ch.isprintable()).strip()
+    if raw.startswith("]") and len(raw) > 3:
+        raw = raw[3:]
+    return "".join(ch for ch in raw.upper() if ch.isascii() and ch.isalnum())
+
+
 def parse(raw):
     """(código, forma) do que a portaria recebeu, ou (None, motivo do erro)."""
-    raw = (raw or "").strip()
-    if raw.upper().startswith(QR_PREFIX + ":"):
-        parts = raw.split(":")
-        if len(parts) != 3:
+    compact = _compact(raw)
+    if compact.startswith(QR_PREFIX) and len(compact) != 9:
+        if len(compact) != QR_LENGTH:
             return None, "QR Code em formato desconhecido."
-        code = normalize(parts[1])
-        if not valid_shape(code) or not hmac.compare_digest(parts[2].upper(), _signature(code)):
+        code = normalize(compact[3:12])
+        signature = normalize(compact[12:])
+        if not valid_shape(code) or not hmac.compare_digest(signature, _signature(code)):
             return None, "QR Code com assinatura inválida: não foi gerado por esta plataforma."
         return code, GateEvent.Method.QR
-    code = normalize(raw)
+    code = normalize(compact)
     if not valid_shape(code):
         return None, "Código inválido: confira os 9 caracteres (o último é o verificador)."
     return code, None  # código de barras ou digitado: a tela informa qual
@@ -194,9 +210,43 @@ def _notify(event):
                          dedupe_key=key)
 
 
-def register(student, kind, method, user, card=None, when=None):
+AUTO_EXIT_AFTER = datetime.timedelta(minutes=30)
+OFFLINE_MAX_AGE = datetime.timedelta(hours=24)
+
+
+def auto_kind(student, when=None):
+    """Modo automático da portaria: a primeira leitura do dia é a entrada; uma leitura 30 minutos ou mais
+    depois da entrada é a saída. Antes disso, a leitura repetida devolve a própria entrada (nada muda)."""
+    when = timezone.localtime(when or now())
+    kinds = {e.kind: e for e in GateEvent.objects.filter(student=student, day=when.date())}
+    entry = kinds.get(GateEvent.Kind.ENTRY)
+    if entry is None:
+        return GateEvent.Kind.ENTRY
+    if GateEvent.Kind.EXIT in kinds or when - entry.at >= AUTO_EXIT_AFTER:
+        return GateEvent.Kind.EXIT
+    return GateEvent.Kind.ENTRY
+
+
+def offline_moment(text, reference=None):
+    """Horário de uma leitura guardada sem internet e enviada depois, ou None se for inaceitável.
+
+    Vale só para as últimas 24 horas e nunca no futuro (2 minutos de folga para o relógio do computador)."""
+    try:
+        moment = datetime.datetime.fromisoformat((text or "").strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if timezone.is_naive(moment):
+        return None
+    reference = reference or now()
+    if moment > reference + datetime.timedelta(minutes=2) or moment < reference - OFFLINE_MAX_AGE:
+        return None
+    return moment
+
+
+def register(student, kind, method, user, card=None, when=None, offline=False):
     """Registra entrada ou saída. Devolve (evento, já existia). Uma de cada por dia: repetir a leitura não
-    cria outro registro nem outro aviso."""
+    cria outro registro nem outro aviso. ``offline``: lida sem internet e enviada depois, com o horário da
+    leitura."""
     when = timezone.localtime(when or now())
     day = when.date()
     existing = GateEvent.objects.filter(student=student, day=day, kind=kind).first()
@@ -208,7 +258,8 @@ def register(student, kind, method, user, card=None, when=None):
         with transaction.atomic():
             event = GateEvent.objects.create(
                 school=student.school, student=student, card=card, class_group=cg, kind=kind, method=method,
-                day=day, at=when, expected=expected, late=late is not None, minutes_late=late, recorded_by=user)
+                day=day, at=when, expected=expected, late=late is not None, minutes_late=late, recorded_by=user,
+                offline=offline)
             if kind == GateEvent.Kind.ENTRY:
                 _fill_attendance(event, user)
     except IntegrityError:

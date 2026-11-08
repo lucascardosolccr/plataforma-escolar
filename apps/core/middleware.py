@@ -214,7 +214,16 @@ class ContentSecurityPolicyMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
+    # Recursos do aparelho: só a câmera, e só para a própria plataforma (leitura da carteirinha na portaria).
+    # Microfone, localização, pagamento, USB etc. ficam desligados mesmo que um script tente usá-los.
+    PERMISSIONS = ", ".join([
+        "camera=(self)", "microphone=()", "geolocation=()", "payment=()", "usb=()", "serial=()", "bluetooth=()",
+        "midi=()", "magnetometer=()", "gyroscope=()", "accelerometer=()", "display-capture=()",
+        "interest-cohort=()", "browsing-topics=()",
+    ])
+
     def __call__(self, request):
         response = self.get_response(request)
         response.headers.setdefault("Content-Security-Policy", self.POLICY)
+        response.headers.setdefault("Permissions-Policy", self.PERMISSIONS)
         return response

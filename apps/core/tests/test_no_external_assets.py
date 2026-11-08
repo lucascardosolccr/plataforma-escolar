@@ -86,6 +86,10 @@ class NoExternalAssetsTests(TestCase):
         resp = self.client.get(reverse("home"))
         self.assertEqual(resp.status_code, 200)
         self.assertIn("default-src 'self'", resp.headers["Content-Security-Policy"])
+        # Só a câmera (portaria), só da própria plataforma; microfone e localização desligados.
+        self.assertIn("camera=(self)", resp.headers["Permissions-Policy"])
+        self.assertIn("microphone=()", resp.headers["Permissions-Policy"])
+        self.assertIn("geolocation=()", resp.headers["Permissions-Policy"])
         self.assertNotContains(resp, "googleapis")
         self.assertNotContains(resp, "gsap")
 

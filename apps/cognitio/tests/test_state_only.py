@@ -1,6 +1,6 @@
 """state_only (evolução por período do painel) dá exatamente o estado de assess.
 
-Conferido também na base de escala (09/11/2026): 87.048 pares × datas de corte, nenhuma diferença; o painel
+Conferido também na base de escala (08/11/2026): 87.048 pares × datas de corte, nenhuma diferença; o painel
 caiu de ~1,3 s para ~0,6 s com o mesmo HTML.
 """
 

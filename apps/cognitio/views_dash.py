@@ -6,10 +6,11 @@ na visão da direção, nada individual e grupos com menos de 5 estudantes ocult
 """
 
 import datetime
+from bisect import bisect_right
 from collections import Counter, OrderedDict
 
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.shortcuts import render
 from django.utils import timezone
 
@@ -18,7 +19,7 @@ from apps.core.models import Role
 from apps.curriculum.models import COMPONENTS, ItemDimension, component_for
 
 from . import access
-from .mastery import CSS, STATES, apply_judgments, assess, group_evidence
+from .mastery import CSS, STATES, apply_judgments, assess, group_evidence, sort_key, state_only, with_items
 from .models import LearningAlert, LearningIntervention, MasteryScale, SkillEvidence, TextAnalysis
 from .recommend import outcomes
 from .taxonomy import NO_ERROR_TYPING, error_label
@@ -138,16 +139,20 @@ def dashboard(request):
     class_ids, pairs = _scope(user)
     # Só a habilidade vem junto: turma e disciplina não são lidas aqui, e cada uma dobrava os objetos
     # montados para as ~19 mil evidências de uma escola grande.
-    evs = list(_evidence_qs(user, class_ids, pairs).select_related("item"))
+    evs = with_items(list(_evidence_qs(user, class_ids, pairs)))
     grouped = group_evidence(evs)
     # O painel mostra estados e contagens, não a explicação de cada par.
     assessments = apply_judgments({k: assess(v, scale, today, explain=False) for k, v in grouped.items()})
     ctx = {"role": user.role, "dist": _dist([a.state for a in assessments.values()]),
            "n_students": len({k[0] for k in grouped}), "n_items": len({k[1] for k in grouped}), "n_evidence": len(evs)}
     # Evolução por período (estado acumulado no fim de cada período).
+    # Cada par é ordenado uma vez e cortado por data com bisseção; o estado sai de state_only (mesma regra de
+    # assess, sem montar a avaliação completa): de ~1,3 s para ~0,3 s numa escola de 600 estudantes.
+    ordered = [sorted(v, key=sort_key) for v in grouped.values()]
+    dates = [[e.observed_on for e in v] for v in ordered]
     evolution = []
     for label, end in _periods(user.school):
-        st = [assess([e for e in v if e.observed_on <= end], scale, end, explain=False).state for v in grouped.values()]
+        st = [state_only(v[:bisect_right(d, end)], scale, end) for v, d in zip(ordered, dates)]
         st = [s for s in st if s != "nao_avaliado"]
         cons = sum(1 for s in st if s in ("consolidada", "consolidacao"))
         diff = sum(1 for s in st if s == "dificuldade")
@@ -229,14 +234,20 @@ def dashboard(request):
                     critical.append({"cg": cg, "subject": subject, **r})
         ctx["critical"] = sorted(critical, key=lambda r: -len(r["weak"]))[:8]
     if user.role in (Role.COORDENACAO.value, Role.DIRECAO.value):
+        # Estados agrupados por turma numa passada só, e alertas contados numa consulta (antes: todos os pares
+        # percorridos para cada turma e uma contagem de alertas por turma).
+        states_by_class = {}
+        for a in assessments.values():
+            if a.evidence:
+                states_by_class.setdefault(a.evidence[0].class_group_id, []).append(a.state)
+        alert_counts = dict(alerts.order_by().values_list("class_group_id").annotate(n=Count("pk")))
         classes = []
         for cg in ClassGroup.objects.filter(pk__in=class_ids).order_by("name"):
-            st = [a.state for k, a in assessments.items() if a.evidence and a.evidence[0].class_group_id == cg.pk]
+            st = states_by_class.get(cg.pk, [])
             if not st:
                 classes.append({"cg": cg, "n": 0})
                 continue
-            classes.append({"cg": cg, "n": len(st), "dist": _dist(st),
-                            "alerts": alerts.filter(class_group=cg).count()})
+            classes.append({"cg": cg, "n": len(st), "dist": _dist(st), "alerts": alert_counts.get(cg.pk, 0)})
         ctx["classes"] = classes
         ctx["articulation"] = [d for d in attention if len(d["classes"]) >= 2]
         # Prompt 17, §13.3: estudantes com dificuldade em mais de um componente pedem conversa entre professores
@@ -328,7 +339,7 @@ def discipline(request):
                for s in Subject.objects.filter(pk__in=qs.filter(subject__isnull=False).values("subject_id"))}
     available = sorted(set(comp_of.values()))
     comp = request.GET.get("componente") or (available[0] if available else "")
-    evs = list(qs.filter(subject_id__in=[pk for pk, c in comp_of.items() if c == comp]).select_related("item"))
+    evs = with_items(list(qs.filter(subject_id__in=[pk for pk, c in comp_of.items() if c == comp])))
     grouped = group_evidence(evs)
     assessments = {k: assess(v, scale, today, explain=False) for k, v in grouped.items()}
     # Por unidade temática.

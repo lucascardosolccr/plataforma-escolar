@@ -192,6 +192,57 @@ def assess(evidences, scale, today=None, explain=True):
     return a
 
 
+def sort_key(e):
+    return (e.observed_on, e.pk or 0)
+
+
+def state_only(evs, scale, today):
+    """Só o estado que ``assess(evs, scale, today)`` daria, sem montar a avaliação completa.
+
+    Para a evolução por período, que repete a classificação de cada par para cada fim de período (87 mil
+    vezes numa escola de 600 estudantes). ``evs`` precisa vir ordenada por ``sort_key``, como ``assess``
+    ordena: a soma em ponto flutuante depende da ordem, e um estado na fronteira de um corte poderia mudar.
+    A equivalência com ``assess`` é conferida em ``tests/test_state_only.py``."""
+    if not evs:
+        return "nao_avaliado"
+    valid = [e for e in evs if e.ratio is not None and e.weight > 0]
+    if not valid:
+        return "insuficiente"
+    if len(valid) < scale.min_evidence or round(sum(e.weight for e in valid), 2) < float(scale.min_weight):
+        return "insuficiente"
+    half = float(scale.half_life_days or 120)
+    ws = [e.weight * 0.5 ** (max((today - e.observed_on).days, 0) / half) for e in valid]
+    total = sum(ws)
+    mean = sum(w * e.ratio for w, e in zip(ws, valid)) / total if total else None
+    var = sum(w * (e.ratio - mean) ** 2 for w, e in zip(ws, valid)) / total if total else 0
+    ratios = [e.ratio for e in valid]
+    if max(ratios) - min(ratios) >= 0.5 and math.sqrt(var) >= 0.25:
+        return "contraditoria"
+    if mean < float(scale.t1):
+        return "dificuldade"
+    if mean < float(scale.t2):
+        return "desenvolvimento"
+    if mean < float(scale.t3):
+        return "consolidacao"
+    return "consolidada"
+
+
+def with_items(evs):
+    """Liga cada evidência à sua habilidade com uma consulta para as habilidades distintas.
+
+    Substitui ``select_related("item")``, que montava um objeto de habilidade por evidência (19 mil
+    objetos para algumas centenas de habilidades numa escola grande)."""
+    from apps.curriculum.models import CurriculumItem
+
+    from .models import SkillEvidence
+
+    items = CurriculumItem.objects.in_bulk({e.item_id for e in evs})
+    field = SkillEvidence._meta.get_field("item")
+    for e in evs:
+        field.set_cached_value(e, items[e.item_id])
+    return evs
+
+
 def group_evidence(qs):
     """{(student_id, item_id): [evidências]}"""
     out = {}

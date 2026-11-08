@@ -307,12 +307,21 @@
       th.setAttribute("data-sort", "");
       var btn = document.createElement("button");
       btn.type = "button";
-      while (th.firstChild) btn.appendChild(th.firstChild);
+      // O que já é interativo no cabeçalho (o "ⓘ" da metodologia, um link) fica ao lado do botão de ordenar:
+      // botão dentro de botão não funciona no teclado nem no leitor de tela.
+      var keep = [];
+      Array.prototype.slice.call(th.childNodes).forEach(function (node) {
+        var interactive = node.nodeType === 1 &&
+          (node.matches("a, button, input, select, details, [tabindex]") ||
+           node.querySelector("a, button, input, select, details, [tabindex]"));
+        if (interactive) keep.push(node); else btn.appendChild(node);
+      });
       var ind = document.createElement("span");
       ind.className = "sort-ind";
       ind.setAttribute("aria-hidden", "true");
       btn.appendChild(ind);
       th.appendChild(btn);
+      keep.forEach(function (node) { th.appendChild(node); });
       btn.addEventListener("click", function () {
         var asc = th.getAttribute("aria-sort") !== "ascending";
         heads.forEach(function (h) { h.removeAttribute("aria-sort"); });
@@ -864,6 +873,29 @@
     $$("form[aria-busy]").forEach(function (f) { f.removeAttribute("aria-busy"); });
     $$("button.is-loading").forEach(function (b) { b.disabled = false; b.classList.remove("is-loading"); });
   });
+
+  /* ---------- Tabelas com rolagem (WCAG 2.1.1) ----------
+   * Uma tabela mais larga que a tela rola para o lado; sem foco, quem usa só o teclado não alcança as
+   * colunas escondidas. A área ganha foco e nome só enquanto de fato rola. */
+  function markScrollable() {
+    $$(".table-responsive").forEach(function (w) {
+      var over = w.scrollWidth > w.clientWidth + 1;
+      if (over && !w.hasAttribute("tabindex")) {
+        var cap = w.querySelector("caption");
+        var box = w.closest(".card, section");
+        var head = cap || (box && box.querySelector("h1, h2, h3, h4, h5, h6"));
+        w.setAttribute("tabindex", "0");
+        w.setAttribute("role", "region");
+        w.setAttribute("aria-label", (head ? head.textContent.trim() + ": " : "") + "tabela, role para o lado para ver todas as colunas");
+        w.setAttribute("data-ds-scroll", "");
+      } else if (!over && w.hasAttribute("data-ds-scroll")) {
+        ["tabindex", "role", "aria-label", "data-ds-scroll"].forEach(function (a) { w.removeAttribute(a); });
+      }
+    });
+  }
+  markScrollable();
+  var scrollTimer = null;
+  window.addEventListener("resize", function () { clearTimeout(scrollTimer); scrollTimer = setTimeout(markScrollable, 200); });
 
   /* ---------- Copiar (data-copy="texto") ----------
    * Copia o texto para a área de transferência e confirma no próprio botão.

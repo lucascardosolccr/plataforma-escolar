@@ -38,7 +38,7 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
   font-family: var(--ds-font-text);
 }
 p { max-width: 75ch; }
-.text-body-secondary, .text-muted { color: var(--ds-text-muted) !important; }
+.text-body-secondary, .text-muted, .text-secondary { color: var(--ds-text-muted) !important; }
 small, .small { font-size: var(--ds-fs-sm); }
 
 a { color: var(--ds-primary); text-underline-offset: .18em; text-decoration-thickness: 1px; }

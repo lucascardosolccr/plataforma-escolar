@@ -189,8 +189,11 @@ def bar_chart(items, *, max_value=None, suffix="", width=520, height=220):
         f'<text x="{pad_l - 6}" y="{pad_t + plot_h}" class="chart-tick" text-anchor="end">0</text>'
     )
     nome = _summary("Gráfico de barras", items, suffix)
+    # Com barras clicáveis (filtro), o gráfico é um grupo de links: "imagem" esconderia os links do leitor de
+    # tela e o axe aponta elemento interativo dentro de imagem.
+    role = "group" if any(i.get("url") for i in items) else "img"
     return mark_safe(
-        f'<svg viewBox="0 0 {width} {height}" class="chart-svg" role="img" aria-label="{nome}">'
+        f'<svg viewBox="0 0 {width} {height}" class="chart-svg" role="{role}" aria-label="{nome}">'
         f'{grid}{"".join(bars)}</svg>'
     )
 

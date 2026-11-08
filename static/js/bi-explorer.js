@@ -471,6 +471,12 @@
       var width = Math.max(260, body.clientWidth || 600);
       var out = app.tableMode[key] && tabular ? tabular() : draw(width);
       add(body, out || h("p", { "class": "bx-empty", text: "Sem dados neste recorte." }));
+      // Tabela com rolagem (lateral ou vertical): área focável, para o teclado alcançar o que está escondido.
+      Array.prototype.forEach.call(body.querySelectorAll(".bx-table-wrap"), function (w) {
+        if (w.scrollWidth > w.clientWidth + 1 || w.scrollHeight > w.clientHeight + 1) {
+          attrs(w, { tabindex: "0", role: "region", "aria-label": title + ": tabela com rolagem" });
+        }
+      });
     } };
   }
 

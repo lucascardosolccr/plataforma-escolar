@@ -109,7 +109,11 @@ Fotos e documentos **não** entram em "Static files": a plataforma só os entreg
 
 1. Entre com a conta criada no passo 4.
 2. Publique o encarregado de dados em *Privacidade*.
-3. Cadastre a escola, o ano letivo, as turmas e as contas da equipe, como no computador da escola.
+3. Outras escolas: em **Administração → Escolas → Nova escola**. Cada escola nova já sai com o código
+   de convite da direção. A direção convida a própria equipe em **Equipe e convites**, e cada pessoa cria
+   a conta em `/cadastro/convite/` com o código recebido.
+4. Na escola, a direção cadastra o ano letivo e as turmas; a central de pendências mostra os primeiros
+   passos.
 
 **Nunca rode `seeddemo` na hospedagem:** ele cria contas de demonstração com senhas conhecidas, e o site
 fica aberto na internet.

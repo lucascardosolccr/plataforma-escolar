@@ -181,7 +181,18 @@ class ThrottledAuthenticationForm(AuthenticationForm):
         username = (self.data.get("username") or "").strip()
         if username and self._is_locked(username):
             raise ValidationError(self.error_messages["locked"], code="locked")
-        return super().clean()
+        try:
+            return super().clean()
+        except ValidationError:
+            from .invites import awaiting_approval
+
+            # Só quem acertou a senha de um cadastro por convite ainda pendente fica sabendo; para os
+            # demais, a mensagem continua a mesma de sempre.
+            if awaiting_approval(username, self.data.get("password")):
+                raise ValidationError(
+                    "Seu cadastro ainda aguarda a aprovação da direção da escola. Você vai conseguir entrar "
+                    "assim que ele for aprovado.", code="pending")
+            raise
 
     def _is_locked(self, username):
         from datetime import timedelta
@@ -208,3 +219,119 @@ class ThrottledAuthenticationForm(AuthenticationForm):
             return True
         ip = self.request.META.get("REMOTE_ADDR") if self.request else None
         return bool(ip) and recent.filter(ip_address=ip).count() >= self.MAX_PER_IP
+
+
+UFS = ("AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO").split()
+
+
+class SchoolForm(forms.ModelForm):
+    """Cadastro da escola pelo administrador da plataforma."""
+
+    code = forms.CharField(label="Código da escola", max_length=50, required=False,
+                           help_text="As famílias digitam no cadastro de responsável. Em branco, sai do nome "
+                                     "(ex.: emef-joao-cabral).")
+    inep = forms.CharField(label="Código INEP", max_length=12, required=False,
+                           help_text="8 algarismos do Censo Escolar, quando a escola tem.")
+
+    class Meta:
+        model = School
+        fields = ["name", "code", "inep", "city", "uf"]
+
+    def clean(self):
+        from django.utils.text import slugify
+
+        cleaned = super().clean()
+        typed = cleaned.get("code", "")
+        code = slugify(typed or cleaned.get("name", ""))[:50].strip("-")
+        if not code:
+            self.add_error("code", "Use letras e números (ex.: emef-joao-cabral).")
+            return cleaned
+        taken = School.objects.exclude(pk=self.instance.pk)
+        if typed and taken.filter(code=code).exists():
+            self.add_error("code", "Já existe uma escola com este código.")
+        elif not typed:  # gerado do nome: acrescenta -2, -3… se já existir
+            base, n = code[:46], 2
+            while taken.filter(code=code).exists():
+                code, n = f"{base}-{n}", n + 1
+        cleaned["code"] = code
+        return cleaned
+
+    def clean_inep(self):
+        inep = "".join(ch for ch in self.cleaned_data["inep"] if ch.isdigit())
+        if inep and len(inep) != 8:
+            raise forms.ValidationError("O código INEP tem 8 algarismos.")
+        if inep and School.objects.filter(inep=inep).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("Já existe uma escola com este código INEP.")
+        return inep
+
+    def clean_uf(self):
+        uf = self.cleaned_data["uf"].strip().upper()
+        if uf and uf not in UFS:
+            raise forms.ValidationError("UF inválida.")
+        return uf
+
+
+class InviteForm(forms.Form):
+    """Novo código de convite. Em branco, limite e prazo seguem o padrão do perfil."""
+
+    role = forms.ChoiceField(label="Perfil de quem vai se cadastrar")
+    note = forms.CharField(label="Para quem (opcional)", max_length=120, required=False,
+                           help_text="Aparece só para a escola. Ex.: \"Professores do 6º ao 9º ano\".")
+    max_uses = forms.IntegerField(label="Limite de cadastros", min_value=1, max_value=500, required=False,
+                                  help_text="Em branco: 1 para direção e administração, 5 para secretaria, "
+                                            "10 para coordenação, 60 para professores.")
+    days = forms.IntegerField(label="Válido por (dias)", min_value=1, max_value=90, required=False,
+                              help_text="Em branco: 14 dias para direção e administração, 30 para os demais.")
+    approval = forms.ChoiceField(
+        label="Aprovação da direção", initial="padrao",
+        choices=[("padrao", "Padrão do perfil (exige para secretaria e administração)"),
+                 ("sim", "Exigir para cada cadastro"), ("nao", "Não exigir")])
+
+    def __init__(self, *args, roles=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["role"].choices = [(r, Role(r).label) for r in roles]
+
+    def approval_value(self):
+        return {"sim": True, "nao": False}.get(self.cleaned_data["approval"])
+
+
+class InviteSignupForm(forms.Form):
+    """Cadastro da equipe com o código de convite. Perfil e escola vêm do código, nunca daqui."""
+
+    code = forms.CharField(label="Código de convite", max_length=40,
+                           help_text="12 caracteres, recebidos da direção ou da administração.")
+    first_name = forms.CharField(label="Nome", max_length=120)
+    last_name = forms.CharField(label="Sobrenome", max_length=120)
+    email = forms.EmailField(label="E-mail")
+    phone = forms.CharField(label="Telefone", max_length=30, required=False)
+    username = forms.CharField(label="Usuário (login)", max_length=150,
+                               help_text="Sem espaço. É com ele que você vai entrar.")
+    password1 = forms.CharField(label="Senha", widget=forms.PasswordInput)
+    password2 = forms.CharField(label="Confirmação da senha", widget=forms.PasswordInput)
+
+    def clean_code(self):
+        from .invites import find
+
+        invite, error = find(self.cleaned_data["code"])
+        if invite is None:
+            raise forms.ValidationError(error)
+        self.invite = invite
+        return invite.code
+
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip().lower()
+        if not username or any(ch.isspace() for ch in username):
+            raise forms.ValidationError("Use um usuário sem espaço.")
+        if User.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError("Já existe um usuário com este login.")
+        return username
+
+    def clean(self):
+        cleaned = super().clean()
+        p1, p2 = cleaned.get("password1"), cleaned.get("password2")
+        if p1 and p2 and p1 != p2:
+            self.add_error("password2", "As senhas não coincidem.")
+        elif p1 and p2:
+            _check_password(self, p1, User(username=cleaned.get("username", ""), first_name=cleaned.get("first_name", ""),
+                                           last_name=cleaned.get("last_name", ""), email=cleaned.get("email", "")))
+        return cleaned

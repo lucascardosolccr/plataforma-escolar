@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
-from . import views, views_followup, views_photo, views_prefs, views_privacy, views_recovery
+from . import views, views_followup, views_photo, views_prefs, views_privacy, views_recovery, views_schools
 from .forms import ThrottledAuthenticationForm
 
 urlpatterns = [
@@ -23,6 +23,16 @@ urlpatterns = [
     path("fotografias/dispensas/<int:pk>/revogar/", views_photo.photo_exception_revoke,
          name="photo_exception_revoke"),
     path("cadastro/", views.signup, name="signup"),
+    path("cadastro/convite/", views_schools.invite_signup, name="invite_signup"),
+    path("escolas/", views_schools.school_list, name="school_list"),
+    path("escolas/nova/", views_schools.school_create, name="school_create"),
+    path("escolas/<int:school_id>/editar/", views_schools.school_edit, name="school_edit"),
+    path("escolas/<int:school_id>/trabalhar/", views_schools.school_switch, name="school_switch"),
+    path("escolas/<int:school_id>/equipe/", views_schools.school_team, name="school_team"),
+    path("escolas/<int:school_id>/convites/novo/", views_schools.invite_create, name="invite_create"),
+    path("equipe/", views_schools.my_team, name="my_team"),
+    path("convites/<int:invite_id>/cancelar/", views_schools.invite_revoke, name="invite_revoke"),
+    path("convites/cadastros/<int:signup_id>/decidir/", views_schools.signup_decide, name="signup_decide"),
     path(
         "login/",
         auth_views.LoginView.as_view(redirect_authenticated_user=True,

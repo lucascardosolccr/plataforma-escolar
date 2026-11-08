@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Equipe e convites — {{ school.name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ school.name }}</h1>
+    <p>{% if school.city %}{{ school.city }}{% if school.uf %}/{{ school.uf }}{% endif %} · {% endif %}{% if school.inep %}INEP {{ school.inep }} · {% endif %}código das famílias: <strong class="font-monospace">{{ school.code }}</strong> (usado no cadastro de responsável).</p>
+  </div>
+  <div class="page-actions">
+    {% if platform_admin %}
+      <a class="btn btn-outline-secondary" href="{% url 'school_edit' school.pk %}">{% icon "pencil" %}Editar dados</a>
+      {% if user.school_id != school.pk %}<form method="post" action="{% url 'school_switch' school.pk %}">{% csrf_token %}<button class="btn btn-outline-primary" type="submit" data-confirm="Sua conta passa a trabalhar nesta escola: as telas do dia a dia (estudantes, turmas, portaria) mostram os dados dela." data-confirm-ok="Trabalhar nesta escola">{% icon "building-2" %}Trabalhar nesta escola</button></form>{% endif %}
+    {% endif %}
+  </div>
+</div>
+
+{% if pending %}
+<section class="card mb-3 border-warning" aria-labelledby="h-pend"><div class="card-body">
+  <h2 id="h-pend" class="h5">Cadastros aguardando aprovação</h2>
+  <p class="small text-body-secondary">A conta só funciona depois de aprovada. Confira se a pessoa é mesmo da equipe antes de aprovar. Recusar apaga a conta.</p>
+  <ul class="list-unstyled mb-0">{% for s in pending %}
+    <li class="d-flex flex-wrap gap-2 justify-content-between align-items-center py-2 border-bottom">
+      <span><strong>{{ s.name }}</strong> · {{ s.invite.get_role_display }} · usuário <span class="font-monospace">{{ s.username }}</span>{% if s.user.email %} · {{ s.user.email }}{% endif %}{% if s.user.phone %} · {{ s.user.phone }}{% endif %}<span class="d-block small text-body-secondary">Código {{ s.invite.display_code }}{% if s.invite.note %} ({{ s.invite.note }}){% endif %} · {{ s.created_at|date:"d/m/Y H:i" }}</span></span>
+      <span class="d-flex gap-2">
+        <form method="post" action="{% url 'signup_decide' s.pk %}">{% csrf_token %}<input type="hidden" name="decisao" value="aprovar"><button class="btn btn-sm btn-primary" type="submit">{% icon "check" %}Aprovar</button></form>
+        <form method="post" action="{% url 'signup_decide' s.pk %}">{% csrf_token %}<input type="hidden" name="decisao" value="recusar"><button class="btn btn-sm btn-outline-danger" type="submit" data-confirm="A conta de {{ s.name }} será apagada. A pessoa pode se cadastrar de novo com outro código." data-confirm-ok="Recusar e apagar" data-confirm-tone="danger">Recusar</button></form>
+      </span>
+    </li>{% endfor %}</ul>
+</div></section>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-xl-8">
+    <section class="card mb-3" aria-labelledby="h-conv"><div class="card-body">
+      <h2 id="h-conv" class="h5">Códigos de convite</h2>
+      <p class="small text-body-secondary">Quem recebe o código entra em <span class="font-monospace">{{ signup_url }}</span>, digita o código e cria a própria senha. A conta nasce ligada a esta escola, com o perfil do código: ninguém escolhe o próprio perfil.</p>
+      <ul class="list-unstyled mb-0">
+      {% for inv in invites %}<li class="py-3 border-bottom">
+        <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start">
+          <div>
+            <span class="font-monospace fs-5 fw-semibold text-nowrap">{{ inv.display_code }}</span>
+            {% if inv.state == "ativo" %}<span class="badge text-bg-success align-middle">ativo</span>{% else %}<span class="badge text-bg-secondary align-middle">{{ inv.state }}</span>{% endif %}
+            <div class="small text-body-secondary"><strong class="text-body">{{ inv.get_role_display }}</strong> · {{ inv.used }} de {{ inv.max_uses }} cadastro{{ inv.max_uses|pluralize }} · válido até {{ inv.expires_at|date:"d/m/Y" }}{% if inv.requires_approval %} · com aprovação da direção{% endif %}{% if inv.note %} · {{ inv.note }}{% endif %}</div>
+          </div>
+          {% if inv.state == "ativo" %}<div class="d-flex flex-wrap gap-1">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-copy="{{ inv.display_code }}">Copiar código</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-copy="{{ signup_url }}?codigo={{ inv.code }}">Copiar link</button>
+            <form method="post" action="{% url 'invite_revoke' inv.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit" data-confirm="O código {{ inv.display_code }} deixa de aceitar cadastros. As contas já criadas continuam valendo." data-confirm-ok="Cancelar o código" data-confirm-tone="danger">Cancelar</button></form>
+          </div>{% endif %}
+        </div>
+      </li>{% empty %}<li class="text-body-secondary">Nenhum código ativo.{% if can_invite %} Gere um no quadro "Gerar código de convite".{% endif %}</li>{% endfor %}
+      </ul>
+      {% if hidden_invites %}<p class="small mt-2 mb-0"><a href="?todos=1">{% if hidden_invites == 1 %}Mostrar também 1 código vencido, esgotado ou cancelado{% else %}Mostrar também os {{ hidden_invites }} códigos vencidos, esgotados ou cancelados{% endif %}</a></p>{% endif %}
+    </div></section>
+
+    <section class="card mb-3" aria-labelledby="h-team"><div class="card-body">
+      <h2 id="h-team" class="h5">Equipe da escola</h2>
+      <div class="table-responsive"><table class="table align-middle mb-0 table-stack">
+        <thead><tr><th scope="col">Nome</th><th scope="col">Perfil</th><th scope="col">Usuário</th><th scope="col">Como entrou</th></tr></thead>
+        <tbody>
+        {% for u in team %}<tr>
+          <th scope="row" data-label="Nome">{% if user.role == "admin" %}<a href="{% url 'user_detail' u.pk %}">{{ u.get_full_name|default:u.username }}</a>{% else %}{{ u.get_full_name|default:u.username }}{% endif %}{% if not u.is_active %} <span class="badge text-bg-secondary">{% if u.invite_signup.status == "pendente" %}aguardando aprovação{% else %}desativada{% endif %}</span>{% endif %}</th>
+          <td data-label="Perfil">{{ u.role_label }}</td>
+          <td data-label="Usuário" class="font-monospace">{{ u.username }}</td>
+          <td data-label="Como entrou">{% if u.invite_signup %}código {{ u.invite_signup.invite.display_code }} em {{ u.invite_signup.created_at|date:"d/m/Y" }}{% else %}conta criada pela administração{% endif %}</td>
+        </tr>{% empty %}<tr><td colspan="4" class="text-body-secondary">Ninguém da equipe ainda.</td></tr>{% endfor %}
+        </tbody>
+      </table></div>
+      {% if recent_rejected %}<p class="small text-body-secondary mt-2 mb-0">Recusados recentemente: {% for r in recent_rejected %}{{ r.name }} ({{ r.decided_at|date:"d/m/Y" }}){% if not forloop.last %}, {% endif %}{% endfor %}.</p>{% endif %}
+    </div></section>
+  </div>
+
+  <div class="col-xl-4">
+    {% if can_invite %}
+    <section class="card mb-3" aria-labelledby="h-novo"><div class="card-body">
+      <h2 id="h-novo" class="h5">Gerar código de convite</h2>
+      <form method="post" action="{% url 'invite_create' school.pk %}" novalidate>
+        {% csrf_token %}
+        <div class="row g-3 mb-3">{% for field in form %}{% include "partials/_field.html" with field=field col="col-12" %}{% endfor %}</div>
+        <button type="submit" class="btn btn-primary w-100">{% icon "plus" %}Gerar código</button>
+      </form>
+    </div></section>
+    {% endif %}
+    <section class="card" aria-labelledby="h-como"><div class="card-body small">
+      <h2 id="h-como" class="h6">Como funciona</h2>
+      <ol class="ps-3 mb-2">
+        <li>Gere um código para o perfil (um para professores, outro para a secretaria…).</li>
+        <li>Envie o código ou o link por mensagem.</li>
+        <li>Cada pessoa cria o próprio usuário e senha com o código e já entra ligada a esta escola.</li>
+      </ol>
+      <p class="mb-2"><strong>Segurança:</strong> cada código vale para um perfil, por um prazo e um número de cadastros. Cancele quando a equipe estiver completa. Secretaria e administração, que veem os dados de todos os estudantes, pedem aprovação por padrão.</p>
+      <p class="mb-0">Professores só veem estudantes depois de atribuídos às turmas; a coordenação, depois da designação.</p>
+    </div></section>
+  </div>
+</div>
+{% endblock %}

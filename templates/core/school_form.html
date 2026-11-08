@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{% if school %}Editar escola{% else %}Nova escola{% endif %} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{% if school %}Editar {{ school.name }}{% else %}Nova escola{% endif %}</h1>
+    <p>{% if school %}O código é o que as famílias digitam no cadastro de responsável: se mudar, avise quem ainda vai se cadastrar.{% else %}Ao salvar, a plataforma gera o código de convite da direção (1 cadastro, válido por 14 dias). Depois a direção convida a própria equipe.{% endif %}</p>
+  </div>
+</div>
+<div class="card"><div class="card-body">
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include "partials/_form_fields.html" with f=form %}
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary">{% if school %}Salvar{% else %}Cadastrar escola{% endif %}</button>
+      <a class="btn btn-outline-secondary" href="{% if school %}{% url 'school_team' school.pk %}{% else %}{% url 'school_list' %}{% endif %}">Cancelar</a>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

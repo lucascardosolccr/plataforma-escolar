@@ -36,6 +36,15 @@ def for_user(user):
     if role in (Role.DIRECAO.value, Role.SECRETARIA.value, Role.ADMIN.value):
         items += _lgpd(user)
     if role in (Role.DIRECAO.value, Role.ADMIN.value) and user.school_id:
+        from .invites import pending_for
+
+        waiting = pending_for(user.school).count()
+        items += _first_steps(user)
+        items.append(_item("Cadastros da equipe aguardando aprovação", waiting,
+                           reverse("school_team", args=[user.school_id]),
+                           "Pessoas que usaram um código de convite que exige aprovação. A conta só funciona depois.",
+                           assignable=False))
+    if role in (Role.DIRECAO.value, Role.ADMIN.value) and user.school_id:
         from .models import PrivacyContact
 
         if not PrivacyContact.objects.filter(school_id=user.school_id).exists():
@@ -56,6 +65,28 @@ def for_user(user):
             items.append(_item("Sua foto de identificação", 1, reverse("my_photo"), "Leva um minuto.", "info",
                                assignable=False))
     return [i for i in items if i["count"]]
+
+
+def _first_steps(user):
+    """Escola recém-cadastrada: o que falta para começar a usar (some quando feito)."""
+    from apps.academics.models import ClassGroup, SchoolYear
+
+    from .models import User
+
+    steps = []
+    if not SchoolYear.objects.filter(school_id=user.school_id).exists():
+        steps.append(_item("Primeiros passos: cadastrar o ano letivo", 1, reverse("school_year_list"),
+                           "Sem ano letivo não há turmas, matrículas nem calendário.", "info", assignable=False))
+    elif not ClassGroup.objects.filter(school_id=user.school_id).exists():
+        steps.append(_item("Primeiros passos: cadastrar as turmas", 1, reverse("class_group_list"),
+                           "Depois das turmas vêm as matrículas e a atribuição dos professores.", "info",
+                           assignable=False))
+    if not User.objects.filter(school_id=user.school_id, role=Role.PROFESSOR.value).exists():
+        steps.append(_item("Primeiros passos: convidar os professores", 1,
+                           reverse("school_team", args=[user.school_id]),
+                           "Gere um código de convite e envie: cada professor cria a própria conta.", "info",
+                           assignable=False))
+    return steps
 
 
 def _school_days_back(school, n=5):

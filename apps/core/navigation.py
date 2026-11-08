@@ -141,6 +141,10 @@ ITEMS = {
     "config": Item("Regras e limites", "pedagogy:config_edit", "sliders-horizontal",
                    ("pedagogy:config_", "pedagogy:academic_rule_"), "Médias e limite de faltas"),
     "users": Item("Usuários", "user_list", "shield", ("user_",), "Contas e auditoria"),
+    "schools": Item("Escolas", "school_list", "building-2", ("school_list", "school_create", "school_edit"),
+                    "Cadastrar escolas e gerar o convite da direção"),
+    "team_invites": Item("Equipe e convites", "my_team", "user-check", ("school_team", "my_team"),
+                         "Códigos para a equipe se cadastrar e aprovação de contas"),
     "error_log": Item("Falhas técnicas", "error_log", "triangle-alert", ("error_log",),
                       "Erros do servidor registrados"),
     "photos": Item("Fotografias", "photo_pending", "user-round", ("photo_",),
@@ -311,12 +315,12 @@ LAYOUT = {
                         "active_search"]),
         ("Acadêmico", ["classes", "subjects", "years", "official_calendar", "teacher_perms"]),
         COMMUNICATION_STAFF,
-        ("Configuração", ["registration_cfg", "privacy_cfg", "photos", "notif_rules"]),
+        ("Configuração", ["team_invites", "registration_cfg", "privacy_cfg", "photos", "notif_rules"]),
     ],
     ADMIN: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
-        ("Administração", ["users", "coord_designations", "config", "registration_cfg", "privacy_cfg", "notif_rules",
-                           "error_log"]),
+        ("Administração", ["schools", "team_invites", "users", "coord_designations", "config", "registration_cfg",
+                           "privacy_cfg", "notif_rules", "error_log"]),
         ("Cadastro", ["students", "applications", "student_import", "photos", "guardians", "staff_links",
                       "enrollments", "documents", "gate_cards", "gate_station"]),
         ("Acadêmico", ["classes", "subjects", "years", "official_calendar", "assignments", "teacher_perms"]),
@@ -381,7 +385,20 @@ def _institutional(user):
 
 
 # Itens que só aparecem quando a escola liga a função ou o perfil alcança a tela (a view também confere).
-CONDITIONS = {"fam_applications": _family_registration_on, "institutional": _institutional, "goals": _institutional}
+def _platform_admin(user):
+    from .invites import is_platform_admin
+
+    return is_platform_admin(user)
+
+
+def _has_school(user):
+    from .invites import is_platform_admin
+
+    return user.school_id is not None or is_platform_admin(user)
+
+
+CONDITIONS = {"fam_applications": _family_registration_on, "institutional": _institutional, "goals": _institutional,
+              "schools": _platform_admin, "team_invites": _has_school}
 
 
 def build(user, view_name=None):

@@ -864,4 +864,33 @@
     $$("form[aria-busy]").forEach(function (f) { f.removeAttribute("aria-busy"); });
     $$("button.is-loading").forEach(function (b) { b.disabled = false; b.classList.remove("is-loading"); });
   });
+
+  /* ---------- Copiar (data-copy="texto") ----------
+   * Copia o texto para a área de transferência e confirma no próprio botão.
+   * Sem a API (endereço sem HTTPS), cai no método antigo de seleção. */
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest ? e.target.closest("[data-copy]") : null;
+    if (!btn) return;
+    var text = btn.getAttribute("data-copy");
+    var label = btn.getAttribute("data-copy-label") || btn.textContent;
+    btn.setAttribute("data-copy-label", label);
+    function done(ok) {
+      btn.textContent = ok ? "Copiado" : "Não deu para copiar";
+      setTimeout(function () { btn.textContent = label; }, 1800);
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+      return;
+    }
+    var area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.className = "visually-hidden";
+    document.body.appendChild(area);
+    area.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (err) { ok = false; }
+    area.remove();
+    done(ok);
+  });
 })();

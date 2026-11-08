@@ -7,7 +7,12 @@ from .uploads import safe_photo_path, validate_photo
 
 class School(models.Model):
     name = models.CharField("nome", max_length=200)
-    code = models.SlugField("código", max_length=50, unique=True)
+    code = models.SlugField("código", max_length=50, unique=True,
+                            help_text="Curto, sem espaço nem acento. As famílias usam no cadastro de responsável.")
+    inep = models.CharField("código INEP", max_length=8, blank=True,
+                            help_text="8 algarismos do Censo Escolar, quando a escola tem.")
+    city = models.CharField("município", max_length=100, blank=True)
+    uf = models.CharField("UF", max_length=2, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -313,3 +318,64 @@ class RecoveryCode(models.Model):
     class Meta:
         verbose_name = "código de recuperação"
         verbose_name_plural = "códigos de recuperação"
+
+
+class InviteCode(models.Model):
+    """Código de convite para a equipe se cadastrar já ligada a uma escola e a um perfil.
+
+    O perfil vem do código, nunca do formulário: quem recebeu o código de professor não consegue se cadastrar
+    como direção. Cada código tem prazo, limite de usos e pode exigir a aprovação da direção antes de a conta
+    funcionar (ver ``apps.core.invites``)."""
+
+    ROLES = [Role.DIRECAO, Role.COORDENACAO, Role.SECRETARIA, Role.PROFESSOR, Role.ADMIN]
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="invite_codes", verbose_name="escola")
+    role = models.CharField("perfil", max_length=20, choices=[(r.value, r.label) for r in ROLES])
+    code = models.CharField("código", max_length=16, unique=True)
+    note = models.CharField("para quem", max_length=120, blank=True,
+                            help_text="Ex.: \"Professores do fundamental\" ou o nome da diretora.")
+    max_uses = models.PositiveSmallIntegerField("limite de cadastros")
+    expires_at = models.DateTimeField("válido até")
+    requires_approval = models.BooleanField(
+        "a direção aprova cada cadastro", default=False,
+        help_text="A conta só funciona depois que a direção (ou a administração) aprovar.")
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    revoked_at = models.DateTimeField("cancelado em", null=True, blank=True)
+    revoked_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "código de convite"
+        verbose_name_plural = "códigos de convite"
+
+    def __str__(self):
+        return f"{self.display_code} · {self.get_role_display()} · {self.school}"
+
+    @property
+    def display_code(self):
+        return "-".join(self.code[i:i + 4] for i in range(0, len(self.code), 4))
+
+
+class InviteSignup(models.Model):
+    """Conta criada com um código de convite: quem, quando e se a direção aprovou."""
+
+    class Status(models.TextChoices):
+        PENDING = "pendente", "Aguardando aprovação"
+        APPROVED = "aprovada", "Ativa"
+        REJECTED = "recusada", "Recusada"
+
+    invite = models.ForeignKey(InviteCode, on_delete=models.CASCADE, related_name="signups")
+    # Recusada, a conta é apagada (nunca funcionou e não tem dado nenhum); o nome fica para o histórico.
+    user = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="invite_signup")
+    name = models.CharField("nome", max_length=255)
+    username = models.CharField("usuário", max_length=150)
+    status = models.CharField("situação", max_length=10, choices=Status.choices, default=Status.APPROVED)
+    created_at = models.DateTimeField(auto_now_add=True)
+    decided_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "cadastro por convite"
+        verbose_name_plural = "cadastros por convite"

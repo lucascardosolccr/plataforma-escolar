@@ -33,6 +33,8 @@ urlpatterns = [
         views.student_export,
         name="student_export",
     ),
+    path("paineis/estudante/<int:student_id>/dados.json", views.student_data, name="student_data"),
+    path("paineis/turma/<int:class_group_id>/dados.json", views.class_data, name="class_data"),
     path("paineis/metodologia/", views.methodology, name="methodology"),
     path("paineis/turma/<int:class_group_id>/exportar.<str:fmt>", views.class_export, name="class_export"),
     path("paineis/disciplina/", views.subject_dashboard, name="subject_index"),

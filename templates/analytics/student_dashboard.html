@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static ui bi_tags %}
 {% block title %}Painel de {{ student.full_name }} — Plataforma Escolar{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'css/bi.css' %}">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/bi.css' %}"><link rel="stylesheet" href="{% static 'css/bi-explorer.css' %}">{% endblock %}
 {% block crumb %}<li><span aria-current="page">Painel de {{ student.first_name }}</span></li>{% endblock %}
 
 {% block content %}
@@ -52,6 +52,9 @@
 </header>
 
 {% include "analytics/bi/_filters.html" with presets=presets period=period export_links=export_links %}
+<section class="bx-app" data-bi-explorer data-src="{% url 'analytics:student_data' student.pk %}?{{ period.querystring }}" aria-label="Painel interativo" hidden></section>
+<h2 class="h4 mt-2 mb-2" id="relatorio-detalhado">Relatório detalhado</h2>
+<p class="text-body-secondary small">Os mesmos dados do período, com textos, metodologia e registros de cada seção.</p>
 {% include "analytics/bi/_subnav.html" with sections=sections %}
 
 {% if is_guardian %}<div class="bi-disclaimer">{% icon "info" %}<div>Visão da família: só aparecem avaliações já publicadas pelo professor. Os números são do período escolhido acima.</div></div>{% endif %}
@@ -312,3 +315,4 @@
 
 {% endwith %}
 {% endblock %}
+{% block extra_js %}<script src="{% static 'js/bi-explorer.js' %}"></script>{% endblock %}

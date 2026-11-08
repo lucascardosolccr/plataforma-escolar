@@ -300,6 +300,43 @@ def student_dashboard(request, student_id):
     return render(request, "analytics/student_dashboard.html", context)
 
 
+def _json_private(data):
+    from django.http import JsonResponse
+
+    response = JsonResponse(data)
+    response["Cache-Control"] = "private, no-store"  # dados de estudantes: nada de cache compartilhado
+    return response
+
+
+def student_data(request, student_id):
+    """Fatos do período para o painel interativo do estudante (mesmo acesso e regras do painel)."""
+    from apps.registry.access import ADMIN_RECORD_ROLES
+
+    from . import explorer
+
+    student = get_object_or_404(Student.objects.select_related("school"), pk=student_id)
+    if not can_view_student_dashboard(request.user, student):
+        raise PermissionDenied
+    period = bi.resolve_period(request.GET, student.school)
+    is_team = request.user.role in ADMIN_RECORD_ROLES or request.user.role == Role.PROFESSOR.value
+    return _json_private(explorer.student_payload(
+        student, period, only_subjects=_teacher_only_subjects(request.user, student=student),
+        show_class_comparison=is_team))
+
+
+def class_data(request, class_group_id):
+    """Fatos do período para o painel interativo da turma (mesmo acesso e regras do painel)."""
+    from . import explorer
+
+    class_group = get_object_or_404(ClassGroup.objects.select_related("school", "school_year"), pk=class_group_id)
+    if not can_view_class_dashboard(request.user, class_group):
+        raise PermissionDenied
+    period = bi.resolve_period(request.GET, class_group.school)
+    return _json_private(explorer.class_payload(
+        class_group, period, request.user,
+        only_subjects=_teacher_only_subjects(request.user, class_group=class_group)))
+
+
 def _remaining_school_days(school):
     """Dias letivos de amanhã até o fim do ano letivo, pelo calendário oficial
     publicado; None se a escola não publicou o calendário."""
@@ -414,7 +451,6 @@ def student_simulator(request, student_id):
 # Painel por turma
 # --------------------------------------------------------------------------- #
 def _visible_classes(user):
-    from apps.academics.models import TeacherAssignment
     from apps.registry.access import ADMIN_RECORD_ROLES
 
     qs = ClassGroup.objects.filter(school=user.school).select_related("school_year")
@@ -859,7 +895,7 @@ def methodology(request):
 # Painel por disciplina
 # --------------------------------------------------------------------------- #
 def _subject_options(user):
-    from apps.academics.models import Subject, TeacherAssignment
+    from apps.academics.models import Subject
     from apps.registry.access import ADMIN_RECORD_ROLES
 
     qs = Subject.objects.filter(school=user.school).order_by("name")
@@ -950,8 +986,6 @@ def subject_export(request, subject_id, fmt):
 # Painel do professor
 # --------------------------------------------------------------------------- #
 def teacher_dashboard(request):
-    from apps.academics.models import TeacherAssignment
-
     user = request.user
     if not can_view_teacher_dashboard(user):
         raise PermissionDenied("Painel do professor: somente o próprio professor.")

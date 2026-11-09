@@ -322,6 +322,23 @@ GUIDES = [
         ("Ali também ficam as entradas, as saídas e os atrasos. Os avisos de chegada podem ser silenciados em "
          "Notificações → Preferências.", None),
     ]),
+    # Autorizações assinadas
+    ("Assinar uma autorização de passeio", "file-check", (RESPONSAVEL,), [
+        ("Em Autorizações, abra a atividade e use “Ler e assinar” no nome do seu filho.",
+         "communication:authorization_list"),
+        ("Leia o texto, escolha a resposta, digite o seu nome completo e a sua senha. A senha é pedida de novo para "
+         "que ninguém assine pela sua conta aberta.", None),
+        ("Você e os outros responsáveis recebem o comprovante com um código. Recebeu um comprovante que não "
+         "assinou? Avise a escola e troque a senha.", None),
+    ]),
+    ("Conferir as assinaturas de um passeio", "shield", (PROFESSOR, COORDENACAO, DIRECAO, SECRETARIA, ADMIN), [
+        ("Na autorização, a coluna Comprovante mostra o código de cada assinatura e avisa se algum registro foi "
+         "alterado ou se a família assinou uma versão anterior do texto.", "communication:authorization_list"),
+        ("Para conferir um papel ou um print, use “Conferir comprovante” e digite o código.",
+         "communication:authorization_verify"),
+        ("“Lembrar quem não respondeu” avisa só as famílias que faltam (uma vez por dia). A lista impressa traz os "
+         "códigos, os alertas de saúde e o contato de emergência de cada autorizado.", None),
+    ]),
     # Saúde e retirada
     ("Preencher a ficha de saúde e dizer quem pode buscar", "user-check", (RESPONSAVEL,), [
         ("Em Saúde e retirada, use “Preencher a ficha de saúde”: alergias, alimentação, remédios, o que fazer "

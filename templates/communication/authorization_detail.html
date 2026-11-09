@@ -6,11 +6,12 @@
 {% if print and staff %}
 <div class="d-print-none mb-3"><a href="{% url "communication:authorization_detail" auth.pk %}" class="back-link">{% icon "arrow-left" %}Voltar</a> <button type="button" class="btn btn-primary btn-sm" data-print>{% icon "printer" %}Imprimir</button></div>
 <h1 class="h4">Autorizados — {{ auth.title }}</h1>
-<p>Atividade em {{ auth.event_date|date:"d/m/Y" }} · lista gerada em {% now "d/m/Y H:i" %}. Só quem tem resposta "autorizo" de um responsável.</p>
+<p>Atividade em {{ auth.event_date|date:"d/m/Y" }} · lista gerada em {% now "d/m/Y H:i" %}. Só quem tem resposta "autorizo" de um responsável. O código de cada linha confere a assinatura em Autorizações → Conferir comprovante.</p>
 {% for g in groups %}
 <h2 class="h6 mt-3">{{ g.cg.name }} — {{ g.yes }} autorizado{{ g.yes|pluralize }}</h2>
-<ol class="authorized-list">{% for r in g.rows %}{% if r.response.answer == "autorizo" %}<li>{{ r.student.full_name }}{% if r.response.note %} <span class="small text-body-secondary">— {{ r.response.note }}</span>{% endif %}</li>{% endif %}{% endfor %}</ol>
+<ol class="authorized-list">{% for r in g.rows %}{% if r.response.answer == "autorizo" %}<li>{{ r.student.full_name }}{% if r.response.signature %} · <span class="small">{{ r.response.signature.display_code }}{% if r.check and not r.check.doc_ok %} (versão anterior do texto){% endif %}</span>{% else %} · <span class="small">sem assinatura eletrônica</span>{% endif %}{% if r.response.note %} <span class="small text-body-secondary">— {{ r.response.note }}</span>{% endif %}{% with c=r.care %}{% if c.alert %}<span class="d-block small">Saúde: {% if c.alert.allergies %}alergia: {{ c.alert.allergies|truncatechars:90 }}; {% endif %}{% if c.alert.diet %}{{ c.alert.get_diet_display|lower }}; {% endif %}{% if c.alert.conditions %}{{ c.alert.conditions|truncatechars:90 }}; {% endif %}{% if c.alert.crisis_plan %}crise: {{ c.alert.crisis_plan|truncatechars:120 }}{% endif %}</span>{% endif %}{% if c.contact %}<span class="d-block small">Emergência: {{ c.contact.name }} ({{ c.contact.relationship }}) · {{ c.contact.phone }}</span>{% endif %}{% endwith %}</li>{% endif %}{% endfor %}</ol>
 {% endfor %}
+<p class="small mt-3">Dados de saúde e contatos: só para o cuidado dos estudantes no passeio. Guarde a lista com a equipe e descarte depois.</p>
 {% else %}
 <a href="{% url "communication:authorization_list" %}" class="back-link">{% icon "arrow-left" %}Autorizações</a>
 <div class="page-head">
@@ -27,10 +28,17 @@
 {% if staff %}
   <div class="d-flex flex-wrap gap-2 mb-3">
     <a class="btn btn-outline-secondary" href="?imprimir=1">{% icon "printer" %}Lista de autorizados para imprimir</a>
+    <a class="btn btn-outline-secondary" href="{% url "communication:authorization_verify" %}">{% icon "shield" %}Conferir comprovante</a>
+    {% if can_manage and accepts %}
+    <form method="post" action="{% url "communication:authorization_remind" auth.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary">{% icon "bell" %}Lembrar quem não respondeu</button></form>
+    {% endif %}
     {% if can_manage and auth.status == "aberta" %}
     <form method="post" action="{% url "communication:authorization_status" auth.pk "encerrar" %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary" data-confirm="As famílias não poderão mais responder." data-confirm-title="Encerrar respostas?" data-confirm-ok="Encerrar">Encerrar respostas</button></form>
     {% endif %}
   </div>
+  {% if broken %}<div class="alert alert-danger" role="alert">{% icon "circle-alert" %}<div><strong>{{ broken }} assinatura{{ broken|pluralize }} com registro adulterado.</strong> Os dados não conferem com o selo ou a sequência foi quebrada. Não aceite essas respostas e avise a direção.</div></div>
+  {% elif n_signatures %}<p class="small text-body-secondary">{% icon "shield" %} {{ n_signatures }} assinatura{{ n_signatures|pluralize }} conferida{{ n_signatures|pluralize }}: nenhum registro alterado.</p>{% endif %}
+  {% if outdated %}<div class="alert alert-warning" role="status">{% icon "triangle-alert" %}<div>{{ outdated }} resposta{{ outdated|pluralize }} assinada{{ outdated|pluralize }} numa versão anterior do texto. Peça às famílias que assinem de novo.</div></div>{% endif %}
   {% for g in groups %}
   <section class="card mb-3" aria-labelledby="t-{{ g.cg.pk }}">
     <div class="card-header bg-transparent d-flex flex-wrap justify-content-between gap-2">
@@ -39,12 +47,13 @@
     </div>
     <div class="table-responsive">
       <table class="table table-sm align-middle mb-0 table-stack">
-        <thead><tr><th scope="col">Estudante</th><th scope="col">Resposta</th><th scope="col">Observação</th><th scope="col">Por</th></tr></thead>
+        <thead><tr><th scope="col">Estudante</th><th scope="col">Resposta</th><th scope="col">Observação</th><th scope="col">Por</th><th scope="col">Comprovante</th></tr></thead>
         <tbody>{% for r in g.rows %}<tr>
           <td>{{ r.student.full_name }}</td>
           <td data-label="Resposta">{% if r.response %}<span class="chip chip-state {% if r.response.answer == "autorizo" %}text-success{% else %}text-danger{% endif %}">{{ r.response.get_answer_display }}</span>{% else %}<span class="text-body-secondary">sem resposta</span>{% endif %}</td>
           <td data-label="Observação" class="small">{{ r.response.note|default:"" }}</td>
-          <td data-label="Por" class="small text-body-secondary">{% if r.response %}{{ r.response.answered_by.get_full_name|default:r.response.answered_by.username }} · {{ r.response.answered_at|date:"d/m H:i" }}{% endif %}</td>
+          <td data-label="Por" class="small text-body-secondary">{% if r.response %}{% if r.response.signature %}{{ r.response.signature.signer_name }}{% else %}{{ r.response.answered_by.get_full_name|default:r.response.answered_by.username }}{% endif %} · {{ r.response.answered_at|date:"d/m H:i" }}{% endif %}</td>
+          <td data-label="Comprovante" class="small">{% if r.response.signature %}<a href="{% url "communication:authorization_receipt" r.response.signature.code %}">{{ r.response.signature.display_code }}</a>{% if not r.check.seal_ok or not r.check.chain_ok %} <span class="text-danger">adulterado</span>{% elif not r.check.doc_ok %} <span class="text-warning-emphasis">versão anterior</span>{% endif %}{% elif r.response %}<span class="text-body-secondary">sem assinatura</span>{% endif %}</td>
         </tr>{% endfor %}</tbody>
       </table>
     </div>
@@ -62,19 +71,9 @@
   {% for c in children %}
   <section class="card mb-3" aria-labelledby="c-{{ c.student.pk }}"><div class="card-body">
     <h2 id="c-{{ c.student.pk }}" class="h6">{{ c.student.full_name }}</h2>
-    {% if c.response %}<p class="mb-2">Resposta registrada: <strong>{{ c.response.get_answer_display }}</strong> em {{ c.response.answered_at|date:"d/m/Y H:i" }}{% if c.response.note %} · {{ c.response.note }}{% endif %}.</p>{% endif %}
+    {% if c.response %}<p class="mb-2">Resposta registrada: <strong>{{ c.response.get_answer_display }}</strong> em {{ c.response.answered_at|date:"d/m/Y H:i" }}{% if c.response.note %} · {{ c.response.note }}{% endif %}.{% if c.response.signature %} <a href="{% url "communication:authorization_receipt" c.response.signature.code %}">Comprovante {{ c.response.signature.display_code }}</a>{% else %} Sem assinatura eletrônica.{% endif %}</p>{% endif %}
     {% if can_answer and accepts %}
-    <form method="post" action="{% url "communication:authorization_answer" auth.pk %}">
-      {% csrf_token %}
-      <input type="hidden" name="student" value="{{ c.student.pk }}">
-      <fieldset class="mb-2"><legend class="form-label fs-6">{% if c.response %}Mudar a resposta{% else %}Sua resposta{% endif %}</legend>
-        <div class="form-check"><input class="form-check-input" type="radio" name="answer" value="autorizo" id="y-{{ c.student.pk }}"{% if c.response.answer == "autorizo" %} checked{% endif %}><label class="form-check-label" for="y-{{ c.student.pk }}">Autorizo a participação</label></div>
-        <div class="form-check"><input class="form-check-input" type="radio" name="answer" value="nao_autorizo" id="n-{{ c.student.pk }}"{% if c.response.answer == "nao_autorizo" %} checked{% endif %}><label class="form-check-label" for="n-{{ c.student.pk }}">Não autorizo</label></div>
-      </fieldset>
-      <label for="note-{{ c.student.pk }}" class="form-label">Observação para a escola (opcional)</label>
-      <input id="note-{{ c.student.pk }}" name="note" class="form-control mb-2" maxlength="300" value="{{ c.response.note|default:"" }}" placeholder="Cuidados, quem busca, restrição alimentar">
-      <button type="submit" class="btn btn-primary btn-sm">Enviar resposta</button>
-    </form>
+    <a class="btn btn-primary btn-sm" href="{% url "communication:authorization_sign" auth.pk c.student.pk %}">{% icon "pencil" %}{% if c.response %}Mudar a resposta{% else %}Ler e assinar{% endif %}</a>
     {% elif not accepts and not c.response %}<p class="text-body-secondary mb-0">O prazo de resposta terminou.</p>{% endif %}
   </div></section>
   {% empty %}

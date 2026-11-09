@@ -478,6 +478,19 @@ class Authorization(models.Model):
     def accepts_answers(self, today=None):
         return self.status == self.Status.OPEN and (today or timezone.localdate()) <= self.deadline
 
+    def document_text(self):
+        """O texto que a família assina: muda qualquer parte, muda o resumo, e as assinaturas anteriores deixam
+        de valer para a versão nova."""
+        classes = ", ".join(sorted(c.name for c in self.class_groups.all()))
+        return (f"{self.school.name}\nAutorização: {self.title}\nTurmas: {classes}\n"
+                f"Data da atividade: {self.event_date:%d/%m/%Y}\nResponder até: {self.deadline:%d/%m/%Y}\n\n"
+                f"{self.description.strip()}")
+
+    def document_hash(self):
+        import hashlib
+
+        return hashlib.sha256(self.document_text().encode("utf-8")).hexdigest()
+
 
 class AuthorizationResponse(models.Model):
     """Resposta de um responsável por um estudante (a última vale; o histórico fica na auditoria)."""
@@ -493,11 +506,52 @@ class AuthorizationResponse(models.Model):
                             help_text="Ex.: cuidados, quem busca, restrição alimentar para o lanche do passeio.")
     answered_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="+")
     answered_at = models.DateTimeField(auto_now=True)
+    # Assinatura que deu origem a esta resposta. Respostas de antes da assinatura eletrônica ficam sem ela.
+    signature = models.ForeignKey("AuthorizationSignature", on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name="+")
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["authorization", "student"], name="uniq_authorization_student")]
         verbose_name = "resposta de autorização"
         verbose_name_plural = "respostas de autorização"
+
+
+class AuthorizationSignature(models.Model):
+    """Assinatura eletrônica de uma resposta (nunca alterada nem apagada; mudar de ideia gera outra).
+
+    Cada assinatura guarda o resumo (SHA-256) do texto que o responsável viu, o resumo da assinatura anterior
+    da mesma autorização (encadeamento) e um selo HMAC calculado com a chave secreta do servidor sobre tudo isso.
+    Mudar qualquer campo no banco, apagar ou inserir uma assinatura no meio, ou alterar o texto da autorização
+    depois de assinada aparece na conferência (``communication.signatures.verify``).
+    """
+
+    authorization = models.ForeignKey(Authorization, on_delete=models.PROTECT, related_name="signatures")
+    student = models.ForeignKey("registry.Student", on_delete=models.PROTECT, related_name="authorization_signatures")
+    answer = models.CharField("resposta", max_length=12, choices=AuthorizationResponse.Answer.choices)
+    note = models.CharField("observação para a escola", max_length=300, blank=True)
+    signer = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
+    signer_name = models.CharField("nome digitado por quem assinou", max_length=150)
+    signed_at = models.DateTimeField("assinada em")
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=200, blank=True)
+    document = models.TextField("texto assinado", help_text="Cópia do texto que o responsável leu ao assinar.")
+    doc_hash = models.CharField("resumo do texto assinado", max_length=64)
+    prev_hash = models.CharField("selo da assinatura anterior", max_length=64, blank=True)
+    seal = models.CharField("selo", max_length=64)
+    code = models.CharField("código do comprovante", max_length=10, unique=True)
+    nonce = models.CharField(max_length=32, unique=True)
+
+    class Meta:
+        ordering = ["pk"]
+        verbose_name = "assinatura de autorização"
+        verbose_name_plural = "assinaturas de autorização"
+
+    def __str__(self):
+        return f"{self.display_code} · {self.student} · {self.get_answer_display()}"
+
+    @property
+    def display_code(self):
+        return f"{self.code[:5]}-{self.code[5:]}"
 
 
 class Poll(models.Model):

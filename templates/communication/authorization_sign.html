@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Assinar — {{ auth.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url "communication:authorization_detail" auth.pk as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Autorização" heading="Assinar a autorização de "|add:student.first_name %}
+  <p class="form-lead">Leia o texto inteiro. A assinatura vale para este texto: se a escola mudar algum detalhe, ela pede uma assinatura nova. Todos os responsáveis de {{ student.first_name }} recebem o comprovante.</p>
+  {% if current %}<div class="alert alert-info" role="status">{% icon "info" %}<div>Resposta atual: <strong>{{ current.get_answer_display }}</strong>{% if current.signature %} (comprovante <a href="{% url 'communication:authorization_receipt' current.signature.code %}">{{ current.signature.display_code }}</a>){% else %}, registrada antes da assinatura eletrônica{% endif %}. Assinar de novo substitui a resposta; a anterior fica guardada.</div></div>{% endif %}
+  {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+
+  <section class="card mb-3" aria-labelledby="h-texto"><div class="card-body">
+    <h2 id="h-texto" class="h6">Texto da autorização</h2>
+    <div class="signed-document">{{ document|linebreaks }}</div>
+  </div></section>
+
+  {% if health and health.has_alert %}
+  <div class="alert alert-warning" role="status">{% icon "triangle-alert" %}<div>A ficha de saúde de {{ student.first_name }} tem: {% if health.allergies %}alergia ({{ health.allergies|truncatechars:80 }}); {% endif %}{% if health.diet %}{{ health.get_diet_display|lower }}; {% endif %}{% if health.conditions %}{{ health.conditions|truncatechars:80 }}{% endif %}. A equipe do passeio recebe esses alertas. Algo diferente para este dia? Escreva na observação ou <a href="{% url 'care:health_edit' student.pk %}">atualize a ficha</a>.</div></div>
+  {% endif %}
+
+  <form method="post" novalidate class="card form-card" autocomplete="off">
+    {% csrf_token %}
+    <input type="hidden" name="token" value="{{ token }}">
+    <div class="card-body">
+      <fieldset class="mb-3">
+        <legend class="form-label fs-6">Sua resposta<span class="required-mark" aria-hidden="true"> *</span></legend>
+        <div class="form-check"><input class="form-check-input" type="radio" name="answer" value="autorizo" id="a-sim"{% if post.answer == "autorizo" %} checked{% endif %}><label class="form-check-label" for="a-sim">Autorizo {{ student.full_name }} a participar</label></div>
+        <div class="form-check"><input class="form-check-input" type="radio" name="answer" value="nao_autorizo" id="a-nao"{% if post.answer == "nao_autorizo" %} checked{% endif %}><label class="form-check-label" for="a-nao">Não autorizo</label></div>
+      </fieldset>
+      <div class="row g-3">
+        <div class="col-12"><label for="note" class="form-label">Observação para a escola (opcional)</label><input id="note" name="note" class="form-control" maxlength="300" value="{{ post.note|default:'' }}" placeholder="Cuidados, quem busca na volta, lanche"></div>
+        <div class="col-md-6"><label for="nome" class="form-label">Seu nome completo<span class="required-mark" aria-hidden="true"> *</span></label><input id="nome" name="nome" class="form-control" maxlength="150" value="{{ post.nome|default:'' }}" aria-describedby="nome-ajuda" autocomplete="off"><div id="nome-ajuda" class="form-text">{% if account_name %}Como está na sua conta.{% else %}Nome e sobrenome.{% endif %}</div></div>
+        <div class="col-md-6"><label for="senha" class="form-label">Sua senha da plataforma<span class="required-mark" aria-hidden="true"> *</span></label><input id="senha" name="senha" type="password" class="form-control" autocomplete="current-password" aria-describedby="senha-ajuda"><div id="senha-ajuda" class="form-text">Pedida de novo para que ninguém assine pela sua conta aberta.</div></div>
+        <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" name="ciente" id="ciente"{% if post.ciente %} checked{% endif %}><label class="form-check-label" for="ciente">Li o texto acima e sou responsável legal por {{ student.full_name }}.</label></div></div>
+      </div>
+    </div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Assinar" hint="" %}
+  </form>
+  <p class="small text-body-secondary mt-3">Ficam registrados: a resposta, o nome digitado, a data e a hora, o endereço de internet e o aparelho usado, e uma cópia do texto assinado, selados contra alteração. É uma assinatura eletrônica com essas evidências, não um certificado digital ICP-Brasil.</p>
+</div>
+{% endblock %}

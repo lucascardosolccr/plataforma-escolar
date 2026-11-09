@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Conferir comprovante — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url "communication:authorization_list" as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Autorizações" heading="Conferir um comprovante de autorização" subheading="Digite o código de 10 caracteres que aparece no comprovante, no aviso ou na lista impressa. A plataforma mostra se a assinatura é verdadeira, se não foi alterada e se ainda vale." %}
+  <form method="get" class="card form-card"><div class="card-body">
+    <label for="codigo" class="form-label">Código do comprovante</label>
+    <div class="d-flex flex-wrap gap-2"><input id="codigo" name="codigo" class="form-control flex-grow-1 w-auto" value="{{ codigo }}" maxlength="20" placeholder="Ex.: 7K3MQ-9XP4A" autocomplete="off" autocapitalize="characters"><button type="submit" class="btn btn-primary">{% icon "search" %}Conferir</button></div>
+  </div></form>
+</div>
+{% endblock %}

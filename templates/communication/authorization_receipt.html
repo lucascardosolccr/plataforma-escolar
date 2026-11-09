@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Comprovante {{ sig.display_code }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'communication:authorization_detail' sig.authorization.pk %}" class="back-link d-print-none">{% icon "arrow-left" %}Autorização</a>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Comprovante de assinatura</span>
+    <h1>{{ sig.display_code }}</h1>
+    <p>{{ sig.authorization.title }} · {{ sig.student.full_name }}</p>
+  </div>
+  <div class="page-actions d-print-none"><button type="button" class="btn btn-outline-secondary" data-print>{% icon "printer" %}Imprimir</button></div>
+</div>
+
+{% if check.ok and check.current %}
+<div class="alert alert-success" role="status">{% icon "circle-check" %}<div><strong>Assinatura íntegra e válida.</strong> O registro não foi alterado, está na sequência certa e vale para o texto atual da autorização.</div></div>
+{% elif check.seal_ok and check.chain_ok and not check.current %}
+<div class="alert alert-info" role="status">{% icon "info" %}<div><strong>Assinatura íntegra, mas substituída.</strong> Depois dela houve outra assinatura para este estudante ({{ check.replaced_by.display_code }}), que é a que vale.</div></div>
+{% elif check.seal_ok and check.chain_ok %}
+<div class="alert alert-warning" role="status">{% icon "triangle-alert" %}<div><strong>Assinatura de uma versão anterior do texto.</strong> A escola alterou a autorização depois desta assinatura: ela não vale para o texto atual e a família precisa assinar de novo.</div></div>
+{% else %}
+<div class="alert alert-danger" role="alert">{% icon "circle-alert" %}<div><strong>Registro adulterado.</strong> {% if not check.seal_ok %}Os dados desta assinatura não conferem com o selo.{% endif %}{% if not check.chain_ok %} A sequência de assinaturas desta autorização foi quebrada (assinatura apagada ou inserida).{% endif %} Não aceite este comprovante e avise a direção.</div></div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card"><div class="card-body"><dl class="row mb-0">
+      <dt class="col-sm-4">Resposta</dt><dd class="col-sm-8"><strong>{{ sig.get_answer_display }}</strong></dd>
+      <dt class="col-sm-4">Estudante</dt><dd class="col-sm-8">{{ sig.student.full_name }}</dd>
+      <dt class="col-sm-4">Assinada por</dt><dd class="col-sm-8">{{ sig.signer_name }} (conta {{ sig.signer.username }})</dd>
+      <dt class="col-sm-4">Data e hora</dt><dd class="col-sm-8">{{ sig.signed_at|date:"d/m/Y H:i:s" }}</dd>
+      <dt class="col-sm-4">Observação</dt><dd class="col-sm-8">{{ sig.note|default:"—" }}</dd>
+      <dt class="col-sm-4">Endereço de internet</dt><dd class="col-sm-8">{{ sig.ip_address|default:"—" }}</dd>
+      <dt class="col-sm-4">Resumo do texto (SHA-256)</dt><dd class="col-sm-8 small text-break">{{ sig.doc_hash }}</dd>
+    </dl></div></div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card"><div class="card-body text-center">{{ qr }}<p class="small text-body-secondary mt-2 mb-0">Aponte a câmera para conferir este comprovante na plataforma (é preciso estar logado na escola).</p></div></div>
+  </div>
+</div>
+
+<section class="card mt-3" aria-labelledby="h-texto"><div class="card-body">
+  <h2 id="h-texto" class="h6">Texto assinado</h2>
+  <div class="signed-document">{{ sig.document|linebreaks }}</div>
+</div></section>
+
+{% if history|length > 1 %}
+<section class="card mt-3 d-print-none" aria-labelledby="h-hist"><div class="card-body">
+  <h2 id="h-hist" class="h6">Todas as assinaturas deste estudante nesta autorização</h2>
+  <ul class="list-unstyled mb-0">{% for h in history %}<li class="py-1">{% if h.pk == sig.pk %}<strong>{{ h.display_code }}</strong>{% else %}<a href="{% url 'communication:authorization_receipt' h.code %}">{{ h.display_code }}</a>{% endif %} · {{ h.get_answer_display }} · {{ h.signer_name }} · {{ h.signed_at|date:"d/m/Y H:i" }}{% if forloop.first %} · vale esta{% endif %}</li>{% endfor %}</ul>
+</div></section>
+{% endif %}
+{% endblock %}

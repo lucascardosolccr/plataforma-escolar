@@ -6,7 +6,7 @@
 <div class="page-head">
   <div>
     <h1>Autorizações</h1>
-    <p>{% if staff %}Passeios e atividades fora da rotina: a família autoriza pela plataforma, e você acompanha quem respondeu e imprime a lista de autorizados.{% else %}Passeios e atividades fora da rotina que pedem a sua autorização.{% endif %}</p>
+    <p>{% if staff %}Passeios e atividades fora da rotina: a família assina pela plataforma (com a senha e o nome completo), e você acompanha quem respondeu, confere os comprovantes e imprime a lista de autorizados.{% else %}Passeios e atividades fora da rotina que pedem a sua assinatura. Cada assinatura gera um comprovante, enviado a todos os responsáveis.{% endif %}</p>
   </div>
   {% if can_create %}<a href="{% url 'communication:authorization_create' %}" class="btn btn-primary">{% icon "plus" %}Nova autorização</a>{% endif %}
 </div>

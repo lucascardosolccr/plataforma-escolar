@@ -6,8 +6,9 @@ Quem faz o quê:
   administração;
 - **acompanham:** quem criou e a equipe que alcança as turmas. Veem autorizados, não autorizados e sem
   resposta, e imprimem a lista de autorizados para o dia;
-- **respondem:** o responsável com vínculo aprovado, por filho com matrícula ativa numa das turmas, até o
-  prazo. A última resposta vale e cada mudança fica na auditoria. O estudante vê, mas não responde;
+- **assinam:** o responsável com vínculo aprovado, por filho com matrícula ativa numa das turmas, até o
+  prazo, com a senha de novo e o nome completo (``signatures``). A última assinatura vale; as anteriores ficam
+  guardadas e todos os responsáveis recebem o comprovante. O estudante vê, mas não assina;
 - **encerram ou cancelam:** quem criou, a direção e a administração. Cancelar exige motivo e avisa as
   famílias.
 """
@@ -26,7 +27,8 @@ from apps.academics.models import ClassGroup
 from apps.core.models import Role, create_audit_log
 from apps.core.pagination import paginate
 
-from .models import Authorization, AuthorizationResponse, Notification
+from . import signatures
+from .models import Authorization, AuthorizationResponse, AuthorizationSignature, Notification
 from .services import notify_many
 
 STAFF = (Role.PROFESSOR.value, Role.COORDENACAO.value, Role.DIRECAO.value, Role.SECRETARIA.value,
@@ -173,16 +175,19 @@ def authorization_create(request):
     return render(request, "communication/authorization_form.html", {"form": form})
 
 
-def _staff_rows(auth, class_ids):
+def _staff_rows(auth, class_ids, checks=None):
     from apps.registry.models import Enrollment
 
-    responses = {r.student_id: r for r in auth.responses.select_related("answered_by")}
+    checks = checks or {}
+    responses = {r.student_id: r for r in auth.responses.select_related("answered_by", "signature")}
     groups = []
     for cg in auth.class_groups.filter(pk__in=class_ids).order_by("name"):
         rows = []
         for e in Enrollment.objects.filter(class_group=cg, status="ativo").select_related("student") \
                 .order_by("student__first_name", "student__last_name"):
-            rows.append({"student": e.student, "response": responses.get(e.student_id)})
+            r = responses.get(e.student_id)
+            rows.append({"student": e.student, "response": r,
+                         "check": checks.get(r.signature_id) if r and r.signature_id else None})
         groups.append({
             "cg": cg, "rows": rows,
             "yes": sum(1 for r in rows if r["response"] and r["response"].answer == "autorizo"),
@@ -202,44 +207,192 @@ def authorization_detail(request, pk):
     ctx = {"auth": auth, "can_manage": can_manage(user, auth), "accepts": auth.accepts_answers(),
            "print": request.GET.get("imprimir") == "1"}
     if ids is not None:
+        checks, broken = signatures.verify_all(auth)
         ctx["groups"] = _staff_rows(auth, ids | ({c.pk for c in auth.class_groups.all()}
-                                                  if auth.created_by_id == user.pk else set()))
+                                                  if auth.created_by_id == user.pk else set()), checks)
         ctx["staff"] = True
+        ctx["n_signatures"], ctx["broken"] = len(checks), broken
+        ctx["outdated"] = sum(1 for g in ctx["groups"] for r in g["rows"] if r["check"] and not r["check"]["doc_ok"])
+        if ctx["print"]:
+            _trip_care(user, auth, ctx["groups"])
     else:
         cls = {c.pk for c in auth.class_groups.all()}
-        responses = {r.student_id: r for r in auth.responses.filter(student__in=list(_family_children(user)))}
+        responses = {r.student_id: r for r in auth.responses.filter(student__in=list(_family_children(user)))
+                     .select_related("signature")}
         ctx["children"] = [{"student": st, "response": responses.get(st.pk)}
                            for st, cid in _family_children(user).items() if cid in cls]
         ctx["can_answer"] = user.role == Role.RESPONSAVEL.value
     return render(request, "communication/authorization_detail.html", ctx)
 
 
-@require_POST
-def authorization_answer(request, pk):
-    user = request.user
+def _signable(user, pk, student_id):
+    """(autorização, estudante) que este responsável pode assinar, ou PermissionDenied."""
     if user.role != Role.RESPONSAVEL.value:
         raise PermissionDenied
     auth = get_object_or_404(Authorization, pk=pk, school=user.school)
-    children = _family_children(user)
     cls = set(auth.class_groups.values_list("pk", flat=True))
-    sid = request.POST.get("student", "")
-    student = next((st for st, cid in children.items() if str(st.pk) == sid and cid in cls), None)
+    student = next((st for st, cid in _family_children(user).items() if st.pk == student_id and cid in cls), None)
     if student is None:
         raise PermissionDenied
-    answer = request.POST.get("answer")
-    if answer not in AuthorizationResponse.Answer.values:
-        messages.error(request, "Escolha autorizo ou não autorizo.")
-    elif not auth.accepts_answers():
+    return auth, student
+
+
+@require_POST
+def authorization_answer(request, pk):
+    """Endereço antigo de resposta rápida: sem assinatura não vale mais. Leva à tela de assinatura."""
+    from apps.core.params import as_id
+
+    auth, student = _signable(request.user, pk, as_id(request.POST.get("student")) or 0)
+    messages.info(request, "Para responder, confira o texto e assine com a sua senha.")
+    return redirect("communication:authorization_sign", pk=auth.pk, student_id=student.pk)
+
+
+def authorization_sign(request, pk, student_id):
+    """Assinatura da autorização: o texto inteiro, a resposta, o nome completo e a senha de novo."""
+    user = request.user
+    auth, student = _signable(user, pk, student_id)
+    if not auth.accepts_answers():
         messages.error(request, "O prazo de resposta terminou ou a autorização foi encerrada.")
-    else:
-        note = (request.POST.get("note") or "").strip()[:300]
-        resp, created = AuthorizationResponse.objects.update_or_create(
-            authorization=auth, student=student, defaults={"answer": answer, "note": note, "answered_by": user})
-        create_audit_log(user=user, action="create" if created else "update", request=request, target=resp,
-                         detail=f"{resp.get_answer_display()}: {student.full_name} em '{auth.title}'"
-                         + (f" (obs.: {note})" if note else ""))
-        messages.success(request, f"Resposta registrada: {resp.get_answer_display().lower()} ({student.first_name}).")
+        return redirect("communication:authorization_detail", pk=auth.pk)
+    current = AuthorizationResponse.objects.filter(authorization=auth, student=student).select_related(
+        "signature").first()
+    error, post = None, {}
+    if request.method == "POST":
+        post = {"answer": request.POST.get("answer", ""), "note": (request.POST.get("note") or "").strip()[:300],
+                "nome": (request.POST.get("nome") or "").strip()[:150], "ciente": bool(request.POST.get("ciente"))}
+        nonce, error = signatures.read_token(request.POST.get("token"), user, auth, student)
+        if error is None:
+            if signatures.locked(user):
+                error = "Assinatura bloqueada por 15 minutos depois de 5 senhas erradas. Se não foi você, troque a senha."
+            elif post["answer"] not in AuthorizationResponse.Answer.values:
+                error = "Escolha autorizo ou não autorizo."
+            elif not post["ciente"]:
+                error = "Confirme que leu o texto e que é responsável legal pelo estudante."
+            elif not signatures.name_matches(user, post["nome"]):
+                error = ("Digite o seu nome completo, como está na sua conta." if user.get_full_name()
+                         else "Digite o seu nome completo (nome e sobrenome).")
+            elif not user.check_password(request.POST.get("senha", "")):
+                signatures.record_failure(request, user, auth)
+                left = signatures.MAX_FAILURES - signatures.failures(user)
+                error = (f"Senha incorreta. Restam {left} tentativa(s) antes do bloqueio de 15 minutos." if left > 0
+                         else "Senha incorreta. Assinatura bloqueada por 15 minutos e você foi avisado(a).")
+            else:
+                sig = signatures.sign(request, auth, student, user, post["answer"], post["note"], post["nome"], nonce)
+                messages.success(request, f"Assinado: {sig.get_answer_display().lower()} ({student.first_name}). "
+                                          f"Comprovante {sig.display_code}.")
+                return redirect("communication:authorization_receipt", code=sig.code)
+    from apps.care.models import HealthRecord
+
+    return render(request, "communication/authorization_sign.html", {
+        "auth": auth, "student": student, "current": current, "document": auth.document_text(), "error": error,
+        "post": post, "token": signatures.issue_token(user, auth, student), "account_name": user.get_full_name(),
+        "health": HealthRecord.objects.filter(student=student).first()})
+
+
+def _can_see_signature(user, sig):
+    from apps.registry.models import Enrollment, GuardianLink
+
+    auth = sig.authorization
+    if auth.school_id != user.school_id:
+        return False
+    if user.role == Role.RESPONSAVEL.value:
+        return GuardianLink.objects.filter(guardian=user, student_id=sig.student_id, status="aprovado").exists()
+    ids = staff_class_ids(user)
+    if ids is None:
+        return False
+    if user.role in MANAGERS or auth.created_by_id == user.pk:
+        return True
+    reach = ids & set(auth.class_groups.values_list("pk", flat=True))
+    return Enrollment.objects.filter(student_id=sig.student_id, class_group_id__in=reach).exists()
+
+
+def authorization_receipt(request, code):
+    """Comprovante de uma assinatura, com a conferência: selo, encadeamento, texto e se ainda vale."""
+    from apps.gate.symbols import qr_svg
+
+    sig = get_object_or_404(AuthorizationSignature.objects.select_related("authorization", "student", "signer"),
+                            code=signatures.normalize_code(code))
+    if not _can_see_signature(request.user, sig):
+        raise PermissionDenied
+    check = signatures.verify(sig)
+    url = request.build_absolute_uri(reverse("communication:authorization_receipt", args=[sig.code]))
+    if request.user.role != Role.RESPONSAVEL.value:
+        create_audit_log(user=request.user, action="view", request=request, target=sig,
+                         detail=f"Conferiu o comprovante {sig.display_code}")
+    return render(request, "communication/authorization_receipt.html", {
+        "sig": sig, "check": check, "qr": qr_svg(url, label=f"QR Code do comprovante {sig.display_code}"),
+        "history": AuthorizationSignature.objects.filter(authorization=sig.authorization, student=sig.student)
+        .select_related("signer").order_by("-pk")})
+
+
+def authorization_verify(request):
+    """Conferir um comprovante pelo código (papel, aviso, print de tela)."""
+    raw = request.GET.get("codigo", "")
+    code = signatures.normalize_code(raw)
+    if raw and len(code) == 10:
+        sig = AuthorizationSignature.objects.filter(code=code, authorization__school=request.user.school).first()
+        if sig and _can_see_signature(request.user, sig):
+            return redirect("communication:authorization_receipt", code=code)
+    if raw:
+        messages.error(request, "Comprovante não encontrado (ou de um estudante que você não acompanha). Confira os "
+                                "10 caracteres.")
+    return render(request, "communication/authorization_verify.html", {"codigo": raw[:20]})
+
+
+@require_POST
+def authorization_remind(request, pk):
+    """Lembrete a quem ainda não respondeu (uma vez por dia)."""
+    from apps.core.models import User
+    from apps.registry.models import Enrollment, GuardianLink
+
+    user = request.user
+    auth = get_object_or_404(Authorization, pk=pk, school=user.school)
+    if not can_manage(user, auth) or not auth.accepts_answers():
+        raise PermissionDenied
+    answered = set(auth.responses.values_list("student_id", flat=True))
+    sids = set(Enrollment.objects.filter(class_group__in=auth.class_groups.all(), status="ativo")
+               .values_list("student_id", flat=True)) - answered
+    guardians = User.objects.filter(pk__in=GuardianLink.objects.filter(student_id__in=sids, status="aprovado")
+                                    .values_list("guardian_id", flat=True), is_active=True)
+    n = notify_many(user.school, guardians, Notification.Kind.ANNOUNCEMENT, f"Lembrete: autorização {auth.title}",
+                    body=f"Ainda falta a sua assinatura. Responda até {auth.deadline:%d/%m/%Y}.",
+                    url=reverse("communication:authorization_detail", args=[auth.pk]),
+                    dedupe_key=f"autorizacao-lembrete:{auth.pk}:{timezone.localdate():%Y%m%d}")
+    create_audit_log(user=user, action="update", request=request, target=auth,
+                     detail=f"Lembrou {n} responsável(is) sem resposta em '{auth.title}'")
+    messages.success(request, f"Lembrete enviado a {n} responsável(is)." if n else
+                     "Ninguém para lembrar hoje (todos responderam ou já receberam o lembrete de hoje).")
     return redirect("communication:authorization_detail", pk=auth.pk)
+
+
+def _trip_care(user, auth, groups):
+    """Para a lista impressa do passeio: alertas de saúde e o primeiro contato de emergência dos autorizados
+    (em ``row["care"]``), só do que a pessoa pode ver (``care.access``). Quem leva a turma precisa disso fora da
+    escola."""
+    from apps.care.access import health_level
+    from apps.care.models import EmergencyContact, HealthRecord
+
+    ids = [r["student"].pk for g in groups for r in g["rows"] if r["response"] and r["response"].answer == "autorizo"]
+    records = {h.student_id: h for h in HealthRecord.objects.filter(student_id__in=ids)}
+    contacts = {}
+    for c in EmergencyContact.objects.filter(student_id__in=ids).order_by("order"):
+        contacts.setdefault(c.student_id, c)
+    shown = 0
+    for g in groups:
+        for r in g["rows"]:
+            st = r["student"]
+            if st.pk not in ids:
+                continue
+            level = health_level(user, st)
+            if level is None and not can_manage(user, auth):
+                continue
+            h = records.get(st.pk)
+            r["care"] = {"alert": h if h and h.has_alert and level else None,
+                         "contact": contacts.get(st.pk) if (level == "full" or can_manage(user, auth)) else None}
+            shown += bool(r["care"]["alert"] or r["care"]["contact"])
+    if shown:
+        create_audit_log(user=user, action="view", request=None, target=auth,
+                         detail=f"Abriu a lista de autorizados de '{auth.title}' com alertas de saúde e contatos")
 
 
 @require_POST

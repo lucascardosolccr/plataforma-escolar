@@ -1,6 +1,7 @@
 """Autorizações de passeio respondidas pela família na plataforma."""
 
 import datetime as dt
+import re
 
 from django.urls import reverse
 from django.utils import timezone
@@ -34,9 +35,16 @@ class AuthorizationTests(CommunicationBase):
         self.client.post(reverse("communication:authorization_create"), data)
         return Authorization.objects.filter(title=data["title"]).first()
 
-    def _answer(self, auth, answer="autorizo", student=None, note=""):
-        return self.client.post(reverse("communication:authorization_answer", args=[auth.pk]),
-                                {"student": (student or self.ana).pk, "answer": answer, "note": note})
+    def _answer(self, auth, answer="autorizo", student=None, note="", **extra):
+        """Assina pela tela de assinatura (texto, token de uso único, nome completo e senha)."""
+        url = reverse("communication:authorization_sign", args=[auth.pk, (student or self.ana).pk])
+        page = self.client.get(url)
+        if page.status_code != 200:
+            return page
+        token = re.search(r'name="token" value="([^"]+)"', page.content.decode()).group(1)
+        data = {"token": token, "answer": answer, "note": note, "nome": "Rita Souza", "senha": "senha-forte-1",
+                "ciente": "on", **extra}
+        return self.client.post(url, data)
 
     def test_teacher_creates_for_own_class_and_only_those_families_are_notified(self):
         auth = self._create()
@@ -74,6 +82,8 @@ class AuthorizationTests(CommunicationBase):
         self.login("resp_b")  # outra escola
         self.assertEqual(self.client.post(reverse("communication:authorization_answer", args=[auth.pk]),
                                           {"student": self.ana.pk, "answer": "autorizo"}).status_code, 404)
+        self.assertEqual(self.client.get(reverse("communication:authorization_sign", args=[auth.pk, self.ana.pk]))
+                         .status_code, 404)
         Authorization.objects.filter(pk=auth.pk).update(deadline=self.today - dt.timedelta(days=1))
         self.login("resp")
         self._answer(auth)

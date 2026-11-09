@@ -1,4 +1,3 @@
-import mimetypes
 import os
 
 from django.contrib import messages
@@ -10,7 +9,6 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from django.utils.text import slugify
-from django.views.decorators.http import require_POST
 
 from apps.communication.services import notify_link_resolved
 from apps.core.params import id_param
@@ -169,7 +167,6 @@ def student_detail(request, student_id):
         # O professor abre só atividades e trabalhos das disciplinas que
         # leciona (pedagogy.access); a ficha mostra o mesmo recorte, senão os
         # itens das outras disciplinas levariam a "acesso negado".
-        from apps.academics.models import TeacherAssignment
 
         from apps.academics.permissions import teacher_pairs
 

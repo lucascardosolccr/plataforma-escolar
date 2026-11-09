@@ -212,7 +212,7 @@ def global_search(request):
     from django.http import JsonResponse
     from django.urls import reverse
 
-    from apps.academics.models import ClassGroup, TeacherAssignment
+    from apps.academics.models import ClassGroup
     from apps.registry.access import ADMIN_RECORD_ROLES, students_visible_to
 
     user = request.user

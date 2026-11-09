@@ -2,7 +2,7 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
-from apps.academics.models import ClassGroup, SchoolYear, Subject
+from apps.academics.models import ClassGroup, Subject
 from apps.core.models import School, User
 from apps.core.uploads import safe_attachment_path, validate_attachment
 from apps.registry.models import Student

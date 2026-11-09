@@ -8,7 +8,7 @@ from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import Announcement, Notification, NotificationMute
+from .models import Notification, NotificationMute
 
 
 def notify(school, user, kind, title, body="", url="", student=None, dedupe_key="", **extra):

@@ -58,7 +58,6 @@ def _day_items(class_ids, day):
 
 def schedule_for(user, day=None):
     """Aulas do dia para o usuário: lista de blocos {titulo, aulas}."""
-    from apps.academics.models import TeacherAssignment
 
     day = day or timezone.localdate()
     weekday = day.weekday()

@@ -2,7 +2,6 @@ import os
 import uuid
 
 from django.core.exceptions import ValidationError
-from django.utils.deconstruct import deconstructible
 
 
 ALLOWED_PHOTO_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp")

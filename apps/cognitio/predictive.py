@@ -28,7 +28,6 @@ de demonstração, o resultado NÃO demonstra eficácia real.
 import math
 import random
 
-from django.utils import timezone
 
 from apps.core.fmt import dec
 

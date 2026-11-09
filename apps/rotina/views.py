@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from apps.academics.models import ClassGroup, TeacherAssignment
+from apps.academics.models import ClassGroup
 from apps.communication.models import Notification
 from apps.communication.services import notify_many
 from apps.core.models import Role, User, create_audit_log

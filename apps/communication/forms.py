@@ -2,9 +2,8 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from apps.academics.models import ClassGroup
-from apps.core.models import User
 from apps.core.uploads import MAX_ATTACHMENT_SIZE_MB, validate_attachment, validate_attachment_content
-from apps.registry.models import Enrollment, GuardianLink, Student
+from apps.registry.models import GuardianLink, Student
 
 from . import access as acc
 from .models import Announcement, ReminderPolicy, ServiceRequest

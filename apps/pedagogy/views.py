@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from apps.academics.models import ClassGroup, SchoolYear, Subject, TeacherAssignment
+from apps.academics.models import ClassGroup, Subject, TeacherAssignment
 from apps.communication import reminders
 from apps.communication.family_events import notify_family
 from apps.communication.services import (
@@ -68,7 +68,6 @@ from .models import (
     InterventionPlan,
     Occurrence,
     PedagogicalObservation,
-    PlanNote,
     SchoolConfig,
     Submission,
     WorkGroup,

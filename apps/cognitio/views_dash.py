@@ -14,9 +14,9 @@ from django.db.models import Count, Q
 from django.shortcuts import render
 from django.utils import timezone
 
-from apps.academics.models import ClassGroup, Subject, TeacherAssignment
+from apps.academics.models import ClassGroup, Subject
 from apps.core.models import Role
-from apps.curriculum.models import COMPONENTS, ItemDimension, component_for
+from apps.curriculum.models import ItemDimension, component_for
 
 from . import access
 from .mastery import CSS, STATES, apply_judgments, assess, group_evidence, sort_key, state_only, with_items

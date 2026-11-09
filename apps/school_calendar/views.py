@@ -13,7 +13,7 @@ from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.academics.models import ClassGroup, Subject, TeacherAssignment
+from apps.academics.models import ClassGroup, Subject
 from apps.core.models import Role
 from apps.core.params import id_param
 from apps.pedagogy.models import (

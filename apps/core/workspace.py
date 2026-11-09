@@ -173,7 +173,6 @@ def build(user):
             data["student_pk"] = student.pk
 
     elif role == Role.PROFESSOR.value:
-        from apps.academics.models import TeacherAssignment
         from apps.pedagogy.models import Activity, Evaluation
         from apps.registry.models import Enrollment
         from django.db.models import Count, Q

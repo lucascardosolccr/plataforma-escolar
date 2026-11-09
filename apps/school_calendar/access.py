@@ -171,7 +171,6 @@ class CalendarScope:
 
     def _load_assignments(self):
         if self._assignments is None:
-            from apps.academics.models import TeacherAssignment
 
             from apps.academics.permissions import teacher_pairs
 

@@ -1334,7 +1334,7 @@ def institutional_report(school, period):
 # Qualidade dos dados
 # --------------------------------------------------------------------------- #
 def data_quality(school, period):
-    from apps.registry.models import GuardianLink, Student
+    from apps.registry.models import Student
 
     today = timezone.localdate()
     active = Enrollment.objects.filter(school=school, status="ativo")

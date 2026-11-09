@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 
-from apps.academics.models import Subject, TeacherAssignment
+from apps.academics.models import Subject
 from apps.communication.models import ServiceRequest
 from apps.core.models import Role
 from apps.pedagogy.models import (
@@ -24,7 +24,7 @@ from apps.pedagogy.models import (
     Occurrence,
     PedagogicalObservation,
 )
-from apps.registry.models import Enrollment, GuardianLink, Student
+from apps.registry.models import GuardianLink, Student
 
 from . import services
 

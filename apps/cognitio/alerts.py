@@ -88,7 +88,6 @@ def _generate_for_class(class_group, today=None):
     from apps.registry.models import Enrollment
 
     from .graph import dependents as _dependents
-    from .graph import prerequisites
 
     cache = {}
 

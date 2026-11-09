@@ -1,7 +1,7 @@
 from django.contrib.auth.mixins import AccessMixin
 from django.core.exceptions import PermissionDenied
 
-from .models import Role, STAFF_ROLES
+from .models import STAFF_ROLES
 
 
 def user_has_role(user, roles):

@@ -4,7 +4,6 @@ from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
-from apps.academics.models import ClassGroup, Subject
 from apps.core.models import Role
 from apps.core.pagination import paginate
 

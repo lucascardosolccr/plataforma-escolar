@@ -9,7 +9,7 @@ Sem ano letivo com início e fim, ou sem calendário publicado, as funções
 devolvem ``None`` e as telas dizem isso, em vez de mostrar número inventado.
 """
 
-from datetime import date, timedelta
+from datetime import timedelta
 
 from django.db.models import Q
 from django.utils import timezone

@@ -1,7 +1,7 @@
 """Cadastro do calendário escolar oficial e visão mensal/semanal."""
 
 import calendar as pycal
-from datetime import date, timedelta
+from datetime import timedelta
 
 from django import forms
 from django.contrib import messages
@@ -9,7 +9,6 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.academics.models import SchoolYear

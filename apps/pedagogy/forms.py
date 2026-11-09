@@ -2,9 +2,9 @@ from django import forms
 from django.utils import timezone
 
 from apps.curriculum.forms import CurriculumFormMixin
-from apps.academics.models import ClassGroup, Subject, TeacherAssignment
+from apps.academics.models import ClassGroup, Subject
 from apps.academics.permissions import teacher_class_ids, teacher_subject_ids, teaches
-from apps.core.models import Role, User
+from apps.core.models import Role
 from apps.core.uploads import (
     MAX_ATTACHMENT_SIZE_MB,
     validate_attachment,

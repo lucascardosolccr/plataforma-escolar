@@ -21,7 +21,6 @@ from apps.pedagogy.models import (
     Grade,
     InterventionPlan,
     Occurrence,
-    PedagogicalObservation,
     SchoolConfig,
     Submission,
 )

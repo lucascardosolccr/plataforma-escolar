@@ -149,6 +149,16 @@ class PagesAndAlertsTests(OutlookBase):
         dash = self.client.get(reverse("analytics:student_dashboard", args=[self.ana.pk]))
         self.assertContains(dash, f'{reverse("pedagogy:outlook")}?estudante={self.ana.pk}')
 
+    def test_team_is_reminded_of_what_the_family_view_depends_on(self):
+        self.client.force_login(self.direc)
+        page = self.client.get(reverse("pending_center"))
+        self.assertContains(page, "Turmas sem quadro de horários")  # 1º Ano B tem estudante e não tem quadro
+        self.assertNotContains(page, "Publicar o calendário oficial")
+        CalendarPublication.objects.all().delete()
+        self.assertContains(self.client.get(reverse("pending_center")), "Publicar o calendário oficial de 2026")
+        self.client.force_login(self.resp)
+        self.assertNotContains(self.client.get(reverse("pending_center")), "quadro de horários")
+
     def test_alert_only_near_the_yearly_limit_and_once_per_level(self):
         for i in range(3):  # 3 de 5 permitidas: 60%, sem aviso (antes, 3 faltas em 3 dias = 100% avisava)
             self.mark(MON + dt.timedelta(days=i))

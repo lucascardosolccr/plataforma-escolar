@@ -35,6 +35,8 @@ def for_user(user):
         items += _family(user)
     if role in (Role.DIRECAO.value, Role.SECRETARIA.value, Role.ADMIN.value):
         items += _lgpd(user)
+    if role in (Role.DIRECAO.value, Role.SECRETARIA.value, Role.COORDENACAO.value, Role.ADMIN.value) and user.school_id:
+        items += _routine_setup(user)
     if role in (Role.DIRECAO.value, Role.ADMIN.value) and user.school_id:
         from .invites import pending_for
 
@@ -65,6 +67,35 @@ def for_user(user):
             items.append(_item("Sua foto de identificação", 1, reverse("my_photo"), "Leva um minuto.", "info",
                                assignable=False))
     return [i for i in items if i["count"]]
+
+
+def _routine_setup(user):
+    """O que a Agenda e faltas da família precisa da escola: calendário oficial publicado (sem ele, a conta das
+    faltas que ainda cabem usa 200 dias estimados) e quadro de horários de cada turma (sem ele, a família não vê
+    em quais disciplinas as faltas pesam)."""
+    from apps.academics.models import ClassGroup
+    from apps.coordination.scope import class_scope
+    from apps.rotina.models import ClassSchedule
+    from apps.school_calendar.services import current_year, is_published
+
+    items = []
+    year = current_year(user.school)
+    if year is None:
+        return items
+    if user.role != Role.COORDENACAO.value and not is_published(year):
+        items.append(_item(f"Publicar o calendário oficial de {year.name}", 1, reverse("school_calendar:official"),
+                           "Sem ele, a conta das faltas que ainda cabem no ano usa 200 dias letivos estimados.",
+                           assignable=False))
+    classes = ClassGroup.objects.filter(school_id=user.school_id, school_year=year,
+                                        enrollments__status="ativo").distinct()
+    scope = class_scope(user)
+    if scope is not None:
+        classes = classes.filter(pk__in=scope)
+    without = classes.exclude(pk__in=ClassSchedule.objects.values("class_group_id")).count()
+    if without:
+        items.append(_item("Turmas sem quadro de horários", without, reverse("rotina:schedule_index"),
+                           "Sem o quadro, a família não vê em quais disciplinas as faltas pesam.", "info"))
+    return items
 
 
 def _first_steps(user):

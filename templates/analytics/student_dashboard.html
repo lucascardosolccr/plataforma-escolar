@@ -45,6 +45,7 @@
       <noscript><button class="btn btn-sm btn-outline-secondary">Ir</button></noscript>
     </form>
     {% endif %}
+    <a href="{% url 'pedagogy:outlook' %}?estudante={{ student.pk }}" class="btn btn-sm btn-outline-primary">{% icon "calendar-days" %}Agenda e faltas</a>
     <a href="{% url 'student_detail' student.pk %}" class="btn btn-sm btn-outline-secondary">{% icon "id-card" %}Ficha</a>
     <a href="{% url 'analytics:student_simulator' student.pk %}?{{ period.querystring }}" class="btn btn-sm btn-outline-secondary">{% icon "sliders-horizontal" %}Simular cenários</a>
     {% can "report:boletim" as can_bol %}{% if can_bol %}<a href="{% url 'analytics:report_detail' 'boletim' %}?student={{ student.pk }}" class="btn btn-sm btn-outline-secondary">{% icon "file-text" %}Boletim</a>{% endif %}

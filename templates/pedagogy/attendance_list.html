@@ -10,6 +10,9 @@
   </div>
 </div>
 
+{% if user_role == ROLE_RESPONSAVEL or user_role == ROLE_ESTUDANTE %}
+<div class="callout mb-3">{% icon "calendar-days" %}<span>Quantas faltas ainda cabem no ano e em quais disciplinas elas pesam? Veja em <a href="{% url 'pedagogy:outlook' %}">Agenda e faltas</a>, pelo calendário da escola.</span></div>
+{% endif %}
 {% if can_register and school_day and pending_today %}
 <div class="callout mb-3">{% icon "calendar-check" %}<span><strong>{{ pending_today }} turma{{ pending_today|pluralize }} sem chamada hoje.</strong> Use “Fazer chamada”: todos começam como presentes, marque só as faltas e os atrasos.</span></div>
 {% endif %}

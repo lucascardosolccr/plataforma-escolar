@@ -42,15 +42,15 @@
         <p class="small text-body-secondary mb-0">{% icon "circle-check" %} Nenhuma falta registrada no ano.</p>
       {% else %}
         <p class="small text-body-secondary">Aulas perdidas em cada disciplina, pelo quadro de horários da turma: cada dia de falta conta as aulas daquele dia da semana. É informativo: o limite legal vale para o total do ano.</p>
-        <div class="table-responsive"><table class="table table-sm align-middle mb-0">
-          <thead><tr><th scope="col">Disciplina</th><th scope="col" class="text-end">Aulas perdidas</th><th scope="col" class="text-end">Das aulas até hoje</th>{% if not att.estimated %}<th scope="col" class="text-end">Aulas no ano</th>{% endif %}</tr></thead>
+        <table class="table table-sm align-middle mb-0">
+          <thead><tr><th scope="col">Disciplina</th><th scope="col" class="text-end">Aulas perdidas</th><th scope="col" class="text-end">%</th></tr></thead>
           <tbody>{% for r in att.subjects %}<tr{% if forloop.first and r.missed %} class="fw-semibold"{% endif %}>
-            <th scope="row" class="fw-normal">{{ r.subject }}</th>
-            <td class="text-end">{{ r.missed }}</td>
-            <td class="text-end">{% if r.missed_percent is not None %}{{ r.missed_percent|floatformat:1 }}% de {{ r.given }}{% else %}—{% endif %}</td>
-            {% if not att.estimated %}<td class="text-end">{{ r.year_total|default:"—" }}</td>{% endif %}
+            <th scope="row" class="fw-normal">{{ r.subject }}{% if r.year_total %}<span class="d-block small text-body-secondary">{{ r.year_total }} aulas no ano</span>{% endif %}</th>
+            <td class="text-end text-nowrap">{{ r.missed }}{% if r.given %} de {{ r.given }}{% endif %}</td>
+            <td class="text-end text-nowrap">{% if r.missed_percent is not None %}{{ r.missed_percent|floatformat:1 }}%{% else %}—{% endif %}</td>
           </tr>{% endfor %}</tbody>
-        </table></div>
+        </table>
+        <p class="small text-body-secondary mt-2 mb-0">"De" = aulas dadas até hoje pelo calendário. % = parte dessas aulas que foi perdida.</p>
       {% endif %}
     </div></section>
     {% endif %}

@@ -142,6 +142,13 @@ class PagesAndAlertsTests(OutlookBase):
         self.assertContains(home, "Próximas entregas e provas")
         self.assertContains(home, "no ano")
 
+    def test_attendance_page_points_family_to_the_yearly_count_and_dashboard_too(self):
+        self.client.force_login(self.resp)
+        self.assertContains(self.client.get(reverse("pedagogy:attendance_list")), reverse("pedagogy:outlook"))
+        self.client.force_login(self.direc)
+        dash = self.client.get(reverse("analytics:student_dashboard", args=[self.ana.pk]))
+        self.assertContains(dash, f'{reverse("pedagogy:outlook")}?estudante={self.ana.pk}')
+
     def test_alert_only_near_the_yearly_limit_and_once_per_level(self):
         for i in range(3):  # 3 de 5 permitidas: 60%, sem aviso (antes, 3 faltas em 3 dias = 100% avisava)
             self.mark(MON + dt.timedelta(days=i))

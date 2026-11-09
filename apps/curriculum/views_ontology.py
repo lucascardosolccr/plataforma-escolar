@@ -9,6 +9,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from apps.core.params import as_id, digits
+
 from . import services
 from .models import (AREAS, CurriculumCorrespondence, CurriculumItem, CurriculumItemVersion, ItemDimension,
                      SkillDimension)
@@ -50,7 +52,7 @@ def item_curate(request, pk):
     item = get_object_or_404(CurriculumItem.objects.filter(CurriculumItem.visible_q(user.school)), pk=pk)
     action = request.POST.get("acao")
     if action == "dimensao":
-        link = get_object_or_404(ItemDimension, pk=request.POST.get("id"), item=item)
+        link = get_object_or_404(ItemDimension, pk=as_id(request.POST.get("id")), item=item)
         if request.POST.get("decisao") == "rejeitar":
             detail = f"Rejeitou a dimensão {link.dimension} para {item.code}"
             link.delete()
@@ -60,11 +62,11 @@ def item_curate(request, pk):
             detail = f"Validou a dimensão {link.dimension} para {item.code}"
         _log(request, "update", item, detail)
     elif action == "nova_dimensao":
-        dim = get_object_or_404(SkillDimension, pk=request.POST.get("dimensao"))
+        dim = get_object_or_404(SkillDimension, pk=as_id(request.POST.get("dimensao")))
         ItemDimension.objects.update_or_create(item=item, dimension=dim, defaults={"origin": "manual", "validated": True})
         _log(request, "update", item, f"Associou a dimensão {dim} a {item.code}")
     elif action == "correspondencia":
-        c = get_object_or_404(CurriculumCorrespondence, pk=request.POST.get("id"))
+        c = get_object_or_404(CurriculumCorrespondence, pk=as_id(request.POST.get("id")))
         _require(item.pk in (c.source_id, c.target_id) and (c.school_id in (None, user.school_id)))
         reject = request.POST.get("decisao") == "rejeitar"
         c.validated, c.rejected = not reject, reject
@@ -109,7 +111,7 @@ def curation_queue(request):
     pending = CurriculumCorrespondence.objects.filter(school=user.school, validated=False, rejected=False)
     if request.method == "POST":
         decision = request.POST.get("decisao")
-        ids = [i for i in request.POST.getlist("ids") if i.isdigit()]
+        ids = [i for i in request.POST.getlist("ids") if digits(i)]
         rows = list(pending.filter(pk__in=ids).select_related("source", "target"))
         if decision in ("validar", "rejeitar") and rows:
             reject = decision == "rejeitar"
@@ -139,7 +141,7 @@ def curation_queue(request):
     else:
         comp = ""
     year = request.GET.get("ano", "")
-    if year.isdigit() and 1 <= int(year) <= 9:
+    if digits(year) and 1 <= int(year) <= 9:
         pending = pending.filter(source__years__regex=rf"(^|,){year}(,|$)")
     else:
         year = ""

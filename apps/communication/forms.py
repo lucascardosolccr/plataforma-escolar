@@ -2,6 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from apps.academics.models import ClassGroup
+from apps.core.params import digits
 from apps.core.uploads import MAX_ATTACHMENT_SIZE_MB, validate_attachment, validate_attachment_content
 from apps.registry.models import GuardianLink, Student
 
@@ -243,7 +244,7 @@ class ReminderPolicyForm(forms.ModelForm):
             if required:
                 raise ValidationError("Informe ao menos um número de dias.")
             return ""
-        bad = [p for p in parts if not p.isdigit() or int(p) > 60]
+        bad = [p for p in parts if not digits(p) or int(p) > 60]
         if bad:
             raise ValidationError(f"Use números inteiros de 0 a 60 separados por vírgula (não aceito: {', '.join(bad)}).")
         return ", ".join(str(d) for d in ReminderPolicy.parse(raw))

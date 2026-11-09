@@ -13,6 +13,7 @@ from django.views.decorators.http import require_POST
 
 from apps.core.models import Role, create_audit_log
 from apps.core.pagination import paginate
+from apps.core.params import as_id
 from apps.core.uploads import attachment_content_type, validate_attachment_content
 from apps.pedagogy import access as acc
 from apps.pedagogy.models import Activity
@@ -102,7 +103,7 @@ def request_form(request, pk=None):
         activity = req.activity
     else:
         req = None
-        activity = get_object_or_404(Activity, pk=request.GET.get("atividade") or request.POST.get("atividade") or 0,
+        activity = get_object_or_404(Activity, pk=as_id(request.GET.get("atividade") or request.POST.get("atividade")),
                                      school=user.school)
     if not acc.can_manage_activities(user, activity.class_group, activity.subject):
         raise PermissionDenied

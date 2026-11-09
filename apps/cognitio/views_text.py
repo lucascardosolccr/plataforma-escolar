@@ -13,6 +13,7 @@ from django.utils import timezone
 from apps.academics.models import ClassGroup, Subject
 from apps.core.models import Role, create_audit_log
 from apps.core.pagination import paginate
+from apps.core.params import digits
 from apps.curriculum.models import CurriculumItem, component_for
 from apps.registry.models import Enrollment, Student
 
@@ -140,7 +141,7 @@ def text_detail(request, pk):
                                                       "comment": (request.POST.get("comentario") or "")[:300]})
         elif action == "revisar":
             level = request.POST.get("nivel", "")
-            t.teacher_level = int(level) if level.isdigit() and int(level) in SkillObservation.RATIO else None
+            t.teacher_level = int(level) if digits(level) and int(level) in SkillObservation.RATIO else None
             t.teacher_feedback = (request.POST.get("devolutiva") or "").strip()[:3000]
             codes = [c.upper() for c in re.findall(r"[A-Za-z0-9.\-]+", request.POST.get("habilidades") or "")]
             if codes:

@@ -16,6 +16,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from apps.academics.models import Subject
 from apps.communication.family_events import notify_family
 from apps.core.models import Role, create_audit_log
+from apps.core.params import digits
 
 from .models import Activity, Rubric, RubricCriterion, RubricDescriptor, RubricLevel, RubricScore
 
@@ -186,7 +187,7 @@ def activity_rubric_scores(request, pk):
             for st in students:
                 for c in criteria:
                     raw = request.POST.get(f"r_{st.pk}_{c.pk}", "")
-                    if not raw.isdigit() or int(raw) not in valid_levels:
+                    if not digits(raw) or int(raw) not in valid_levels:
                         continue  # vazio = sem avaliação; registro salvo é mantido
                     lv = int(raw)
                     if current.get((st.pk, c.pk)) == lv:
@@ -261,7 +262,7 @@ def group_work_rubric_scores(request, pk):
             for t in targets:
                 for c in criteria:
                     raw = request.POST.get(f"r_{t['key']}_{c.pk}", "")
-                    if not raw.isdigit() or int(raw) not in valid or current.get((t["key"], c.pk)) == int(raw):
+                    if not digits(raw) or int(raw) not in valid or current.get((t["key"], c.pk)) == int(raw):
                         continue
                     lookup = {"group": t["obj"]} if by_group else {"student": t["obj"]}
                     GroupWorkRubricScore.objects.update_or_create(

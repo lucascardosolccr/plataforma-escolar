@@ -18,6 +18,7 @@ from django.db.models import Q
 
 from apps.academics.models import ClassGroup, Subject
 from apps.core.models import School, User
+from apps.core.params import digits
 
 
 class CurriculumItem(models.Model):
@@ -71,7 +72,7 @@ class CurriculumItem(models.Model):
 
     @property
     def year_list(self):
-        return [int(y) for y in self.years.split(",") if y.strip().isdigit()]
+        return [int(y) for y in self.years.split(",") if digits(y.strip())]
 
     @property
     def is_local(self):

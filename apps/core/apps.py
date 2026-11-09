@@ -8,3 +8,6 @@ class CoreConfig(AppConfig):
 
     def ready(self):
         from . import signals  # noqa: F401
+        from .formfixes import install
+
+        install()

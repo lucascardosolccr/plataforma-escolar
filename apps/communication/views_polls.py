@@ -22,6 +22,7 @@ from django.views.decorators.http import require_POST
 from apps.academics.models import ClassGroup
 from apps.core.models import Role, User, create_audit_log
 from apps.core.pagination import paginate
+from apps.core.params import digits
 
 from .models import Notification, Poll, PollVote
 from .services import notify_many
@@ -195,7 +196,7 @@ def poll_vote(request, pk):
     raw = request.POST.get("option", "")
     if not poll.accepts_votes():
         messages.error(request, "A consulta foi encerrada ou o prazo terminou.")
-    elif not raw.isdigit() or int(raw) >= len(poll.options):
+    elif not digits(raw) or int(raw) >= len(poll.options):
         messages.error(request, "Escolha uma das opções.")
     else:
         PollVote.objects.update_or_create(poll=poll, user=user, defaults={"option": int(raw)})

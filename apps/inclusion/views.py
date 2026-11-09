@@ -11,6 +11,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.core.models import Role, User
+from apps.core.params import as_id, as_uuid, digits
 from apps.registry.models import Student
 
 from . import access, services
@@ -174,7 +175,10 @@ def document_upload(request, student_id):
     case = services.case_for(student)
     replaces = None
     if request.GET.get("substitui"):
-        replaces = get_object_or_404(SupportDocument, public_id=request.GET["substitui"], case=case)
+        public_id = as_uuid(request.GET["substitui"])
+        if public_id is None:
+            raise Http404("Documento indisponível.")
+        replaces = get_object_or_404(SupportDocument, public_id=public_id, case=case)
     form = DocumentForm(request.POST or None, request.FILES or None, school=student.school)
     if request.method == "POST" and form.is_valid():
         source = SupportDocument.Source.FAMILY if family else SupportDocument.Source.SCHOOL
@@ -465,7 +469,7 @@ def guidance(request):
     enr = Enrollment.objects.filter(class_group__in=selected or classes, status="ativo").select_related(
         "student", "class_group")
     student_filter = request.GET.get("estudante", "")
-    if student_filter.isdigit():
+    if digits(student_filter):
         enr = enr.filter(student_id=int(student_filter))
     students = {}
     for e in enr:
@@ -513,7 +517,7 @@ def settings_view(request):
             messages.success(request, "Categoria incluída.")
             return redirect("inclusion:settings")
         if action == "alternar":
-            cat = get_object_or_404(SupportCategory, pk=request.POST.get("categoria"), school=user.school)
+            cat = get_object_or_404(SupportCategory, pk=as_id(request.POST.get("categoria")), school=user.school)
             cat.active = not cat.active
             cat.save(update_fields=["active"])
             services.audit(request, "update", cat, f"Categoria {'reativada' if cat.active else 'desativada'}: "

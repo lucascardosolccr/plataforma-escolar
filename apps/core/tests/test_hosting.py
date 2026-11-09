@@ -50,3 +50,13 @@ def test_empty_secret_key_file_gets_a_new_key_instead_of_breaking_the_site(tmp_p
 def test_deploy_scripts_are_committed_with_lf():
     attrs = (ROOT / ".gitattributes").read_text(encoding="utf-8")
     assert "*.sh text eol=lf" in attrs
+
+
+def test_sqlite_takes_the_write_turn_at_begin_and_waits_instead_of_failing():
+    """No modo padrão do SQLite, a rotina diária (que grava em segundo plano) caía com "database is locked" na
+    hora em que uma requisição gravava no meio da transação dela (reproduzido em 09/11/2026). IMMEDIATE + espera
+    resolvem; WAL fica de fora porque o disco da hospedagem é de rede."""
+    options = project_settings.DATABASES["default"].get("OPTIONS", {})
+    assert options.get("transaction_mode") == "IMMEDIATE"
+    assert options.get("timeout", 5) >= 20
+    assert "journal_mode" not in str(options.get("init_command", "")).lower()

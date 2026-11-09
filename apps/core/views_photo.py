@@ -23,6 +23,7 @@ from django.views.decorators.http import require_POST
 
 from .models import STAFF_ROLES, Role, User, create_audit_log
 from .pagination import paginate
+from .params import digits
 from .photos import save_photo
 
 STAFF = [r.value for r in STAFF_ROLES]
@@ -171,7 +172,7 @@ def photo_pending(request):
         qs = families.order_by("first_name", "last_name")
     else:
         tab = "estudantes"
-        if class_id.isdigit():
+        if digits(class_id):
             students = students.filter(enrollments__class_group_id=class_id, enrollments__status="ativo")
         qs = students.order_by("first_name", "last_name")
     if q:
@@ -206,7 +207,7 @@ def photo_remind(request):
     school = request.user.school
     tab = request.POST.get("aba", "estudantes")
     tab = tab if tab in ("estudantes", "equipe", "familias") else "estudantes"
-    ids = [int(i) for i in request.POST.getlist("ids") if i.isdigit()][:500]
+    ids = [int(i) for i in request.POST.getlist("ids") if digits(i)][:500]
     today = timezone.localdate().isoformat()
     sent = 0
     if tab == "estudantes":
@@ -240,7 +241,7 @@ def photo_exception_create(request):
 
     reason = (request.POST.get("reason") or "").strip()[:300]
     kind, pk = request.POST.get("kind"), request.POST.get("id", "")
-    if not reason or not pk.isdigit():
+    if not reason or not digits(pk):
         messages.error(request, "Informe a justificativa da dispensa.")
         return redirect("photo_pending")
     school = request.user.school

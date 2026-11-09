@@ -25,6 +25,7 @@ from django.views.decorators.http import require_POST
 
 from apps.academics.models import ClassGroup
 from apps.core.models import Role, create_audit_log
+from apps.core.params import digits
 from apps.registry.models import Enrollment, Student
 
 from . import services
@@ -227,7 +228,7 @@ def _read(request, user, kind):
             _refused(request, user, reason)
             return {"error": reason}
         offline = True
-    if request.POST.get("estudante", "").isdigit():  # registro manual, sem carteirinha
+    if digits(request.POST.get("estudante", "")):  # registro manual, sem carteirinha
         student = get_object_or_404(Student, pk=int(request.POST["estudante"]), school=user.school)
         if kind == AUTO:
             kind = services.auto_kind(student, when)

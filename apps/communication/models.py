@@ -2,6 +2,7 @@ from django.db import models
 from django.utils import timezone
 
 from apps.core.models import School, User
+from apps.core.params import digits
 from apps.core.uploads import safe_message_attachment_path, validate_attachment
 
 
@@ -405,7 +406,7 @@ class ReminderPolicy(models.Model):
         days = set()
         for part in (text or "").replace(";", ",").split(","):
             part = part.strip()
-            if part.isdigit() and int(part) <= limit:
+            if digits(part) and int(part) <= limit:
                 days.add(int(part))
         return sorted(days, reverse=True)
 

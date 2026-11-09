@@ -19,6 +19,7 @@ from collections import defaultdict
 from django.db.models import Q
 
 from apps.core.fmt import dec
+from apps.core.params import digits
 
 STOP = set("""a o e é de da do das dos em no na nos nas um uma uns umas para por com sem como que se ao aos à às
 ou seu sua seus suas entre sobre até mais menos outros outras outro outra diferentes diferente diversos diversas
@@ -57,7 +58,7 @@ def build_progressions(CurriculumItem, SkillRelation, threshold=0.20, per_target
                   .exclude(thematic_unit=""))
     by_key = defaultdict(list)
     for s in skills:
-        years = [int(y) for y in s.years.split(",") if y.strip().isdigit()]
+        years = [int(y) for y in s.years.split(",") if digits(y.strip())]
         if len(years) == 1:  # habilidades de vários anos não definem "ano seguinte"
             by_key[(s.component, s.thematic_unit, years[0])].append(s)
     words = {s.pk: content_words(s.text + " " + (s.knowledge_object or "")) for s in skills}

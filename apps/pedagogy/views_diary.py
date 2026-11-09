@@ -26,6 +26,7 @@ from apps.academics.permissions import teacher_pairs
 from apps.coordination.scope import class_scope
 from apps.core.models import Role, create_audit_log
 from apps.core.pagination import paginate
+from apps.core.params import digits
 from apps.curriculum.forms import CurriculumFormMixin
 
 from .models import LessonRecord
@@ -146,7 +147,7 @@ def diary_list(request):
     family = user.role in FAMILY
     pairs = sorted(teacher_pairs(user)) if user.role == Role.PROFESSOR.value else []
     turma = request.GET.get("turma", "")
-    if turma.isdigit():
+    if digits(turma):
         qs = qs.filter(class_group_id=int(turma))
     if family:  # a família vê as últimas semanas; o histórico completo é da equipe
         qs = qs.filter(date__gte=timezone.localdate() - timedelta(days=60))

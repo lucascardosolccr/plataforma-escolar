@@ -15,6 +15,7 @@ from apps.academics.models import SchoolYear
 from apps.communication.models import Notification
 from apps.communication.services import notify_many
 from apps.core.models import Role, User, create_audit_log
+from apps.core.params import digits
 
 from .models import CalendarEvent, CalendarPeriod, CalendarPublication
 from .services import countdown, events_for_user, school_days
@@ -78,7 +79,7 @@ def official_manage(request):
     school = request.user.school
     years = SchoolYear.objects.filter(school=school).order_by("-name")
     year = None
-    if (request.GET.get("ano") or "").isdigit():
+    if digits(request.GET.get("ano") or ""):
         year = get_object_or_404(SchoolYear, pk=request.GET["ano"], school=school)
     year = year or years.filter(is_current=True).first() or years.first()
     period_form = PeriodForm(prefix="p", year=year)

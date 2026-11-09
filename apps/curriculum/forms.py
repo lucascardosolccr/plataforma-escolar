@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from .models import COMPONENTS, CurriculumItem, LearningEvidence
 from .services import picker_groups
+from apps.core.params import as_id, digits
 
 CODE_RE = re.compile(r"[A-Za-z0-9.\-]+")
 #: Acima deste total de itens (professor de muitos componentes e anos, sem turma escolhida), os grupos sem nada
@@ -50,7 +51,7 @@ class CurriculumFormMixin:
     def refocus_curriculum(self, user):
         """Refaz os grupos depois que a view definiu a turma em ``initial`` (ex.: ?turma=)."""
         if hasattr(self, "curriculum_groups"):
-            selected = [int(s) for s in self.curriculum_selected if str(s).isdigit()]
+            selected = [int(s) for s in self.curriculum_selected if digits(str(s))]
             self.curriculum_focus = self._curriculum_focus_class()
             self.curriculum_groups = self._picker(user, selected)
 
@@ -85,10 +86,7 @@ class CurriculumFormMixin:
         else:
             return None
         raw = getattr(raw, "pk", raw)
-        try:
-            return int(raw) if raw else None
-        except (TypeError, ValueError):
-            return None
+        return as_id(str(raw)) if raw else None
 
     def clean_curriculum_codes(self):
         raw = self.cleaned_data.get("curriculum_codes", "")
@@ -127,7 +125,7 @@ class EvidenceForm(forms.ModelForm):
         # professor, mais o item já escolhido. Antes eram todos os itens visíveis (milhares de opções,
         # 737 KB de HTML e quase 1 s para desenhar o formulário).
         chosen = [v for v in (self.data.get("item") if self.is_bound else self.initial.get("item"),)
-                  if str(v or "").isdigit()]
+                  if digits(str(v or ""))]
         groups = picker_groups(user, chosen, focus[0].pk if focus else None) if user is not None else []
         if focus:  # turma e disciplina fixas: só o componente da disciplina (mais o item já escolhido)
             from .models import component_for

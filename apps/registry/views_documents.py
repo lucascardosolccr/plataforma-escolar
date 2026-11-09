@@ -28,6 +28,7 @@ from django.utils import timezone
 from apps.core.fmt import pct
 from apps.core.models import Role, create_audit_log
 from apps.core.pagination import paginate
+from apps.core.params import as_id, digits
 
 from .models import DocumentSettings, Enrollment, IssuedDocument, Student
 
@@ -135,10 +136,10 @@ def document_new(request, student_id):
     _require(user)
     student = get_object_or_404(Student, pk=student_id, school=user.school)
     req = None
-    if request.GET.get("solicitacao", "").isdigit() or request.POST.get("solicitacao", "").isdigit():
+    rid = as_id(request.GET.get("solicitacao")) or as_id(request.POST.get("solicitacao"))
+    if rid:
         from apps.communication.models import ServiceRequest
 
-        rid = int(request.GET.get("solicitacao") or request.POST.get("solicitacao"))
         req = ServiceRequest.objects.filter(pk=rid, school=user.school, student=student).first()
     today = timezone.localdate()
     year_start = date(today.year, 1, 1)
@@ -202,7 +203,7 @@ def document_list(request):
     if code:
         found = qs.filter(code=code if "-" in code else f"{code[:4]}-{code[4:]}").first()
     student_id = request.GET.get("estudante", "")
-    if student_id.isdigit():
+    if digits(student_id):
         qs = qs.filter(student_id=int(student_id))
     return render(request, "registry/document_list.html", {
         "page": paginate(request, qs), "code": code, "found": found, "searched": bool(code),

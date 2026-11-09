@@ -14,6 +14,7 @@ from django.views.decorators.http import require_POST
 from apps.academics.models import ClassGroup, Subject
 from apps.core.models import Role, User, create_audit_log
 from apps.core.pagination import paginate
+from apps.core.params import digits
 
 from .models import CoordinationRecord, CoordinatorAssignment
 from .scope import active_designations, class_scope, student_ids, teacher_scope
@@ -63,7 +64,7 @@ def designation_list(request):
         raise PermissionDenied
     school = request.user.school
     edit = None
-    if (request.GET.get("editar") or "").isdigit():
+    if digits(request.GET.get("editar") or ""):
         edit = get_object_or_404(CoordinatorAssignment, pk=request.GET["editar"], school=school)
     form = DesignationForm(request.POST or None, instance=edit, school=school)
     if request.method == "POST" and form.is_valid():

@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.core.models import Role
 from apps.core.pagination import paginate
+from apps.core.params import digits
 
 from . import services
 from .forms import CurriculumImportForm, CurriculumItemForm, EvidenceForm
@@ -40,7 +41,7 @@ def catalog(request):
     else:
         comp = ""
     year = request.GET.get("ano", "")
-    if year.isdigit() and 1 <= int(year) <= 9:
+    if digits(year) and 1 <= int(year) <= 9:
         qs = qs.filter(pk__in=[i.pk for i in qs if int(year) in i.year_list])
     else:
         year = ""
@@ -172,7 +173,7 @@ def evidence_create(request):
     if focused:
         pairs = focused
         initial["pair"] = request.GET["par"]
-    if request.GET.get("item", "").isdigit():
+    if digits(request.GET.get("item", "")):
         initial["item"] = request.GET["item"]
     form = EvidenceForm(request.POST or None, user=user, pairs=pairs, item_qs=item_qs, initial=initial,
                         focus=focused[0] if focused else None)
@@ -313,7 +314,7 @@ def picker_group(request):
     if not user.is_staff_role:
         raise PermissionDenied
     comp, kind = request.GET.get("comp", ""), request.GET.get("kind", "")
-    year = int(request.GET["year"]) if (request.GET.get("year") or "").isdigit() else None
+    year = int(request.GET["year"]) if digits(request.GET.get("year") or "") else None
     items = services.group_items(user.school, comp, year, kind) if comp and kind else []
     return render(request, "curriculum/_picker_items.html", {
         "items": items, "name": "curriculum", "group": (request.GET.get("g") or "0")[:4]})

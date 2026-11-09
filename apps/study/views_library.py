@@ -13,11 +13,10 @@ from django.db import transaction
 from django.db.models import Exists, OuterRef, Q
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils.http import url_has_allowed_host_and_scheme
 
 from apps.core.models import Role, create_audit_log
 from apps.core.pagination import paginate
-from apps.core.params import id_param
+from apps.core.params import id_param, safe_next
 from apps.core.uploads import attachment_content_type
 
 from . import access
@@ -89,11 +88,8 @@ def library_favorite(request, material_id):
     fav, created = LibraryFavorite.objects.get_or_create(user=user, material=m)
     if not created:
         fav.delete()
-    nxt = request.POST.get("next") or ""
     # Só endereço desta plataforma: o "next" vem do formulário e poderia apontar para fora.
-    if not url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
-        nxt = "study:library"
-    return redirect(nxt)
+    return redirect(safe_next(request, "study:library"))
 
 
 def library_use(request, material_id):

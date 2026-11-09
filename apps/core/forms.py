@@ -4,6 +4,7 @@ from django.contrib.auth import password_validation
 from django.core.exceptions import ValidationError
 
 from .models import Role, STAFF_ROLES, School, User
+from .params import digits
 
 
 def _check_password(form, password, user):
@@ -257,7 +258,7 @@ class SchoolForm(forms.ModelForm):
         return cleaned
 
     def clean_inep(self):
-        inep = "".join(ch for ch in self.cleaned_data["inep"] if ch.isdigit())
+        inep = "".join(ch for ch in self.cleaned_data["inep"] if digits(ch))
         if inep and len(inep) != 8:
             raise forms.ValidationError("O código INEP tem 8 algarismos.")
         if inep and School.objects.filter(inep=inep).exclude(pk=self.instance.pk).exists():

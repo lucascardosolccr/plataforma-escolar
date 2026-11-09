@@ -13,7 +13,7 @@ from apps.communication.models import Notification
 from apps.communication.services import notify
 from apps.core.models import Role, create_audit_log
 from apps.core.pagination import paginate
-from apps.core.params import id_param
+from apps.core.params import digits, id_param
 from apps.core.uploads import attachment_content_type
 from apps.registry.models import Student
 
@@ -625,7 +625,7 @@ def practice_answer(request, pk, question_id):
     student_ids = access.family_students(user, guide)
     _require(len(student_ids) == 1)
     raw = request.POST.get("alternativa", "")
-    if not raw.isdigit() or int(raw) >= len(q.options):
+    if not digits(raw) or int(raw) >= len(q.options):
         messages.error(request, "Escolha uma alternativa antes de conferir.")
     else:
         chosen = int(raw)

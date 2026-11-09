@@ -13,6 +13,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.core.models import Role, create_audit_log
+from apps.core.params import as_id, digits
 from apps.curriculum.models import CurriculumItem, component_for
 from apps.registry.models import Enrollment, Student
 
@@ -97,7 +98,7 @@ def student_projection(request, student_id):
     today = timezone.localdate()
     target = None
     tid = request.GET.get("habilidade", "")
-    if tid.isdigit():
+    if digits(tid):
         target = get_object_or_404(CurriculumItem.objects.filter(CurriculumItem.visible_q(user.school)), pk=int(tid))
     order = request.GET.get("ordem", "prioridade")
     order = order if order in gaps.CRITERIA else "prioridade"
@@ -164,7 +165,7 @@ def judgment_save(request, student_id):
     if user.role not in (Role.PROFESSOR.value, Role.COORDENACAO.value):
         raise PermissionDenied
     item = get_object_or_404(CurriculumItem.objects.filter(CurriculumItem.visible_q(user.school)),
-                             pk=request.POST.get("habilidade"))
+                             pk=as_id(request.POST.get("habilidade")))
     if user.role == Role.PROFESSOR.value and not _teach_pairs(user, student, item):
         raise PermissionDenied  # professor decide só no componente que leciona a este estudante
     back = (f"{reverse('cognitio:student_projection', args=[student.pk])}"
@@ -202,11 +203,11 @@ def assistant_page(request):
     classes = [cg for cg in ClassGroup.objects.filter(school=user.school, school_year__is_current=True)
                .order_by("name") if access.can_view_class(user, cg)]
     cg = None
-    if (request.GET.get("turma") or "").isdigit():
+    if digits(request.GET.get("turma") or ""):
         cg = next((c for c in classes if c.pk == int(request.GET["turma"])), None)
     students = assistant.visible_students(user, cg) if cg else []
     student = None
-    if (request.GET.get("estudante") or "").isdigit():
+    if digits(request.GET.get("estudante") or ""):
         student = next((s for s in (students or assistant.visible_students(user))
                         if s.pk == int(request.GET["estudante"])), None)
     question = (request.GET.get("pergunta") or "").strip()[:400]
@@ -262,7 +263,7 @@ def class_council(request, class_id):
     today = timezone.localdate()
     periods = list(CalendarPeriod.objects.filter(school=user.school, school_year=cg.school_year).order_by("start"))
     period = None
-    if (request.GET.get("periodo") or "").isdigit():
+    if digits(request.GET.get("periodo") or ""):
         period = next((p for p in periods if p.pk == int(request.GET["periodo"])), None)
     if period is None:  # o período em curso, ou o último que já começou
         started = [p for p in periods if p.start <= today]

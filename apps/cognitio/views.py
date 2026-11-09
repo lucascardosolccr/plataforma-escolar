@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from apps.academics.models import ClassGroup, Subject
 from apps.core.models import Role, create_audit_log
+from apps.core.params import digits
 from apps.curriculum.models import CurriculumItem
 from apps.registry.models import Enrollment, Student
 
@@ -118,7 +119,7 @@ def student_map(request, student_id):
         evs = evs.filter(subject_id__in=subjects)
     subject_options = Subject.objects.filter(pk__in=evs.values("subject_id")).order_by("name")
     subj = request.GET.get("disciplina", "")
-    if subj.isdigit():
+    if digits(subj):
         evs = evs.filter(subject_id=int(subj))
     source = request.GET.get("fonte", "")
     if source in dict(SkillEvidence.Source.choices):
@@ -136,7 +137,7 @@ def student_map(request, student_id):
     # decisões dos professores valem aqui também, como no mapa de aprendizagem e projeção
     assessed = apply_judgments({(student.pk, pk): assess(grouped.get(pk, []), scale) for pk in items})
     for pk, item in sorted(items.items(), key=lambda kv: (kv[1].component, kv[1].thematic_unit, kv[1].code)):
-        if subj.isdigit() and pk not in grouped:
+        if digits(subj) and pk not in grouped:
             continue
         a = assessed[(student.pk, pk)]
         counts[a.state] += 1
@@ -144,7 +145,7 @@ def student_map(request, student_id):
             item.thematic_unit or "Sem unidade identificada", []).append((item, a))
     detail_item = request.GET.get("habilidade", "")
     detail = None
-    if detail_item.isdigit() and int(detail_item) in items:
+    if digits(detail_item) and int(detail_item) in items:
         it = items[int(detail_item)]
         ev_list = grouped.get(it.pk, [])
         from apps.school_calendar.models import CalendarPeriod
@@ -248,7 +249,7 @@ def class_view(request, class_id):
     strong = sorted([s for s in summary if s["consolidated"] / n >= 0.6], key=lambda s: -s["consolidated"])[:5]
     sel = request.GET.get("habilidade", "")
     focus = None
-    if sel.isdigit():
+    if digits(sel):
         it = next((i for i in items if i.pk == int(sel)), None)
         if it:
             rows = [(st, a) for st, r in matrix for i, a in r if i.pk == it.pk]

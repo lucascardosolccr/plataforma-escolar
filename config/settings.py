@@ -141,6 +141,12 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
+        # A rotina diária grava em segundo plano enquanto as pessoas usam a plataforma. No modo padrão
+        # (DEFERRED), uma transação que lê e depois grava falha NA HORA com "database is locked" se outra
+        # gravação começou no meio — sem esperar o tempo limite (reproduzido em 09/11/2026). IMMEDIATE pega a
+        # vez de gravar já no início, e a outra espera até 20 s em vez de cair. WAL não: o disco da
+        # hospedagem é de rede, onde o WAL do SQLite não é confiável.
+        "OPTIONS": {"transaction_mode": "IMMEDIATE", "timeout": 20},
     }
 }
 
@@ -195,6 +201,9 @@ _SSL = os.environ.get("DJANGO_SSL", "0") == "1"
 if not DEBUG and _SSL:
     # Atrás de um proxy que já força HTTPS, o redirecionamento do Django pode entrar em laço: desligável.
     SECURE_SSL_REDIRECT = os.environ.get("DJANGO_SSL_REDIRECT", "1") == "1"
+    if not SECURE_SSL_REDIRECT:
+        # Desligado de propósito porque a hospedagem já redireciona; assim `check --deploy` sai limpo.
+        SILENCED_SYSTEM_CHECKS = ["security.W008"]
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = 31536000  # 1 ano

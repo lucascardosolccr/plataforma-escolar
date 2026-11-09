@@ -9,7 +9,7 @@ from django.views.decorators.http import require_POST
 
 from apps.academics.models import ClassGroup, Subject
 from apps.core.models import Role, create_audit_log
-from apps.core.params import safe_next
+from apps.core.params import as_id, digits, safe_next
 from apps.curriculum.models import CurriculumItem
 
 from . import access, alerts, graph, predictive
@@ -33,7 +33,7 @@ def skill_graph(request, item_id):
     context_class = None
     states = {}
     cg_id = request.GET.get("turma", "")
-    if cg_id.isdigit():
+    if digits(cg_id):
         cg = get_object_or_404(ClassGroup, pk=int(cg_id), school=user.school)
         if access.can_view_class(user, cg):
             context_class = cg
@@ -113,7 +113,7 @@ def relation_curate(request, item_id):
                 messages.error(request, f"Código não encontrado: {code}.")
                 return redirect("cognitio:skill_graph", item_id=item.pk)
         else:
-            src = get_object_or_404(CurriculumItem, pk=request.POST.get("prerequisito"))
+            src = get_object_or_404(CurriculumItem, pk=as_id(request.POST.get("prerequisito")))
         kind = request.POST.get("tipo") if request.POST.get("tipo") in dict(SkillRelation.Kind.choices) else "hipotese"
         if kind == "estatistica":
             kind = "hipotese"  # associação estatística é calculada, não digitada
@@ -130,7 +130,7 @@ def relation_curate(request, item_id):
         SkillRelationChange.objects.create(relation=rel, user=user, action="criou" if created else "editou",
                                            detail=detail)
     else:
-        rel = get_object_or_404(SkillRelation, pk=request.POST.get("id"))
+        rel = get_object_or_404(SkillRelation, pk=as_id(request.POST.get("id")))
         if rel.school_id not in (None, user.school_id):
             raise PermissionDenied
         decision = request.POST.get("decisao")
@@ -199,7 +199,7 @@ def alert_list(request):
     if rule in alerts.RULES:
         qs = qs.filter(rule=rule)
     cg = request.GET.get("turma", "")
-    if cg.isdigit():
+    if digits(cg):
         qs = qs.filter(class_group_id=int(cg))
     from apps.core.pagination import paginate
 
@@ -265,7 +265,7 @@ def models_page(request):
                              detail=f"Executou validação do modelo {run.name}: {run.get_status_display()}")
             messages.success(request, f"Validação executada: {run.get_status_display()}.")
         elif action in ("aprovar", "desativar") and user.role == Role.DIRECAO.value:
-            run = get_object_or_404(ModelRun, pk=request.POST.get("id"), school=user.school)
+            run = get_object_or_404(ModelRun, pk=as_id(request.POST.get("id")), school=user.school)
             if action == "aprovar" and run.status != ModelRun.Status.EXPERIMENTAL:
                 messages.error(request, "Só um modelo validado tecnicamente (experimental) pode ser aprovado.")
             else:

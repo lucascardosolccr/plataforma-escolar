@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from apps.core.params import id_param
+from apps.core.params import digits, id_param, safe_next
 from apps.core.models import Role, audit_trail, create_audit_log
 from apps.core.pagination import Sort, paginate
 from apps.core.uploads import attachment_content_type
@@ -156,19 +156,12 @@ def notification_read_selected(request):
 
     Só as do próprio usuário: um id alheio na lista é ignorado em silêncio.
     """
-    ids = [int(i) for i in request.POST.getlist("ids") if i.isdigit()][:200]
+    ids = [int(i) for i in request.POST.getlist("ids") if digits(i)][:200]
     count = Notification.objects.filter(user=request.user, pk__in=ids, is_read=False).update(
         is_read=True, read_at=timezone.now()
     )
     messages.success(request, f"{count} notificação(ões) marcada(s) como lida(s).")
-    return redirect(request.POST.get("next") if _is_safe_next(request) else "communication:notification_list")
-
-
-def _is_safe_next(request):
-    from django.utils.http import url_has_allowed_host_and_scheme
-
-    nxt = request.POST.get("next", "")
-    return bool(nxt) and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()})
+    return redirect(safe_next(request, "communication:notification_list"))
 
 
 @require_POST
@@ -476,7 +469,7 @@ def request_create(request):
     initial = {}
     if request.GET.get("categoria") in dict(ServiceRequest.Category.choices):
         initial["category"] = request.GET["categoria"]
-    if request.GET.get("estudante", "").isdigit():
+    if digits(request.GET.get("estudante", "")):
         initial["student"] = int(request.GET["estudante"])
     if initial.get("category") == ServiceRequest.Category.LGPD:
         initial.setdefault("title", "Pedido sobre dados pessoais")

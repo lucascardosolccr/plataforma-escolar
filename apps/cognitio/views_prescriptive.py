@@ -13,6 +13,7 @@ from django.utils import timezone
 from apps.academics.models import ClassGroup, Subject
 from apps.core.models import Role, create_audit_log
 from apps.core.pagination import paginate
+from apps.core.params import digits
 from apps.curriculum.models import CurriculumItem
 from apps.registry.models import Enrollment, Student
 
@@ -96,7 +97,7 @@ def intervention_create(request):
     """Planejar intervenção a partir de um alerta, de uma habilidade da turma ou do zero."""
     user = request.user
     alert = None
-    if request.GET.get("alerta", "").isdigit():
+    if digits(request.GET.get("alerta", "")):
         from .views_intel import _alerts_visible
 
         alert = get_object_or_404(_alerts_visible(user), pk=int(request.GET["alerta"]))
@@ -118,7 +119,7 @@ def intervention_create(request):
     recs = recommend(item, user.school, "", error_types_for(chosen, item), chosen)
     strategy = None
     sid = request.POST.get("strategy") or request.GET.get("estrategia")
-    if sid and sid.isdigit():
+    if sid and digits(sid):
         strategy = get_object_or_404(InterventionStrategy.objects.filter(Q(school__isnull=True) | Q(school=user.school)),
                                      pk=int(sid))
     elif recs:
@@ -127,7 +128,7 @@ def intervention_create(request):
                "review_on": timezone.localdate() + datetime.timedelta(days=14)}
     if request.GET.get("tipo") in LearningIntervention.Kind.values:
         initial["kind"] = request.GET["tipo"]
-    elif (request.GET.get("alvo") or "").isdigit() and request.GET["alvo"] != str(item.pk):
+    elif digits(request.GET.get("alvo") or "") and request.GET["alvo"] != str(item.pk):
         initial["kind"] = LearningIntervention.Kind.PREREQUISITE  # trabalha um pré-requisito da competência-alvo
     if strategy:
         initial.update(title=f"{strategy.title} — {item.code}", objective=strategy.objective,
@@ -137,7 +138,7 @@ def intervention_create(request):
     # Plano de recuperação a partir da análise de lacunas (Prompt 17, §10): competência-alvo, pré-requisitos a
     # verificar e evidências que fundamentam, calculados dos dados (nunca digitados pela URL).
     target = None
-    if (request.GET.get("alvo") or "").isdigit():
+    if digits(request.GET.get("alvo") or ""):
         target = CurriculumItem.objects.filter(CurriculumItem.visible_q(user.school),
                                                pk=int(request.GET["alvo"])).first()
     if target and len(chosen) == 1 and target.pk != item.pk:

@@ -21,6 +21,7 @@ from datetime import date, timedelta
 from django.db.models import Count, Max, Q
 from django.utils import timezone
 
+from apps.core.params import digits
 from apps.pedagogy.models import (
     AbsenceJustification,
     Activity,
@@ -148,7 +149,7 @@ def resolve_period(params, school):
         )
         start = min(first, today) if first else today.replace(year=today.year - 5)
         return Period(start, today, preset, "Todo o histórico")
-    if preset.startswith("p") and preset[1:].isdigit():
+    if preset.startswith("p") and digits(preset[1:]):
         periods = _calendar_periods(school)
         for i, p in enumerate(periods):
             if p.pk == int(preset[1:]):

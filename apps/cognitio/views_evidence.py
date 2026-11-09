@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from apps.academics.models import ClassGroup, Subject
 from apps.core.models import create_audit_log
+from apps.core.params import as_id, digits
 from apps.registry.models import Enrollment
 
 from . import access
@@ -39,7 +40,7 @@ def questions(request, evaluation_id):
     user = request.user
     ev = _evaluation_for_teacher(user, evaluation_id)
     edit_id = request.GET.get("editar") or request.POST.get("question_id")
-    instance = get_object_or_404(Question, pk=edit_id, evaluation=ev) if edit_id else None
+    instance = get_object_or_404(Question, pk=as_id(edit_id), evaluation=ev) if edit_id else None
     if request.method == "POST" and request.POST.get("_delete") and instance:
         n = instance.number
         instance.delete()
@@ -214,7 +215,7 @@ def _observation_rows(form, students, request):
     from .models import MasteryScale, SkillEvidence
 
     raw = request.POST.get("item") or request.GET.get("item") or ""
-    item = form.fields["item"].queryset.filter(pk=int(raw)).first() if raw.isdigit() else None
+    item = form.fields["item"].queryset.filter(pk=int(raw)).first() if digits(raw) else None
     chosen = set(request.POST.getlist("students")) if request.method == "POST" else set(request.GET.getlist("estudante"))
     states = {}
     if item is not None:

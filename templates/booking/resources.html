@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Espaços e equipamentos — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'booking:agenda' %}" class="back-link">{% icon "arrow-left" %}Reservas</a>
+    <h1>Espaços e equipamentos</h1>
+    <p>O que pode ser reservado. Cada equipamento é uma unidade: três projetores são três itens, cada um com a sua agenda.</p>
+  </div>
+</div>
+<div class="card mb-3"><ul class="feed">
+  {% for r in resources %}
+  <li class="feed-item"><div class="feed-body flex-grow-1">
+    <p class="feed-title">{{ r.name }}{% if not r.active %} · <span class="text-body-secondary">fora de uso</span>{% endif %}</p>
+    <p class="feed-meta">{{ r.get_kind_display }}{% if r.notes %} · {{ r.notes }}{% endif %}</p>
+  </div><a class="btn btn-outline-secondary btn-sm" href="{% url 'booking:resource_edit' r.pk %}">{% icon "pencil" %}Editar</a></li>
+  {% empty %}
+  <li><div class="empty-state py-4">{% icon "layers" %}<strong>Nada cadastrado ainda</strong><span>Comece pela sala de informática, a quadra ou o projetor.</span></div></li>
+  {% endfor %}
+</ul></div>
+<section class="card" aria-labelledby="h-novo"><div class="card-body">
+  <h2 id="h-novo" class="h6">Cadastrar espaço ou equipamento</h2>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include "partials/_form_fields.html" with f=form %}
+    <button class="btn btn-primary" type="submit">{% icon "plus" %}Cadastrar</button>
+  </form>
+</div></section>
+{% endblock %}

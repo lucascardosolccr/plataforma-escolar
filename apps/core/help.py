@@ -341,6 +341,20 @@ GUIDES = [
          "care:home"),
         ("É dado de saúde de criança: use só para o cuidado em sala e não compartilhe a lista.", None),
     ]),
+    # Reservas
+    ("Reservar a sala de informática, a quadra ou um equipamento", "calendar-check",
+     (PROFESSOR, COORDENACAO, DIRECAO, SECRETARIA), [
+        ("Em Reservas, escolha o dia e veja o que está livre.", "booking:agenda"),
+        ("Use “Reservar” na linha do espaço, com o horário e, se quiser, a turma. Horário ocupado é recusado com "
+         "o nome de quem reservou.", None),
+        ("Mudou de ideia? Cancele em “Minhas próximas reservas”.", None),
+    ]),
+    ("Cadastrar os espaços e equipamentos que podem ser reservados", "settings",
+     (DIRECAO, COORDENACAO, SECRETARIA, ADMIN), [
+        ("Em Reservas, abra “Espaços e equipamentos” e cadastre cada um (três projetores são três itens).",
+         "booking:resources"),
+        ("Para manutenção, desmarque “disponível para reserva”.", None),
+    ]),
     # Dados pessoais e indicadores
     ("Pedir acesso, correção ou eliminação de dados pessoais (LGPD)", "shield", (RESPONSAVEL,), [
         ("Em Solicitações, use “Pedido sobre dados pessoais” e escolha o que você quer.",

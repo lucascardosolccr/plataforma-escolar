@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ resource.name }} — Espaços e equipamentos — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url "booking:resources" as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Espaços e equipamentos" heading=resource.name %}
+  <p class="form-lead">Desmarque “disponível para reserva” para tirar de uso (manutenção, por exemplo). As reservas já feitas continuam; cancele-as na agenda se for preciso.</p>
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Salvar" hint="" %}
+  </form>
+</div>
+{% endblock %}

@@ -97,6 +97,7 @@ INSTALLED_APPS = [
     "apps.study",
     "apps.gate",
     "apps.care",
+    "apps.booking",
 ]
 
 MIDDLEWARE = [

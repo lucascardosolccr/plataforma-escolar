@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Reservas — {{ day|date:"d/m/Y" }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Reservas de espaços e equipamentos</h1>
+    <p>{% if is_today %}Hoje{% else %}{{ day|date:"l, d/m/Y"|capfirst }}{% endif %}: quem reservou a sala de informática, a quadra, o laboratório ou um equipamento, e em que horário.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-outline-secondary" href="?dia={{ prev|date:'Y-m-d' }}">{% icon "arrow-left" %}Dia anterior</a>
+    <a class="btn btn-outline-secondary" href="?dia={{ next|date:'Y-m-d' }}">Dia seguinte</a>
+    {% if can_manage %}<a class="btn btn-outline-secondary" href="{% url 'booking:resources' %}">{% icon "settings" %}Espaços e equipamentos</a>{% endif %}
+    {% if can_book %}<a class="btn btn-primary" href="{% url 'booking:create' %}?dia={{ day|date:'Y-m-d' }}">{% icon "plus" %}Nova reserva</a>{% endif %}
+  </div>
+</div>
+
+<form method="get" class="filter-bar mb-3" aria-label="Escolher o dia">
+  <div class="filter-field"><label for="dia">Dia</label><input type="date" id="dia" name="dia" value="{{ day|date:'Y-m-d' }}" class="form-control form-control-sm"></div>
+  <div class="filter-field"><button type="submit" class="btn btn-outline-secondary btn-sm">Ver</button></div>
+</form>
+
+<div class="card mb-3"><div class="table-responsive"><table class="table align-middle mb-0 table-stack">
+  <thead><tr><th scope="col">Espaço ou equipamento</th><th scope="col">Reservas do dia</th><th scope="col"><span class="visually-hidden">Ações</span></th></tr></thead>
+  <tbody>
+    {% for row in rows %}<tr>
+      <th scope="row" data-label="Espaço ou equipamento">{{ row.r.name }}<span class="d-block small text-body-secondary fw-normal">{{ row.r.get_kind_display }}{% if row.r.notes %} · {{ row.r.notes }}{% endif %}</span></th>
+      <td data-label="Reservas do dia">{% for b in row.bookings %}<span class="d-block"><strong>{{ b.start|time:"H:i" }}–{{ b.end|time:"H:i" }}</strong> · {{ b.booked_by.get_full_name|default:b.booked_by.username|default:"—" }}{% if b.class_group %} · {{ b.class_group.name }}{% endif %}{% if b.purpose %} · {{ b.purpose }}{% endif %}</span>{% empty %}<span class="text-body-secondary">Livre o dia todo</span>{% endfor %}</td>
+      <td data-label="Ações">{% if can_book %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'booking:create' %}?dia={{ day|date:'Y-m-d' }}&amp;recurso={{ row.r.pk }}">Reservar</a>{% endif %}</td>
+    </tr>{% empty %}<tr><td colspan="3"><div class="empty-state py-4">{% icon "layers" %}<strong>Nenhum espaço ou equipamento cadastrado</strong><span>{% if can_manage %}Cadastre em “Espaços e equipamentos”.{% else %}Peça à direção ou à secretaria para cadastrar.{% endif %}</span></div></td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+
+{% if can_book %}
+<section class="card mb-3" aria-labelledby="h-minhas"><div class="card-body">
+  <h2 id="h-minhas" class="h6">Minhas próximas reservas</h2>
+  <ul class="list-unstyled mb-0">{% for b in mine %}<li class="py-1 border-bottom d-flex flex-wrap gap-2 align-items-center"><span class="flex-grow-1">{{ b.day|date:"d/m" }} · {{ b.start|time:"H:i" }}–{{ b.end|time:"H:i" }} · {{ b.resource.name }}{% if b.class_group %} · {{ b.class_group.name }}{% endif %}</span><form method="post" action="{% url 'booking:cancel' b.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary btn-sm">Cancelar</button></form></li>{% empty %}<li class="text-body-secondary">Nenhuma reserva sua daqui para a frente.</li>{% endfor %}</ul>
+</div></section>
+{% endif %}
+
+{% if can_manage and day_bookings %}
+<section class="card" aria-labelledby="h-todas"><div class="card-body">
+  <h2 id="h-todas" class="h6">Cancelar uma reserva do dia</h2>
+  <p class="small text-body-secondary">Quem cuida dos espaços pode cancelar qualquer reserva; a pessoa que reservou recebe um aviso.</p>
+  <ul class="list-unstyled mb-0">{% for b in day_bookings %}<li class="py-1 border-bottom d-flex flex-wrap gap-2 align-items-center"><span class="flex-grow-1">{{ b.resource.name }} · {{ b.start|time:"H:i" }}–{{ b.end|time:"H:i" }} · {{ b.booked_by.get_full_name|default:b.booked_by.username|default:"—" }}</span><form method="post" action="{% url 'booking:cancel' b.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary btn-sm">Cancelar</button></form></li>{% endfor %}</ul>
+</div></section>
+{% endif %}
+{% endblock %}

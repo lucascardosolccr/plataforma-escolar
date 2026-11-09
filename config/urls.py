@@ -24,6 +24,7 @@ urlpatterns = [
     path("", include("apps.cognitio.urls")),
     path("", include("apps.gate.urls")),
     path("", include("apps.care.urls")),
+    path("", include("apps.booking.urls")),
 ]
 
 # O servidor de desenvolvimento (runserver) só serve arquivos estáticos quando

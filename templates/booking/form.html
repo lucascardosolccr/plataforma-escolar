@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Nova reserva — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url "booking:agenda" as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Reservas" heading="Nova reserva" %}
+  <p class="form-lead">Reserve com até 90 dias de antecedência. Horários que só se encostam (8h–9h e 9h–10h) cabem no mesmo dia.</p>
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Reservar" hint="" %}
+  </form>
+</div>
+{% endblock %}

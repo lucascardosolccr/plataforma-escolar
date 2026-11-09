@@ -114,6 +114,8 @@ ITEMS = {
                            ("student_import", "student_photo_batch"), "Planilha Excel e fotos em lote"),
     "registration_cfg": Item("Cadastro pelas famílias", "registration_settings", "sliders-horizontal",
                              ("registration_settings",), "O que a família pode cadastrar"),
+    "booking": Item("Reservas", "booking:agenda", "calendar-check", ("booking:",),
+                    "Sala de informática, quadra, laboratório e equipamentos"),
     "care": Item("Saúde e retirada", "care:home", "user-check", ("care:",),
                  "Ficha de saúde, quem pode buscar e saídas antecipadas"),
     "gate_station": Item("Portaria", "gate:station", "id-card", ("gate:station", "gate:today", "gate:settings"),
@@ -282,7 +284,7 @@ LAYOUT = {
     PROFESSOR: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Sala de aula", ["classrooms", "lesson_plans", "diary", "curriculum", "cognitio", "attendance", "evaluations",
-                          "exam_prep", "library", "activities", "rubrics", "prints_mine", "works"]),
+                          "exam_prep", "library", "activities", "rubrics", "prints_mine", "works", "booking"]),
         ("Acompanhamento", ["occurrences", "observations", "support_guidance", "justifications", "care"]),
         COMMUNICATION_STAFF,
         ("Análises", ["teacher_bi", "subject_bi", "reports", "methodology", "norms"]),
@@ -293,7 +295,7 @@ LAYOUT = {
                         "enrollments", "documents", "gate_cards", "gate_station", "care", "justifications",
                         "active_search", "support"]),
         ("Acadêmico", ["classes", "subjects", "years", "official_calendar", "assignments", "teacher_perms"]),
-        ("Pedagógico", ["evaluations", "activities", "prints_queue", "works", "attendance", "occurrences"]),
+        ("Pedagógico", ["evaluations", "activities", "prints_queue", "works", "attendance", "occurrences", "booking"]),
         COMMUNICATION_STAFF,
         ("Análises", ["secretaria_panel", "subject_bi", "quality", "reports", "methodology", "norms"]),
         ("Configuração", ["config", "registration_cfg"]),
@@ -301,7 +303,7 @@ LAYOUT = {
     COORDENACAO: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Coordenação", ["coord_panel", "lesson_plans", "diary", "curriculum", "cognitio", "prints_queue",
-                         "coord_records", "gate_station", "care"]),
+                         "coord_records", "gate_station", "care", "booking"]),
         ("Pedagógico", ["students", "evaluations", "exam_prep", "library", "activities", "works", "attendance",
                         "occurrences", "observations", "plans", "support", "justifications",
                         "active_search"]),
@@ -312,7 +314,7 @@ LAYOUT = {
     DIRECAO: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Coordenação", ["coord_panel", "lesson_plans", "diary", "curriculum", "cognitio", "prints_queue",
-                         "coord_designations", "gate_station", "gate_cards", "care"]),
+                         "coord_designations", "gate_station", "gate_cards", "care", "booking"]),
         ("Análises", ["institutional", "goals", "subject_bi", "quality", "reports", "methodology", "norms"]),
         ("Pedagógico", ["students", "evaluations", "exam_prep", "library", "activities", "works", "attendance",
                         "occurrences", "observations", "plans", "support", "justifications",
@@ -324,7 +326,7 @@ LAYOUT = {
     ADMIN: [
         (None, ["home", "pending", "calendar", "schedule", "menu"]),
         ("Administração", ["schools", "team_invites", "users", "coord_designations", "config", "registration_cfg",
-                           "privacy_cfg", "notif_rules", "error_log"]),
+                           "privacy_cfg", "notif_rules", "error_log", "booking"]),
         ("Cadastro", ["students", "applications", "student_import", "photos", "guardians", "staff_links",
                       "enrollments", "documents", "gate_cards", "gate_station", "care"]),
         ("Acadêmico", ["classes", "subjects", "years", "official_calendar", "assignments", "teacher_perms"]),

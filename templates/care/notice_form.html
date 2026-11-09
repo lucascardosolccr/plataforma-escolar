@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Avisar saída antecipada — {{ student.full_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url "care:pickups" student.pk as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Quem pode buscar" heading="Avisar saída antecipada de "|add:student.first_name %}
+  <p class="form-lead">A portaria vê o aviso no dia e libera {{ student.first_name }} para quem você indicar. Outra pessoa precisa estar antes na <a href="{{ back }}">lista de quem pode buscar</a>.</p>
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Avisar a escola" hint="" %}
+  </form>
+</div>
+{% endblock %}

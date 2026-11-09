@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Alertas de saúde — {{ cg.name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'care:home' %}" class="back-link">{% icon "arrow-left" %}Saúde e retirada</a>
+    <h1>Alertas de saúde — {{ cg.name }}</h1>
+    <p>{{ records|length }} de {{ total }} estudante{{ total|pluralize }} com algo que a equipe precisa saber em sala. Quem não aparece não tem alerta ou ainda não tem ficha preenchida pela família.</p>
+  </div>
+  <div class="page-actions"><button type="button" class="btn btn-outline-secondary" data-print>{% icon "printer" %}Imprimir</button></div>
+</div>
+<div class="card"><div class="table-responsive"><table class="table align-middle mb-0 table-stack">
+  <thead><tr><th scope="col">Estudante</th><th scope="col">Alergias</th><th scope="col">Alimentação</th><th scope="col">Condições</th><th scope="col">O que fazer numa crise</th></tr></thead>
+  <tbody>
+    {% for r in records %}<tr>
+      <th scope="row" data-label="Estudante"><a href="{% url 'care:health' r.student.pk %}">{{ r.student.full_name }}</a></th>
+      <td data-label="Alergias">{{ r.allergies|linebreaksbr|default:"—" }}</td>
+      <td data-label="Alimentação">{% if r.diet %}{{ r.get_diet_display }}{% if r.diet_notes %}: {{ r.diet_notes }}{% endif %}{% else %}—{% endif %}</td>
+      <td data-label="Condições">{{ r.conditions|linebreaksbr|default:"—" }}</td>
+      <td data-label="O que fazer numa crise">{{ r.crisis_plan|linebreaksbr|default:"—" }}</td>
+    </tr>{% empty %}<tr><td colspan="5" class="text-body-secondary">Nenhum alerta de saúde nesta turma.</td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+<p class="small text-body-secondary mt-3">Dado de saúde de criança e adolescente (LGPD, art. 11 e art. 14): use só para o cuidado em sala. Não fotografe nem compartilhe esta lista; a versão impressa deve ficar em local de acesso da equipe e ser descartada ao fim do ano.</p>
+{% endblock %}

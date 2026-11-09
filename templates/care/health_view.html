@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Ficha de saúde — {{ student.full_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'care:home' %}" class="back-link">{% icon "arrow-left" %}Saúde e retirada</a>
+    <h1>Ficha de saúde de {{ student.full_name }}</h1>
+    <p>{% if record %}Atualizada em {{ record.updated_at|date:"d/m/Y" }}{% if record.updated_by %} por {{ record.updated_by.get_full_name|default:record.updated_by.username }}{% endif %}.{% else %}A família ainda não preencheu a ficha.{% endif %}{% if not full %} Você vê o que importa em sala; contatos e remédios ficam com a secretaria.{% endif %}</p>
+  </div>
+  {% if can_edit %}<div class="page-actions"><a class="btn btn-primary" href="{% url 'care:health_edit' student.pk %}">{% icon "pencil" %}{% if record %}Atualizar{% else %}Preencher{% endif %}</a></div>{% endif %}
+</div>
+{% if record %}
+<div class="card"><div class="card-body"><dl class="row mb-0">
+  <dt class="col-sm-4">Alergias</dt><dd class="col-sm-8">{{ record.allergies|linebreaksbr|default:"Nenhuma informada" }}</dd>
+  <dt class="col-sm-4">Restrição alimentar</dt><dd class="col-sm-8">{{ record.get_diet_display }}{% if record.diet_notes %} — {{ record.diet_notes }}{% endif %}</dd>
+  <dt class="col-sm-4">Condições de saúde</dt><dd class="col-sm-8">{{ record.conditions|linebreaksbr|default:"Nenhuma informada" }}</dd>
+  <dt class="col-sm-4">O que fazer numa crise</dt><dd class="col-sm-8">{{ record.crisis_plan|linebreaksbr|default:"—" }}</dd>
+  {% if full %}
+  <dt class="col-sm-4">Medicamentos de uso contínuo</dt><dd class="col-sm-8">{{ record.medications|linebreaksbr|default:"Nenhum informado" }}</dd>
+  <dt class="col-sm-4">Plano de saúde</dt><dd class="col-sm-8">{{ record.insurance|default:"—" }}</dd>
+  <dt class="col-sm-4">Pronto atendimento numa emergência</dt><dd class="col-sm-8">{% if record.emergency_transport %}Autorizado pela família, se ninguém for encontrado{% else %}Não autorizado: a escola chama a família e o serviço de emergência (SAMU 192){% endif %}</dd>
+  <dt class="col-sm-4">Contatos de emergência</dt><dd class="col-sm-8">{% for c in contacts %}<span class="d-block">{{ forloop.counter }}. {{ c.name }} ({{ c.relationship }}) · {{ c.phone }}</span>{% empty %}Nenhum informado{% endfor %}</dd>
+  <dt class="col-sm-4">Consentimento</dt><dd class="col-sm-8">{% if record.consent_at %}{{ record.consent_at|date:"d/m/Y H:i" }}{% if record.consent_by %} · {{ record.consent_by.get_full_name|default:record.consent_by.username }}{% endif %}{% else %}—{% endif %}</dd>
+  {% endif %}
+</dl></div></div>
+{% else %}
+<div class="card"><div class="empty-state py-4">{% icon "file-text" %}<strong>Sem ficha de saúde</strong><span>{% if can_edit %}Preencha para que a escola saiba de alergias, condições de saúde e quem chamar numa emergência.{% else %}Peça à secretaria para lembrar a família de preencher.{% endif %}</span></div></div>
+{% endif %}
+{% endblock %}

@@ -13,6 +13,7 @@
     {% if mode == "semana" %}
     <form method="post" action="{% url 'rotina:menu_copy_week' %}">{% csrf_token %}<input type="hidden" name="semana" value="{{ monday|date:'Y-m-d' }}"><button class="btn btn-outline-secondary" type="submit">Copiar semana anterior</button></form>
     {% endif %}
+    <a class="btn btn-outline-secondary" href="{% url 'care:food' %}">Restrições alimentares{% if food_alerts %} ({{ food_alerts }}){% endif %}</a>
     <a class="btn btn-primary" href="{% url 'rotina:menu_edit' %}?data={{ today|date:'Y-m-d' }}">{% icon "pencil" %}Editar cardápio</a>
   </div>
   {% endif %}

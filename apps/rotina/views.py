@@ -41,6 +41,12 @@ def menu_view(request):
     school = request.user.school
     ctx = {"today": today, "mode": mode, "can_manage": can_manage_menu(request.user),
            "tomorrow": today + timedelta(days=1)}
+    if ctx["can_manage"]:
+        from apps.care.models import HealthRecord
+
+        # Quem cuida do cardápio vê quantos estudantes têm restrição alimentar ou alergia informada.
+        ctx["food_alerts"] = (HealthRecord.objects.filter(school=school, student__status="ativo")
+                              .exclude(diet="", allergies="").count())
     if mode == "mes":
         ref = _parse((request.GET.get("mes") or "") + "-01", today.replace(day=1))
         first = ref.replace(day=1)

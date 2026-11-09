@@ -15,6 +15,12 @@
   </div>
 </div>
 
+{% if notices %}
+<section class="card mb-3" aria-labelledby="h-saidas"><div class="card-body">
+  <h2 id="h-saidas" class="h6">Saídas antecipadas avisadas pelas famílias</h2>
+  <ul class="list-unstyled mb-0">{% for n in notices %}<li class="py-1 border-bottom d-flex flex-wrap gap-2 align-items-center"><span class="flex-grow-1"><strong>{{ n.time|time:"H:i" }}</strong> · {{ n.student.full_name }} · busca: {{ n.who }}</span><a class="btn btn-primary btn-sm" href="{% url 'care:register' n.student.pk %}">Registrar a retirada</a></li>{% endfor %}</ul>
+</div></section>
+{% endif %}
 {% if mismatch %}
 <section class="card mb-3 gate-result is-error" aria-labelledby="h-mis"><div class="card-body">
   <h2 id="h-mis" class="h6">Entraram na escola e estão com falta na chamada</h2>

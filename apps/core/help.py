@@ -322,6 +322,25 @@ GUIDES = [
         ("Ali também ficam as entradas, as saídas e os atrasos. Os avisos de chegada podem ser silenciados em "
          "Notificações → Preferências.", None),
     ]),
+    # Saúde e retirada
+    ("Preencher a ficha de saúde e dizer quem pode buscar", "user-check", (RESPONSAVEL,), [
+        ("Em Saúde e retirada, use “Preencher a ficha de saúde”: alergias, alimentação, remédios, o que fazer "
+         "numa crise e contatos de emergência.", "care:home"),
+        ("Em “Quem pode buscar”, inclua avós, tios ou o transporte escolar, com o documento que a portaria vai "
+         "conferir. Os responsáveis com vínculo sempre podem.", None),
+        ("Vai buscar mais cedo? Use “Avisar saída antecipada”: a portaria vê o aviso no dia.", None),
+    ]),
+    ("Registrar a retirada de um estudante", "user-check", (SECRETARIA, COORDENACAO, DIRECAO, ADMIN), [
+        ("Em Saúde e retirada (ou em Portaria hoje), veja as saídas avisadas e busque o estudante.", "care:home"),
+        ("Escolha quem está buscando e confira o documento. A família recebe o aviso com o horário e o nome.", None),
+        ("Pessoa fora da lista: só libere depois de falar com um responsável, e escreva com quem falou. A família "
+         "recebe um aviso importante.", None),
+    ]),
+    ("Ver os alertas de saúde da turma", "user-check", (PROFESSOR, COORDENACAO, DIRECAO, SECRETARIA), [
+        ("Em Saúde e retirada, abra a turma: alergias, alimentação, condições e o que fazer numa crise.",
+         "care:home"),
+        ("É dado de saúde de criança: use só para o cuidado em sala e não compartilhe a lista.", None),
+    ]),
     # Dados pessoais e indicadores
     ("Pedir acesso, correção ou eliminação de dados pessoais (LGPD)", "shield", (RESPONSAVEL,), [
         ("Em Solicitações, use “Pedido sobre dados pessoais” e escolha o que você quer.",

@@ -304,8 +304,14 @@ def today(request):
                      "late": [entries[s.pk] for s in arrived if entries[s.pk].late],
                      "missing": [s for s in studs if s.pk not in entries] if started else [],
                      "left": sum(1 for s in arrived if s.pk in exits)})
+    from apps.care.models import DepartureNotice
+
+    notices = (DepartureNotice.objects.filter(school=user.school, day=day, status=DepartureNotice.Status.PENDING,
+                                              student__enrollments__class_group__in=classes,
+                                              student__enrollments__status="ativo")
+               .select_related("student", "pickup", "created_by").distinct())
     return render(request, "gate/today.html", {
-        "day": day, "rows": rows, "events": events, "cfg": cfg,
+        "day": day, "rows": rows, "events": events, "cfg": cfg, "notices": notices,
         "mismatch": services.entered_but_absent(user.school, day, [c.pk for c in classes]),
         "totals": {"arrived": len(entries), "late": sum(1 for e in entries.values() if e.late),
                    "left": len(exits)},

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Quem pode buscar — {{ student.full_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'care:home' %}" class="back-link">{% icon "arrow-left" %}Saúde e retirada</a>
+    <h1>Quem pode buscar {{ student.full_name }}</h1>
+    <p>Os responsáveis com vínculo aprovado sempre podem. As demais pessoas precisam estar nesta lista; a escola confere o documento na saída. Para alguém fora da lista, a escola liga para a família antes de liberar.</p>
+  </div>
+  <div class="page-actions">
+    {% if can_manage %}<a class="btn btn-outline-secondary" href="{% url 'care:notice_create' student.pk %}">Avisar saída antecipada</a>{% endif %}
+    {% if can_register %}<a class="btn btn-primary" href="{% url 'care:register' student.pk %}">Registrar a retirada</a>{% endif %}
+  </div>
+</div>
+
+<section class="card mb-3" aria-labelledby="h-lista"><div class="card-body">
+  <h2 id="h-lista" class="h6">Lista de quem pode buscar</h2>
+  <ul class="list-unstyled mb-0">
+    {% for g in guardians %}<li class="py-1 border-bottom">{{ g.get_full_name|default:g.username }} · responsável com vínculo</li>{% endfor %}
+    {% for row in people %}<li class="py-1 border-bottom d-flex flex-wrap gap-2 align-items-center">
+      <span class="flex-grow-1">{{ row.p.name }} · {{ row.p.relationship }} · {{ row.p.document_hint }}{% if row.p.phone %} · {{ row.p.phone }}{% endif %}{% if row.p.valid_until %} · {% if row.valid %}até {{ row.p.valid_until|date:"d/m/Y" }}{% else %}<strong>venceu em {{ row.p.valid_until|date:"d/m/Y" }}</strong>{% endif %}{% endif %}</span>
+      {% if can_manage %}<form method="post" action="{% url 'care:pickup_revoke' row.p.pk %}">{% csrf_token %}<button class="btn btn-outline-secondary btn-sm" type="submit">Tirar da lista</button></form>{% endif %}
+    </li>{% empty %}<li class="py-1 text-body-secondary">Nenhuma outra pessoa autorizada.</li>{% endfor %}
+  </ul>
+</div></section>
+
+{% if can_manage %}
+<section class="card mb-3" aria-labelledby="h-nova"><div class="card-body">
+  <h2 id="h-nova" class="h6">Autorizar outra pessoa</h2>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% include "partials/_form_fields.html" with f=form %}
+    <button class="btn btn-primary" type="submit">{% icon "plus" %}Incluir na lista</button>
+  </form>
+</div></section>
+{% endif %}
+
+<section class="card mb-3" aria-labelledby="h-avisos"><div class="card-body">
+  <h2 id="h-avisos" class="h6">Saídas antecipadas avisadas</h2>
+  <ul class="list-unstyled mb-0">{% for n in notices %}<li class="py-1 border-bottom d-flex flex-wrap gap-2 align-items-center"><span class="flex-grow-1">{{ n.day|date:"d/m/Y" }} às {{ n.time|time:"H:i" }} · busca: {{ n.who }}{% if n.reason %} · {{ n.reason }}{% endif %} · {{ n.get_status_display }}</span>{% if can_manage and n.status == "aguardando" %}<form method="post" action="{% url 'care:notice_cancel' n.pk %}">{% csrf_token %}<button class="btn btn-outline-secondary btn-sm" type="submit">Cancelar aviso</button></form>{% endif %}</li>{% empty %}<li class="text-body-secondary">Nenhum aviso.</li>{% endfor %}</ul>
+</div></section>
+
+<section class="card" aria-labelledby="h-hist"><div class="card-body">
+  <h2 id="h-hist" class="h6">Últimas retiradas</h2>
+  <ul class="list-unstyled mb-0">{% for r in records %}<li class="py-1">{{ r.at|date:"d/m/Y H:i" }} · com {{ r.person_name }} · {{ r.get_kind_display }}{% if r.verification %} · confirmação: {{ r.verification }}{% endif %}</li>{% empty %}<li class="text-body-secondary">Nenhuma retirada registrada.</li>{% endfor %}</ul>
+</div></section>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Saúde e retirada — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Saúde e retirada</h1>
+    <p>A ficha de saúde ajuda a escola a cuidar do seu filho numa alergia, numa crise ou numa emergência. A lista de quem pode buscar é conferida a cada saída, e você recebe um aviso com o horário e com quem ele saiu.</p>
+  </div>
+</div>
+
+{% if notices %}
+<section class="card mb-3" aria-labelledby="h-avisos"><div class="card-body">
+  <h2 id="h-avisos" class="h6">Saídas antecipadas avisadas</h2>
+  <ul class="list-unstyled mb-0">{% for n in notices %}<li class="py-1">{{ n.student.first_name }} · {{ n.day|date:"d/m" }} às {{ n.time|time:"H:i" }} · busca: {{ n.who }}</li>{% endfor %}</ul>
+</div></section>
+{% endif %}
+
+<div class="card"><ul class="feed">
+  {% for r in rows %}
+  <li class="feed-item"><div class="feed-body flex-grow-1">
+    <p class="feed-title">{{ r.student.full_name }}</p>
+    <p class="feed-meta">{% if r.record %}Ficha de saúde atualizada em {{ r.record.updated_at|date:"d/m/Y" }}{% else %}Ficha de saúde ainda não preenchida{% endif %} · {{ r.pickups }} pessoa{{ r.pickups|pluralize }} autorizada{{ r.pickups|pluralize }} a buscar, além dos responsáveis</p>
+    <p class="mb-0 d-flex flex-wrap gap-2">
+      {% if r.record %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'care:health' r.student.pk %}">Ver a ficha de saúde</a>{% endif %}
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'care:health_edit' r.student.pk %}">{% if r.record %}Atualizar a ficha{% else %}Preencher a ficha de saúde{% endif %}</a>
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'care:pickups' r.student.pk %}">Quem pode buscar</a>
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'care:notice_create' r.student.pk %}">Avisar saída antecipada</a>
+    </p>
+  </div></li>
+  {% empty %}
+  <li><div class="empty-state py-4">{% icon "user-check" %}<strong>Nenhum estudante vinculado</strong><span>Quando a escola aprovar o vínculo com seu filho, ele aparece aqui.</span></div></li>
+  {% endfor %}
+</ul></div>
+<p class="small text-body-secondary mt-3">Quem vê a ficha: você, a secretaria, a direção e a coordenação. Os professores da turma veem só o que precisam em sala (alergias, alimentação, condições e o que fazer numa crise). O estudante não vê. Cada consulta da equipe fica registrada.</p>
+{% endblock %}

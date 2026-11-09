@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Saúde e retirada — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Saúde e retirada</h1>
+    <p>{% if is_team %}Saídas avisadas pelas famílias, retiradas registradas hoje e os alertas de saúde por turma.{% else %}Alertas de saúde dos estudantes das suas turmas: alergias, alimentação, condições e o que fazer numa crise.{% endif %}</p>
+  </div>
+  {% if is_team %}<div class="page-actions"><a class="btn btn-outline-secondary" href="{% url 'care:food' %}">Restrições alimentares</a></div>{% endif %}
+</div>
+
+{% if is_team %}
+<section class="card mb-3" aria-labelledby="h-saidas"><div class="card-body">
+  <h2 id="h-saidas" class="h6">Saídas antecipadas avisadas para hoje</h2>
+  <ul class="list-unstyled mb-0">
+    {% for n in notices %}<li class="py-1 border-bottom d-flex flex-wrap gap-2 align-items-center"><span class="flex-grow-1"><strong>{{ n.time|time:"H:i" }}</strong> · {{ n.student.full_name }} · busca: {{ n.who }}{% if n.reason %} · {{ n.reason }}{% endif %}</span><a class="btn btn-primary btn-sm" href="{% url 'care:register' n.student.pk %}">Registrar a retirada</a></li>
+    {% empty %}<li class="text-body-secondary">Nenhum aviso para hoje.</li>{% endfor %}
+  </ul>
+</div></section>
+
+<section class="card mb-3" aria-labelledby="h-reg"><div class="card-body">
+  <h2 id="h-reg" class="h6">Registrar a retirada de um estudante</h2>
+  <form method="get" class="d-flex flex-wrap gap-2" role="search">
+    <label for="q" class="visually-hidden">Nome do estudante</label>
+    <input id="q" name="q" value="{{ q }}" class="form-control flex-grow-1 w-auto" placeholder="Nome do estudante" autocomplete="off">
+    <button class="btn btn-outline-secondary" type="submit">{% icon "search" %}Buscar</button>
+  </form>
+  {% if q %}<ul class="list-unstyled mt-2 mb-0">{% for s in found %}<li class="py-1"><a href="{% url 'care:register' s.pk %}">{{ s.full_name }}</a> · <a href="{% url 'care:pickups' s.pk %}" class="small">quem pode buscar</a> · <a href="{% url 'care:health' s.pk %}" class="small">ficha de saúde</a></li>{% empty %}<li class="text-body-secondary">Nenhum estudante ativo com esse nome.</li>{% endfor %}</ul>{% endif %}
+</div></section>
+
+<section class="card mb-3" aria-labelledby="h-hoje"><div class="card-body">
+  <h2 id="h-hoje" class="h6">Retiradas registradas hoje</h2>
+  <ul class="list-unstyled mb-0">{% for p in pickups %}<li class="py-1">{{ p.at|time:"H:i" }} · {{ p.student.full_name }} com {{ p.person_name }} · {{ p.get_kind_display }}</li>{% empty %}<li class="text-body-secondary">Nenhuma retirada registrada hoje.</li>{% endfor %}</ul>
+</div></section>
+{% endif %}
+
+<section class="card" aria-labelledby="h-turmas"><div class="card-body">
+  <h2 id="h-turmas" class="h6">Alertas de saúde por turma</h2>
+  <ul class="list-unstyled mb-0 d-flex flex-wrap gap-2">{% for cg in classes %}<li><a class="summary-pill" href="{% url 'care:class_alerts' cg.pk %}">{{ cg.name }}</a></li>{% empty %}<li class="text-body-secondary">Nenhuma turma no seu alcance.</li>{% endfor %}</ul>
+</div></section>
+{% endblock %}

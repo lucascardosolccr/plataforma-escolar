@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Registrar a retirada — {{ student.full_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url "care:home" as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Saúde e retirada" heading="Retirada de "|add:student.full_name subheading="Confira o documento de quem está buscando antes de liberar. A família recebe o aviso com o horário e o nome." %}
+  {% if notice %}<div class="alert alert-info" role="status">{% icon "info" %}<div>A família avisou saída hoje às {{ notice.time|time:"H:i" }}: busca {{ notice.who }}{% if notice.reason %} ({{ notice.reason }}){% endif %}.</div></div>{% endif %}
+  {% if health and health.has_alert %}<div class="alert alert-warning" role="status">{% icon "triangle-alert" %}<div>{{ student.first_name }} tem alerta de saúde. <a href="{% url 'care:health' student.pk %}">Ver a ficha</a>.</div></div>{% endif %}
+  {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">
+      <fieldset>
+        <legend class="form-label fs-6">Quem está buscando?<span class="required-mark" aria-hidden="true"> *</span></legend>
+        {% for o in options %}
+        <div class="form-check"><input class="form-check-input" type="radio" name="quem" id="quem-{{ forloop.counter }}" value="{{ o.value }}"{% if o.checked %} checked{% endif %}><label class="form-check-label" for="quem-{{ forloop.counter }}">{{ o.label }}</label></div>
+        {% endfor %}
+      </fieldset>
+      <div class="row g-3 mt-1">
+        <div class="col-md-6"><label class="form-label" for="nome">Nome de quem está buscando (outra pessoa)</label><input class="form-control" id="nome" name="nome" maxlength="120" value="{{ post.nome|default:'' }}" autocomplete="off"></div>
+        <div class="col-md-6"><label class="form-label" for="confirmacao">Confirmação com a família (outra pessoa)</label><input class="form-control" id="confirmacao" name="confirmacao" maxlength="300" value="{{ post.confirmacao|default:'' }}" aria-describedby="confirmacao-ajuda" autocomplete="off"><div id="confirmacao-ajuda" class="form-text">Com quem da família você falou e por qual meio. Ex.: ligação para a mãe às 10h05.</div></div>
+      </div>
+    </div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Registrar a saída" hint="" %}
+  </form>
+</div>
+{% endblock %}

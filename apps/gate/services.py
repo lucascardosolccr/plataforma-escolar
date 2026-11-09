@@ -201,7 +201,12 @@ def _notify(event):
     url = reverse("gate:history", args=[st.pk])
     key = f"portaria:{event.kind}:{st.pk}:{event.day.isoformat()}"
     if event.kind == GateEvent.Kind.EXIT:
-        return notify_family(st, "saida_escola", f"{st.first_name} saiu da escola às {hour}", url=url,
+        from apps.care.models import PickupRecord
+
+        # Saída registrada pela tela de retirada: a família fica sabendo com quem o estudante saiu.
+        rec = PickupRecord.objects.filter(student=st, at__date=event.day).order_by("-at").first()
+        who = f" com {rec.person_name}" if rec else ""
+        return notify_family(st, "saida_escola", f"{st.first_name} saiu da escola às {hour}{who}", url=url,
                              dedupe_key=key)
     if event.late:
         return notify_family(st, "atraso_entrada",

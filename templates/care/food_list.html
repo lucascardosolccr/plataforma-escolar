@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Restrições alimentares e alergias — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'care:home' %}" class="back-link">{% icon "arrow-left" %}Saúde e retirada</a>
+    <h1>Restrições alimentares e alergias</h1>
+    <p>{{ total }} estudante{{ total|pluralize }} com restrição alimentar ou alergia informada pela família, por turma. Para a cozinha conferir o cardápio e as substituições.</p>
+  </div>
+  <div class="page-actions"><a class="btn btn-outline-secondary" href="{% url 'rotina:menu' %}">Cardápio</a></div>
+</div>
+{% for row in rows %}
+<section class="card mb-3" aria-labelledby="h-{{ row.cg.pk }}"><div class="card-body">
+  <h2 id="h-{{ row.cg.pk }}" class="h6">{{ row.cg.name }} · {{ row.records|length }}</h2>
+  <ul class="list-unstyled mb-0">{% for r in row.records %}<li class="py-1 border-bottom"><strong>{{ r.student.full_name }}</strong>{% if r.diet %} · {{ r.get_diet_display }}{% if r.diet_notes %}: {{ r.diet_notes }}{% endif %}{% endif %}{% if r.allergies %} · alergia: {{ r.allergies|truncatechars:160 }}{% endif %}</li>{% endfor %}</ul>
+</div></section>
+{% empty %}
+<div class="card"><div class="empty-state py-4">{% icon "circle-check" %}<strong>Nenhuma restrição informada</strong><span>Quando as famílias preencherem a ficha de saúde, as restrições aparecem aqui.</span></div></div>
+{% endfor %}
+{% endblock %}

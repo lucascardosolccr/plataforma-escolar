@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Ficha de saúde — {{ student.full_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url "care:home" as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Saúde e retirada" heading="Ficha de saúde de "|add:student.full_name %}
+  <p class="form-lead">Preencha só o que a escola precisa saber para cuidar de {{ student.first_name }}. Campos em branco ficam como "nenhum informado". Quem vê: {% if family %}você, {% endif %}a secretaria, a direção e a coordenação; os professores da turma veem alergias, alimentação, condições e o que fazer numa crise. O estudante não vê.</p>
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">
+      {% include "partials/_form_fields.html" with f=form %}
+      <fieldset class="mt-2">
+        <legend class="h6">Contatos de emergência</legend>
+        <p class="small text-body-secondary">Em ordem: quem a escola chama primeiro. Até {{ contacts|length }}.</p>
+        {% for c in contacts %}
+        {% if c.non_field_errors %}<div class="alert alert-danger" role="alert">{% for e in c.non_field_errors %}<div>Contato {{ forloop.parentloop.counter }}: {{ e }}</div>{% endfor %}</div>{% endif %}
+        <div class="row g-2 mb-2">
+          <div class="col-md-5"><label class="form-label small" for="{{ c.name.id_for_label }}">Contato {{ forloop.counter }}: nome</label><input class="form-control" id="{{ c.name.id_for_label }}" name="{{ c.name.html_name }}" value="{{ c.name.value|default:'' }}" maxlength="120"></div>
+          <div class="col-md-3"><label class="form-label small" for="{{ c.relationship.id_for_label }}">Parentesco</label><input class="form-control" id="{{ c.relationship.id_for_label }}" name="{{ c.relationship.html_name }}" value="{{ c.relationship.value|default:'' }}" maxlength="60"></div>
+          <div class="col-md-4"><label class="form-label small" for="{{ c.phone.id_for_label }}">Telefone</label><input class="form-control" id="{{ c.phone.id_for_label }}" name="{{ c.phone.html_name }}" value="{{ c.phone.value|default:'' }}" maxlength="30" inputmode="tel" autocomplete="off"></div>
+        </div>
+        {% endfor %}
+      </fieldset>
+    </div>
+    {% url "care:health" student.pk as cancel %}
+    {% include "partials/_form_actions.html" with cancel_url=cancel submit_label="Salvar a ficha" hint="" %}
+  </form>
+</div>
+{% endblock %}

@@ -153,13 +153,14 @@ def active_class(student):
 
 
 def is_school_day(school, day):
-    """Dia letivo pelo calendário oficial publicado; sem calendário, de segunda a sexta."""
-    from apps.school_calendar.services import current_year, is_published, school_days
+    """Dia letivo pelo calendário oficial publicado; sem calendário, de segunda a sexta dentro do ano letivo
+    (nas férias, o aviso "ainda sem entrada" ia às famílias de todos os estudantes)."""
+    from apps.school_calendar.services import current_year, in_school_year, is_published, school_days
 
     year = current_year(school)
     if is_published(year):
         return day in (school_days(year, day, day) or [])
-    return day.weekday() < 5
+    return day.weekday() < 5 and in_school_year(school, day)
 
 
 def lateness(school, class_group, when):

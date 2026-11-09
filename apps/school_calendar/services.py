@@ -25,6 +25,15 @@ def current_year(school):
     return SchoolYear.objects.filter(school=school, is_current=True).first()
 
 
+def in_school_year(school, day):
+    """O dia está dentro do ano letivo atual (entre o início e o fim cadastrados)? Sem ano atual ou sem as duas
+    datas, não há como saber, e vale ``True`` (o comportamento de antes)."""
+    year = current_year(school)
+    if year is None or not year.start_date or not year.end_date:
+        return True
+    return year.start_date <= day <= year.end_date
+
+
 def is_published(year):
     return bool(year) and CalendarPublication.objects.filter(school_year=year).exists()
 

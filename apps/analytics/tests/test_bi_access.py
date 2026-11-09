@@ -4,6 +4,7 @@ O Prompt 13 (§11) exige restrição no backend, não só na interface. Cada
 painel e cada exportação é aberto por todos os perfis relevantes.
 """
 
+import csv
 import io
 import zipfile
 from datetime import date
@@ -163,6 +164,16 @@ class ExportTests(BIAccessBase):
         self.assertIn("Painel da turma", texto)
         self.assertIn("Período: 01/01/2026 a 31/12/2026", texto)
         self.assertIn("Ausência de dado aparece em branco", texto)
+
+    def test_csv_never_starts_a_cell_with_a_formula(self):
+        # O título de seção era "== Resumo ==" (o Excel lia como fórmula e mostrava erro) e o cabeçalho com o
+        # nome do estudante não passava pela proteção contra fórmula.
+        self.status("secretaria", "/")
+        resp = self.client.get(reverse("analytics:student_export", args=[self.ana.pk, "csv"]) + Q)
+        rows = list(csv.reader(io.StringIO(resp.content.decode("utf-8-sig")), delimiter=";"))
+        self.assertIn(["[Resumo]"], rows)
+        self.assertFalse([c for r in rows for c in r if c[:1] in ("=", "+", "@")])
+        self.assertTrue(any(c.startswith("'=CMD Ana") for r in rows for c in r))
 
     def test_unknown_format_is_refused(self):
         self.status("secretaria", "/")

@@ -208,6 +208,25 @@ class AttendanceTests(BIBase):
         self.assertEqual(bi.student_report(self.ana, P)["attendance"]["limit_level"], "perto")
 
 
+    def test_period_signal_comes_with_the_school_year_situation(self):
+        # 4 faltas em 10 dias com chamada: o sinal do período diz "acima", mas no ano letivo (sem calendário
+        # publicado, 200 dias da LDB × 25% = 50 permitidas) ainda cabem 46. O painel mostra os dois, sem contradizer
+        # a Agenda e faltas.
+        for i in range(10):
+            self.attend(self.ana, date(2026, 3, 2) + timedelta(days=i), "falta" if i < 4 else "presente")
+        r = bi.student_report(self.ana, P)
+        a = r["attendance"]
+        self.assertEqual(a["limit_level"], "acima")
+        self.assertEqual((a["year_outlook"]["allowed"], a["year_outlook"]["left"]), (50, 46))
+        self.assertIn("No ano letivo: 4 de 50 falta(s) permitida(s)", a["year_outlook"]["sentence"])
+        self.assertIn("ainda cabem 46", a["year_outlook"]["sentence"])
+        insight = next(i for i in r["insights"] if "limite" in i["title"])
+        self.assertEqual(insight["title"], "Faltas do período acima do limite da escola")
+        self.assertIn("ainda cabem 46", insight["observed"])
+
+    def test_no_signal_no_extra_queries_for_the_year(self):
+        self.assertIsNone(bi.student_report(self.ana, P)["attendance"]["year_outlook"])
+
 class ActivityTests(BIBase):
     def act(self, deadline, title):
         return Activity.objects.create(

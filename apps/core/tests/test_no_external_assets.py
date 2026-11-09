@@ -93,6 +93,16 @@ class NoExternalAssetsTests(TestCase):
         self.assertNotContains(resp, "googleapis")
         self.assertNotContains(resp, "gsap")
 
+    def test_logged_in_pages_are_not_kept_by_the_browser(self):
+        # Computador compartilhado: depois de "Sair", o "Voltar" do navegador não pode reexibir dados de estudantes.
+        school = School.objects.create(name="Escola", code="e")
+        User.objects.create_user(username="sec", password="senha-forte-1", role=Role.SECRETARIA, school=school)
+        self.client.login(username="sec", password="senha-forte-1")
+        cc = self.client.get(reverse("home")).headers["Cache-Control"]
+        self.assertIn("no-store", cc)
+        self.assertIn("private", cc)
+        self.assertIn("no-store", self.client.get(reverse("student_list")).headers["Cache-Control"])
+
 
 class MessageColorTests(TestCase):
     """Sucesso aparecia amarelo e aviso aparecia vermelho (mapa deslocado)."""

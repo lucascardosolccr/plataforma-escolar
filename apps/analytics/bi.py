@@ -728,6 +728,7 @@ def student_report(student, period, *, show_class_comparison=False, show_observa
             "by_weekday": _weekday_absences(records) if len(records) >= 10 else [],
             "streak": _longest_streak(records),
             "absences": absences_list,
+            "year_outlook": _year_outlook(student) if att["limit_level"] else None,
         },
         "activities": {**act, "prev_rate": prev_act["delivery_rate"],
                        "delta": round(act["delivery_rate"] - prev_act["delivery_rate"], 1)
@@ -744,6 +745,27 @@ def student_report(student, period, *, show_class_comparison=False, show_observa
     report["insights"] = student_insights(student, report, show_observations=show_observations,
                                           only_subjects=only_subjects, shared_only=shared_only)
     return report
+
+
+def _year_outlook(student):
+    """Situação do ANO LETIVO (dias letivos do calendário × limite), a mesma da Agenda e faltas e dos avisos.
+
+    O sinal do painel compara as faltas com os dias que já têm chamada no período: no começo do ano, 2 faltas em
+    5 dias davam "acima do limite" enquanto a Agenda e faltas dizia que ainda cabiam dezenas. O painel mantém o
+    sinal preventivo, mas mostra junto o que vale para o ano."""
+    from apps.pedagogy.outlook import attendance_outlook
+
+    o = attendance_outlook(student)
+    if o is None:
+        return None
+    base = f"{o['total_days']} dias letivos" + (" (estimativa da LDB)" if o["estimated"] else "")
+    if o["left"] >= 0:
+        rest = f"ainda cabe{'m' if o['left'] != 1 else ''} {o['left']}"
+    else:
+        rest = f"{o['over']} acima do máximo"
+    sentence = (f"No ano letivo: {o['absences']} de {o['allowed']} falta(s) permitida(s) "
+                f"({_fmt(o['limit'])}% de {base}); {rest}.")
+    return {**o, "sentence": sentence}
 
 
 # --------------------------------------------------------------------------- #
@@ -796,10 +818,13 @@ def student_insights(student, report, *, show_observations=False, only_subjects=
             "anchor": "trajetoria",
         })
     if att["limit_level"]:
+        year = att.get("year_outlook")
         out.append({
             "kind": "atencao",
-            "title": "Faltas acima do limite da escola" if att["limit_level"] == "acima" else "Faltas perto do limite da escola",
-            "observed": f"{att['absent']} falta(s) em {att['total']} dia(s) com chamada ({_fmt(att['absence_percent'])}%); limite {_fmt(att['limit'])}%.",
+            "title": ("Faltas do período acima do limite da escola" if att["limit_level"] == "acima"
+                      else "Faltas do período perto do limite da escola"),
+            "observed": f"{att['absent']} falta(s) em {att['total']} dia(s) com chamada ({_fmt(att['absence_percent'])}%); "
+                        f"limite {_fmt(att['limit'])}%." + (f" {year['sentence']}" if year else ""),
             "rule": "Faltas ≥ 80% do limite de faltas configurado (ou acima dele).",
             "suggestion": "Contato com a família para entender as ausências e orientar sobre justificativas.",
             "anchor": "frequencia",

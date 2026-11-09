@@ -6,6 +6,7 @@ do usuário.
 """
 
 import csv
+import re
 from datetime import datetime
 
 from django.contrib import messages
@@ -52,9 +53,14 @@ def _parse_date(value):
 
 def _csv_safe(value):
     """Evita que um texto importado execute fórmula ao abrir o CSV no Excel."""
-    if isinstance(value, str) and value.startswith(("=", "+", "-", "@", "\t", "\r")):
+    if isinstance(value, str) and value.startswith(("=", "+", "-", "@", "\t", "\r")) and not _CSV_NUMBER.match(value):
         return "'" + value
     return value
+
+
+# Número já formatado por _csv_value ("-0,5"): fica número. Com o apóstrofo, uma variação negativa virava texto
+# ("'-0,5") e a soma da coluna no Excel deixava de funcionar.
+_CSV_NUMBER = re.compile(r"-?\d+(,\d+)?\Z")
 
 
 def _report_params(request, for_csv=False):
@@ -91,6 +97,21 @@ def _enforce_scope(user, report, params):
     if params["class_group"] is not None:
         if not can_view_class_dashboard(user, params["class_group"]):
             raise PermissionDenied("Turma fora do seu escopo de acesso.")
+
+
+def _missing_params(report, params):
+    """Filtros obrigatórios que faltam para gerar o relatório; a tela e o CSV usam a mesma regra."""
+    missing = []
+    if report.slug == "frequencia":
+        # Aceita estudante OU turma. Antes a regra geral de "precisa de
+        # estudante" vinha primeiro e o relatório por turma nunca era gerado.
+        if not params["student"] and not params["class_group"]:
+            missing.append("um estudante ou uma turma")
+    elif report.needs_student and params["student"] is None:
+        missing.append("um estudante")
+    if report.needs_class and report.slug == "turma_indicadores" and not params["class_group"]:
+        missing.append("uma turma")
+    return missing
 
 
 def _filters_context(user):
@@ -678,17 +699,7 @@ def report_detail(request, slug):
     if report.needs_student and params["student"] is None:
         params["student"] = _default_student(request.user)
 
-    missing = []
-    if report.slug == "frequencia":
-        # Aceita estudante OU turma. Antes a regra geral de "precisa de
-        # estudante" vinha primeiro e o relatório por turma nunca era gerado.
-        if not params["student"] and not params["class_group"]:
-            missing.append("um estudante ou uma turma")
-    elif report.needs_student and params["student"] is None:
-        missing.append("um estudante")
-    if report.needs_class and report.slug == "turma_indicadores" and not params["class_group"]:
-        missing.append("uma turma")
-
+    missing = _missing_params(report, params)
     result = None
     error = None
     if not missing:
@@ -739,14 +750,13 @@ def report_csv(request, slug):
     _enforce_scope(request.user, report, params)
     if report.needs_student and params["student"] is None:
         params["student"] = _default_student(request.user)
-    # Mesma regra da tela: frequência aceita estudante OU turma.
-    if report.slug == "frequencia":
-        if not params["student"] and not params["class_group"]:
-            raise PermissionDenied("Escolha um estudante ou uma turma.")
-    elif report.needs_student and params["student"] is None:
-        raise PermissionDenied("Escolha um estudante.")
-    if report.needs_class and params["class_group"] is None and not params["student"]:
-        raise PermissionDenied("Escolha uma turma.")
+    # Mesma regra da tela (antes o CSV exigia turma em "Atividades pendentes", que a tela gera para todas, e o
+    # botão "Exportar CSV" dava "acesso negado"). Faltando filtro, volta à tela com o aviso.
+    missing = _missing_params(report, params)
+    if missing:
+        messages.warning(request, "Escolha " + " e ".join(missing) + " para exportar o relatório.")
+        query = request.GET.urlencode()
+        return redirect(reverse("analytics:report_detail", args=[report.slug]) + (f"?{query}" if query else ""))
 
     result = report.run(request.user, params)
 
@@ -807,10 +817,11 @@ def _bi_export(request, *, title, context, period, sheets, fmt, target=None):
     resp.write("﻿")
     writer = csv.writer(resp, delimiter=";")
     for row in cabecalho:
-        writer.writerow(row)
+        writer.writerow([_csv_safe(v) for v in row])
     for nome_aba, rows in sheets:
         writer.writerow([])
-        writer.writerow([f"== {nome_aba} =="])
+        # Título de seção não pode começar com "=": o Excel o lia como fórmula e mostrava erro no lugar do nome.
+        writer.writerow([f"[{nome_aba}]"])
         for row in rows:
             writer.writerow([_csv_safe(_csv_value(v)) for v in row])
     return resp

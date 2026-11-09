@@ -76,25 +76,48 @@ def when_text(days_left, due=None):
 
 def _school_days():
     """Por escola, ``letivo(dia)``: com o calendário publicado, valem feriados, recessos e suspensões
-    ("sem aula") e os dias letivos extras (sábado letivo); sem calendário, só segunda a sexta."""
+    ("sem aula") e os dias letivos extras (sábado letivo); sem calendário, só segunda a sexta.
+
+    Fora do ano letivo atual (antes do início ou depois do fim cadastrados) nenhum dia é letivo, e
+    ``letivo.in_year(escola, dia)`` diz se o dia está dentro dele: antes, nas férias de janeiro, a rotina mandava
+    "Atividade pendente" às famílias por trabalhos do ano que já tinha acabado."""
     from apps.school_calendar.models import CalendarEvent
     from apps.school_calendar.services import current_year, is_published
 
     cache = {}
 
-    def letivo(school, day):
+    def load(school):
         if school.pk not in cache:
+            year = current_year(school)
             events = []
-            if is_published(current_year(school)):
+            if is_published(year):
                 events = list(CalendarEvent.objects.filter(school=school).filter(
                     Q(no_classes=True) | Q(kind=CalendarEvent.Kind.EXTRA_DAY)))
+            bounds = (year.start_date, year.end_date) if year and year.start_date and year.end_date else None
             cache[school.pk] = ([e for e in events if e.no_classes],
-                                [e for e in events if e.kind == CalendarEvent.Kind.EXTRA_DAY])
-        off, extra = cache[school.pk]
+                                [e for e in events if e.kind == CalendarEvent.Kind.EXTRA_DAY], bounds)
+        return cache[school.pk]
+
+    def in_year(school, day):
+        bounds = load(school)[2]
+        return not bounds or bounds[0] <= day <= bounds[1]
+
+    def letivo(school, day):
+        off, extra, _bounds = load(school)
+        if not in_year(school, day):
+            return False
         if any(e.covers(day) for e in off):
             return False
         return day.weekday() < 5 or any(e.covers(day) for e in extra)
+    letivo.in_year = in_year
     return letivo
+
+
+def _in_year(letivo, school, day):
+    """Hoje está dentro do ano letivo da escola? Fora dele (férias), nenhum lembrete sai, nem os atrasados que
+    ficaram para trás porque ninguém abriu a plataforma no dia."""
+    check = getattr(letivo, "in_year", None)
+    return check is None or check(school, day)
 
 
 def school_stage_before(today, due, offsets, is_school_day):
@@ -112,6 +135,9 @@ def school_stage_before(today, due, offsets, is_school_day):
             if target <= today or is_school_day(target):
                 break
             target -= datetime.timedelta(days=1)
+        else:
+            if o > 0:  # três semanas sem dia letivo (férias): essa antecedência não tem dia para sair
+                continue
         if target <= today:
             reached.append(o)
     return min(reached) if reached else None
@@ -130,6 +156,8 @@ def school_stage_after(today, due, offsets, is_school_day):
             if target > today or is_school_day(target):
                 break
             target += datetime.timedelta(days=1)
+        else:
+            continue  # três semanas sem dia letivo (férias, ano encerrado): o atraso não vira aviso
         if target <= today:
             reached.append(o)
     return max(reached) if reached else None
@@ -189,6 +217,8 @@ def activity_reminders(today=None, policies=None, enabled=None, letivo=None):
             .select_related("school", "subject", "class_group"))
     total = 0
     for act in acts:
+        if not _in_year(letivo, act.school, today):
+            continue
         policy, before, after, _exam = policies(act.school)
         days_left = (act.deadline - today).days
         is_school_day = lambda d, school=act.school: letivo(school, d)  # noqa: E731
@@ -246,6 +276,8 @@ def group_work_reminders(today=None, policies=None, enabled=None, letivo=None):
              .select_related("school", "subject"))
     total = 0
     for work in works:
+        if not _in_year(letivo, work.school, today):
+            continue
         policy, before, _after, _exam = policies(work.school)
         days_left = (work.deadline - today).days
         stage = school_stage_before(today, work.deadline, before, lambda d: letivo(work.school, d))
@@ -297,6 +329,8 @@ def exam_reminders(today=None, policies=None, enabled=None, letivo=None):
     evs = (Evaluation.objects.filter(announced=True, date__gte=today, date__lte=today + datetime.timedelta(days=60))
            .select_related("school", "subject", "class_group"))
     for ev in evs:
+        if not _in_year(letivo, ev.school, today):
+            continue
         policy, _b, _a, offsets = policies(ev.school)
         days_left = (ev.date - today).days
         stage = school_stage_before(today, ev.date, offsets, lambda d: letivo(ev.school, d))
@@ -422,8 +456,13 @@ def notify_exam_change(ev, old_date=None, was_announced=False, deleted=False):
 
 
 def _learning_alerts(today):
-    """Recalcula os alertas do EIA-Cognitio uma vez por dia (regras explícitas)."""
+    """Recalcula os alertas do EIA-Cognitio uma vez por dia (regras explícitas).
+
+    Fora do ano letivo não recalcula: nas férias não há aula nem evidência nova, e a regra "sem evidência
+    recente" acendia alertas (e o resumo semanal) para todas as turmas em janeiro. Os alertas ficam como estavam."""
     from apps.cognitio.alerts import generate_for_school
     from apps.core.models import School
+    from apps.school_calendar.services import in_school_year
 
-    return sum(generate_for_school(s, today) for s in School.objects.all())
+    today = today or timezone.localdate()
+    return sum(generate_for_school(s, today) for s in School.objects.all() if in_school_year(s, today))

@@ -11,6 +11,7 @@ import time
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.cache import patch_cache_control
 
 logger = logging.getLogger(__name__)
 
@@ -227,3 +228,24 @@ class ContentSecurityPolicyMiddleware:
         response.headers.setdefault("Content-Security-Policy", self.POLICY)
         response.headers.setdefault("Permissions-Policy", self.PERMISSIONS)
         return response
+
+
+class PrivatePagesNoStoreMiddleware:
+    """Página vista com a pessoa logada não fica guardada no navegador.
+
+    Num computador compartilhado (secretaria, sala dos professores), depois de "Sair" o botão "Voltar" do
+    navegador mostrava de novo a página anterior, com nomes, notas e faltas de estudantes, tirada do cache.
+    Com ``no-store`` o navegador busca de novo, e o servidor pede a entrada. Só vale para quem está logado e
+    só quando a própria tela não definiu outra regra (os arquivos estáticos e a foto de perfil têm a sua).
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        user = getattr(request, "user", None)
+        if user is not None and user.is_authenticated and "Cache-Control" not in response.headers:
+            patch_cache_control(response, private=True, no_store=True)
+        return response
+

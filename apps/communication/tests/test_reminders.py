@@ -344,3 +344,47 @@ class DailyRunInBackgroundTests(Base):
             run.assert_not_called()
         finally:
             M._daily_lock.release()
+
+class OutsideSchoolYearTests(Base):
+    """Férias (fora do início e do fim do ano letivo atual): nem lembrete às famílias, nem alerta do EIA, nem aviso
+    da portaria. Antes, em janeiro, a rotina tratava todo dia útil como letivo."""
+
+    def setUp(self):
+        super().setUp()
+        from apps.academics.models import SchoolYear
+
+        SchoolYear.objects.filter(school=self.school).update(start_date=date(2026, 2, 2), end_date=date(2026, 12, 11))
+
+    def test_no_day_is_a_school_day_outside_the_year(self):
+        cal = reminders._school_days()
+        self.assertTrue(cal(self.school, date(2026, 12, 11)))
+        self.assertFalse(cal(self.school, date(2026, 12, 14)))   # segunda depois do fim
+        self.assertFalse(cal(self.school, date(2027, 1, 4)))
+        self.assertFalse(cal(self.school, date(2026, 1, 30)))    # sexta antes do início
+
+    def test_overdue_activity_is_not_reminded_in_the_vacation(self):
+        self.policy(overdue_days="1,7")
+        act = self.act(date(2026, 12, 9))
+        Notification.objects.all().delete()
+        reminders.activity_reminders(date(2027, 1, 4))   # 7 dias depois cairia em 16/12, já nas férias
+        self.assertFalse(self.notes(dedupe_key__startswith=f"atraso:{act.pk}:").exists())
+        reminders.activity_reminders(date(2026, 12, 10))  # dentro do ano: o atraso de 1 dia sai
+        self.assertTrue(self.notes(dedupe_key__startswith=f"atraso:{act.pk}:").exists())
+
+    def test_stage_with_no_school_day_in_three_weeks_is_skipped(self):
+        never = lambda d: False  # noqa: E731
+        self.assertIsNone(reminders.school_stage_after(date(2027, 1, 20), date(2026, 12, 9), [7], never))
+        self.assertIsNone(reminders.school_stage_before(date(2027, 1, 1), date(2027, 2, 3), [7], never))
+        self.assertEqual(reminders.school_stage_before(date(2027, 2, 3), date(2027, 2, 3), [7, 0], never), 0)
+
+    def test_learning_alerts_are_not_recalculated_in_the_vacation(self):
+        with mock.patch("apps.cognitio.alerts.generate_for_school", return_value=3) as gen:
+            self.assertEqual(reminders._learning_alerts(date(2027, 1, 4)), 0)
+            gen.assert_not_called()
+            self.assertEqual(reminders._learning_alerts(date(2026, 11, 9)), 3)
+
+    def test_gate_does_not_expect_entries_in_the_vacation(self):
+        from apps.gate.services import is_school_day
+
+        self.assertTrue(is_school_day(self.school, date(2026, 11, 9)))
+        self.assertFalse(is_school_day(self.school, date(2027, 1, 4)))

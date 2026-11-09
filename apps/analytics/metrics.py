@@ -147,7 +147,9 @@ _M = [
         "Registros de frequência; limite de faltas da escola.",
         "Sem registros, não avaliado.",
         "Sinal preventivo para conversa com a família, não reprovação.",
-        "A frequência oficial para aprovação é consolidada pela secretaria ao fim do período.",
+        "A frequência oficial para aprovação é consolidada pela secretaria ao fim do período. O painel "
+        "mostra junto a situação do ano letivo (faltas permitidas = dias letivos do calendário × limite), "
+        "a mesma da Agenda e faltas e dos avisos às famílias.",
     ),
     Metric(
         "absence_streak", "Sequência de faltas", "Frequência",

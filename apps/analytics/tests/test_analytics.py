@@ -505,3 +505,26 @@ class AttendanceReportByClassTests(AnalyticsBase):
         resp = self.client.get(reverse("analytics:report_csv", args=["frequencia"]) + f"?class={self.turma.pk}")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("50,0%", resp.content.decode("utf-8-sig"))
+
+    def test_pending_activities_csv_matches_the_screen(self):
+        # A tela gera "Atividades pendentes" para todas as turmas; o botão "Exportar CSV" dava "acesso negado".
+        self.login("sec")
+        url = reverse("analytics:report_csv", args=["atividades_pendentes"])
+        self.assertEqual(self.client.get(url).status_code, 200)
+        self.assertIsNotNone(self.client.get(reverse("analytics:report_detail", args=["atividades_pendentes"]))
+                             .context["result"])
+
+    def test_csv_without_required_filter_returns_to_the_screen(self):
+        self.login("sec")
+        resp = self.client.get(reverse("analytics:report_csv", args=["boletim"]))
+        self.assertRedirects(resp, reverse("analytics:report_detail", args=["boletim"]), fetch_redirect_response=False)
+
+    def test_csv_negative_number_stays_a_number(self):
+        from apps.analytics.views import _csv_safe, _csv_value
+        from decimal import Decimal
+
+        self.assertEqual(_csv_safe(_csv_value(Decimal("-0.5"))), "-0,5")
+        self.assertEqual(_csv_safe(_csv_value(-2.0)), "-2,0")
+        self.assertEqual(_csv_safe("-x"), "'-x")
+        self.assertEqual(_csv_safe("=1+1"), "'=1+1")
+        self.assertEqual(_csv_safe("-1+1"), "'-1+1")

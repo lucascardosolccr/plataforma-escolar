@@ -111,6 +111,7 @@ MIDDLEWARE = [
     "apps.core.middleware.ScheduledPublicationMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.core.middleware.ContentSecurityPolicyMiddleware",
+    "apps.core.middleware.PrivatePagesNoStoreMiddleware",
 ]
 
 LOGIN_URL = "login"

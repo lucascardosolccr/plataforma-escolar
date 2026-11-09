@@ -189,7 +189,7 @@
   <h2 id="h-frequencia">Frequência e assiduidade {% metric_info "attendance_percent" %}</h2>
   <p class="bi-lead">A chamada é diária, por turma. O mínimo legal para aprovação é 75% das horas letivas (LDB, art. 24, VI); o limite de faltas configurado pela escola é {{ att.limit|num:1 }}%.</p>
   {% if att.limit_level %}
-    <div class="alert alert-warning" role="status">{% icon "triangle-alert" %}<div><strong>{% if att.limit_level == "acima" %}Faltas acima do limite da escola{% else %}Faltas perto do limite da escola{% endif %}.</strong> {{ att.absent }} falta(s) em {{ att.total }} dia(s) com chamada ({{ att.absence_percent|num:1 }}%). A frequência oficial é consolidada pela secretaria ao fim do período. {% metric_info "absence_limit" %}</div></div>
+    <div class="alert alert-warning" role="status">{% icon "triangle-alert" %}<div><strong>{% if att.limit_level == "acima" %}Faltas do período acima do limite da escola{% else %}Faltas do período perto do limite da escola{% endif %}.</strong> {{ att.absent }} falta(s) em {{ att.total }} dia(s) com chamada ({{ att.absence_percent|num:1 }}%).{% if att.year_outlook %} {{ att.year_outlook.sentence }}{% endif %} A frequência oficial é consolidada pela secretaria ao fim do período. {% metric_info "absence_limit" %}</div></div>
   {% endif %}
   <div class="kpi-grid mb-3">
     {% include "analytics/bi/_kpi.html" with label="Dias com chamada" value=att.total metric="attendance_percent" hint="Base do percentual" %}

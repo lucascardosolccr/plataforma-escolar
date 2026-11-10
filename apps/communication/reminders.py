@@ -368,6 +368,9 @@ def run_daily(today=None):
         from apps.meetings.services import meeting_reminders
 
         counts["reunioes"] = meeting_reminders(today)
+        from apps.library.services import daily as library_daily
+
+        counts["biblioteca"] = library_daily(today)
     except Exception:
         run.status = ReminderRun.Status.ERROR
         run.detail = traceback.format_exc()[-2000:]

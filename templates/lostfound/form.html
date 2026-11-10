@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Registrar objeto — Achados e perdidos — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url "lostfound:list" as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Achados e perdidos" heading="Registrar objeto achado" %}
+  <p class="form-lead">Descreva de um jeito que a família reconheça. Celular, fone, documento, cartão e chave aparecem para as famílias só pelo tipo: o dono precisa descrever para retirar. A foto é apagada quando o objeto é entregue ou doado.</p>
+  <form method="post" enctype="multipart/form-data" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Registrar" hint="" %}
+  </form>
+</div>
+{% endblock %}

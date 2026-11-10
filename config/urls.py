@@ -25,6 +25,8 @@ urlpatterns = [
     path("", include("apps.gate.urls")),
     path("", include("apps.care.urls")),
     path("", include("apps.booking.urls")),
+    path("", include("apps.library.urls")),
+    path("", include("apps.lostfound.urls")),
 ]
 
 # O servidor de desenvolvimento (runserver) só serve arquivos estáticos quando

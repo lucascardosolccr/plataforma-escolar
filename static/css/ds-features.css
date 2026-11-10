@@ -198,3 +198,6 @@ rect.bar.st-insuf, rect.bar.st-none { fill: var(--ds-line); }
 .ol-w-80 { width: 80%; }
 .ol-w-90 { width: 90%; }
 .ol-w-100 { width: 100%; }
+
+/* Achados e perdidos: foto do objeto sem ocupar a tela inteira */
+.found-photo { max-height: 320px; object-fit: contain; }

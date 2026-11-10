@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ book.title }} — Biblioteca escolar — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'library:catalog' %}" class="back-link">{% icon "arrow-left" %}Biblioteca escolar</a>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{{ book.get_category_display }}</span>
+    <h1>{{ book.title }}</h1>
+    <p>{% if book.author %}{{ book.author }}{% endif %}{% if book.publisher %} · {{ book.publisher }}{% endif %}{% if book.year %} · {{ book.year }}{% endif %}{% if book.location %} · estante {{ book.location }}{% endif %}</p>
+  </div>
+  {% if operator %}<div class="page-actions">
+    <a href="{% url 'library:book_edit' book.pk %}" class="btn btn-outline-secondary">{% icon "pencil" %}Editar</a>
+    {% if book.active %}<a href="{% url 'library:lend' book.pk %}" class="btn btn-primary">{% icon "book-open" %}Emprestar</a>{% endif %}
+  </div>{% endif %}
+</div>
+{% if not book.active %}<div class="alert alert-warning" role="status">{% icon "triangle-alert" %}<div>Este livro saiu do acervo. O histórico continua guardado.</div></div>{% endif %}
+
+<div class="card mb-3"><div class="card-body">
+  <p class="mb-2">{% if free %}<span class="chip chip-state text-success">{{ free }} de {{ book.copies }} exemplar{{ book.copies|pluralize:"es" }} livre{{ free|pluralize }}</span>{% else %}<span class="chip chip-state">Todos os {{ book.copies }} exemplar{{ book.copies|pluralize:"es" }} emprestado{{ book.copies|pluralize }}</span>{% endif %}{% if waiting %} · {{ waiting }} na fila{% endif %}{% if held %} · {{ held }} separado{{ held|pluralize }} para quem reservou{% endif %}</p>
+  {% if book.summary %}<div class="mb-0">{{ book.summary|linebreaks }}</div>{% endif %}
+  {% if book.isbn %}<p class="small text-body-secondary mb-0">ISBN {{ book.isbn }}</p>{% endif %}
+</div></div>
+
+{% for k in kids %}
+<section class="card mb-3" aria-labelledby="k-{{ k.student.pk }}"><div class="card-body">
+  <h2 id="k-{{ k.student.pk }}" class="h6">{{ k.student.full_name }}</h2>
+  {% if k.loan %}<p class="mb-0">Está com este livro. Devolver até <strong>{{ k.loan.due_on|date:"d/m/Y" }}</strong>. <a href="{% url 'library:mine' %}">Ver em Meus livros</a>.</p>
+  {% elif k.reservation %}<p class="mb-2">{% if k.reservation.status == "separado" %}<strong>Separado para retirar até {{ k.reservation.expires_on|date:"d/m/Y" }}</strong> na biblioteca.{% else %}Na fila: posição <strong>{{ k.position }}</strong>. Avisamos quando o livro for separado.{% endif %}</p>
+    <form method="post" action="{% url 'library:cancel_reservation' k.reservation.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><button type="submit" class="btn btn-outline-secondary btn-sm">Cancelar a reserva</button></form>
+  {% elif free %}<p class="mb-0 text-body-secondary">Há exemplar livre: é só pedir na biblioteca da escola.</p>
+  {% elif book.active %}<form method="post" action="{% url 'library:reserve' book.pk %}">{% csrf_token %}<input type="hidden" name="estudante" value="{{ k.student.pk }}"><button type="submit" class="btn btn-primary btn-sm">{% icon "bell" %}Entrar na fila</button></form>{% endif %}
+</div></section>
+{% endfor %}
+
+{% if operator %}
+<section class="card mb-3" aria-labelledby="h-com"><div class="card-body">
+  <h2 id="h-com" class="h6">Com quem está</h2>
+  <ul class="list-unstyled mb-0">{% for ln in loans %}<li class="py-1 border-bottom d-flex flex-wrap gap-2 align-items-center"><span class="flex-grow-1">{{ ln.student.full_name }} · até {{ ln.due_on|date:"d/m/Y" }}{% if ln.due_on < today %} <strong class="text-danger">atrasado</strong>{% endif %}</span>
+    <form method="post" action="{% url 'library:give_back' ln.pk %}" class="d-flex gap-2">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><label class="visually-hidden" for="estado-{{ ln.pk }}">Estado na devolução</label><input id="estado-{{ ln.pk }}" name="estado" class="form-control form-control-sm" maxlength="200" placeholder="Estado (opcional)"><button type="submit" class="btn btn-outline-secondary btn-sm">Devolvido</button></form></li>
+  {% empty %}<li class="text-body-secondary">Nenhum exemplar emprestado.</li>{% endfor %}</ul>
+</div></section>
+{% if queue %}<section class="card mb-3" aria-labelledby="h-fila"><div class="card-body">
+  <h2 id="h-fila" class="h6">Fila de reserva</h2>
+  <ol class="mb-0">{% for r in queue %}<li>{{ r.student.full_name }} · {% if r.status == "separado" %}<strong>separado até {{ r.expires_on|date:"d/m/Y" }}</strong>{% else %}desde {{ r.created_at|date:"d/m" }}{% endif %}</li>{% endfor %}</ol>
+</div></section>{% endif %}
+<p class="small text-body-secondary">Emprestado {{ times_lent }} vez{{ times_lent|pluralize:"es" }} desde o cadastro.</p>
+{% endif %}
+{% endblock %}

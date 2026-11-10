@@ -33,6 +33,7 @@ class Notification(models.Model):
         MEETING = "reuniao", "Reunião ou atendimento"
         EIA = "eia", "Resumo semanal de sinais do EIA-Cognitio"
         GATE = "portaria", "Entrada e saída na escola"
+        LIBRARY = "biblioteca", "Biblioteca e achados e perdidos"
 
     class Priority(models.TextChoices):
         NORMAL = "normal", "Informativo"

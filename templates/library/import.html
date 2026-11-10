@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Importar acervo — Biblioteca escolar — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url "library:desk" as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Balcão da biblioteca" heading="Importar o acervo" %}
+  <p class="form-lead">Use a planilha que a escola já tem. No Excel ou no LibreOffice, “Salvar como” → CSV. Uma linha por título, nesta ordem: <strong>título; autor; exemplares; tipo; estante; editora; ano; ISBN</strong>. Só o título é obrigatório; a primeira linha pode ser o cabeçalho. Importar de novo não duplica: título e autor iguais são pulados.</p>
+  {% if report %}<div class="alert {% if report.errors %}alert-warning{% else %}alert-success{% endif %}" role="status">{% icon "info" %}<div><strong>{{ report.created }} livro{{ report.created|pluralize }} cadastrado{{ report.created|pluralize }}</strong>{% if report.skipped %}, {{ report.skipped }} já estava{{ report.skipped|pluralize:"m" }} no acervo{% endif %}.{% if report.errors %}<ul class="mb-0 mt-2">{% for e in report.errors|slice:":20" %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}</div></div>{% endif %}
+  <form method="post" enctype="multipart/form-data" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}
+      <p class="small text-body-secondary mb-0">Tipos aceitos: infantil, juvenil, literatura, quadrinhos, poesia, informativo, didático, referência. Outro texto vira “Outro”.</p></div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Importar" hint="" %}
+  </form>
+</div>
+{% endblock %}

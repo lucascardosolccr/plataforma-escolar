@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Regras da biblioteca — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url "library:desk" as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Balcão da biblioteca" heading="Regras da biblioteca" %}
+  <p class="form-lead">Valem para os próximos empréstimos. Direção, coordenação e secretaria sempre operam o balcão; marque aqui os professores que também fazem empréstimos (o professor responsável pela sala de leitura, por exemplo).</p>
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Salvar" hint="" %}
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Meus livros — Biblioteca escolar — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'library:catalog' %}" class="back-link">{% icon "arrow-left" %}Biblioteca escolar</a>
+<div class="page-head">
+  <div>
+    <h1>Meus livros</h1>
+    <p>Livros emprestados, reservas e o que já foi lido. Você recebe um lembrete na véspera da devolução.{% if cfg and cfg.max_renewals %} Dá para renovar {{ cfg.max_renewals }} vez{{ cfg.max_renewals|pluralize:"es" }} por aqui, se ninguém estiver na fila do livro.{% endif %}</p>
+  </div>
+</div>
+
+{% for row in rows %}
+<section class="card mb-3" aria-labelledby="s-{{ row.student.pk }}"><div class="card-body">
+  <h2 id="s-{{ row.student.pk }}" class="h6">{{ row.student.full_name }}{% if row.n_read %} <span class="chip chip-state text-success">{{ row.n_read }} livro{{ row.n_read|pluralize }} lido{{ row.n_read|pluralize }}</span>{% endif %}</h2>
+  <h3 class="h6 mt-3">Emprestados</h3>
+  <ul class="list-unstyled">{% for l in row.loans %}<li class="py-1 border-bottom d-flex flex-wrap gap-2 align-items-center"><span class="flex-grow-1"><a href="{% url 'library:book' l.loan.book.pk %}">{{ l.loan.book.title }}</a> · devolver até <strong>{{ l.loan.due_on|date:"d/m/Y" }}</strong>{% if l.late %} <strong class="text-danger">· {{ l.late }} dia{{ l.late|pluralize }} de atraso</strong>{% endif %}</span>
+    {% if not l.late and cfg and l.loan.renewals < cfg.max_renewals %}<form method="post" action="{% url 'library:renew' l.loan.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary btn-sm">Renovar</button></form>{% endif %}</li>
+  {% empty %}<li class="text-body-secondary">Nenhum livro emprestado agora.</li>{% endfor %}</ul>
+  {% if row.reservations %}<h3 class="h6 mt-3">Reservas</h3>
+  <ul class="list-unstyled">{% for x in row.reservations %}<li class="py-1 border-bottom d-flex flex-wrap gap-2 align-items-center"><span class="flex-grow-1"><a href="{% url 'library:book' x.r.book.pk %}">{{ x.r.book.title }}</a> · {% if x.r.status == "separado" %}<strong>separado: retirar até {{ x.r.expires_on|date:"d/m/Y" }}</strong>{% else %}posição {{ x.position }} na fila{% endif %}</span><form method="post" action="{% url 'library:cancel_reservation' x.r.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary btn-sm">Cancelar</button></form></li>{% endfor %}</ul>{% endif %}
+  {% if row.history %}<details class="mt-3"><summary>Já leu ({{ row.history|length }}{% if row.history|length == 30 %}+{% endif %})</summary>
+    <ul class="mt-2 mb-0">{% for ln in row.history %}<li>{{ ln.book.title }} · devolvido em {{ ln.returned_at|date:"d/m/Y" }}</li>{% endfor %}</ul></details>{% endif %}
+</div></section>
+{% empty %}
+<div class="empty-state py-4">{% icon "book-open" %}<strong>Nenhum estudante vinculado</strong><span>Quando a escola aprovar o vínculo com seu filho, os livros dele aparecem aqui.</span></div>
+{% endfor %}
+{% endblock %}

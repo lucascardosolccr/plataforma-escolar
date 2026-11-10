@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{% if book %}Editar {{ book.title }}{% else %}Cadastrar livro{% endif %} — Biblioteca escolar — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% if book %}{% url "library:book" book.pk as back %}{% else %}{% url "library:catalog" as back %}{% endif %}
+<div class="form-page">
+  {% if book %}{% include "partials/_form_head.html" with back_url=back back_label="Livro" heading="Editar livro" %}{% else %}{% include "partials/_form_head.html" with back_url=back back_label="Biblioteca escolar" heading="Cadastrar livro" %}{% endif %}
+  <p class="form-lead">Um cadastro por título: três exemplares iguais são “3 exemplares”. Muitos livros de uma vez? Use a <a href="{% url 'library:import' %}">importação por planilha</a>.</p>
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Salvar" hint="" %}
+  </form>
+</div>
+{% endblock %}

@@ -249,6 +249,22 @@ def _secretaria(user):
         _item("Estudantes ativos sem foto", no_photo, reverse("photo_pending"), "Não bloqueia nada.", "info"),
         _item("Estudantes ativos sem carteirinha", _without_card(s), reverse("gate:cards"),
               "A portaria lê QR Code, código de barras ou o código digitado.", "info"),
+        *_library_staff(s),
+    ]
+
+
+def _library_staff(school):
+    from apps.library.models import Loan
+    from apps.lostfound.models import Claim
+
+    return [
+        _item("Livros da biblioteca atrasados", Loan.objects.filter(
+            school=school, returned_at__isnull=True, due_on__lt=timezone.localdate()).count(),
+            reverse("library:desk") + "?atrasados=1", "A família recebe o aviso sozinha; aqui é para acompanhar.",
+            "info"),
+        _item("Achados e perdidos: pedidos para conferir", Claim.objects.filter(
+            item__school=school, status=Claim.Status.PENDING, item__status="guardado").count(),
+            reverse("lostfound:list")),
     ]
 
 
@@ -355,6 +371,21 @@ def _family(user):
               reverse("communication:authorization_list"), "Responda até o prazo indicado em cada uma."),
         _item("Consultas da escola aguardando sua opinião", _polls_pending(user),
               reverse("communication:poll_list"), "Um voto por família.", "info"),
+        *_library_family(child_ids),
+    ]
+
+
+def _library_family(child_ids):
+    from apps.library.models import Loan, Reservation
+
+    today = timezone.localdate()
+    return [
+        _item("Livros da biblioteca atrasados", Loan.objects.filter(
+            student_id__in=child_ids, returned_at__isnull=True, due_on__lt=today).count(),
+            reverse("library:mine"), "Devolva na biblioteca da escola."),
+        _item("Livros reservados separados para retirar", Reservation.objects.filter(
+            student_id__in=child_ids, status=Reservation.Status.READY).count(), reverse("library:mine"),
+            "Retire até a data indicada, ou a vez passa ao próximo da fila.", "info"),
     ]
 
 

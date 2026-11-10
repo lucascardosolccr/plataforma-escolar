@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Balcão da biblioteca — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'library:catalog' %}" class="back-link">{% icon "arrow-left" %}Biblioteca escolar</a>
+<div class="page-head">
+  <div>
+    <h1>Balcão da biblioteca</h1>
+    <p>Quem está com livro e até quando, com os atrasados primeiro. Lembrete na véspera e aviso de atraso saem sozinhos para a família.</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'library:import' %}" class="btn btn-outline-secondary">{% icon "file-text" %}Importar acervo</a>
+    {% if can_configure %}<a href="{% url 'library:settings' %}" class="btn btn-outline-secondary">{% icon "sliders-horizontal" %}Regras</a>{% endif %}
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3"><div class="card"><div class="card-body"><p class="small text-body-secondary mb-1">Títulos</p><p class="h4 mb-0">{{ n_titles }}</p></div></div></div>
+  <div class="col-6 col-md-3"><div class="card"><div class="card-body"><p class="small text-body-secondary mb-1">Exemplares</p><p class="h4 mb-0">{{ n_copies }}</p></div></div></div>
+  <div class="col-6 col-md-3"><div class="card"><div class="card-body"><p class="small text-body-secondary mb-1">Emprestados</p><p class="h4 mb-0">{{ n_open }}</p></div></div></div>
+  <div class="col-6 col-md-3"><div class="card"><div class="card-body"><p class="small text-body-secondary mb-1">Atrasados</p><p class="h4 mb-0{% if n_late %} text-danger{% endif %}">{{ n_late }}</p></div></div></div>
+</div>
+
+{% if ready %}<section class="card mb-3" aria-labelledby="h-sep"><div class="card-body">
+  <h2 id="h-sep" class="h6">Separados para retirar</h2>
+  <ul class="list-unstyled mb-0">{% for r in ready %}<li class="py-1 border-bottom">{{ r.book.title }} · {{ r.student.full_name }} · até {{ r.expires_on|date:"d/m/Y" }} · <a href="{% url 'library:lend' r.book.pk %}">emprestar</a></li>{% endfor %}</ul>
+</div></section>{% endif %}
+
+<form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+  <div class="flex-grow-1"><label for="q" class="form-label">Livro ou estudante</label><input id="q" name="q" class="form-control" value="{{ q }}" maxlength="60"></div>
+  <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="atrasados" value="1" id="atrasados"{% if only_late %} checked{% endif %}><label class="form-check-label" for="atrasados">Só atrasados</label></div>
+  <button type="submit" class="btn btn-outline-secondary">{% icon "search" %}Filtrar</button>
+</form>
+
+<div class="card mb-3">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0 table-stack">
+      <thead><tr><th scope="col">Livro</th><th scope="col">Estudante</th><th scope="col">Devolver até</th><th scope="col">Devolução</th></tr></thead>
+      <tbody>{% for ln in page %}<tr>
+        <td><a href="{% url 'library:book' ln.book.pk %}">{{ ln.book.title }}</a></td>
+        <td data-label="Estudante">{{ ln.student.full_name }}</td>
+        <td data-label="Devolver até" class="text-nowrap">{{ ln.due_on|date:"d/m/Y" }}{% if ln.due_on < today %} <strong class="text-danger">atrasado</strong>{% endif %}{% if ln.renewals %} <span class="small text-body-secondary">renovado</span>{% endif %}</td>
+        <td data-label="Devolução"><form method="post" action="{% url 'library:give_back' ln.pk %}" class="d-flex gap-2">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><label class="visually-hidden" for="estado-{{ ln.pk }}">Estado na devolução</label><input id="estado-{{ ln.pk }}" name="estado" class="form-control form-control-sm" maxlength="200" placeholder="Estado (opcional)"><button type="submit" class="btn btn-outline-secondary btn-sm">Devolvido</button></form></td>
+      </tr>{% empty %}<tr><td colspan="4"><div class="empty-state py-4">{% icon "book-open" %}<strong>Nenhum livro emprestado{% if q or only_late %} com esse filtro{% endif %}</strong><span>Empreste pela página do livro.</span></div></td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+</div>
+{% include "partials/_pager.html" %}
+
+{% if top %}<section class="card" aria-labelledby="h-top"><div class="card-body">
+  <h2 id="h-top" class="h6">Mais emprestados neste ano</h2>
+  <ol class="mb-0">{% for b in top %}<li><a href="{% url 'library:book' b.pk %}">{{ b.title }}</a> · {{ b.n }} vez{{ b.n|pluralize:"es" }}</li>{% endfor %}</ol>
+</div></section>{% endif %}
+{% endblock %}

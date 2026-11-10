@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{% if show_details %}{{ item.title }}{% else %}{{ item.get_category_display }}{% endif %} — Achados e perdidos — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'lostfound:list' %}" class="back-link">{% icon "arrow-left" %}Achados e perdidos</a>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{{ item.get_category_display }} · {{ item.get_status_display }}</span>
+    <h1>{% if show_details %}{{ item.title }}{% else %}{{ item.get_category_display }}{% endif %}</h1>
+    <p>Achado em {{ item.found_on|date:"d/m/Y" }}{% if item.place %} · {{ item.place }}{% endif %}{% if staff and item.registered_by %} · registrado por {{ item.registered_by.get_full_name|default:item.registered_by.username }}{% endif %}</p>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="{% if item.photo and show_details %}col-md-7{% else %}col-12{% endif %}"><div class="card h-100"><div class="card-body">
+    {% if show_details %}<p class="mb-2">{{ item.details|default:"Sem mais detalhes." }}</p>{% else %}<p class="mb-2">Os detalhes ficam com a escola. Para retirar, descreva o seu: marca, cor, capinha, adesivo, o que tem na tela de bloqueio ou dentro da carteira.</p>{% endif %}
+    {% if staff and item.student %}<p class="mb-0">Dono identificado: <strong>{{ item.student.full_name }}</strong> (a família foi avisada).</p>{% elif owner_is_mine %}<p class="mb-0"><strong>Está com o nome de {{ item.student.first_name }}.</strong> Retire na secretaria.</p>{% endif %}
+    {% if item.status == "devolvido" %}<p class="mb-0">Entregue a {{ item.returned_to }} em {{ item.closed_at|date:"d/m/Y H:i" }}.</p>{% endif %}
+  </div></div></div>
+  {% if item.photo and show_details %}<div class="col-md-5"><div class="card h-100"><div class="card-body text-center"><img src="{% url 'lostfound:photo' item.pk %}" alt="Foto do objeto: {{ item.title }}" class="img-fluid rounded found-photo"></div></div></div>{% endif %}
+</div>
+
+{% if not staff and item.status == "guardado" %}
+<section class="card mb-3" aria-labelledby="h-meu"><div class="card-body">
+  <h2 id="h-meu" class="h6">É seu?</h2>
+  {% if mine and mine.status == "pendente" %}<p class="mb-0">Você já pediu em {{ mine.created_at|date:"d/m H:i" }}. A escola confere e avisa.</p>
+  {% else %}
+  {% if mine and mine.status == "recusado" %}<p class="text-danger">O seu pedido anterior não conferiu. Se tiver certeza, fale com a secretaria.</p>{% endif %}
+  <form method="post" action="{% url 'lostfound:claim' item.pk %}" novalidate>
+    {% csrf_token %}
+    {% if kids|length > 1 %}<div class="mb-3"><label for="estudante" class="form-label">De quem é</label><select id="estudante" name="estudante" class="form-select">{% for s in kids %}<option value="{{ s.pk }}">{{ s.full_name }}</option>{% endfor %}</select></div>{% elif kids %}<input type="hidden" name="estudante" value="{{ kids.0.pk }}">{% endif %}
+    <div class="mb-3"><label for="descricao" class="form-label">Como você reconhece<span class="required-mark" aria-hidden="true"> *</span></label><input id="descricao" name="descricao" class="form-control" maxlength="300" aria-describedby="descricao-ajuda" required><div id="descricao-ajuda" class="form-text">Um detalhe que só o dono sabe e que não está escrito aqui: marca, adesivo, nome na etiqueta, o que tem dentro.</div></div>
+    <button type="submit" class="btn btn-primary">É meu</button>
+  </form>
+  {% endif %}
+</div></section>
+{% endif %}
+
+{% if can_manage %}
+{% if claims %}<section class="card mb-3" aria-labelledby="h-pedidos"><div class="card-body">
+  <h2 id="h-pedidos" class="h6">Pedidos</h2>
+  <ul class="list-unstyled mb-0">{% for c in claims %}<li class="py-2 border-bottom">
+    <p class="mb-1"><strong>{{ c.user.get_full_name|default:c.user.username }}</strong>{% if c.student %} · para {{ c.student.full_name }}{% endif %} · {{ c.created_at|date:"d/m H:i" }} · {{ c.get_status_display }}</p>
+    <p class="mb-2">“{{ c.description }}”</p>
+    {% if c.status == "pendente" and item.status == "guardado" %}<div class="d-flex flex-wrap gap-2">
+      <form method="post" action="{% url 'lostfound:return' item.pk %}">{% csrf_token %}<input type="hidden" name="pedido" value="{{ c.pk }}"><button type="submit" class="btn btn-primary btn-sm">Confere: entregue</button></form>
+      <form method="post" action="{% url 'lostfound:claim_reject' c.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary btn-sm">Não confere</button></form>
+    </div>{% endif %}
+  </li>{% endfor %}</ul>
+</div></section>{% endif %}
+
+{% if item.status == "guardado" %}
+<section class="card mb-3" aria-labelledby="h-dono"><div class="card-body">
+  <h2 id="h-dono" class="h6">Tem nome escrito? Avise a família</h2>
+  <form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-2">
+    <div class="flex-grow-1"><label for="q" class="form-label">Nome ou código do estudante</label><input id="q" name="q" class="form-control" value="{{ q }}" maxlength="60" autocomplete="off"></div>
+    <button type="submit" class="btn btn-outline-secondary">{% icon "search" %}Procurar</button>
+  </form>
+  {% if q %}<ul class="list-unstyled mb-0">{% for f in found %}<li class="py-1 d-flex flex-wrap gap-2 align-items-center"><span class="flex-grow-1">{{ f.s.full_name }}{% if f.cls %} · {{ f.cls }}{% endif %}{% if f.s.code %} · código {{ f.s.code }}{% endif %}</span><form method="post" action="{% url 'lostfound:owner' item.pk %}">{% csrf_token %}<input type="hidden" name="estudante" value="{{ f.s.pk }}"><button type="submit" class="btn btn-outline-secondary btn-sm">É deste estudante</button></form></li>{% empty %}<li class="text-body-secondary">Nenhum estudante ativo encontrado.</li>{% endfor %}</ul>{% endif %}
+</div></section>
+
+<form method="post" action="{% url 'lostfound:return' item.pk %}" class="card"><div class="card-body">
+  {% csrf_token %}
+  <h2 class="h6">Entregue no balcão</h2>
+  <label for="entregue-a" class="form-label">Entregue a</label>
+  <input id="entregue-a" name="entregue_a" class="form-control mb-2" maxlength="120" placeholder="Nome de quem retirou (ex.: a própria estudante, a mãe)">
+  <button type="submit" class="btn btn-outline-secondary btn-sm">Registrar a entrega</button>
+</div></form>
+{% endif %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Emprestar {{ book.title }} — Biblioteca escolar — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url "library:book" book.pk as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Livro" heading="Emprestar “"|add:book.title|add:"”" %}
+  <p class="form-lead">{% if free %}{{ free }} exemplar{{ free|pluralize:"es" }} livre{{ free|pluralize }}.{% else %}Nenhum exemplar livre: só quem tem o livro separado pode retirar.{% endif %} Devolução em {{ cfg.loan_days }} dias (próximo dia letivo, se cair sem aula). Até {{ cfg.max_loans }} livro{{ cfg.max_loans|pluralize }} por estudante; quem está com livro atrasado devolve antes de pegar outro.</p>
+
+  {% if held %}<section class="card mb-3" aria-labelledby="h-sep"><div class="card-body">
+    <h2 id="h-sep" class="h6">Separado para</h2>
+    <ul class="list-unstyled mb-0">{% for r in held %}<li class="py-1 d-flex flex-wrap gap-2 align-items-center"><span class="flex-grow-1">{{ r.student.full_name }} · retirar até {{ r.expires_on|date:"d/m/Y" }}</span><form method="post">{% csrf_token %}<input type="hidden" name="estudante" value="{{ r.student.pk }}"><button type="submit" class="btn btn-primary btn-sm">Emprestar</button></form></li>{% endfor %}</ul>
+  </div></section>{% endif %}
+
+  <form method="get" class="card mb-3"><div class="card-body d-flex flex-wrap gap-2 align-items-end">
+    <div class="flex-grow-1"><label for="q" class="form-label">Nome ou código do estudante</label><input id="q" name="q" class="form-control" value="{{ q }}" maxlength="60" autocomplete="off" autofocus></div>
+    <button type="submit" class="btn btn-outline-secondary">{% icon "search" %}Procurar</button>
+  </div></form>
+
+  {% if q %}<div class="card"><ul class="feed">
+    {% for f in found %}<li class="feed-item"><div class="feed-body flex-grow-1"><p class="feed-title">{{ f.s.full_name }}</p><p class="feed-meta">{% if f.cls %}{{ f.cls }} · {% endif %}{% if f.s.code %}código {{ f.s.code }} · {% endif %}{{ f.open }} livro{{ f.open|pluralize }} em mãos{% if f.late %} · <strong class="text-danger">{{ f.late }} atrasado{{ f.late|pluralize }}</strong>{% endif %}</p></div>
+      <form method="post">{% csrf_token %}<input type="hidden" name="estudante" value="{{ f.s.pk }}"><input type="hidden" name="q" value="{{ q }}"><button type="submit" class="btn btn-primary btn-sm">Emprestar</button></form></li>
+    {% empty %}<li><div class="empty-state py-4">{% icon "search" %}<strong>Nenhum estudante ativo encontrado</strong><span>Confira o nome ou use o código do aluno.</span></div></li>{% endfor %}
+  </ul></div>{% endif %}
+</div>
+{% endblock %}

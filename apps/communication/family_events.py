@@ -47,12 +47,15 @@ EVENTS = {
     "saida_escola": ("Saída da escola registrada na portaria", K.GATE, True),
     "sem_entrada": ("Estudante sem entrada registrada na portaria (só se a direção ligar nos horários da portaria)",
                     K.GATE, True),
+    "biblioteca": ("Biblioteca: livro emprestado, lembrete de devolução, atraso e livro reservado separado",
+                   K.LIBRARY, True),
+    "achados": ("Achados e perdidos: objeto com o nome do estudante encontrado na escola", K.LIBRARY, True),
 }
 #: Tipos que a família não pode silenciar (segurança e vínculo).
 ESSENTIAL_KINDS = {K.OCCURRENCE, K.LINK, K.REGISTRATION}
 #: Tipos que aparecem nas preferências pessoais.
 MUTABLE_KINDS = [K.EVALUATION, K.GRADE, K.ACTIVITY, K.EXAM, K.ATTENDANCE, K.OBSERVATION, K.ANNOUNCEMENT, K.MENU,
-                 K.CALENDAR, K.MESSAGE, K.EIA, K.GATE]
+                 K.CALENDAR, K.MESSAGE, K.EIA, K.GATE, K.LIBRARY]
 
 
 def event_enabled(school, key):

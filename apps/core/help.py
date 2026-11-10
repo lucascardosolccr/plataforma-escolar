@@ -353,6 +353,34 @@ GUIDES = [
         ("Em Autorizações, abra a autorização e use “Retirar a autorização” (ou “Mudar a resposta”, dentro do "
          "prazo). Vale na hora e a escola é avisada.", "communication:authorization_list"),
     ]),
+    # Biblioteca escolar
+    ("Emprestar e receber livros da biblioteca", "book-open", (DIRECAO, COORDENACAO, SECRETARIA, ADMIN), [
+        ("Cadastre o acervo em Biblioteca escolar → Cadastrar livro, ou importe a planilha (CSV) pelo Balcão.",
+         "library:catalog"),
+        ("Para emprestar, abra o livro, use “Emprestar” e procure o estudante pelo nome ou pelo código. A data de "
+         "devolução sai sozinha (próximo dia letivo, se cair sem aula) e a família recebe o aviso.", None),
+        ("No Balcão ficam os livros emprestados, com os atrasados primeiro. Lembrete na véspera e aviso de atraso "
+         "saem sozinhos. Professores também podem operar o balcão: marque-os em Regras.", "library:desk"),
+    ]),
+    ("Livros da biblioteca: empréstimos e reservas", "book-open", (RESPONSAVEL, ESTUDANTE), [
+        ("Em Biblioteca escolar → Meus livros: o que está emprestado, até quando, e o que já foi lido.",
+         "library:mine"),
+        ("Livro sem exemplar livre? Abra e use “Entrar na fila”. Quando ele voltar, avisamos e ele fica separado "
+         "por alguns dias. Dá para renovar pela plataforma se ninguém estiver esperando.", "library:catalog"),
+    ]),
+    # Achados e perdidos
+    ("Registrar e entregar achados e perdidos", "package", (PROFESSOR, COORDENACAO, DIRECAO, SECRETARIA, ADMIN), [
+        ("Em Achados e perdidos → Registrar objeto: o que é, onde foi achado e, se quiser, uma foto só do objeto.",
+         "lostfound:create"),
+        ("Tem nome escrito? No objeto, procure o estudante: a família é avisada na hora.", None),
+        ("Quando a família diz “é meu”, confira a descrição antes de entregar. Depois de 60 dias, os objetos "
+         "guardados podem ser marcados como doados; as fotos são apagadas.", "lostfound:list"),
+    ]),
+    ("Procurar um objeto perdido na escola", "package", (RESPONSAVEL, ESTUDANTE), [
+        ("Em Achados e perdidos aparece o que foi encontrado nos últimos 90 dias.", "lostfound:list"),
+        ("Reconheceu? Abra e use “É meu”, com um detalhe que só o dono sabe. A escola confere e avisa. Celular, "
+         "fone, documento e chave aparecem só pelo tipo: descreva o seu.", None),
+    ]),
     # Saúde e retirada
     ("Preencher a ficha de saúde e dizer quem pode buscar", "user-check", (RESPONSAVEL,), [
         ("Em Saúde e retirada, use “Preencher a ficha de saúde”: alergias, alimentação, remédios, o que fazer "

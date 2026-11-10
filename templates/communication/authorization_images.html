@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Quem pode aparecer em fotos — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'communication:authorization_list' %}" class="back-link d-print-none">{% icon "arrow-left" %}Autorizações</a>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Uso de imagem e voz · {{ today|date:"d/m/Y" }}</span>
+    <h1>Quem pode aparecer em fotos</h1>
+    <p>Confira antes de publicar foto ou vídeo no mural, no site ou nas redes. Só pode aparecer quem tem autorização assinada pela família e valendo hoje. Sem resposta é o mesmo que não autorizado.</p>
+  </div>
+  <div class="page-actions d-print-none"><button type="button" class="btn btn-outline-secondary" data-print>{% icon "printer" %}Imprimir</button></div>
+</div>
+
+{% if not in_force %}
+<div class="callout mb-3">{% icon "info" %}<div><strong>Nenhuma autorização de uso de imagem valendo hoje.</strong> Até a escola pedir e as famílias assinarem, nenhum estudante deve aparecer em fotos publicadas.{% if can_create %} <a href="{% url 'communication:authorization_create' %}">Criar em Nova autorização → Uso de imagem e voz</a>.{% endif %}</div></div>
+{% else %}
+<p class="small text-body-secondary">Valendo hoje: {% for a in in_force %}<a href="{% url 'communication:authorization_detail' a.pk %}">{{ a.title }}</a> (até {{ a.valid_until|date:"d/m/Y" }}){% if not forloop.last %}; {% endif %}{% endfor %}. Se a família retirar a autorização, o estudante sai da lista na hora.</p>
+{% endif %}
+
+{% if classes|length > 1 %}
+<form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3 d-print-none">
+  <div><label for="turma" class="form-label">Turma</label>
+    <select id="turma" name="turma" class="form-select"><option value="">Todas as minhas turmas</option>{% for c in classes %}<option value="{{ c.pk }}"{% if c.pk == chosen %} selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+  <button type="submit" class="btn btn-outline-secondary">Mostrar</button>
+</form>
+{% endif %}
+
+{% for g in groups %}
+<section class="card mb-3" aria-labelledby="f-{{ g.cg.pk }}">
+  <div class="card-header bg-transparent d-flex flex-wrap justify-content-between gap-2">
+    <h2 id="f-{{ g.cg.pk }}" class="h6 mb-0">{{ g.cg.name }}</h2>
+    <span class="small"><span class="chip chip-state text-success">{{ g.yes|length }} pode{{ g.yes|length|pluralize:"m" }}</span> <span class="chip chip-state text-danger">{{ g.no|length }} não pode{{ g.no|length|pluralize:"m" }}</span></span>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <h3 class="h6 text-danger">Não podem aparecer</h3>
+        <ul class="list-unstyled mb-0">{% for r in g.no %}<li class="py-1 border-bottom">{{ r.student.full_name }} <span class="small text-body-secondary">· {{ r.reason }}</span></li>{% empty %}<li class="text-body-secondary">Ninguém.</li>{% endfor %}</ul>
+      </div>
+      <div class="col-md-6">
+        <h3 class="h6 text-success">Podem aparecer</h3>
+        <ul class="list-unstyled mb-0">{% for r in g.yes %}<li class="py-1 border-bottom">{{ r.student.full_name }} <span class="small text-body-secondary">· até {{ r.auth.valid_until|date:"d/m/Y" }} · {{ r.sig.display_code }}</span></li>{% empty %}<li class="text-body-secondary">Ninguém.</li>{% endfor %}</ul>
+      </div>
+    </div>
+  </div>
+</section>
+{% empty %}
+<p class="text-body-secondary">Nenhuma turma para mostrar.</p>
+{% endfor %}
+{% endblock %}

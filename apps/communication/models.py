@@ -447,6 +447,9 @@ class Authorization(models.Model):
     A equipe cria para uma ou mais turmas; cada responsável com vínculo aprovado responde por filho até o
     prazo. A escola acompanha quem autorizou, quem não autorizou e quem não respondeu, e imprime a lista
     de autorizados para levar no dia. Nada é apagado: cancelar exige motivo e avisa as famílias.
+
+    Uso de imagem e saída sozinho valem por um período (``event_date`` a ``valid_until``) e alimentam a lista de
+    quem pode aparecer em fotos e a tela de retirada (``consents``).
     """
 
     class Status(models.TextChoices):
@@ -454,11 +457,23 @@ class Authorization(models.Model):
         CLOSED = "encerrada", "Encerrada"
         CANCELED = "cancelada", "Cancelada"
 
+    class Kind(models.TextChoices):
+        TRIP = "passeio", "Passeio ou visita"
+        ACTIVITY = "atividade", "Atividade especial (evento, esporte, pernoite)"
+        IMAGE = "imagem", "Uso de imagem e voz"
+        ALONE = "saida", "Sair sozinho(a) da escola"
+        OTHER = "outra", "Outra"
+
+    # Valem por um período (não por um dia): a família pode retirar a autorização a qualquer momento.
+    ONGOING = (Kind.IMAGE, Kind.ALONE)
+
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="authorizations")
+    kind = models.CharField("tipo", max_length=10, choices=Kind.choices, default=Kind.TRIP)
     title = models.CharField("atividade", max_length=200)
     description = models.TextField("detalhes para a família",
                                    help_text="Local, horário de saída e de volta, transporte, o que levar, contato.")
     event_date = models.DateField("data da atividade")
+    valid_until = models.DateField("vale até", null=True, blank=True)
     deadline = models.DateField("responder até")
     class_groups = models.ManyToManyField("academics.ClassGroup", related_name="authorizations",
                                           verbose_name="turmas")
@@ -478,13 +493,38 @@ class Authorization(models.Model):
     def accepts_answers(self, today=None):
         return self.status == self.Status.OPEN and (today or timezone.localdate()) <= self.deadline
 
+    @property
+    def ongoing(self):
+        return self.kind in self.ONGOING
+
+    def last_day(self):
+        return (self.valid_until or self.event_date) if self.ongoing else self.event_date
+
+    def in_force(self, day=None):
+        """Uso de imagem ou saída sozinho valendo neste dia (não cancelada e dentro do período)."""
+        day = day or timezone.localdate()
+        return self.ongoing and self.status != self.Status.CANCELED and self.event_date <= day <= self.last_day()
+
+    def accepts_revocation(self, today=None):
+        """Quem autorizou uso de imagem ou saída sozinho pode retirar a autorização enquanto ela vale, mesmo
+        depois do prazo ou com as respostas encerradas (LGPD, art. 8º, § 5º)."""
+        return (self.ongoing and self.status != self.Status.CANCELED
+                and (today or timezone.localdate()) <= self.last_day())
+
     def document_text(self):
         """O texto que a família assina: muda qualquer parte, muda o resumo, e as assinaturas anteriores deixam
-        de valer para a versão nova."""
+        de valer para a versão nova. O texto do passeio é igual ao de antes dos tipos, para as assinaturas já
+        feitas continuarem conferindo."""
         classes = ", ".join(sorted(c.name for c in self.class_groups.all()))
-        return (f"{self.school.name}\nAutorização: {self.title}\nTurmas: {classes}\n"
-                f"Data da atividade: {self.event_date:%d/%m/%Y}\nResponder até: {self.deadline:%d/%m/%Y}\n\n"
-                f"{self.description.strip()}")
+        if self.kind == self.Kind.TRIP:
+            return (f"{self.school.name}\nAutorização: {self.title}\nTurmas: {classes}\n"
+                    f"Data da atividade: {self.event_date:%d/%m/%Y}\nResponder até: {self.deadline:%d/%m/%Y}\n\n"
+                    f"{self.description.strip()}")
+        when = (f"Vale de {self.event_date:%d/%m/%Y} até {self.last_day():%d/%m/%Y}. A família pode retirar esta "
+                f"autorização a qualquer momento pela plataforma." if self.ongoing
+                else f"Data da atividade: {self.event_date:%d/%m/%Y}")
+        return (f"{self.school.name}\nAutorização: {self.title}\nTipo: {self.get_kind_display()}\n"
+                f"Turmas: {classes}\n{when}\nResponder até: {self.deadline:%d/%m/%Y}\n\n{self.description.strip()}")
 
     def document_hash(self):
         import hashlib

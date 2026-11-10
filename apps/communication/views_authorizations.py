@@ -106,26 +106,55 @@ def pending_for_family(user):
 class AuthorizationForm(forms.ModelForm):
     class Meta:
         model = Authorization
-        fields = ["title", "description", "event_date", "deadline", "class_groups"]
-        widgets = {"event_date": DATE, "deadline": DATE, "description": forms.Textarea(attrs={"rows": 5}),
-                   "class_groups": forms.CheckboxSelectMultiple()}
+        fields = ["kind", "title", "description", "event_date", "valid_until", "deadline", "class_groups"]
+        labels = {"title": "Título", "event_date": "Data da atividade (ou início da validade)"}
+        help_texts = {
+            "event_date": "Uso de imagem ou saída sozinho: a partir de quando vale.",
+            "valid_until": "Só para uso de imagem e saída sozinho (ex.: fim do ano letivo). A família pode retirar a "
+                           "autorização a qualquer momento até essa data.",
+            "description": "Passeio: local, horários de saída e volta, transporte, o que levar, contato. Uso de "
+                           "imagem: onde as fotos e vídeos aparecem (mural, site, redes) e por quanto tempo.",
+        }
+        widgets = {"event_date": DATE, "valid_until": DATE, "deadline": DATE,
+                   "description": forms.Textarea(attrs={"rows": 5}), "class_groups": forms.CheckboxSelectMultiple()}
 
     def __init__(self, *args, user, **kwargs):
         super().__init__(*args, **kwargs)
         qs = ClassGroup.objects.filter(pk__in=staff_class_ids(user) or [])
         current = qs.filter(school_year__is_current=True)  # turmas do ano letivo atual, quando ele está marcado
         self.fields["class_groups"].queryset = (current if current.exists() else qs).order_by("name")
+        self.fields["kind"].required = False  # sem o campo, é passeio (como antes dos tipos)
 
     def clean(self):
         c = super().clean()
+        c["kind"] = c.get("kind") or Authorization.Kind.TRIP
         today = timezone.localdate()
-        if c.get("event_date") and c["event_date"] < today:
+        ongoing = c.get("kind") in Authorization.ONGOING
+        start, until, deadline = c.get("event_date"), c.get("valid_until"), c.get("deadline")
+        if start and start < today and not ongoing:
             self.add_error("event_date", "A atividade já passou.")
-        if c.get("deadline") and c.get("event_date") and c["deadline"] > c["event_date"]:
-            self.add_error("deadline", "O prazo de resposta precisa ser até o dia da atividade.")
-        if c.get("deadline") and c["deadline"] < today:
+        if ongoing:
+            if not until:
+                self.add_error("valid_until", "Diga até quando a autorização vale.")
+            elif until < today:
+                self.add_error("valid_until", "Essa data já passou.")
+            elif start and until < start:
+                self.add_error("valid_until", "Precisa ser depois do início da validade.")
+            elif deadline and deadline > until:
+                self.add_error("deadline", "O prazo de resposta precisa ser até o fim da validade.")
+        else:
+            c["valid_until"] = None
+            if deadline and start and deadline > start:
+                self.add_error("deadline", "O prazo de resposta precisa ser até o dia da atividade.")
+        if deadline and deadline < today:
             self.add_error("deadline", "O prazo já passou.")
         return c
+
+
+def _when(auth):
+    if auth.ongoing:
+        return f"Vale de {auth.event_date:%d/%m/%Y} até {auth.last_day():%d/%m/%Y}"
+    return f"Atividade em {auth.event_date:%d/%m/%Y}"
 
 
 def _guardians_of(class_ids):
@@ -168,7 +197,7 @@ def authorization_create(request):
                              detail=f"Criou a autorização '{auth.title}'")
         notify_many(user.school, _guardians_of([c.pk for c in auth.class_groups.all()]),
                     Notification.Kind.ANNOUNCEMENT, f"Autorização: {auth.title}",
-                    body=f"Responda até {auth.deadline:%d/%m/%Y}. Atividade em {auth.event_date:%d/%m/%Y}.",
+                    body=f"Responda até {auth.deadline:%d/%m/%Y}. " + _when(auth) + ".",
                     url=reverse("communication:authorization_detail", args=[auth.pk]))
         messages.success(request, "Autorização enviada às famílias.")
         return redirect("communication:authorization_detail", pk=auth.pk)
@@ -213,13 +242,15 @@ def authorization_detail(request, pk):
         ctx["staff"] = True
         ctx["n_signatures"], ctx["broken"] = len(checks), broken
         ctx["outdated"] = sum(1 for g in ctx["groups"] for r in g["rows"] if r["check"] and not r["check"]["doc_ok"])
-        if ctx["print"]:
+        if ctx["print"] and not auth.ongoing:
             _trip_care(user, auth, ctx["groups"])
     else:
         cls = {c.pk for c in auth.class_groups.all()}
         responses = {r.student_id: r for r in auth.responses.filter(student__in=list(_family_children(user)))
                      .select_related("signature")}
-        ctx["children"] = [{"student": st, "response": responses.get(st.pk)}
+        revocable = auth.accepts_revocation() and not ctx["accepts"]
+        ctx["children"] = [{"student": st, "response": responses.get(st.pk),
+                            "revoke": revocable and getattr(responses.get(st.pk), "answer", "") == "autorizo"}
                            for st, cid in _family_children(user).items() if cid in cls]
         ctx["can_answer"] = user.role == Role.RESPONSAVEL.value
     return render(request, "communication/authorization_detail.html", ctx)
@@ -251,11 +282,14 @@ def authorization_sign(request, pk, student_id):
     """Assinatura da autorização: o texto inteiro, a resposta, o nome completo e a senha de novo."""
     user = request.user
     auth, student = _signable(user, pk, student_id)
-    if not auth.accepts_answers():
-        messages.error(request, "O prazo de resposta terminou ou a autorização foi encerrada.")
-        return redirect("communication:authorization_detail", pk=auth.pk)
     current = AuthorizationResponse.objects.filter(authorization=auth, student=student).select_related(
         "signature").first()
+    # Depois do prazo, uso de imagem e saída sozinho ainda aceitam a retirada de quem autorizou (só "não autorizo").
+    revoke_only = (not auth.accepts_answers() and auth.accepts_revocation()
+                   and current is not None and current.answer == AuthorizationResponse.Answer.YES)
+    if not auth.accepts_answers() and not revoke_only:
+        messages.error(request, "O prazo de resposta terminou ou a autorização foi encerrada.")
+        return redirect("communication:authorization_detail", pk=auth.pk)
     error, post = None, {}
     if request.method == "POST":
         post = {"answer": request.POST.get("answer", ""), "note": (request.POST.get("note") or "").strip()[:300],
@@ -266,6 +300,8 @@ def authorization_sign(request, pk, student_id):
                 error = "Assinatura bloqueada por 15 minutos depois de 5 senhas erradas. Se não foi você, troque a senha."
             elif post["answer"] not in AuthorizationResponse.Answer.values:
                 error = "Escolha autorizo ou não autorizo."
+            elif revoke_only and post["answer"] != AuthorizationResponse.Answer.NO:
+                error = "O prazo terminou: agora só é possível retirar a autorização."
             elif not post["ciente"]:
                 error = "Confirme que leu o texto e que é responsável legal pelo estudante."
             elif not signatures.name_matches(user, post["nome"]):
@@ -278,6 +314,8 @@ def authorization_sign(request, pk, student_id):
                          else "Senha incorreta. Assinatura bloqueada por 15 minutos e você foi avisado(a).")
             else:
                 sig = signatures.sign(request, auth, student, user, post["answer"], post["note"], post["nome"], nonce)
+                if auth.ongoing and current and current.answer == "autorizo" and sig.answer == "nao_autorizo":
+                    _tell_revoked(auth, student, sig)
                 messages.success(request, f"Assinado: {sig.get_answer_display().lower()} ({student.first_name}). "
                                           f"Comprovante {sig.display_code}.")
                 return redirect("communication:authorization_receipt", code=sig.code)
@@ -286,7 +324,23 @@ def authorization_sign(request, pk, student_id):
     return render(request, "communication/authorization_sign.html", {
         "auth": auth, "student": student, "current": current, "document": auth.document_text(), "error": error,
         "post": post, "token": signatures.issue_token(user, auth, student), "account_name": user.get_full_name(),
-        "health": HealthRecord.objects.filter(student=student).first()})
+        "revoke_only": revoke_only,
+        "health": HealthRecord.objects.filter(student=student).first() if not auth.ongoing else None})
+
+
+def _tell_revoked(auth, student, sig):
+    """Retirada de uso de imagem ou de saída sozinho: quem criou e a direção ficam sabendo na hora (a lista de
+    fotos e a tela de retirada já mudam sozinhas)."""
+    from apps.core.models import User
+
+    what = "o uso de imagem" if auth.kind == Authorization.Kind.IMAGE else "a saída sozinho(a)"
+    people = User.objects.filter(Q(pk=auth.created_by_id) | Q(school=auth.school, role=Role.DIRECAO.value),
+                                 is_active=True)
+    notify_many(auth.school, people, Notification.Kind.ANNOUNCEMENT,
+                f"Autorização retirada: {what} de {student.full_name}",
+                body=f"{sig.signer_name} retirou a autorização '{auth.title}' (comprovante {sig.display_code}).",
+                url=reverse("communication:authorization_receipt", args=[sig.code]),
+                dedupe_key=f"autorizacao-retirada:{sig.pk}", priority=Notification.Priority.HIGH)
 
 
 def _can_see_signature(user, sig):
@@ -337,6 +391,44 @@ def authorization_verify(request):
         messages.error(request, "Comprovante não encontrado (ou de um estudante que você não acompanha). Confira os "
                                 "10 caracteres.")
     return render(request, "communication/authorization_verify.html", {"codigo": raw[:20]})
+
+
+def authorization_images(request):
+    """Antes de publicar foto ou vídeo: quem da turma tem autorização de uso de imagem valendo hoje. Sem assinatura
+    válida, não pode aparecer (``consents``)."""
+    from apps.core.params import as_id
+    from apps.registry.models import Enrollment
+
+    from .consents import standing
+
+    user = request.user
+    ids = staff_class_ids(user)
+    if ids is None:
+        raise PermissionDenied
+    classes = ClassGroup.objects.filter(pk__in=ids)
+    current = classes.filter(school_year__is_current=True)
+    classes = (current if current.exists() else classes).order_by("name")
+    chosen = as_id(request.GET.get("turma"))
+    shown = [c for c in classes if c.pk == chosen] if chosen else list(classes)
+    enrollments = list(Enrollment.objects.filter(class_group__in=shown, status="ativo").select_related("student")
+                       .order_by("student__first_name", "student__last_name"))
+    rows = standing(user.school, Authorization.Kind.IMAGE, [e.student_id for e in enrollments])
+    groups = []
+    for cg in shown:
+        yes, no = [], []
+        for e in (e for e in enrollments if e.class_group_id == cg.pk):
+            row = rows.get(e.student_id)
+            (yes if row and row["granted"] else no).append(
+                {"student": e.student, "sig": row and row["sig"], "auth": row and row["auth"],
+                 "reason": row["reason"] if row else "sem resposta"})
+        groups.append({"cg": cg, "yes": yes, "no": no})
+    in_force = Authorization.objects.filter(school=user.school, kind=Authorization.Kind.IMAGE,
+                                            event_date__lte=timezone.localdate(),
+                                            valid_until__gte=timezone.localdate()) \
+        .exclude(status=Authorization.Status.CANCELED)
+    return render(request, "communication/authorization_images.html", {
+        "groups": groups, "classes": classes, "chosen": chosen, "in_force": list(in_force),
+        "can_create": bool(ids), "today": timezone.localdate()})
 
 
 @require_POST

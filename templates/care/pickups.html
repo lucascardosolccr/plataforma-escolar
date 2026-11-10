@@ -26,6 +26,12 @@
   </ul>
 </div></section>
 
+<section class="card mb-3" aria-labelledby="h-sozinho"><div class="card-body">
+  <h2 id="h-sozinho" class="h6">Sair sozinho(a)</h2>
+  {% if alone %}<p class="mb-0">{% icon "circle-check" %} Autorizado pela família até {{ alone.authorization.valid_until|date:"d/m/Y" }} (comprovante <a href="{% url 'communication:authorization_receipt' alone.code %}">{{ alone.display_code }}</a>). A portaria pode registrar a saída sem acompanhante.</p>
+  {% else %}<p class="mb-0 text-body-secondary">Sem autorização assinada valendo hoje: {{ student.first_name }} só sai com um responsável ou com alguém da lista.{% if is_family %} Quando a escola pedir, a autorização aparece em <a href="{% url 'communication:authorization_list' %}">Autorizações</a>.{% endif %}</p>{% endif %}
+</div></section>
+
 {% if can_manage %}
 <section class="card mb-3" aria-labelledby="h-nova"><div class="card-body">
   <h2 id="h-nova" class="h6">Autorizar outra pessoa</h2>
@@ -44,6 +50,6 @@
 
 <section class="card" aria-labelledby="h-hist"><div class="card-body">
   <h2 id="h-hist" class="h6">Últimas retiradas</h2>
-  <ul class="list-unstyled mb-0">{% for r in records %}<li class="py-1">{{ r.at|date:"d/m/Y H:i" }} · com {{ r.person_name }} · {{ r.get_kind_display }}{% if r.verification %} · confirmação: {{ r.verification }}{% endif %}</li>{% empty %}<li class="text-body-secondary">Nenhuma retirada registrada.</li>{% endfor %}</ul>
+  <ul class="list-unstyled mb-0">{% for r in records %}<li class="py-1">{{ r.at|date:"d/m/Y H:i" }} · {% if r.kind == "sozinho" %}sozinho(a){% else %}com {{ r.person_name }}{% endif %} · {{ r.get_kind_display }}{% if r.verification %} · confirmação: {{ r.verification }}{% endif %}</li>{% empty %}<li class="text-body-secondary">Nenhuma retirada registrada.</li>{% endfor %}</ul>
 </div></section>
 {% endblock %}

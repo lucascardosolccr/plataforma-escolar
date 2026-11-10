@@ -195,6 +195,7 @@ def pickup_student(request, student_id):
             return redirect("care:pickups", student_id=student.pk)
     return render(request, "care/pickups.html", {
         "student": student, "people": [{"p": p, "valid": p.valid_on(today)} for p in people],
+        "alone": _alone_signature(student),
         "guardians": _guardians(student), "form": form, "can_manage": can_manage,
         "can_register": access.can_register_pickup(user, student),
         "is_family": user.role == Role.RESPONSAVEL.value,
@@ -263,6 +264,7 @@ def pickup_register(request, student_id):
               if p.valid_on(today)]
     notice = DepartureNotice.objects.filter(student=student, day=today,
                                             status=DepartureNotice.Status.PENDING).first()
+    alone = _alone_signature(student)
     error = None
     if request.method == "POST":
         who = request.POST.get("quem", "")
@@ -278,13 +280,17 @@ def pickup_register(request, student_id):
         elif kind == "o":
             name = (request.POST.get("nome") or "").strip()[:120]
             verification = (request.POST.get("confirmacao") or "").strip()[:300]
+        elif kind == "s" and alone:
+            # Só com a autorização "sair sozinho(a)" assinada, íntegra e valendo hoje (conferida de novo agora).
+            name, verification = "sozinho(a)", f"Autorização assinada {alone.display_code}"
         if not name:
             error = "Escolha quem está buscando o estudante."
         elif kind == "o" and not verification:
             error = ("Pessoa fora da lista: antes de liberar, confirme com um responsável e escreva com quem falou "
                      "e por qual meio.")
         else:
-            return _register(request, student, user, guardian, pickup, name, verification, notice)
+            return _register(request, student, user, guardian, pickup, name, verification, notice,
+                             alone=kind == "s")
     chosen = request.POST.get("quem") if request.method == "POST" else (
         f"a:{notice.pickup_id}" if notice and notice.pickup_id else
         f"g:{notice.created_by_id}" if notice and notice.guardian_pickup else "")
@@ -292,16 +298,26 @@ def pickup_register(request, student_id):
                 for g in guardians]
                + [{"value": f"a:{p.pk}", "label": f"{p.name} · {p.relationship} · conferir {p.document_hint}"}
                   for p in people]
+               + ([{"value": "s:", "label": f"Sai sozinho(a) · autorização da família {alone.display_code}, "
+                                           f"vale até {alone.authorization.valid_until:%d/%m/%Y}"}] if alone else [])
                + [{"value": "o:", "label": "Outra pessoa, fora da lista (só depois de confirmar com um responsável)"}])
     for o in options:
         o["checked"] = o["value"] == chosen
     return render(request, "care/register.html", {
-        "student": student, "options": options, "notice": notice, "error": error,
+        "student": student, "options": options, "notice": notice, "error": error, "alone": alone,
         "post": request.POST if request.method == "POST" else {},
         "health": HealthRecord.objects.filter(student=student).first()})
 
 
-def _register(request, student, user, guardian, pickup, name, verification, notice):
+def _alone_signature(student):
+    """A assinatura da família que deixa o estudante sair sozinho hoje, ou None (``communication.consents``)."""
+    from apps.communication.consents import allowed
+    from apps.communication.models import Authorization
+
+    return allowed(student, Authorization.Kind.ALONE)
+
+
+def _register(request, student, user, guardian, pickup, name, verification, notice, alone=False):
     from apps.communication.family_events import family_of
     from apps.communication.models import Notification
     from apps.communication.services import notify_many
@@ -309,7 +325,9 @@ def _register(request, student, user, guardian, pickup, name, verification, noti
     from apps.gate.models import GateEvent
 
     kind = (PickupRecord.Kind.GUARDIAN if guardian else PickupRecord.Kind.AUTHORIZED if pickup
+            else PickupRecord.Kind.ALONE if alone
             else PickupRecord.Kind.OTHER)
+    with_whom = "sozinho(a)" if kind == PickupRecord.Kind.ALONE else f"com {name}"
     with transaction.atomic():
         rec = PickupRecord.objects.create(
             school=student.school, student=student, at=timezone.now(), kind=kind, guardian=guardian, pickup=pickup,
@@ -318,13 +336,14 @@ def _register(request, student, user, guardian, pickup, name, verification, noti
             notice.status = DepartureNotice.Status.DONE
             notice.save(update_fields=["status"])
         create_audit_log(user=user, action="create", request=request, target=student,
-                         detail=f"Registrou a retirada de {student} por {name} ({rec.get_kind_display().lower()})")
+                         detail=f"Registrou a saída de {student} {with_whom} ({rec.get_kind_display().lower()}"
+                                + (f", {verification})" if kind == PickupRecord.Kind.ALONE else ")"))
     # A saída entra na portaria (painel do dia) e avisa a família com quem o estudante saiu.
     event, existed = gate.register(student, GateEvent.Kind.EXIT, GateEvent.Method.MANUAL, user)
     if existed:
         from apps.communication.family_events import notify_family
 
-        notify_family(student, "saida_escola", f"{student.first_name} saiu da escola com {name}",
+        notify_family(student, "saida_escola", f"{student.first_name} saiu da escola {with_whom}",
                       body=f"Registrado às {timezone.localtime(rec.at):%H:%M}.",
                       url=reverse("care:pickups", args=[student.pk]), dedupe_key=f"retirada:{rec.pk}")
     if kind == PickupRecord.Kind.OTHER:
@@ -335,6 +354,6 @@ def _register(request, student, user, guardian, pickup, name, verification, noti
                          f"{verification}",
                     url=reverse("care:pickups", args=[student.pk]), student=student,
                     dedupe_key=f"retirada-fora:{rec.pk}", priority=Notification.Priority.HIGH)
-    messages.success(request, f"Retirada registrada: {student.first_name} saiu com {name} às "
+    messages.success(request, f"Saída registrada: {student.first_name} saiu {with_whom} às "
                               f"{timezone.localtime(rec.at):%H:%M}.")
     return redirect("care:home")

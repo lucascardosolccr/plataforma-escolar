@@ -156,6 +156,7 @@ class PickupRecord(models.Model):
         GUARDIAN = "responsavel", "Responsável com vínculo"
         AUTHORIZED = "autorizada", "Pessoa da lista de autorizados"
         OTHER = "outra", "Pessoa fora da lista (confirmada com a família)"
+        ALONE = "sozinho", "Saiu sozinho(a), com autorização assinada"
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="pickup_records")
     student = models.ForeignKey("registry.Student", on_delete=models.CASCADE, related_name="pickup_records",

@@ -6,19 +6,19 @@
 {% if print and staff %}
 <div class="d-print-none mb-3"><a href="{% url "communication:authorization_detail" auth.pk %}" class="back-link">{% icon "arrow-left" %}Voltar</a> <button type="button" class="btn btn-primary btn-sm" data-print>{% icon "printer" %}Imprimir</button></div>
 <h1 class="h4">Autorizados — {{ auth.title }}</h1>
-<p>Atividade em {{ auth.event_date|date:"d/m/Y" }} · lista gerada em {% now "d/m/Y H:i" %}. Só quem tem resposta "autorizo" de um responsável. O código de cada linha confere a assinatura em Autorizações → Conferir comprovante.</p>
+<p>{% if auth.ongoing %}Vale de {{ auth.event_date|date:"d/m/Y" }} até {{ auth.valid_until|date:"d/m/Y" }}{% else %}Atividade em {{ auth.event_date|date:"d/m/Y" }}{% endif %} · lista gerada em {% now "d/m/Y H:i" %}. Só quem tem resposta "autorizo" de um responsável. O código de cada linha confere a assinatura em Autorizações → Conferir comprovante.</p>
 {% for g in groups %}
 <h2 class="h6 mt-3">{{ g.cg.name }} — {{ g.yes }} autorizado{{ g.yes|pluralize }}</h2>
 <ol class="authorized-list">{% for r in g.rows %}{% if r.response.answer == "autorizo" %}<li>{{ r.student.full_name }}{% if r.response.signature %} · <span class="small">{{ r.response.signature.display_code }}{% if r.check and not r.check.doc_ok %} (versão anterior do texto){% endif %}</span>{% else %} · <span class="small">sem assinatura eletrônica</span>{% endif %}{% if r.response.note %} <span class="small text-body-secondary">— {{ r.response.note }}</span>{% endif %}{% with c=r.care %}{% if c.alert %}<span class="d-block small">Saúde: {% if c.alert.allergies %}alergia: {{ c.alert.allergies|truncatechars:90 }}; {% endif %}{% if c.alert.diet %}{{ c.alert.get_diet_display|lower }}; {% endif %}{% if c.alert.conditions %}{{ c.alert.conditions|truncatechars:90 }}; {% endif %}{% if c.alert.crisis_plan %}crise: {{ c.alert.crisis_plan|truncatechars:120 }}{% endif %}</span>{% endif %}{% if c.contact %}<span class="d-block small">Emergência: {{ c.contact.name }} ({{ c.contact.relationship }}) · {{ c.contact.phone }}</span>{% endif %}{% endwith %}</li>{% endif %}{% endfor %}</ol>
 {% endfor %}
-<p class="small mt-3">Dados de saúde e contatos: só para o cuidado dos estudantes no passeio. Guarde a lista com a equipe e descarte depois.</p>
+{% if not auth.ongoing %}<p class="small mt-3">Dados de saúde e contatos: só para o cuidado dos estudantes no passeio. Guarde a lista com a equipe e descarte depois.</p>{% else %}<p class="small mt-3">A família pode retirar a autorização a qualquer momento: a lista vale para a data em que foi gerada.</p>{% endif %}
 {% else %}
 <a href="{% url "communication:authorization_list" %}" class="back-link">{% icon "arrow-left" %}Autorizações</a>
 <div class="page-head">
   <div>
-    <span class="eyebrow">Autorização</span>
+    <span class="eyebrow">Autorização{% if auth.kind != "passeio" %} · {{ auth.get_kind_display }}{% endif %}</span>
     <h1>{{ auth.title }}</h1>
-    <p>Atividade em <strong>{{ auth.event_date|date:"d/m/Y" }}</strong> · responder até <strong>{{ auth.deadline|date:"d/m/Y" }}</strong> · {% for c in auth.class_groups.all %}{{ c.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+    <p>{% if auth.ongoing %}Vale de <strong>{{ auth.event_date|date:"d/m/Y" }}</strong> até <strong>{{ auth.valid_until|date:"d/m/Y" }}</strong>{% else %}Atividade em <strong>{{ auth.event_date|date:"d/m/Y" }}</strong>{% endif %} · responder até <strong>{{ auth.deadline|date:"d/m/Y" }}</strong> · {% for c in auth.class_groups.all %}{{ c.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
   </div>
   <div class="page-actions"><span class="chip">{{ auth.get_status_display }}</span></div>
 </div>
@@ -29,6 +29,7 @@
   <div class="d-flex flex-wrap gap-2 mb-3">
     <a class="btn btn-outline-secondary" href="?imprimir=1">{% icon "printer" %}Lista de autorizados para imprimir</a>
     <a class="btn btn-outline-secondary" href="{% url "communication:authorization_verify" %}">{% icon "shield" %}Conferir comprovante</a>
+    {% if auth.kind == "imagem" %}<a class="btn btn-outline-secondary" href="{% url "communication:authorization_images" %}">{% icon "camera" %}Quem pode aparecer em fotos</a>{% endif %}
     {% if can_manage and accepts %}
     <form method="post" action="{% url "communication:authorization_remind" auth.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary">{% icon "bell" %}Lembrar quem não respondeu</button></form>
     {% endif %}
@@ -74,6 +75,9 @@
     {% if c.response %}<p class="mb-2">Resposta registrada: <strong>{{ c.response.get_answer_display }}</strong> em {{ c.response.answered_at|date:"d/m/Y H:i" }}{% if c.response.note %} · {{ c.response.note }}{% endif %}.{% if c.response.signature %} <a href="{% url "communication:authorization_receipt" c.response.signature.code %}">Comprovante {{ c.response.signature.display_code }}</a>{% else %} Sem assinatura eletrônica.{% endif %}</p>{% endif %}
     {% if can_answer and accepts %}
     <a class="btn btn-primary btn-sm" href="{% url "communication:authorization_sign" auth.pk c.student.pk %}">{% icon "pencil" %}{% if c.response %}Mudar a resposta{% else %}Ler e assinar{% endif %}</a>
+    {% elif can_answer and c.revoke %}
+    <a class="btn btn-outline-danger btn-sm" href="{% url "communication:authorization_sign" auth.pk c.student.pk %}">Retirar a autorização</a>
+    <p class="small text-body-secondary mt-2 mb-0">O prazo de resposta terminou, mas você pode retirar a autorização a qualquer momento até {{ auth.valid_until|date:"d/m/Y" }}.</p>
     {% elif not accepts and not c.response %}<p class="text-body-secondary mb-0">O prazo de resposta terminou.</p>{% endif %}
   </div></section>
   {% empty %}

@@ -339,6 +339,20 @@ GUIDES = [
         ("“Lembrar quem não respondeu” avisa só as famílias que faltam (uma vez por dia). A lista impressa traz os "
          "códigos, os alertas de saúde e o contato de emergência de cada autorizado.", None),
     ]),
+    ("Pedir autorização de uso de imagem ou de saída sozinho(a)", "camera",
+     (PROFESSOR, COORDENACAO, DIRECAO, SECRETARIA, ADMIN), [
+        ("Em Autorizações → Nova autorização, escolha o tipo “Uso de imagem e voz” ou “Sair sozinho(a) da escola” "
+         "e diga até quando vale (ex.: fim do ano letivo). No texto, explique onde as fotos aparecem.",
+         "communication:authorization_create"),
+        ("Antes de publicar foto ou vídeo, abra “Quem pode aparecer em fotos”: só aparece quem tem assinatura "
+         "válida hoje. Sem resposta é o mesmo que não autorizado.", "communication:authorization_images"),
+        ("Na saída, a portaria vê a opção “Sai sozinho(a)” só para quem tem a autorização assinada e válida. A "
+         "família pode retirar a autorização a qualquer momento, e quem criou e a direção são avisados.", None),
+    ]),
+    ("Retirar uma autorização de uso de imagem ou de saída sozinho(a)", "camera", (RESPONSAVEL,), [
+        ("Em Autorizações, abra a autorização e use “Retirar a autorização” (ou “Mudar a resposta”, dentro do "
+         "prazo). Vale na hora e a escola é avisada.", "communication:authorization_list"),
+    ]),
     # Saúde e retirada
     ("Preencher a ficha de saúde e dizer quem pode buscar", "user-check", (RESPONSAVEL,), [
         ("Em Saúde e retirada, use “Preencher a ficha de saúde”: alergias, alimentação, remédios, o que fazer "

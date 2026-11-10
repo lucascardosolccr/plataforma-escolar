@@ -40,6 +40,7 @@ urlpatterns = [
     path("autorizacoes/comprovante/<str:code>/", views_authorizations.authorization_receipt,
          name="authorization_receipt"),
     path("autorizacoes/verificar/", views_authorizations.authorization_verify, name="authorization_verify"),
+    path("autorizacoes/fotos/", views_authorizations.authorization_images, name="authorization_images"),
     path("autorizacoes/<int:pk>/<str:action>/", views_authorizations.authorization_status,
          name="authorization_status"),
     path("consultas/", views_polls.poll_list, name="poll_list"),

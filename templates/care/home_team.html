@@ -8,7 +8,7 @@
     <h1>Saúde e retirada</h1>
     <p>{% if is_team %}Saídas avisadas pelas famílias, retiradas registradas hoje e os alertas de saúde por turma.{% else %}Alertas de saúde dos estudantes das suas turmas: alergias, alimentação, condições e o que fazer numa crise.{% endif %}</p>
   </div>
-  <div class="page-actions"><a class="btn btn-primary" href="{% url 'care:incident_pick' %}">{% icon "plus" %}Registrar atendimento</a><a class="btn btn-outline-secondary" href="{% url 'care:incidents' %}">Atendimentos</a>{% if is_team %}<a class="btn btn-outline-secondary" href="{% url 'care:food' %}">Restrições alimentares</a>{% endif %}</div>
+  <div class="page-actions"><a class="btn btn-primary" href="{% url 'care:incident_pick' %}">{% icon "plus" %}Registrar atendimento</a><a class="btn btn-outline-secondary" href="{% url 'care:incidents' %}">Atendimentos</a>{% if is_team %}<a class="btn btn-outline-secondary" href="{% url 'care:medication_today' %}">Remédios de hoje{% if meds_late %} <span class="badge text-bg-danger">{{ meds_late }}</span>{% endif %}</a><a class="btn btn-outline-secondary" href="{% url 'care:food' %}">Restrições alimentares</a>{% endif %}</div>
 </div>
 
 {% if is_team %}

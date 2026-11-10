@@ -69,6 +69,10 @@ def home(request):
         raise PermissionDenied
     ctx = {"classes": _classes(user), "is_team": user.role in access.TEAM}
     if ctx["is_team"]:
+        from .views_meds import late_doses
+
+        ctx["meds_late"] = late_doses(user)
+    if ctx["is_team"]:
         ctx["notices"] = (DepartureNotice.objects.filter(school=user.school, day=today,
                                                          status=DepartureNotice.Status.PENDING)
                           .select_related("student", "pickup", "created_by"))

@@ -233,3 +233,90 @@ class HealthIncident(models.Model):
 
     def __str__(self):
         return f"{self.student} — {self.get_kind_display()} em {self.happened_at:%d/%m/%Y}"
+
+
+class MedicationRequest(models.Model):
+    """Pedido da família para a escola dar um remédio no horário de aula. A escola só dá depois de conferir a
+    receita (a secretaria autoriza) e registra cada dose; a família recebe um aviso a cada uma."""
+
+    class Status(models.TextChoices):
+        PENDING = "pendente", "Aguardando a escola"
+        APPROVED = "aprovado", "Autorizado"
+        REFUSED = "recusado", "Não autorizado"
+        ENDED = "encerrado", "Encerrado"
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="medication_requests")
+    student = models.ForeignKey("registry.Student", on_delete=models.CASCADE, related_name="medication_requests",
+                                verbose_name="estudante")
+    medicine = models.CharField("remédio", max_length=120, help_text="Nome e concentração, como na receita. "
+                                                                    "Ex.: Amoxicilina 250 mg/5 ml.")
+    dose = models.CharField("dose", max_length=80, help_text="Ex.: 5 ml, 1 comprimido, 2 jatos.")
+    times = models.CharField("horários na escola", max_length=60,
+                             help_text="Só os que caem no horário de aula. Ex.: 10:00 ou 10:00, 14:30.")
+    start_date = models.DateField("a partir de")
+    end_date = models.DateField("até", help_text="Último dia. Para uso contínuo, o fim do ano letivo.")
+    reason = models.CharField("para quê (opcional)", max_length=150, blank=True, help_text="Ex.: infecção de garganta.")
+    instructions = models.CharField("como dar (opcional)", max_length=300, blank=True,
+                                    help_text="Ex.: depois do lanche; agitar antes; guardar na geladeira.")
+    prescriber = models.CharField("quem receitou", max_length=120, help_text="Nome do médico ou dentista e o CRM/CRO.")
+    prescription_date = models.DateField("data da receita")
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    requested_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField("situação", max_length=10, choices=Status.choices, default=Status.PENDING)
+    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name="+")
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_note = models.CharField("observação da escola", max_length=300, blank=True)
+    ended_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name="+")
+    ended_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "pedido de medicação na escola"
+        verbose_name_plural = "pedidos de medicação na escola"
+        ordering = ["-requested_at"]
+
+    def __str__(self):
+        return f"{self.medicine} para {self.student}"
+
+    def time_list(self):
+        return [t for t in (self.times or "").split(", ") if t]
+
+    def active_on(self, day):
+        return self.status == self.Status.APPROVED and self.start_date <= day <= self.end_date
+
+    @property
+    def state_label(self):
+        """A situação como a família entende: autorizado com o prazo vencido já terminou."""
+        from django.utils import timezone
+
+        if self.status == self.Status.APPROVED and self.end_date < timezone.localdate():
+            return "Terminou"
+        return self.get_status_display()
+
+
+class MedicationDose(models.Model):
+    """Cada horário de um remédio autorizado: quem deu, quando, ou por que não foi dado."""
+
+    class Result(models.TextChoices):
+        GIVEN = "dado", "Tomou"
+        REFUSED = "recusou", "Não quis tomar"
+        ABSENT = "ausente", "Não estava na escola"
+        NOT_GIVEN = "nao_dado", "Não foi dado (ver observação)"
+
+    request = models.ForeignKey(MedicationRequest, on_delete=models.CASCADE, related_name="doses")
+    day = models.DateField("dia")
+    slot = models.CharField("horário", max_length=5)
+    result = models.CharField("resultado", max_length=10, choices=Result.choices)
+    note = models.CharField("observação", max_length=200, blank=True)
+    given_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    given_at = models.DateTimeField("registrado em", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "dose de medicação na escola"
+        verbose_name_plural = "doses de medicação na escola"
+        ordering = ["-day", "-slot"]
+        constraints = [models.UniqueConstraint(fields=["request", "day", "slot"], name="uniq_medication_dose")]
+
+    def __str__(self):
+        return f"{self.request.medicine} {self.day:%d/%m} {self.slot}: {self.get_result_display()}"

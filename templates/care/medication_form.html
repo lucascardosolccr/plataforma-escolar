@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Remédio na escola: {{ student.first_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url "care:medications" as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Remédio na escola" heading="Pedir para a escola dar um remédio" subheading=student.full_name %}
+  <p class="form-lead">Peça só o que precisa ser tomado no horário de aula. A escola dá o remédio depois de conferir a receita e o remédio na embalagem original, com o nome do estudante, entregues na secretaria.</p>
+  {% if record and record.allergies %}<div class="alert alert-warning" role="status">{% icon "triangle-alert" %}<div>Na ficha de saúde consta alergia a: {{ record.allergies }}. Confira com o médico se o remédio é seguro.</div></div>{% endif %}
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Enviar o pedido" hint="" %}
+  </form>
+</div>
+{% endblock %}

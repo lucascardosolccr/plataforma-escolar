@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Remédios de hoje — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'care:medications' %}" class="back-link">{% icon "arrow-left" %}Remédio na escola</a>
+    <h1>Remédios de hoje</h1>
+    <p>{{ today|date:"l, d/m/Y" }} · {{ done }} de {{ rows|length }} horário{{ rows|length|pluralize }} registrado{{ rows|length|pluralize }}{% if late %} · <strong class="text-danger">{{ late }} atrasado{{ late|pluralize }}</strong>{% endif %}. Confira o nome, o remédio e a dose antes de dar. A família recebe um aviso a cada registro.</p>
+  </div>
+  <div class="page-actions"><button type="button" class="btn btn-outline-secondary" data-print>{% icon "printer" %}Imprimir</button></div>
+</div>
+
+<div class="card"><ul class="feed">
+  {% for r in rows %}
+  <li class="feed-item{% if r.late %} border-start border-danger border-3{% endif %}"><div class="feed-body flex-grow-1">
+    <p class="feed-title"><strong>{{ r.slot }}</strong> · <a href="{% url 'care:medication' r.req.pk %}">{{ r.req.student.full_name }}</a>{% if r.late %} <span class="chip chip-state text-danger">atrasado</span>{% endif %}</p>
+    <p class="feed-meta">{{ r.req.medicine }} · <strong>{{ r.req.dose }}</strong>{% if r.req.instructions %} · {{ r.req.instructions }}{% endif %}</p>
+    {% if r.record.allergies %}<p class="small text-danger mb-1">{% icon "triangle-alert" %}Alergias: {{ r.record.allergies }}</p>{% endif %}
+    {% if r.dose %}
+    <p class="mb-0">{% icon "check" %}<strong>{{ r.dose.get_result_display }}</strong> · {{ r.dose.given_at|date:"H:i" }} por {{ r.dose.given_by.get_full_name|default:r.dose.given_by.username }}{% if r.dose.note %} · {{ r.dose.note }}{% endif %}</p>
+    {% if r.undo %}<form method="post" action="{% url 'care:medication_dose_undo' r.dose.pk %}" class="mt-1 no-print">{% csrf_token %}<button type="submit" class="btn btn-link btn-sm p-0" data-confirm="Desfazer este registro? A família recebe uma correção.">Registrei errado: desfazer</button></form>{% endif %}
+    {% else %}
+    <form method="post" action="{% url 'care:medication_dose' r.req.pk %}" class="d-flex flex-wrap gap-2 align-items-end mt-1 no-print">{% csrf_token %}
+      <input type="hidden" name="slot" value="{{ r.slot }}">
+      <div><label class="form-label small" for="res-{{ r.req.pk }}-{{ forloop.counter }}">Resultado</label>
+        <select id="res-{{ r.req.pk }}-{{ forloop.counter }}" name="result" class="form-select form-select-sm">{% for v, label in results %}<option value="{{ v }}">{{ label }}</option>{% endfor %}</select></div>
+      <div class="flex-grow-1"><label class="form-label small" for="obs-{{ r.req.pk }}-{{ forloop.counter }}">Observação</label>
+        <input id="obs-{{ r.req.pk }}-{{ forloop.counter }}" name="note" maxlength="200" class="form-control form-control-sm" placeholder="Opcional (obrigatória se não foi dado)"></div>
+      <button type="submit" class="btn btn-primary btn-sm">Registrar</button>
+    </form>
+    {% endif %}
+  </div></li>
+  {% empty %}
+  <li><div class="empty-state py-4">{% icon "heart-handshake" %}<strong>Nenhum remédio autorizado para hoje</strong></div></li>
+  {% endfor %}
+</ul></div>
+{% endblock %}

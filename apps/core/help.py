@@ -387,6 +387,29 @@ GUIDES = [
         ("Em Saúde e retirada → Atendimentos na escola: o que aconteceu, o que a escola fez e o desfecho. Marque "
          "“Estou ciente” e, se quiser, deixe um recado.", "care:incidents"),
     ]),
+    ("Dar remédio na escola", "heart-handshake", (SECRETARIA, DIRECAO, ADMIN, COORDENACAO), [
+        ("A família pede em Saúde e retirada → Remédio na escola e entrega a receita e o remédio. A secretaria, "
+         "a direção ou a administração confere e autoriza (ou não, com o motivo).", "care:medications"),
+        ("Em Remédios de hoje aparecem os horários do dia, com as alergias da ficha. Registre cada um: tomou, não "
+         "quis, não estava na escola ou não foi dado. A família recebe um aviso a cada registro. Errou? Quem "
+         "registrou desfaz em até 10 minutos.", "care:medication_today"),
+    ]),
+    ("Pedir para a escola dar um remédio", "heart-handshake", (RESPONSAVEL,), [
+        ("Em Saúde e retirada → Remédio na escola: remédio, dose, horários de aula, período e a receita. Entregue "
+         "a receita e o remédio na secretaria; a escola só dá depois de conferir.", "care:medications"),
+        ("A cada dose você recebe um aviso (também quando não foi dado). Para parar, use “Encerrar”.", None),
+    ]),
+    ("Abrir horários para as famílias marcarem", "clock", (PROFESSOR, COORDENACAO, DIRECAO, SECRETARIA), [
+        ("Em Horários de atendimento → Abrir horários: assunto, dia, das/até, quanto dura cada conversa e as "
+         "turmas. As famílias dessas turmas recebem um aviso.", "office:create"),
+        ("Cada horário marcado vira uma reunião com você e os responsáveis, com lembrete na véspera e espaço "
+         "para o registro. “Liberar” cancela e avisa a família; “Fechar marcações” para de aceitar novas.",
+         "office:list"),
+    ]),
+    ("Marcar uma conversa com o professor", "clock", (RESPONSAVEL,), [
+        ("Em Horários de atendimento aparecem os horários abertos para a turma do seu filho. Escolha um livre "
+         "e diga o assunto, se quiser. Dá para desmarcar até a hora.", "office:list"),
+    ]),
     # Rematrícula
     ("Confirmar a rematrícula com as famílias", "calendar-check", (SECRETARIA, DIRECAO, ADMIN), [
         ("Crie o ano letivo seguinte em Acadêmico → Anos letivos e abra a campanha em Confirmação de "

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{% if hours %}Editar horários{% else %}Abrir horários de atendimento{% endif %} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% if hours %}{% url "office:detail" hours.pk as back %}{% else %}{% url "office:list" as back %}{% endif %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Horários de atendimento" heading=hours|yesno:"Editar horários,Abrir horários de atendimento" subheading=hours.title|default:"" %}
+  <p class="form-lead">A plataforma divide o intervalo em horários do tamanho escolhido. As famílias das turmas recebem um aviso e marcam um horário por estudante.</p>
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label=hours|yesno:"Salvar,Abrir e avisar as famílias" hint="" %}
+  </form>
+</div>
+{% endblock %}

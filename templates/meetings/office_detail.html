@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ hours.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'office:list' %}" class="back-link">{% icon "arrow-left" %}Horários de atendimento</a>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{{ hours.host.get_full_name|default:hours.host.username }}</span>
+    <h1>{{ hours.title }}</h1>
+    <p>{{ hours.day|date:"l, d/m/Y" }} · {{ hours.start|time:"H:i" }} às {{ hours.end|time:"H:i" }} · {{ hours.get_slot_minutes_display }} cada{% if hours.location %} · {{ hours.location }}{% endif %}</p>
+  </div>
+  {% if not family %}<div class="page-actions">
+    <a href="{% url 'office:edit' hours.pk %}" class="btn btn-outline-secondary">{% icon "pencil" %}Editar</a>
+    <form method="post" action="{% url 'office:toggle' hours.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary">{% if hours.closed %}Reabrir marcações{% else %}Fechar marcações{% endif %}</button></form>
+    <button type="button" class="btn btn-outline-secondary" data-print>{% icon "printer" %}Imprimir</button>
+  </div>{% endif %}
+</div>
+
+{% if hours.notes %}<div class="alert alert-info" role="status">{% icon "info" %}<div>{{ hours.notes|linebreaksbr }}</div></div>{% endif %}
+{% if hours.closed %}<div class="alert alert-secondary" role="status">{% icon "ban" %}<div>Fechado para novas marcações.{% if not family %} Os horários já marcados continuam.{% endif %}</div></div>{% endif %}
+
+{% if family %}
+{% if mine %}<section class="card mb-3" aria-labelledby="h-meu"><div class="card-body">
+  <h2 id="h-meu" class="h6">Marcado</h2>
+  <ul class="list-unstyled mb-0">{% for s in mine %}<li class="py-1 d-flex flex-wrap gap-2 align-items-center"><span class="flex-grow-1"><strong>{{ s.starts_at|date:"H:i" }}</strong> · {{ s.student.full_name }}{% if s.topic %} · {{ s.topic }}{% endif %}</span>{% if s.meeting_id %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'meetings:detail' s.meeting_id %}">Ver a reunião</a>{% endif %}{% if s.starts_at > now %}<form method="post" action="{% url 'office:release' s.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Desmarcar este horário? Ele fica livre para outra família.">Desmarcar</button></form>{% endif %}</li>{% endfor %}</ul>
+</div></section>{% endif %}
+{% if form %}<section class="card" aria-labelledby="h-marcar"><div class="card-body">
+  <h2 id="h-marcar" class="h6">Escolha um horário ({{ free }} livre{{ free|pluralize }})</h2>
+  <form method="post" action="{% url 'office:book' hours.pk %}" novalidate>{% csrf_token %}
+    {% include "partials/_form_fields.html" with f=form %}
+    <button type="submit" class="btn btn-primary">{% icon "check" %}Marcar</button>
+  </form>
+</div></section>
+{% elif not mine %}<p class="text-body-secondary">Não há horário livre.</p>{% endif %}
+{% else %}
+<p class="text-body-secondary">Turmas: {% for cg in classes %}{{ cg.name }}{% if not forloop.last %}, {% endif %}{% endfor %} · {{ taken }} de {{ slots|length }} horário{{ slots|length|pluralize }} marcado{{ slots|length|pluralize }}.</p>
+<div class="card mb-3"><div class="table-responsive"><table class="table mb-0">
+  <thead><tr><th scope="col">Horário</th><th scope="col">Estudante</th><th scope="col">Marcado por</th><th scope="col">Assunto</th><th scope="col" class="no-print"><span class="visually-hidden">Ações</span></th></tr></thead>
+  <tbody>
+    {% for s in slots %}<tr>
+      <td><strong>{{ s.starts_at|date:"H:i" }}</strong></td>
+      {% if s.free %}<td colspan="3" class="text-body-secondary">livre</td><td class="no-print"></td>
+      {% else %}<td>{{ s.student.full_name }}</td><td>{{ s.booked_by.get_full_name|default:s.booked_by.username }}</td><td>{{ s.topic|default:"—" }}</td>
+      <td class="no-print text-end">{% if s.meeting_id %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'meetings:detail' s.meeting_id %}">Reunião</a>{% endif %}
+        {% if s.starts_at > now %}<form method="post" action="{% url 'office:release' s.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="motivo" value=""><button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Liberar este horário? A reunião é cancelada e a família é avisada.">Liberar</button></form>{% endif %}</td>{% endif %}
+    </tr>{% endfor %}
+  </tbody>
+</table></div></div>
+{% if not taken %}<form method="post" action="{% url 'office:delete' hours.pk %}" class="no-print">{% csrf_token %}<button type="submit" class="btn btn-outline-danger" data-confirm="Apagar estes horários?">{% icon "trash-2" %}Apagar</button></form>{% endif %}
+{% endif %}
+{% endblock %}

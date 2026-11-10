@@ -29,11 +29,13 @@
       <a class="btn btn-outline-secondary btn-sm" href="{% url 'care:pickups' r.student.pk %}">Quem pode buscar</a>
       <a class="btn btn-outline-secondary btn-sm" href="{% url 'care:notice_create' r.student.pk %}">Avisar saída antecipada</a>
       <a class="btn btn-outline-secondary btn-sm" href="{% url 'care:incidents' %}">Atendimentos na escola</a>
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'care:medication_create' r.student.pk %}">Remédio na escola</a>
     </p>
   </div></li>
   {% empty %}
   <li><div class="empty-state py-4">{% icon "user-check" %}<strong>Nenhum estudante vinculado</strong><span>Quando a escola aprovar o vínculo com seu filho, ele aparece aqui.</span></div></li>
   {% endfor %}
 </ul></div>
-<p class="small text-body-secondary mt-3">Quem vê a ficha: você, a secretaria, a direção e a coordenação. Os professores da turma veem só o que precisam em sala (alergias, alimentação, condições e o que fazer numa crise). O estudante não vê. Cada consulta da equipe fica registrada.</p>
+<p class="mt-3 mb-0"><a href="{% url 'care:medications' %}">Pedidos de remédio na escola</a></p>
+<p class="small text-body-secondary mt-2">Quem vê a ficha: você, a secretaria, a direção e a coordenação. Os professores da turma veem só o que precisam em sala (alergias, alimentação, condições e o que fazer numa crise). O estudante não vê. Cada consulta da equipe fica registrada.</p>
 {% endblock %}

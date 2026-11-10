@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Horários de atendimento — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Horários de atendimento</h1>
+    <p>{% if family %}Professores e equipe abrem horários para conversar com as famílias. Escolha um horário livre: ele vira uma reunião na sua agenda, com lembrete na véspera.{% else %}Abra horários (plantão de dúvidas, reunião de pais) e as famílias das turmas escolhidas marcam. Cada horário marcado vira uma reunião, com aviso, lembrete e registro.{% endif %}</p>
+  </div>
+  {% if not family %}<div class="page-actions"><a href="{% url 'office:create' %}" class="btn btn-primary">{% icon "plus" %}Abrir horários</a></div>{% endif %}
+</div>
+
+{% if family %}
+{% if booked %}<section class="card mb-3" aria-labelledby="h-marcados"><div class="card-body">
+  <h2 id="h-marcados" class="h6">Seus horários marcados</h2>
+  <ul class="list-unstyled mb-0">{% for s in booked %}<li class="py-1 border-bottom"><strong>{{ s.starts_at|date:"d/m \à\s H:i" }}</strong> · {{ s.student.first_name }} com {{ s.hours.host.get_full_name|default:s.hours.host.username }} · <a href="{% url 'office:detail' s.hours.pk %}">{{ s.hours.title }}</a>{% if s.hours.location %} · {{ s.hours.location }}{% endif %}</li>{% endfor %}</ul>
+</div></section>{% endif %}
+<div class="card"><ul class="feed">
+  {% for r in rows %}
+  <li class="feed-item"><div class="feed-body flex-grow-1">
+    <p class="feed-title"><a href="{% url 'office:detail' r.h.pk %}">{{ r.h.title }}</a></p>
+    <p class="feed-meta">{{ r.h.host.get_full_name|default:r.h.host.username }} · {{ r.h.day|date:"l, d/m" }} · {{ r.h.start|time:"H:i" }} às {{ r.h.end|time:"H:i" }}{% if r.h.location %} · {{ r.h.location }}{% endif %}</p>
+  </div><span class="chip chip-state">{{ r.free }} livre{{ r.free|pluralize }}</span></li>
+  {% empty %}
+  <li><div class="empty-state py-4">{% icon "clock" %}<strong>Nenhum horário aberto agora</strong><span>Quando um professor ou a equipe abrir horários para a turma do seu filho, você recebe um aviso.</span></div></li>
+  {% endfor %}
+</ul></div>
+{% else %}
+<div class="card"><ul class="feed">
+  {% for r in rows %}
+  <li class="feed-item"><div class="feed-body flex-grow-1">
+    <p class="feed-title"><a href="{% url 'office:detail' r.h.pk %}">{{ r.h.title }}</a>{% if r.h.closed %} <span class="chip chip-state">fechado</span>{% endif %}{% if r.h.day < today %} <span class="chip chip-state">passou</span>{% endif %}</p>
+    <p class="feed-meta">{{ r.h.day|date:"d/m/Y" }} · {{ r.h.start|time:"H:i" }} às {{ r.h.end|time:"H:i" }} · {% for cg in r.h.class_groups.all %}{{ cg.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if r.h.host_id != request.user.pk %} · {{ r.h.host.get_full_name|default:r.h.host.username }}{% endif %}</p>
+  </div><span class="chip chip-state">{{ r.taken }} de {{ r.total }} marcado{{ r.total|pluralize }}</span></li>
+  {% empty %}
+  <li><div class="empty-state py-4">{% icon "clock" %}<strong>Nenhum horário aberto</strong><span>Abra horários para as famílias marcarem uma conversa, sem troca de mensagens para combinar.</span></div></li>
+  {% endfor %}
+</ul></div>
+{% endif %}
+{% endblock %}

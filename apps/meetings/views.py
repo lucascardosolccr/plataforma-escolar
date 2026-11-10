@@ -189,6 +189,11 @@ def meeting_cancel(request, pk):
             meeting.save(update_fields=["status", "cancel_reason", "updated_at"])
             _log(request, "update", meeting, f"Cancelou a reunião {meeting.title}: {meeting.cancel_reason}")
             services.notify_canceled(meeting, user)
+            from .models import OfficeSlot
+
+            # Horário de atendimento marcado: volta a ficar livre para outra família.
+            OfficeSlot.objects.filter(meeting=meeting).update(student=None, booked_by=None, booked_at=None,
+                                                              topic="", meeting=None)
         messages.success(request, "Reunião cancelada. Os participantes foram avisados.")
         return redirect("meetings:detail", pk=meeting.pk)
     return render(request, "meetings/cancel.html", {"form": form, "meeting": meeting})

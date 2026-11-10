@@ -36,6 +36,8 @@ def for_user(user):
     if role in (Role.PROFESSOR.value, Role.SECRETARIA.value, Role.COORDENACAO.value, Role.DIRECAO.value,
                 Role.ADMIN.value) and user.school_id:
         items += _supplies_staff(user)
+    if role in (Role.SECRETARIA.value, Role.COORDENACAO.value, Role.DIRECAO.value, Role.ADMIN.value) and user.school_id:
+        items += _medications_staff(user)
     if role in (Role.DIRECAO.value, Role.SECRETARIA.value, Role.ADMIN.value):
         items += _lgpd(user)
     if role in (Role.DIRECAO.value, Role.SECRETARIA.value, Role.COORDENACAO.value, Role.ADMIN.value) and user.school_id:
@@ -421,6 +423,17 @@ def _supplies_staff(user):
     return [_item("Listas de materiais devolvidas com observação", SupplyList.objects.filter(
         school=user.school, status=SupplyList.Status.DRAFT, created_by=user).exclude(review_note="").count(),
         reverse("supplies:index") + "?situacao=rascunho")]
+
+
+def _medications_staff(user):
+    from apps.care.views_meds import late_doses, pending_requests
+
+    return [
+        _item("Remédios de hoje atrasados (sem registro)", late_doses(user), reverse("care:medication_today"),
+              "Registre se foi dado ou por que não foi: a família é avisada."),
+        _item("Pedidos de remédio na escola para conferir", pending_requests(user), reverse("care:medications"),
+              "Autorize só depois de ver a receita e o remédio."),
+    ]
 
 
 def _library_family(child_ids):

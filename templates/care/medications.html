@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Remédio na escola — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'care:home' %}" class="back-link">{% icon "arrow-left" %}Saúde e retirada</a>
+    <h1>Remédio na escola</h1>
+    <p>{% if family %}Se o seu filho precisa tomar remédio no horário de aula, peça aqui e entregue a receita e o remédio na secretaria. A escola só dá depois de conferir, e você recebe um aviso a cada dose.{% else %}Pedidos das famílias, com receita conferida pela secretaria antes de autorizar. Cada dose dada (ou não) é registrada e a família é avisada na hora.{% endif %}</p>
+  </div>
+  {% if not family %}<div class="page-actions"><a href="{% url 'care:medication_today' %}" class="btn btn-primary">{% icon "clock" %}Remédios de hoje{% if late %} <span class="badge text-bg-danger">{{ late }} atrasado{{ late|pluralize }}</span>{% endif %}</a></div>{% endif %}
+</div>
+
+{% if family %}
+{% if kids %}<section class="card mb-3" aria-labelledby="h-pedir"><div class="card-body">
+  <h2 id="h-pedir" class="h6">Pedir para a escola dar um remédio</h2>
+  <p class="d-flex flex-wrap gap-2 mb-0">{% for s in kids %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'care:medication_create' s.pk %}">{% icon "plus" %}{{ s.first_name }}</a>{% endfor %}</p>
+</div></section>{% endif %}
+<div class="card"><ul class="feed">
+  {% for r in requests %}
+  <li class="feed-item"><div class="feed-body flex-grow-1">
+    <p class="feed-title"><a href="{% url 'care:medication' r.pk %}">{{ r.medicine }}</a> · {{ r.student.first_name }}</p>
+    <p class="feed-meta">{{ r.dose }} às {{ r.times }} · {{ r.start_date|date:"d/m" }} a {{ r.end_date|date:"d/m/Y" }}</p>
+  </div><span class="chip chip-state">{{ r.state_label }}</span></li>
+  {% empty %}
+  <li><div class="empty-state py-4">{% icon "heart-handshake" %}<strong>Nenhum pedido de remédio</strong><span>Só peça se o remédio precisa ser tomado no horário de aula.</span></div></li>
+  {% endfor %}
+</ul></div>
+{% else %}
+<section class="card mb-3" aria-labelledby="h-pend"><div class="card-body">
+  <h2 id="h-pend" class="h6">Aguardando a escola</h2>
+  <ul class="list-unstyled mb-0">
+    {% for r in pending %}<li class="py-1 border-bottom"><a href="{% url 'care:medication' r.pk %}">{{ r.student.full_name }}</a> · {{ r.medicine }}, {{ r.dose }} às {{ r.times }} · a partir de {{ r.start_date|date:"d/m" }}{% if can_review %} · <span class="text-body-secondary">confira a receita e o remédio antes de autorizar</span>{% endif %}</li>
+    {% empty %}<li class="text-body-secondary">Nenhum pedido aguardando.</li>{% endfor %}
+  </ul>
+</div></section>
+<section class="card" aria-labelledby="h-ativos"><div class="card-body">
+  <h2 id="h-ativos" class="h6">Autorizados</h2>
+  <ul class="list-unstyled mb-0">
+    {% for r in active %}<li class="py-1 border-bottom"><a href="{% url 'care:medication' r.pk %}">{{ r.student.full_name }}</a> · {{ r.medicine }}, {{ r.dose }} às {{ r.times }} · até {{ r.end_date|date:"d/m/Y" }}</li>
+    {% empty %}<li class="text-body-secondary">Nenhum remédio autorizado agora.</li>{% endfor %}
+  </ul>
+</div></section>
+{% endif %}
+{% endblock %}

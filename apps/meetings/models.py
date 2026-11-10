@@ -125,3 +125,68 @@ class MeetingFollowUp(models.Model):
     @property
     def overdue(self):
         return self.status == self.Status.PENDING and bool(self.due_date) and self.due_date < timezone.localdate()
+
+
+class OfficeHours(models.Model):
+    """Horários que alguém da equipe abre para as famílias marcarem uma conversa (plantão de dúvidas, reunião de
+    pais e mestres). Cada horário marcado vira uma reunião com os responsáveis: aviso, lembrete na véspera, registro
+    e encaminhamentos seguem as regras das reuniões (``access``)."""
+
+    SLOT_CHOICES = [(10, "10 minutos"), (15, "15 minutos"), (20, "20 minutos"), (30, "30 minutos"),
+                    (45, "45 minutos"), (60, "1 hora")]
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, verbose_name="escola")
+    host = models.ForeignKey(User, on_delete=models.CASCADE, related_name="office_hours", verbose_name="quem atende")
+    title = models.CharField("assunto", max_length=120,
+                             help_text="Ex.: Reunião de pais do 1º bimestre; Plantão de dúvidas de Matemática.")
+    day = models.DateField("dia")
+    start = models.TimeField("das")
+    end = models.TimeField("até")
+    slot_minutes = models.PositiveSmallIntegerField("cada conversa", choices=SLOT_CHOICES, default=15)
+    location = models.CharField("local ou forma", max_length=200, blank=True,
+                                help_text="Ex.: sala 5; chamada de vídeo (o link vai na reunião).")
+    notes = models.TextField("orientações para as famílias", blank=True)
+    class_groups = models.ManyToManyField(ClassGroup, related_name="office_hours", verbose_name="turmas",
+                                          help_text="As famílias dessas turmas podem marcar.")
+    closed = models.BooleanField("fechado para novas marcações", default=False)
+    announced_at = models.DateTimeField(null=True, blank=True, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["day", "start"]
+        verbose_name = "horário de atendimento"
+        verbose_name_plural = "horários de atendimento"
+
+    def __str__(self):
+        return f"{self.title} — {self.day:%d/%m/%Y}"
+
+
+class OfficeSlot(models.Model):
+    """Um horário dentro do atendimento. Marcado, aponta para a reunião criada com a família."""
+
+    hours = models.ForeignKey(OfficeHours, on_delete=models.CASCADE, related_name="slots")
+    starts_at = models.DateTimeField("início")
+    student = models.ForeignKey(Student, on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+                                verbose_name="estudante")
+    booked_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    booked_at = models.DateTimeField(null=True, blank=True)
+    topic = models.CharField("o que quer conversar", max_length=200, blank=True)
+    meeting = models.OneToOneField(Meeting, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name="office_slot")
+
+    class Meta:
+        ordering = ["starts_at"]
+        verbose_name = "horário marcado"
+        verbose_name_plural = "horários marcados"
+        constraints = [
+            models.UniqueConstraint(fields=["hours", "starts_at"], name="uniq_office_slot_time"),
+            # Um horário por estudante em cada atendimento (estudante vazio = horário livre, não conta).
+            models.UniqueConstraint(fields=["hours", "student"], name="uniq_office_slot_student"),
+        ]
+
+    def __str__(self):
+        return f"{self.hours.title} {timezone.localtime(self.starts_at):%d/%m %H:%M}"
+
+    @property
+    def free(self):
+        return self.student_id is None

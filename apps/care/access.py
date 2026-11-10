@@ -88,3 +88,18 @@ def can_view_food_list(user):
     """Restrições alimentares e alergias por turma (cozinha, cardápio): a equipe que cuida do cardápio e a
     coordenação (só as turmas da designação)."""
     return user.is_authenticated and user.role in TEAM
+
+
+def can_view_medication(user, student):
+    """Remédios dados na escola: a família e a equipe que vê a ficha completa. O professor não (como na ficha)."""
+    return guardian_of(user, student) or _team_reaches(user, student)
+
+
+def can_give_medication(user, student):
+    """Registrar as doses: a equipe que alcança o estudante (secretaria, direção, administração, coordenação)."""
+    return _team_reaches(user, student)
+
+
+def can_review_medication(user, student):
+    """Autorizar ou recusar o pedido, depois de conferir a receita: secretaria, direção e administração."""
+    return _same_school(user, student) and user.role in OFFICE

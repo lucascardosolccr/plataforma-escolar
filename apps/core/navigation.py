@@ -242,6 +242,8 @@ ITEMS = {
                          "O que vai cair e por onde começar a estudar"),
     "meetings": Item("Reuniões", "meetings:list", "users-round", ("meetings:",),
                      "Reuniões e atendimentos: pauta, registro e encaminhamentos"),
+    "office_hours": Item("Horários de atendimento", "office:list", "clock", ("office:",),
+                         "Horários para as famílias marcarem uma conversa"),
 }
 
 # Itens do rodapé do menu, iguais para todos os perfis.
@@ -266,7 +268,7 @@ ACTIONS = {
 }
 
 COMMUNICATION_STAFF = ("Comunicação", ["threads_staff", "announcements", "authorizations", "polls", "requests",
-                                       "meetings", "notifications"])
+                                       "meetings", "office_hours", "notifications"])
 # A administração cuida das contas e da configuração, não participa de reuniões.
 COMMUNICATION_ADMIN = ("Comunicação", ["threads_staff", "announcements", "authorizations", "polls", "requests",
                                        "notifications"])
@@ -277,7 +279,7 @@ LAYOUT = {
         ("Acompanhamento", ["children", "outlook", "fam_diary", "fam_activities", "fam_works", "fam_exam_prep",
                             "fam_grades", "fam_attendance", "gate_mine", "care", "school_library"]),
         ("Escola", ["threads_family", "announcements", "authorizations", "polls", "requests", "meetings",
-                    "lost_found", "supplies", "notifications"]),
+                    "office_hours", "lost_found", "supplies", "notifications"]),
         ("Secretaria", ["fam_applications", "reenroll", "justify", "links", "fam_support"]),
         ("Análises", ["reports", "methodology"]),
     ],

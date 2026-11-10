@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ req.medicine }}: {{ req.student.first_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'care:medications' %}" class="back-link">{% icon "arrow-left" %}Remédio na escola</a>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{{ req.state_label }}</span>
+    <h1>{{ req.medicine }}</h1>
+    <p>{{ req.student.full_name }} · pedido em {{ req.requested_at|date:"d/m/Y" }}{% if req.requested_by %} por {{ req.requested_by.get_full_name|default:req.requested_by.username }}{% endif %}</p>
+  </div>
+  <div class="page-actions"><button type="button" class="btn btn-outline-secondary" data-print>{% icon "printer" %}Imprimir</button></div>
+</div>
+
+{% if req.status == "pendente" %}<div class="alert alert-info" role="status">{% icon "info" %}<div>{% if family %}Entregue a receita e o remédio na secretaria. A escola só começa a dar depois de conferir e autorizar; você recebe um aviso.{% else %}Confira a receita e o remédio entregues pela família antes de autorizar.{% endif %}</div></div>
+{% elif req.status == "recusado" %}<div class="alert alert-danger" role="alert">{% icon "circle-alert" %}<div><strong>Não autorizado.</strong> {{ req.review_note }}</div></div>{% endif %}
+{% if record and record.allergies %}<div class="alert alert-warning" role="status">{% icon "triangle-alert" %}<div><strong>Alergias na ficha de saúde:</strong> {{ record.allergies }}</div></div>{% endif %}
+
+<section class="card mb-3"><div class="card-body">
+  <dl class="mb-0">
+    <dt>Dose</dt><dd>{{ req.dose }}</dd>
+    <dt>Horários na escola</dt><dd>{{ req.times }}</dd>
+    <dt>Período</dt><dd>{{ req.start_date|date:"d/m/Y" }} a {{ req.end_date|date:"d/m/Y" }}</dd>
+    {% if req.reason %}<dt>Para quê</dt><dd>{{ req.reason }}</dd>{% endif %}
+    {% if req.instructions %}<dt>Como dar</dt><dd>{{ req.instructions }}</dd>{% endif %}
+    <dt>Receita</dt><dd>{{ req.prescriber }}, de {{ req.prescription_date|date:"d/m/Y" }}</dd>
+    {% if req.reviewed_at %}<dt>{% if req.status == "recusado" %}Analisado{% else %}Autorizado{% endif %}</dt><dd>{{ req.reviewed_by.get_full_name|default:req.reviewed_by.username }} em {{ req.reviewed_at|date:"d/m/Y H:i" }}{% if req.review_note and req.status != "recusado" %} · {{ req.review_note }}{% endif %}</dd>{% endif %}
+    {% if req.ended_at %}<dt>Encerrado</dt><dd>{{ req.ended_by.get_full_name|default:req.ended_by.username }} em {{ req.ended_at|date:"d/m/Y H:i" }}</dd>{% endif %}
+  </dl>
+</div></section>
+
+{% if review %}<section class="card mb-3 no-print" aria-labelledby="h-analise"><div class="card-body">
+  <h2 id="h-analise" class="h6">Analisar o pedido</h2>
+  <form method="post" action="{% url 'care:medication_review' req.pk %}" novalidate>{% csrf_token %}
+    {% include "partials/_form_fields.html" with f=review %}
+    <button type="submit" class="btn btn-primary">Salvar a decisão e avisar a família</button>
+  </form>
+</div></section>{% endif %}
+
+<section class="card mb-3" aria-labelledby="h-doses"><div class="card-body">
+  <h2 id="h-doses" class="h6">Doses registradas</h2>
+  <ul class="list-unstyled mb-0">
+    {% for d in doses %}<li class="py-1 border-bottom">{{ d.day|date:"d/m" }} · {{ d.slot }} · <strong>{{ d.get_result_display }}</strong> · {{ d.given_at|date:"H:i" }} por {{ d.given_by.get_full_name|default:d.given_by.username }}{% if d.note %} · {{ d.note }}{% endif %}</li>
+    {% empty %}<li class="text-body-secondary">Nenhuma dose registrada ainda.</li>{% endfor %}
+  </ul>
+</div></section>
+
+{% if can_end %}<form method="post" action="{% url 'care:medication_end' req.pk %}" class="no-print">{% csrf_token %}
+  <button type="submit" class="btn btn-outline-danger" data-confirm="{% if family %}A escola não vai mais dar este remédio. Encerrar?{% else %}Encerrar este remédio? A família é avisada.{% endif %}">{% icon "x" %}{% if req.status == "pendente" %}Cancelar o pedido{% else %}Encerrar: não dar mais{% endif %}</button>
+</form>{% endif %}
+{% endblock %}

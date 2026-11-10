@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{% if campaign %}Editar campanha{% else %}Nova campanha de rematrícula{% endif %} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% if campaign %}{% url "reenroll:detail" campaign.pk as back %}{% else %}{% url "reenroll:index" as back %}{% endif %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Rematrícula" heading=campaign|yesno:"Editar campanha,Nova campanha de rematrícula" %}
+  <p class="form-lead">As famílias das turmas escolhidas recebem um aviso importante no dia do início e um lembrete {{ remind_days|default:3 }} dias antes do prazo, se ainda não responderam. Quem não tem conta responde na secretaria: use “Registrar no balcão”.</p>
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label=campaign|yesno:"Salvar,Abrir campanha" hint="" %}
+  </form>
+</div>
+{% endblock %}

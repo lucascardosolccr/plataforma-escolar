@@ -34,6 +34,7 @@ class Notification(models.Model):
         EIA = "eia", "Resumo semanal de sinais do EIA-Cognitio"
         GATE = "portaria", "Entrada e saída na escola"
         LIBRARY = "biblioteca", "Biblioteca e achados e perdidos"
+        HEALTH = "saude", "Atendimento de saúde na escola"
 
     class Priority(models.TextChoices):
         NORMAL = "normal", "Informativo"

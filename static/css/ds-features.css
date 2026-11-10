@@ -200,4 +200,5 @@ rect.bar.st-insuf, rect.bar.st-none { fill: var(--ds-line); }
 .ol-w-100 { width: 100%; }
 
 /* Achados e perdidos: foto do objeto sem ocupar a tela inteira */
+.reenroll-terms { max-height: 16rem; overflow-y: auto; background: var(--ds-surface-2); }
 .found-photo { max-height: 320px; object-fit: contain; }

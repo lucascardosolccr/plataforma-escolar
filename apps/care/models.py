@@ -181,3 +181,55 @@ class PickupRecord(models.Model):
 
     def __str__(self):
         return f"{self.student} com {self.person_name}"
+
+
+class HealthIncident(models.Model):
+    """Atendimento na escola: mal-estar, febre, machucado, reação alérgica ou crise. A família é avisada na hora e
+    marca "ciente". Dado de saúde (LGPD, art. 11): vê quem vê a ficha completa e quem registrou."""
+
+    class Kind(models.TextChoices):
+        UNWELL = "mal_estar", "Mal-estar (dor, enjoo, tontura)"
+        FEVER = "febre", "Febre"
+        INJURY = "machucado", "Queda, batida ou machucado"
+        ALLERGY = "alergia", "Reação alérgica"
+        CRISIS = "crise", "Crise (asma, convulsão ou outra condição)"
+        OTHER = "outro", "Outro"
+
+    class Outcome(models.TextChoices):
+        BACK = "voltou", "Voltou para a aula"
+        WATCH = "observacao", "Ficou em observação na escola"
+        PICKUP = "buscar", "Pedimos que a família venha buscar"
+        HOSPITAL = "pronto_atendimento", "Levado(a) ao pronto atendimento"
+
+    #: Desfechos em que a família precisa agir: o aviso diz isso no título.
+    URGENT = (Outcome.PICKUP, Outcome.HOSPITAL)
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="health_incidents")
+    student = models.ForeignKey("registry.Student", on_delete=models.CASCADE, related_name="health_incidents",
+                                verbose_name="estudante")
+    happened_at = models.DateTimeField("quando")
+    kind = models.CharField("o que foi", max_length=20, choices=Kind.choices)
+    place = models.CharField("onde", max_length=80, blank=True, help_text="Ex.: pátio, quadra, sala 3.")
+    description = models.TextField("o que aconteceu", max_length=1000)
+    head_hit = models.BooleanField("bateu a cabeça", default=False,
+                                   help_text="A família recebe as orientações do que observar nas próximas horas.")
+    care_given = models.TextField("o que a escola fez", max_length=1000,
+                                  help_text="Ex.: repouso na secretaria, compressa de gelo, curativo, conferiu a "
+                                            "ficha de saúde. Remédio só com receita e autorização por escrito.")
+    phone_contact = models.CharField("contato por telefone", max_length=150, blank=True,
+                                     help_text="Com quem falou e a que horas (ex.: mãe, 10h15).")
+    outcome = models.CharField("desfecho", max_length=20, choices=Outcome.choices)
+    registered_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    acknowledged_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                        related_name="+")
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+    family_note = models.CharField("recado da família", max_length=300, blank=True)
+
+    class Meta:
+        verbose_name = "atendimento de saúde"
+        verbose_name_plural = "atendimentos de saúde"
+        ordering = ["-happened_at"]
+
+    def __str__(self):
+        return f"{self.student} — {self.get_kind_display()} em {self.happened_at:%d/%m/%Y}"

@@ -10,6 +10,7 @@
   </div>
 </div>
 
+{% if incidents %}<div class="alert alert-warning" role="status">{% icon "triangle-alert" %}<div><strong>{{ incidents }} atendimento{{ incidents|pluralize }} de saúde na escola sem o seu ciente.</strong> <a href="{% url 'care:incidents' %}">Ver</a></div></div>{% endif %}
 {% if notices %}
 <section class="card mb-3" aria-labelledby="h-avisos"><div class="card-body">
   <h2 id="h-avisos" class="h6">Saídas antecipadas avisadas</h2>
@@ -27,6 +28,7 @@
       <a class="btn btn-outline-secondary btn-sm" href="{% url 'care:health_edit' r.student.pk %}">{% if r.record %}Atualizar a ficha{% else %}Preencher a ficha de saúde{% endif %}</a>
       <a class="btn btn-outline-secondary btn-sm" href="{% url 'care:pickups' r.student.pk %}">Quem pode buscar</a>
       <a class="btn btn-outline-secondary btn-sm" href="{% url 'care:notice_create' r.student.pk %}">Avisar saída antecipada</a>
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'care:incidents' %}">Atendimentos na escola</a>
     </p>
   </div></li>
   {% empty %}

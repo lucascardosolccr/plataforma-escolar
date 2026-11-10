@@ -9,7 +9,7 @@
     <h1>Ficha de saúde de {{ student.full_name }}</h1>
     <p>{% if record %}Atualizada em {{ record.updated_at|date:"d/m/Y" }}{% if record.updated_by %} por {{ record.updated_by.get_full_name|default:record.updated_by.username }}{% endif %}.{% else %}A família ainda não preencheu a ficha.{% endif %}{% if not full %} Você vê o que importa em sala; contatos e remédios ficam com a secretaria.{% endif %}</p>
   </div>
-  {% if can_edit %}<div class="page-actions"><a class="btn btn-primary" href="{% url 'care:health_edit' student.pk %}">{% icon "pencil" %}{% if record %}Atualizar{% else %}Preencher{% endif %}</a></div>{% endif %}
+  <div class="page-actions">{% if can_register %}<a class="btn btn-outline-secondary" href="{% url 'care:incident_create' student.pk %}">{% icon "plus" %}Registrar atendimento</a>{% endif %}{% if can_edit %}<a class="btn btn-primary" href="{% url 'care:health_edit' student.pk %}">{% icon "pencil" %}{% if record %}Atualizar{% else %}Preencher{% endif %}</a>{% endif %}</div>
 </div>
 {% if record %}
 <div class="card"><div class="card-body"><dl class="row mb-0">

@@ -101,6 +101,7 @@ INSTALLED_APPS = [
     "apps.library",
     "apps.lostfound",
     "apps.supplies",
+    "apps.reenroll",
 ]
 
 MIDDLEWARE = [

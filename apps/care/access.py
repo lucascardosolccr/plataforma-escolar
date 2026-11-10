@@ -72,6 +72,18 @@ def can_view_class_alerts(user, class_group):
     return user.role in OFFICE
 
 
+def can_register_incident(user, student):
+    """Atendimento de saúde: a equipe que alcança o estudante e o professor dele (quem socorre em sala)."""
+    return _team_reaches(user, student) or teacher_of_student(user, student)
+
+
+def can_view_incident(user, incident):
+    """A família, a equipe que vê a ficha completa e quem registrou."""
+    student = incident.student
+    return guardian_of(user, student) or _team_reaches(user, student) or (
+        _same_school(user, student) and incident.registered_by_id == user.pk)
+
+
 def can_view_food_list(user):
     """Restrições alimentares e alergias por turma (cozinha, cardápio): a equipe que cuida do cardápio e a
     coordenação (só as turmas da designação)."""

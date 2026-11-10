@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Rematrícula — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Rematrícula</h1>
+    <p>{% if staff %}Pergunte às famílias, com prazo, se cada estudante continua no ano que vem. Elas conferem os dados de contato, e a rematrícula em lote já traz quem não continua desmarcado.{% else %}Diga se cada filho continua na escola no ano que vem e confira os dados de contato. Você pode mudar a resposta até o prazo.{% endif %}</p>
+  </div>
+  {% if manage %}<div class="page-actions"><a href="{% url 'reenroll:create' %}" class="btn btn-primary">{% icon "plus" %}Nova campanha</a></div>{% endif %}
+</div>
+
+{% if staff %}
+{% if data_pending %}<div class="alert alert-info" role="status">{% icon "info" %}<div><strong>{{ data_pending }} cadastro{{ data_pending|pluralize }} a atualizar</strong> com o que as famílias informaram na rematrícula.</div></div>{% endif %}
+<div class="card"><ul class="feed">
+  {% for r in rows %}
+  <li class="feed-item"><div class="feed-body flex-grow-1">
+    <p class="feed-title"><a href="{% url 'reenroll:detail' r.c.pk %}">{{ r.c.title }}</a></p>
+    <p class="feed-meta">Para {{ r.c.target_year }} · {{ r.c.opens_on|date:"d/m" }} a {{ r.c.deadline|date:"d/m/Y" }} · {{ r.stats.continua }} continuam, {{ r.stats.sai }} saem, {{ r.stats.pendente }} sem resposta (de {{ r.stats.total }})</p>
+  </div><span class="chip chip-state {% if r.state == 'aberta' %}state-publicada{% else %}state-rascunho{% endif %}">{{ r.state|capfirst }}</span></li>
+  {% empty %}
+  <li><div class="empty-state py-4">{% icon "calendar-check" %}<strong>Nenhuma campanha ainda</strong><span>{% if manage %}Crie o ano letivo seguinte (Acadêmico → Anos letivos) e abra a campanha.{% else %}A secretaria abre a campanha de rematrícula.{% endif %}</span></div></li>
+  {% endfor %}
+</ul></div>
+
+{% else %}
+{% for c, kids in open %}
+<section class="card mb-3" aria-labelledby="h-c{{ c.pk }}"><div class="card-body">
+  <h2 id="h-c{{ c.pk }}" class="h6">{{ c.title }} · responda até {{ c.deadline|date:"d/m/Y" }}</h2>
+  <ul class="list-unstyled mb-0">{% for s, a in kids %}<li class="py-2 d-flex flex-wrap gap-2 align-items-center border-bottom">
+    <span class="flex-grow-1">{{ s.full_name }}</span>
+    {% if a %}<span class="chip chip-state {% if a.decision == 'continua' %}text-success{% else %}text-warning{% endif %}">{{ a.get_decision_display }}</span>
+    <a href="{% url 'reenroll:answer' c.pk %}?estudante={{ s.pk }}" class="btn btn-outline-secondary btn-sm">Ver ou mudar</a>
+    {% else %}<a href="{% url 'reenroll:answer' c.pk %}?estudante={{ s.pk }}" class="btn btn-primary btn-sm">Responder</a>{% endif %}
+  </li>{% endfor %}</ul>
+</div></section>
+{% empty %}
+<div class="card mb-3"><div class="card-body"><div class="empty-state py-4">{% icon "calendar-check" %}<strong>Nenhuma rematrícula aberta</strong><span>Quando a escola abrir, você recebe um aviso.</span></div></div></div>
+{% endfor %}
+
+{% if past %}<section class="card" aria-labelledby="h-resp"><div class="card-body">
+  <h2 id="h-resp" class="h6">Suas respostas</h2>
+  <ul class="list-unstyled mb-0">{% for p in past %}<li class="py-1">{{ p.a.campaign.title }} · {{ p.a.student.first_name }}: <strong>{{ p.a.get_decision_display }}</strong> · {{ p.a.answered_at|date:"d/m/Y H:i" }} · comprovante <code>{{ p.code }}</code></li>{% endfor %}</ul>
+</div></section>{% endif %}
+{% endif %}
+{% endblock %}

@@ -37,20 +37,21 @@
         <input type="checkbox" class="form-check-input mt-0" data-bulk-all aria-label="Selecionar todos">
         <span data-bulk-count>0 selecionados</span>
       </label>
-      <span class="small text-body-secondary">Desmarque quem fica retido ou sai da escola.</span>
+      <span class="small text-body-secondary">Desmarque quem fica retido ou sai da escola. Quem a família disse que não continua já vem desmarcado.</span>
     </div>
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0 table-stack">
-        <thead><tr><th><span class="visually-hidden">Selecionar</span></th><th>Estudante</th><th>Nº matrícula</th></tr></thead>
+        <thead><tr><th><span class="visually-hidden">Selecionar</span></th><th>Estudante</th><th>Nº matrícula</th><th>Família disse</th></tr></thead>
         <tbody>
           {% for e in enrollments %}
           <tr>
-            <td><input type="checkbox" class="form-check-input" name="ids" value="{{ e.pk }}" aria-label="Rematricular {{ e.student.full_name }}"{% if chosen is None or e.pk|stringformat:"s" in chosen %} checked{% endif %}></td>
+            <td><input type="checkbox" class="form-check-input" name="ids" value="{{ e.pk }}" aria-label="Rematricular {{ e.student.full_name }}"{% if chosen is None and e.pk|stringformat:"s" not in leaving or chosen and e.pk|stringformat:"s" in chosen %} checked{% endif %}></td>
             <td class="fw-semibold"><span class="d-inline-flex align-items-center gap-2">{% avatar e.student %}{{ e.student.full_name }}</span></td>
             <td data-label="Nº matrícula">{{ e.enrollment_number|default:"—" }}</td>
+            <td data-label="Rematrícula">{% if e.reenroll %}<span class="chip chip-state {% if e.reenroll.decision == 'sai' %}text-warning{% else %}text-success{% endif %}">{{ e.reenroll.get_decision_display }}</span>{% else %}<span class="small text-body-secondary">sem resposta</span>{% endif %}</td>
           </tr>
           {% empty %}
-          <tr><td colspan="3"><div class="empty-state py-4">{% icon "circle-check" %}<strong>Nenhuma matrícula ativa nesta turma</strong><span>Quem já foi rematriculado não aparece mais aqui.</span></div></td></tr>
+          <tr><td colspan="4"><div class="empty-state py-4">{% icon "circle-check" %}<strong>Nenhuma matrícula ativa nesta turma</strong><span>Quem já foi rematriculado não aparece mais aqui.</span></div></td></tr>
           {% endfor %}
         </tbody>
       </table>

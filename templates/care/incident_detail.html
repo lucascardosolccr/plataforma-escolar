@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Atendimento de {{ inc.student.first_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'care:incidents' %}" class="back-link">{% icon "arrow-left" %}Atendimentos</a>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{{ inc.get_kind_display }}</span>
+    <h1>Atendimento de {{ inc.student.full_name }}</h1>
+    <p>{{ inc.happened_at|date:"d/m/Y \à\s H:i" }}{% if inc.place %} · {{ inc.place }}{% endif %}{% if inc.registered_by %} · registrado por {{ inc.registered_by.get_full_name|default:inc.registered_by.username }}{% endif %}</p>
+  </div>
+  <div class="page-actions"><button type="button" class="btn btn-outline-secondary" data-print>{% icon "printer" %}Imprimir</button></div>
+</div>
+
+{% if inc.outcome == "buscar" or inc.outcome == "pronto_atendimento" %}<div class="alert alert-danger" role="alert">{% icon "circle-alert" %}<div><strong>{{ inc.get_outcome_display }}.</strong>{% if family %} Se ainda não falou com a escola, ligue para a secretaria.{% endif %}</div></div>{% endif %}
+{% if inc.head_hit %}<div class="alert alert-warning" role="status">{% icon "triangle-alert" %}<div>{{ head_advice }}</div></div>{% endif %}
+
+<section class="card mb-3"><div class="card-body">
+  <dl class="mb-0">
+    <dt>O que aconteceu</dt><dd>{{ inc.description|linebreaksbr }}</dd>
+    <dt>O que a escola fez</dt><dd>{{ inc.care_given|linebreaksbr }}</dd>
+    {% if inc.phone_contact %}<dt>Contato por telefone</dt><dd>{{ inc.phone_contact }}</dd>{% endif %}
+    <dt>Desfecho</dt><dd class="mb-0">{{ inc.get_outcome_display }}</dd>
+  </dl>
+</div></section>
+
+<section class="card no-print" aria-labelledby="h-ciente"><div class="card-body">
+  <h2 id="h-ciente" class="h6">Família</h2>
+  {% if inc.acknowledged_at %}<p class="mb-0">Ciente: {{ inc.acknowledged_by.get_full_name|default:inc.acknowledged_by.username }} em {{ inc.acknowledged_at|date:"d/m/Y H:i" }}.{% if inc.family_note %} Recado: “{{ inc.family_note }}”{% endif %}</p>
+  {% elif family %}<form method="post" action="{% url 'care:incident_ack' inc.pk %}">{% csrf_token %}
+    <label for="recado" class="form-label">Recado para a escola (opcional)</label>
+    <input id="recado" name="recado" class="form-control mb-2" maxlength="300" placeholder="Ex.: já está melhor; vou levar ao médico">
+    <button type="submit" class="btn btn-primary">{% icon "check" %}Estou ciente</button>
+  </form>
+  {% else %}<p class="mb-0 text-body-secondary">A família ainda não marcou ciente.</p>{% endif %}
+</div></section>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Registrar atendimento — Saúde e retirada — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url "care:incidents" as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Atendimentos" heading="Registrar atendimento de saúde" %}
+  <p class="form-lead">Mal-estar, febre, machucado, reação alérgica ou crise. A família recebe um aviso importante na hora. Numa emergência, socorra e ligue primeiro: o registro vem depois.</p>
+  <form method="get" class="card mb-3"><div class="card-body d-flex flex-wrap gap-2 align-items-end">
+    <div class="flex-grow-1"><label for="q" class="form-label">Nome ou código do estudante</label><input id="q" name="q" class="form-control" value="{{ q }}" maxlength="60" autocomplete="off" autofocus></div>
+    <button type="submit" class="btn btn-outline-secondary">{% icon "search" %}Procurar</button>
+  </div></form>
+  {% if q %}<div class="card"><ul class="feed">
+    {% for f in found %}<li class="feed-item"><div class="feed-body flex-grow-1"><p class="feed-title">{{ f.s.full_name }}</p><p class="feed-meta">{{ f.cls|default:"sem turma" }}{% if f.s.code %} · código {{ f.s.code }}{% endif %}</p></div><a class="btn btn-primary btn-sm" href="{% url 'care:incident_create' f.s.pk %}">Registrar</a></li>
+    {% empty %}<li><div class="empty-state py-4">{% icon "search" %}<strong>Nenhum estudante encontrado</strong><span>O professor encontra só os estudantes das suas turmas.</span></div></li>{% endfor %}
+  </ul></div>{% endif %}
+</div>
+{% endblock %}

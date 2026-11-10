@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Atendimento de {{ student.first_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% url "care:incident_pick" as back %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Escolher outro estudante" heading="Atendimento de saúde" subheading=student.full_name %}
+  {% if record and record.has_alert %}<div class="alert alert-warning" role="status">{% icon "triangle-alert" %}<div>
+    <strong>Ficha de saúde:</strong>
+    {% if record.allergies %} alergias: {{ record.allergies }}.{% endif %}
+    {% if record.conditions %} condições: {{ record.conditions }}.{% endif %}
+    {% if record.crisis_plan %} <strong>Numa crise:</strong> {{ record.crisis_plan }}{% endif %}
+    {% if full and record.emergency_transport %} A família autorizou levar ao pronto atendimento numa emergência, se não for encontrada.{% endif %}
+  </div></div>{% elif not record %}<p class="form-lead">A família ainda não preencheu a ficha de saúde.</p>{% endif %}
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Registrar e avisar a família" hint="" %}
+  </form>
+</div>
+{% endblock %}

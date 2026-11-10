@@ -371,6 +371,9 @@ def run_daily(today=None):
         from apps.library.services import daily as library_daily
 
         counts["biblioteca"] = library_daily(today)
+        from apps.reenroll.services import daily as reenroll_daily
+
+        counts["rematricula"] = reenroll_daily(today)
     except Exception:
         run.status = ReminderRun.Status.ERROR
         run.detail = traceback.format_exc()[-2000:]

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ c.title }}: {{ student.first_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% if in_person %}{% url "reenroll:detail" c.pk as back %}{% else %}{% url "reenroll:index" as back %}{% endif %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Rematrícula" heading=c.title subheading=student.full_name %}
+  <p class="form-lead">{% if cls %}{{ cls.class_group.name }} · {% endif %}Responder até {{ c.deadline|date:"d/m/Y" }}.{% if in_person %} Registro feito pela secretaria, em nome da família.{% else %} Você pode mudar a resposta até lá.{% endif %}</p>
+
+  {% if current %}<div class="alert alert-success" role="status">{% icon "circle-check" %}<div><strong>Resposta registrada: {{ current.get_decision_display|lower }}</strong> em {{ current.answered_at|date:"d/m/Y H:i" }} por {{ current.answered_by_name }}{% if current.in_person %} (no balcão){% endif %}. Comprovante <code>{{ code }}</code>.</div></div>{% endif %}
+
+  {% if c.message %}<div class="callout mb-3">{% icon "info" %}<div>{{ c.message|linebreaksbr }}</div></div>{% endif %}
+
+  {% if profile %}<section class="card mb-3" aria-labelledby="h-dados"><div class="card-body">
+    <h2 id="h-dados" class="h6">Seus dados de contato</h2>
+    <p class="mb-1">Telefone: <strong>{{ profile.phone|default:"não informado" }}</strong></p>
+    <p class="mb-1">Contato de emergência: <strong>{{ profile.emergency_contact|default:"não informado" }}</strong></p>
+    <p class="mb-0">Endereço: <strong>{{ profile.address|default:"não informado" }}</strong></p>
+  </div></section>{% endif %}
+
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <input type="hidden" name="estudante" value="{{ student.pk }}">
+    <div class="card-body">
+      {% if c.terms %}<div class="mb-3"><p class="form-label mb-1">Termo</p><div class="border rounded p-3 small reenroll-terms">{{ c.terms|linebreaksbr }}</div></div>{% endif %}
+      {% include "partials/_form_fields.html" with f=form %}
+    </div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label=current|yesno:"Salvar a nova resposta,Enviar resposta" hint="" %}
+  </form>
+</div>
+{% endblock %}

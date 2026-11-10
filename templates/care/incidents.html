@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Atendimentos de saúde — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'care:home' %}" class="back-link">{% icon "arrow-left" %}Saúde e retirada</a>
+    <h1>Atendimentos de saúde</h1>
+    <p>{% if family %}Quando seu filho passa mal ou se machuca na escola, o registro aparece aqui e você recebe um aviso na hora.{% else %}Mal-estar, febre, machucado, reação alérgica ou crise: registre o que aconteceu e o que foi feito. A família é avisada na hora e marca ciente.{% endif %}</p>
+  </div>
+  {% if can_register %}<div class="page-actions"><a href="{% url 'care:incident_pick' %}" class="btn btn-primary">{% icon "plus" %}Registrar atendimento</a></div>{% endif %}
+</div>
+
+<form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+  <div><label for="tipo" class="form-label">O que foi</label><select id="tipo" name="tipo" class="form-select"><option value="">Todos</option>{% for v, label in kinds %}<option value="{{ v }}"{% if v == kind %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <button type="submit" class="btn btn-outline-secondary">Mostrar</button>
+</form>
+
+<div class="card mb-3"><ul class="feed">
+  {% for i in page %}
+  <li class="feed-item"><div class="feed-body flex-grow-1">
+    <p class="feed-title"><a href="{% url 'care:incident' i.pk %}">{{ i.student.full_name }}</a> · {{ i.get_kind_display }}</p>
+    <p class="feed-meta">{{ i.happened_at|date:"d/m/Y H:i" }} · {{ i.get_outcome_display }}{% if i.head_hit %} · bateu a cabeça{% endif %}</p>
+  </div>{% if i.acknowledged_at %}<span class="chip chip-state text-success">ciente</span>{% else %}<span class="chip chip-state text-warning">sem ciente</span>{% endif %}</li>
+  {% empty %}
+  <li><div class="empty-state py-4">{% icon "heart-handshake" %}<strong>Nenhum atendimento registrado</strong></div></li>
+  {% endfor %}
+</ul></div>
+{% include "partials/_pager.html" %}
+{% endblock %}

@@ -253,7 +253,15 @@ def _secretaria(user):
         _item("Estudantes ativos sem carteirinha", _without_card(s), reverse("gate:cards"),
               "A portaria lê QR Code, código de barras ou o código digitado.", "info"),
         *_library_staff(s),
+        _item("Rematrícula: cadastros a atualizar com o que a família informou", _reenroll_data(s),
+              reverse("reenroll:index"), "Abra a campanha e use o filtro “Cadastro a atualizar”."),
     ]
+
+
+def _reenroll_data(school):
+    from apps.reenroll.services import pending_data_updates
+
+    return pending_data_updates(school)
 
 
 def _library_staff(school):
@@ -375,9 +383,25 @@ def _family(user):
         _item("Consultas da escola aguardando sua opinião", _polls_pending(user),
               reverse("communication:poll_list"), "Um voto por família.", "info"),
         *_library_family(child_ids),
+        _item("Atendimentos de saúde na escola sem o seu ciente", _incidents_family(user),
+              reverse("care:incidents"), "Veja o que aconteceu e o que a escola fez."),
+        _item("Rematrícula: diga se o estudante continua no ano que vem", _reenroll_family(user),
+              reverse("reenroll:index"), "Responda até o prazo da campanha."),
         _item("Listas de materiais com itens a providenciar", _supplies_family(user),
               reverse("supplies:index"), "Marque o que já tem: a anotação é só sua.", "info"),
     ]
+
+
+def _incidents_family(user):
+    from apps.care.views_incidents import pending_acks
+
+    return pending_acks(user)
+
+
+def _reenroll_family(user):
+    from apps.reenroll.services import pending_for_family
+
+    return pending_for_family(user)
 
 
 def _supplies_family(user):

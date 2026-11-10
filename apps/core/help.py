@@ -376,6 +376,29 @@ GUIDES = [
         ("Quando a família diz “é meu”, confira a descrição antes de entregar. Depois de 60 dias, os objetos "
          "guardados podem ser marcados como doados; as fotos são apagadas.", "lostfound:list"),
     ]),
+    # Atendimentos de saúde
+    ("Registrar um atendimento de saúde", "heart-handshake", (PROFESSOR, COORDENACAO, DIRECAO, SECRETARIA, ADMIN), [
+        ("Numa emergência, socorra e ligue primeiro. Depois, em Saúde e retirada → Registrar atendimento: o que "
+         "aconteceu, o que foi feito e o desfecho. A ficha de saúde aparece junto.", "care:incident_pick"),
+        ("A família recebe um aviso importante na hora (com orientações se bateu a cabeça) e marca ciente.",
+         "care:incidents"),
+    ]),
+    ("Ver os atendimentos de saúde do seu filho", "heart-handshake", (RESPONSAVEL,), [
+        ("Em Saúde e retirada → Atendimentos na escola: o que aconteceu, o que a escola fez e o desfecho. Marque "
+         "“Estou ciente” e, se quiser, deixe um recado.", "care:incidents"),
+    ]),
+    # Rematrícula
+    ("Confirmar a rematrícula com as famílias", "calendar-check", (SECRETARIA, DIRECAO, ADMIN), [
+        ("Crie o ano letivo seguinte em Acadêmico → Anos letivos e abra a campanha em Confirmação de "
+         "rematrícula: prazo, orientações, turmas e, se quiser, um termo de aceite.", "reenroll:create"),
+        ("As famílias recebem um aviso importante e um lembrete perto do prazo. Quem não tem conta responde na "
+         "secretaria: use “Registrar no balcão”.", "reenroll:index"),
+        ("Na Rematrícula em lote, quem disse que não continua já vem desmarcado.", "enrollment_rollover"),
+    ]),
+    ("Responder a rematrícula", "calendar-check", (RESPONSAVEL,), [
+        ("Em Confirmação de rematrícula, diga se cada filho continua no ano que vem e confira os dados de "
+         "contato. Dá para mudar até o prazo; guarde o código do comprovante.", "reenroll:index"),
+    ]),
     # Lista de materiais
     ("Montar e publicar a lista de materiais", "list-checks", (PROFESSOR, COORDENACAO, DIRECAO, SECRETARIA, ADMIN), [
         ("Em Lista de materiais → Nova lista: título, ano letivo, série e as turmas que vão usar.", "supplies:create"),

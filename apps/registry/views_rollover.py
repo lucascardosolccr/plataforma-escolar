@@ -61,7 +61,13 @@ def enrollment_rollover(request):
     enrollments = list(Enrollment.objects.filter(class_group=origin, status="ativo")
                        .select_related("student").order_by("student__first_name", "student__last_name"))
     destinations = [c for c in classes if c.school_year_id != origin.school_year_id]
-    ctx.update({"can_close": can_close, "warning": warning, "enrollments": enrollments,
+    from apps.reenroll.services import decisions_for
+
+    decisions = decisions_for([e.student_id for e in enrollments], school)
+    for e in enrollments:
+        e.reenroll = decisions.get(e.student_id)  # resposta da família na confirmação de rematrícula
+    leaving = {str(e.pk) for e in enrollments if e.reenroll and e.reenroll.decision == "sai"}
+    ctx.update({"can_close": can_close, "warning": warning, "enrollments": enrollments, "leaving": leaving,
                 "destinations": destinations,
                 "needs_confirmation": can_close and not origin.school_year.end_date})
 

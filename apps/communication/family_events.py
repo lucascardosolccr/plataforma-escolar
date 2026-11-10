@@ -51,9 +51,11 @@ EVENTS = {
                    K.LIBRARY, True),
     "achados": ("Achados e perdidos: objeto com o nome do estudante encontrado na escola", K.LIBRARY, True),
     "lista_materiais": ("Lista de materiais da turma publicada ou atualizada", K.ANNOUNCEMENT, True),
+    "rematricula": ("Rematrícula: abertura da confirmação e lembrete do prazo", K.REGISTRATION, True),
+    "atendimento_saude": ("Atendimento de saúde na escola (mal-estar, machucado, crise)", K.HEALTH, True),
 }
 #: Tipos que a família não pode silenciar (segurança e vínculo).
-ESSENTIAL_KINDS = {K.OCCURRENCE, K.LINK, K.REGISTRATION}
+ESSENTIAL_KINDS = {K.OCCURRENCE, K.LINK, K.REGISTRATION, K.HEALTH}
 #: Tipos que aparecem nas preferências pessoais.
 MUTABLE_KINDS = [K.EVALUATION, K.GRADE, K.ACTIVITY, K.EXAM, K.ATTENDANCE, K.OBSERVATION, K.ANNOUNCEMENT, K.MENU,
                  K.CALENDAR, K.MESSAGE, K.EIA, K.GATE, K.LIBRARY]

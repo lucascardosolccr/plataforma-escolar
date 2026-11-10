@@ -60,9 +60,11 @@ def home(request):
                 pickups[p.student_id] = pickups.get(p.student_id, 0) + 1
         notices = DepartureNotice.objects.filter(student__in=kids, day__gte=today,
                                                  status=DepartureNotice.Status.PENDING).select_related("student")
+        from .views_incidents import pending_acks
+
         return render(request, "care/home_family.html", {
             "rows": [{"student": s, "record": records.get(s.pk), "pickups": pickups.get(s.pk, 0)} for s in kids],
-            "notices": notices})
+            "notices": notices, "incidents": pending_acks(user)})
     if user.role not in access.TEAM and user.role != Role.PROFESSOR.value:
         raise PermissionDenied
     ctx = {"classes": _classes(user), "is_team": user.role in access.TEAM}
@@ -95,7 +97,8 @@ def health_view(request, student_id):
     return render(request, "care/health_view.html", {
         "student": student, "record": record, "full": level == "full",
         "contacts": student.emergency_contacts.all() if level == "full" else [],
-        "can_edit": access.can_edit_health(user, student)})
+        "can_edit": access.can_edit_health(user, student),
+        "can_register": user.role != Role.RESPONSAVEL.value and access.can_register_incident(user, student)})
 
 
 def health_edit(request, student_id):

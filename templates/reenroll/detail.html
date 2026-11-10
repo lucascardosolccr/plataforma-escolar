@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ c.title }} — Rematrícula — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'reenroll:index' %}" class="back-link">{% icon "arrow-left" %}Rematrícula</a>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Para {{ c.target_year }} · {{ state|capfirst }}</span>
+    <h1>{{ c.title }}</h1>
+    <p>De {{ c.opens_on|date:"d/m/Y" }} a {{ c.deadline|date:"d/m/Y" }}{% if c.announced_at %} · famílias avisadas em {{ c.announced_at|date:"d/m" }}{% endif %}{% if c.reminded_on %} · último lembrete em {{ c.reminded_on|date:"d/m" }}{% endif %}</p>
+  </div>
+  {% if manage %}<div class="page-actions">
+    <a href="{% url 'reenroll:export' c.pk %}" class="btn btn-outline-secondary">{% icon "download" %}Planilha</a>
+    <a href="{% url 'reenroll:edit' c.pk %}" class="btn btn-outline-secondary">{% icon "pencil" %}Editar</a>
+  </div>{% endif %}
+</div>
+
+<div class="kpi-grid mb-3">
+  {% include "analytics/bi/_kpi.html" with label="Vão continuar" value=stats.continua icon="circle-check" %}
+  {% include "analytics/bi/_kpi.html" with label="Não vão continuar" value=stats.sai icon="log-out" %}
+  {% include "analytics/bi/_kpi.html" with label="Sem resposta" value=stats.pendente icon="clock" attention=stats.pendente %}
+  {% include "analytics/bi/_kpi.html" with label="Estudantes na campanha" value=stats.total icon="users" %}
+</div>
+
+{% if manage %}<div class="d-flex flex-wrap gap-2 mb-3">
+  {% if is_open and stats.pendente %}<form method="post" action="{% url 'reenroll:remind' c.pk %}">{% csrf_token %}<button type="submit" class="btn btn-primary btn-sm" data-confirm="Um aviso importante para as famílias que ainda não responderam (um por dia, no máximo)." data-confirm-title="Lembrar quem falta?" data-confirm-ok="Lembrar">{% icon "bell" %}Lembrar quem não respondeu</button></form>{% endif %}
+  {% if state != "agendada" %}<form method="post" action="{% url 'reenroll:toggle' c.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary btn-sm">{% if c.closed %}Reabrir até o prazo{% else %}Encerrar agora{% endif %}</button></form>{% endif %}
+  <a href="{% url 'enrollment_rollover' %}" class="btn btn-outline-secondary btn-sm">Rematrícula em lote</a>
+</div>{% endif %}
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-8"><section class="card h-100" aria-labelledby="h-turmas"><div class="card-body">
+    <h2 id="h-turmas" class="h6">Por turma</h2>
+    <div class="table-responsive"><table class="table table-sm align-middle mb-0 table-stack">
+      <thead><tr><th>Turma</th><th class="text-end">Continuam</th><th class="text-end">Saem</th><th class="text-end">Sem resposta</th></tr></thead>
+      <tbody>{% for t in stats.turmas %}<tr><td><a href="?turma={{ t.turma.pk }}">{{ t.turma.name }}</a></td><td class="text-end" data-label="Continuam">{{ t.continua }}</td><td class="text-end" data-label="Saem">{{ t.sai }}</td><td class="text-end" data-label="Sem resposta">{% if t.pendente %}<strong>{{ t.pendente }}</strong>{% else %}0{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="4" class="text-body-secondary">Nenhum estudante ativo nas turmas da campanha.</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </div></section></div>
+  <div class="col-lg-4"><section class="card h-100" aria-labelledby="h-mot"><div class="card-body">
+    <h2 id="h-mot" class="h6">Por que saem</h2>
+    {% if reasons %}<ul class="list-unstyled mb-0">{% for label, n in reasons %}<li class="py-1 d-flex justify-content-between gap-2"><span>{{ label }}</span><strong>{{ n }}</strong></li>{% endfor %}</ul>{% else %}<p class="mb-0 text-body-secondary">Ninguém disse que sai.</p>{% endif %}
+  </div></section></div>
+</div>
+
+<form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+  <div><label for="ver" class="form-label">Mostrar</label><select id="ver" name="ver" class="form-select">{% for v, label in filters %}<option value="{{ v }}"{% if v == show %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <div><label for="turma" class="form-label">Turma</label><select id="turma" name="turma" class="form-select"><option value="">Todas</option>{% for cg in classes %}<option value="{{ cg.pk }}"{% if cg.pk == turma %} selected{% endif %}>{{ cg.name }}</option>{% endfor %}</select></div>
+  <button type="submit" class="btn btn-outline-secondary">Filtrar</button>
+</form>
+
+<div class="card"><ul class="feed">
+  {% for r in rows %}
+  <li class="feed-item"><div class="feed-body flex-grow-1">
+    <p class="feed-title">{{ r.e.student.full_name }} <span class="small text-body-secondary">· {{ r.e.class_group.name }}</span></p>
+    {% if r.a %}<p class="feed-meta"><strong>{{ r.a.get_decision_display }}</strong>{% if r.a.reason %} · {{ r.a.get_reason_display }}{% endif %}{% if r.a.reason_text %} · “{{ r.a.reason_text }}”{% endif %} · {{ r.a.answered_by_name }}{% if r.a.in_person %} (no balcão){% endif %} · {{ r.a.answered_at|date:"d/m H:i" }}{% if not r.intact %} · <strong class="text-danger">registro alterado fora da plataforma</strong>{% endif %}</p>
+    {% if r.a.data_changes %}<p class="feed-meta">Cadastro: “{{ r.a.data_changes }}”{% if r.a.data_done %} · <span class="text-success">atualizado</span>{% endif %}</p>{% endif %}
+    {% else %}<p class="feed-meta">Sem resposta</p>{% endif %}
+  </div>
+  {% if manage %}<div class="d-flex flex-wrap gap-1">
+    {% if r.a.data_changes and not r.a.data_done %}<form method="post" action="{% url 'reenroll:data_done' r.a.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary btn-sm">Cadastro atualizado</button></form>{% endif %}
+    <a href="{% url 'reenroll:in_person' c.pk r.e.student.pk %}" class="btn btn-outline-secondary btn-sm">{% if r.a %}Mudar no balcão{% else %}Registrar no balcão{% endif %}</a>
+  </div>{% endif %}</li>
+  {% empty %}
+  <li><div class="empty-state py-4">{% icon "filter" %}<strong>Ninguém neste filtro</strong></div></li>
+  {% endfor %}
+</ul></div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Documentos da matrícula — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    {% if turma %}<a href="{% url 'paperwork:index' %}" class="back-link">{% icon "arrow-left" %}Todas as turmas</a>{% endif %}
+    <h1>Documentos da matrícula{% if turma %}: {{ turma.name }}{% endif %}</h1>
+    <p>O que cada estudante já entregou na secretaria. A plataforma não guarda cópia: registra a entrega, quem conferiu e quando.</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'paperwork:settings' %}" class="btn btn-outline-secondary">{% icon "settings" %}Lista de documentos</a>
+    <a href="{% url 'paperwork:export' %}" class="btn btn-outline-secondary">{% icon "download" %}Pendentes (planilha)</a>
+    <form method="post" action="{% url 'paperwork:remind' %}">{% csrf_token %}{% if turma %}<input type="hidden" name="turma" value="{{ turma.pk }}">{% endif %}<button type="submit" class="btn btn-outline-secondary" data-confirm="Avisar as famílias {% if turma %}da turma {{ turma.name }} {% endif %}que ainda devem documentos?">{% icon "bell" %}Lembrar as famílias</button></form>
+  </div>
+</div>
+
+<form method="get" class="d-flex flex-wrap gap-2 mb-3" role="search">
+  {% if turma %}<input type="hidden" name="turma" value="{{ turma.pk }}">{% endif %}
+  <label for="q" class="visually-hidden">Nome ou código do estudante</label>
+  <input id="q" name="q" value="{{ q }}" class="form-control flex-grow-1 w-auto" placeholder="Nome ou código do estudante" autocomplete="off">
+  <button class="btn btn-outline-secondary" type="submit">{% icon "search" %}Buscar</button>
+</form>
+{% if q %}<ul class="list-unstyled mb-3">{% for s in found %}<li class="py-1"><a href="{% url 'paperwork:student' s.pk %}">{{ s.full_name }}</a>{% if s.code %} · {{ s.code }}{% endif %}</li>{% empty %}<li class="text-body-secondary">Nenhum estudante ativo encontrado.</li>{% endfor %}</ul>{% endif %}
+
+{% if turma %}
+<form method="post" action="{% url 'paperwork:save_class' turma.pk %}">{% csrf_token %}
+<div class="card mb-3"><div class="table-responsive"><table class="table table-sm mb-0 align-middle">
+  <caption class="visually-hidden">Documentos entregues por estudante</caption>
+  <thead><tr><th scope="col">Estudante</th>{% for d in docs %}<th scope="col" class="small">{{ d.name }}{% if not d.mandatory %} <span class="text-body-secondary">(se tiver)</span>{% endif %}</th>{% endfor %}</tr></thead>
+  <tbody>
+    {% for row in rows %}<tr>
+      <th scope="row"><a href="{% url 'paperwork:student' row.s.pk %}">{{ row.s.full_name }}</a>{% if row.missing %}<br><span class="small text-danger">falta{{ row.missing|pluralize:",m" }} {{ row.missing }}</span>{% endif %}</th>
+      {% for c in row.cells %}<td class="text-center">{% if c.r.status == "dispensado" %}<span class="small text-body-secondary" title="{{ c.r.note }}">dispensado</span>{% else %}<input type="checkbox" class="form-check-input" name="d_{{ row.s.pk }}_{{ c.d.pk }}" aria-label="{{ c.d.name }} de {{ row.s.full_name }}"{% if c.r %} checked{% endif %}>{% endif %}</td>{% endfor %}
+    </tr>{% empty %}<tr><td colspan="{{ docs|length|add:1 }}" class="text-body-secondary">Nenhum estudante com matrícula ativa nesta turma.</td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+{% if rows %}<button type="submit" class="btn btn-primary">{% icon "check" %}Salvar a turma</button> <span class="small text-body-secondary ms-2">Marcado = entregue hoje. Para outra data, observação ou dispensa, abra o estudante.</span>{% endif %}
+</form>
+{% else %}
+<p>{% if pending_total %}<strong>{{ pending_total }}</strong> estudante{{ pending_total|pluralize }} ainda deve{{ pending_total|pluralize:",m" }} algum documento obrigatório.{% else %}Nenhum estudante deve documento obrigatório.{% endif %}</p>
+<div class="card"><ul class="feed">
+  {% for r in summary %}
+  <li class="feed-item"><div class="feed-body flex-grow-1"><p class="feed-title"><a href="?turma={{ r.c.pk }}">{{ r.c.name }}</a></p><p class="feed-meta">{{ r.total }} estudante{{ r.total|pluralize }}</p></div>{% if r.pending %}<span class="chip chip-state text-warning">{{ r.pending }} com pendência</span>{% elif r.total %}<span class="chip chip-state text-success">completa</span>{% endif %}</li>
+  {% empty %}
+  <li><div class="empty-state py-4">{% icon "file-check" %}<strong>Nenhuma turma no ano letivo atual</strong></div></li>
+  {% endfor %}
+</ul></div>
+{% endif %}
+{% endblock %}

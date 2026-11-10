@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{% if w %}Editar oficina{% else %}Nova oficina{% endif %} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% if w %}{% url "workshops:detail" w.pk as back %}{% else %}{% url "workshops:index" as back %}{% endif %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Oficinas" heading=w|yesno:"Editar oficina,Nova oficina" subheading=w.title|default:"" %}
+  <p class="form-lead">Salve e confira; as famílias só veem depois de publicar. Aumentar as vagas chama quem está na lista de espera.</p>
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label="Salvar" hint="" %}
+  </form>
+</div>
+{% endblock %}

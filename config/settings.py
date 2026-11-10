@@ -102,6 +102,8 @@ INSTALLED_APPS = [
     "apps.lostfound",
     "apps.supplies",
     "apps.reenroll",
+    "apps.paperwork",
+    "apps.workshops",
 ]
 
 MIDDLEWARE = [

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Oficinas — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Oficinas</h1>
+    <p>{% if family %}Oficinas, projetos e atividades de contraturno abertas para a turma do seu filho. Com as vagas preenchidas, a inscrição entra na lista de espera e você recebe um aviso se abrir vaga.{% else %}Oficinas e atividades com vagas: as famílias inscrevem os filhos, e a lista de espera chama o próximo sozinha quando alguém desiste.{% endif %}</p>
+  </div>
+  {% if not family %}<div class="page-actions"><a href="{% url 'workshops:create' %}" class="btn btn-primary">{% icon "plus" %}Nova oficina</a></div>{% endif %}
+</div>
+
+<div class="card"><ul class="feed">
+  {% for r in rows %}
+  <li class="feed-item"><div class="feed-body flex-grow-1">
+    <p class="feed-title"><a href="{% url 'workshops:detail' r.w.pk %}">{{ r.w.title }}</a>{% if not family and not r.w.published_at %} <span class="chip chip-state">rascunho</span>{% endif %}{% if r.w.closed %} <span class="chip chip-state">inscrições encerradas</span>{% endif %}</p>
+    <p class="feed-meta">{{ r.w.schedule }} · {{ r.w.starts_on|date:"d/m" }} a {{ r.w.ends_on|date:"d/m/Y" }}{% if r.w.place %} · {{ r.w.place }}{% endif %}{% if not family and r.w.organizer %} · {{ r.w.organizer.get_full_name|default:r.w.organizer.username }}{% endif %}</p>
+    {% if family %}<p class="mb-0 small">{% for k in r.kids %}{{ k.s.first_name }}: {% if k.signup and k.signup.status != "cancelado" %}<strong>{{ k.signup.get_status_display|lower }}</strong>{% elif r.open %}pode se inscrever até {{ r.w.signup_until|date:"d/m" }}{% else %}inscrições encerradas{% endif %}{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+  </div>{% if not family %}<span class="chip chip-state">{{ r.c.inscrito }}/{{ r.w.capacity }}{% if r.c.espera %} · {{ r.c.espera }} na espera{% endif %}</span>{% endif %}</li>
+  {% empty %}
+  <li><div class="empty-state py-4">{% icon "star" %}<strong>Nenhuma oficina{% if family %} aberta para a turma do seu filho{% endif %}</strong></div></li>
+  {% endfor %}
+</ul></div>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ w.title }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'workshops:index' %}" class="back-link">{% icon "arrow-left" %}Oficinas</a>
+<div class="page-head">
+  <div>
+    {% if w.organizer %}<span class="eyebrow">{{ w.organizer.get_full_name|default:w.organizer.username }}</span>{% endif %}
+    <h1>{{ w.title }}</h1>
+    <p>{{ w.schedule }} · {{ w.starts_on|date:"d/m/Y" }} a {{ w.ends_on|date:"d/m/Y" }}{% if w.place %} · {{ w.place }}{% endif %} · {{ w.capacity }} vaga{{ w.capacity|pluralize }} · inscrições até {{ w.signup_until|date:"d/m" }}</p>
+  </div>
+  {% if manage %}<div class="page-actions">
+    {% if not w.published_at %}<form method="post" action="{% url 'workshops:publish' w.pk %}">{% csrf_token %}<button type="submit" class="btn btn-primary" data-confirm="Publicar e avisar as famílias das turmas?">{% icon "send" %}Publicar</button></form>{% endif %}
+    <a href="{% url 'workshops:edit' w.pk %}" class="btn btn-outline-secondary">{% icon "pencil" %}Editar</a>
+    {% if w.published_at %}<form method="post" action="{% url 'workshops:toggle' w.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary">{% if w.closed %}Reabrir inscrições{% else %}Encerrar inscrições{% endif %}</button></form>{% endif %}
+    <a href="{% url 'workshops:export' w.pk %}" class="btn btn-outline-secondary">{% icon "download" %}Planilha</a>
+    <button type="button" class="btn btn-outline-secondary" data-print>{% icon "printer" %}Lista de presença</button>
+  </div>{% endif %}
+</div>
+
+<section class="card mb-3"><div class="card-body">{{ w.description|linebreaksbr }}</div></section>
+
+{% if family %}
+<section class="card" aria-labelledby="h-insc"><div class="card-body">
+  <h2 id="h-insc" class="h6">Inscrição</h2>
+  <ul class="list-unstyled mb-0">
+    {% for k in kids %}<li class="py-2 border-bottom d-flex flex-wrap gap-2 align-items-center"><span class="flex-grow-1"><strong>{{ k.s.full_name }}</strong>{% if k.signup and k.signup.status != "cancelado" %} · {{ k.signup.get_status_display|lower }}{% if k.pos %} ({{ k.pos }}º da fila){% endif %}{% endif %}</span>
+      {% if k.signup and k.signup.status != "cancelado" %}<form method="post" action="{% url 'workshops:cancel' k.signup.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Cancelar a inscrição de {{ k.s.first_name }}? A vaga vai para quem está esperando.">Cancelar inscrição</button></form>
+      {% elif open %}<form method="post" action="{% url 'workshops:sign_up' w.pk %}">{% csrf_token %}<input type="hidden" name="estudante" value="{{ k.s.pk }}"><button type="submit" class="btn btn-primary btn-sm">{% if c.inscrito >= w.capacity %}Entrar na lista de espera{% else %}Inscrever{% endif %}</button></form>
+      {% else %}<span class="text-body-secondary small">Inscrições encerradas</span>{% endif %}</li>{% endfor %}
+  </ul>
+</div></section>
+{% elif manage %}
+<p class="text-body-secondary">{% if all_classes %}Todas as turmas do ano letivo{% else %}Turmas: {% for cg in allowed %}{{ cg.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %} · {{ c.inscrito }} de {{ w.capacity }} vagas preenchidas{% if c.espera %} · {{ c.espera }} na lista de espera{% endif %}.</p>
+<section class="card mb-3" aria-labelledby="h-conf"><div class="card-body">
+  <h2 id="h-conf" class="h6">Inscritos</h2>
+  <div class="table-responsive"><table class="table table-sm mb-0">
+    <thead><tr><th scope="col">#</th><th scope="col">Estudante</th><th scope="col">Turma</th><th scope="col" class="d-none d-print-table-cell">Presença</th><th scope="col" class="no-print"><span class="visually-hidden">Ações</span></th></tr></thead>
+    <tbody>{% for s in confirmed %}<tr><td>{{ forloop.counter }}</td><td>{{ s.student.full_name }}</td><td>{{ s.cls }}</td><td class="d-none d-print-table-cell"></td>
+      <td class="no-print text-end"><form method="post" action="{% url 'workshops:cancel' s.pk %}">{% csrf_token %}<button type="submit" class="btn btn-link btn-sm p-0 text-danger" data-confirm="Cancelar a inscrição de {{ s.student.first_name }}? A família é avisada e o primeiro da espera é chamado.">Cancelar</button></form></td></tr>
+    {% empty %}<tr><td colspan="5" class="text-body-secondary">Ninguém inscrito ainda.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div></section>
+{% if waiting %}<section class="card mb-3 no-print" aria-labelledby="h-esp"><div class="card-body">
+  <h2 id="h-esp" class="h6">Lista de espera</h2>
+  <ol class="mb-0">{% for s in waiting %}<li>{{ s.student.full_name }}{% if s.cls %} · {{ s.cls }}{% endif %} · {{ s.queued_at|date:"d/m H:i" }}</li>{% endfor %}</ol>
+</div></section>{% endif %}
+{% if canceled %}<details class="no-print"><summary>Canceladas ({{ canceled|length }})</summary><ul class="small mt-2">{% for s in canceled %}<li>{{ s.student.full_name }} · {{ s.canceled_at|date:"d/m H:i" }}{% if s.cancel_note %} · {{ s.cancel_note }}{% endif %}</li>{% endfor %}</ul></details>{% endif %}
+{% else %}
+<p class="text-body-secondary">{{ c.inscrito }} de {{ w.capacity }} vagas preenchidas.</p>
+{% endif %}
+{% endblock %}

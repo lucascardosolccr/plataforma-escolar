@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Lista de documentos da matrícula — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'paperwork:index' %}" class="back-link">{% icon "arrow-left" %}Documentos da matrícula</a>
+<div class="page-head">
+  <div>
+    <h1>Lista de documentos</h1>
+    <p>O que a escola pede na matrícula. Os obrigatórios contam como pendência; os outros aparecem para quem tiver. Tirar de uso não apaga o que já foi registrado.</p>
+  </div>
+</div>
+
+<div class="card mb-3"><ul class="feed">
+  {% for d in docs %}
+  <li class="feed-item"><div class="feed-body flex-grow-1"><p class="feed-title"><a href="{% url 'paperwork:settings_edit' d.pk %}">{{ d.name }}</a></p><p class="feed-meta">{% if d.mandatory %}obrigatório{% else %}se tiver{% endif %}{% if d.hint %} · {{ d.hint }}{% endif %}</p></div>{% if not d.active %}<span class="chip chip-state">fora de uso</span>{% endif %}</li>
+  {% endfor %}
+</ul></div>
+
+<section class="card form-card" aria-labelledby="h-doc"><div class="card-body">
+  <h2 id="h-doc" class="h6">{% if doc %}Editar “{{ doc.name }}”{% else %}Incluir documento{% endif %}</h2>
+  <form method="post" novalidate>{% csrf_token %}
+    {% include "partials/_form_fields.html" with f=form %}
+    <button type="submit" class="btn btn-primary">Salvar</button>{% if doc %} <a href="{% url 'paperwork:settings' %}" class="btn btn-link">Cancelar</a>{% endif %}
+  </form>
+</div></section>
+{% endblock %}

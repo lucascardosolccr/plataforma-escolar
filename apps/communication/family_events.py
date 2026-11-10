@@ -54,6 +54,8 @@ EVENTS = {
     "rematricula": ("Rematrícula: abertura da confirmação e lembrete do prazo", K.REGISTRATION, True),
     "atendimento_saude": ("Atendimento de saúde na escola (mal-estar, machucado, crise)", K.HEALTH, True),
     "medicamento": ("Remédio na escola: pedido analisado e cada dose dada (ou não)", K.HEALTH, True),
+    "documentos_matricula": ("Documentos da matrícula que faltam entregar na secretaria", K.REGISTRATION, True),
+    "oficinas": ("Oficinas: inscrições abertas e vaga confirmada da lista de espera", K.ANNOUNCEMENT, True),
     "horarios_atendimento": ("Horários abertos para marcar conversa com professor ou equipe", K.MEETING, True),
 }
 #: Tipos que a família não pode silenciar (segurança e vínculo).

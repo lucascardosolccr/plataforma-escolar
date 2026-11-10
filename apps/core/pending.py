@@ -257,7 +257,21 @@ def _secretaria(user):
         *_library_staff(s),
         _item("Rematrícula: cadastros a atualizar com o que a família informou", _reenroll_data(s),
               reverse("reenroll:index"), "Abra a campanha e use o filtro “Cadastro a atualizar”."),
+        _item("Estudantes com documento da matrícula a entregar", _paperwork_staff(s), reverse("paperwork:index"),
+              "“Lembrar as famílias” avisa o que falta.", "info"),
     ]
+
+
+def _paperwork_staff(school):
+    from apps.paperwork.services import pending_students
+
+    return pending_students(school)
+
+
+def _paperwork_family(user):
+    from apps.paperwork.services import pending_for_family
+
+    return pending_for_family(user)
 
 
 def _reenroll_data(school):
@@ -389,6 +403,8 @@ def _family(user):
               reverse("care:incidents"), "Veja o que aconteceu e o que a escola fez."),
         _item("Rematrícula: diga se o estudante continua no ano que vem", _reenroll_family(user),
               reverse("reenroll:index"), "Responda até o prazo da campanha."),
+        _item("Documentos da matrícula a entregar na secretaria", _paperwork_family(user),
+              reverse("paperwork:index"), "Veja o que falta de cada filho.", "info"),
         _item("Listas de materiais com itens a providenciar", _supplies_family(user),
               reverse("supplies:index"), "Marque o que já tem: a anotação é só sua.", "info"),
     ]

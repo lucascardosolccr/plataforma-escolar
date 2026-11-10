@@ -410,6 +410,29 @@ GUIDES = [
         ("Em Horários de atendimento aparecem os horários abertos para a turma do seu filho. Escolha um livre "
          "e diga o assunto, se quiser. Dá para desmarcar até a hora.", "office:list"),
     ]),
+    ("Controlar os documentos da matrícula", "file-check", (SECRETARIA, DIRECAO, ADMIN), [
+        ("Em Documentos da matrícula → Lista de documentos, ajuste o que a escola pede (já vem uma lista "
+         "inicial). Os obrigatórios contam como pendência.", "paperwork:settings"),
+        ("Abra a turma e marque o que cada estudante entregou; “Salvar a turma” grava tudo de uma vez. Para "
+         "outra data ou para dispensar (com o motivo), abra o estudante.", "paperwork:index"),
+        ("“Lembrar as famílias” manda a cada família a lista do que falta. A planilha traz os pendentes.", None),
+    ]),
+    ("Ver os documentos que faltam entregar", "file-check", (RESPONSAVEL,), [
+        ("Em Documentos da matrícula aparece, por filho, o que a secretaria já recebeu e o que falta.",
+         "paperwork:index"),
+    ]),
+    ("Abrir uma oficina com inscrição", "star", (PROFESSOR, COORDENACAO, DIRECAO, SECRETARIA, ADMIN), [
+        ("Em Oficinas → Nova oficina: nome, dias e horário, período, vagas, prazo de inscrição e as turmas. "
+         "Salve, confira e publique: as famílias das turmas recebem um aviso.", "workshops:create"),
+        ("Com as vagas cheias, a inscrição vai para a lista de espera. Quando alguém desiste (ou você aumenta as "
+         "vagas), o primeiro da fila é chamado e a família avisada. “Lista de presença” imprime os inscritos.",
+         "workshops:index"),
+    ]),
+    ("Inscrever seu filho numa oficina", "star", (RESPONSAVEL,), [
+        ("Em Oficinas aparecem as abertas para a turma do seu filho. Inscreva até o prazo; se estiver cheia, ele "
+         "entra na lista de espera e você recebe um aviso se abrir vaga. Cancele se não puder participar.",
+         "workshops:index"),
+    ]),
     # Rematrícula
     ("Confirmar a rematrícula com as famílias", "calendar-check", (SECRETARIA, DIRECAO, ADMIN), [
         ("Crie o ano letivo seguinte em Acadêmico → Anos letivos e abra a campanha em Confirmação de "

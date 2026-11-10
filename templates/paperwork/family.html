@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Documentos da matrícula — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Documentos da matrícula</h1>
+    <p>O que a secretaria já recebeu e o que ainda falta entregar. Leve os documentos à secretaria; a plataforma não recebe cópias.</p>
+  </div>
+</div>
+
+{% if unused %}<div class="empty-state py-4">{% icon "file-check" %}<strong>A escola ainda não acompanha os documentos por aqui</strong><span>Em caso de dúvida, fale com a secretaria.</span></div>{% endif %}
+{% for row in rows %}
+<section class="card mb-3" aria-labelledby="h-{{ row.s.pk }}"><div class="card-body">
+  <h2 id="h-{{ row.s.pk }}" class="h6">{{ row.s.full_name }}</h2>
+  <ul class="list-unstyled mb-0">
+    {% for it in row.items %}<li class="py-1 border-bottom d-flex flex-wrap gap-2 align-items-center"><span class="flex-grow-1">{{ it.d.name }}{% if not it.d.mandatory %} <span class="small text-body-secondary">(se tiver)</span>{% endif %}{% if not it.r and it.d.hint %}<br><span class="small text-body-secondary">{{ it.d.hint }}</span>{% endif %}</span>
+      {% if it.r %}<span class="chip chip-state text-success">{{ it.r.get_status_display|lower }} em {{ it.r.on|date:"d/m" }}</span>{% elif it.d.mandatory %}<span class="chip chip-state text-warning">falta entregar</span>{% endif %}</li>{% endfor %}
+  </ul>
+</div></section>
+{% empty %}{% if not unused %}
+<div class="empty-state py-4">{% icon "file-check" %}<strong>Nenhum estudante vinculado</strong></div>{% endif %}
+{% endfor %}
+{% endblock %}

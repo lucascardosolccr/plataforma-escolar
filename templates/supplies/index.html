@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Lista de materiais — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Lista de materiais</h1>
+    <p>{% if staff %}Monte a lista de cada série ou turma (ou cole a que você já tem). A plataforma avisa se algum item não pode ser pedido. A coordenação revisa e publica, e as famílias das turmas recebem o aviso.{% else %}O material escolar pedido pela escola. Marque o que já providenciou: a anotação é só sua.{% endif %}</p>
+  </div>
+  {% if staff %}<div class="page-actions"><a href="{% url 'supplies:create' %}" class="btn btn-primary">{% icon "plus" %}Nova lista</a></div>{% endif %}
+</div>
+
+{% if staff %}
+{% if n_review %}<div class="alert alert-info" role="status">{% icon "info" %}<div><strong>{{ n_review }} lista{{ n_review|pluralize }} enviada{{ n_review|pluralize }} para revisão.</strong> Confira e publique, ou devolva com uma observação.</div></div>{% endif %}
+{% if returned %}<div class="alert alert-warning" role="status">{% icon "triangle-alert" %}<div><strong>{{ returned }} lista{{ returned|pluralize }} sua{{ returned|pluralize }} {% if returned == 1 %}voltou{% else %}voltaram{% endif %} com observação.</strong> Abra para ver o que mudar.</div></div>{% endif %}
+
+<form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+  <div><label for="situacao" class="form-label">Situação</label><select id="situacao" name="situacao" class="form-select"><option value="">Todas</option>{% for v, label in statuses %}<option value="{{ v }}"{% if v == status %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <button type="submit" class="btn btn-outline-secondary">Mostrar</button>
+</form>
+
+<div class="card mb-3"><ul class="feed">
+  {% for lst in page %}
+  <li class="feed-item"><div class="feed-body flex-grow-1">
+    <p class="feed-title"><a href="{% url 'supplies:detail' lst.pk %}">{{ lst.title }}</a></p>
+    <p class="feed-meta">{{ lst.school_year }}{% if lst.grade %} · {{ lst.grade }}{% endif %}{% for c in lst.class_groups.all %}{% if forloop.first %} · {% else %}, {% endif %}{{ c.name }}{% endfor %} · {{ lst.n_items }} materia{{ lst.n_items|pluralize:"l,is" }}{% if lst.created_by %} · por {{ lst.created_by.get_full_name|default:lst.created_by.username }}{% endif %}</p>
+  </div><span class="chip chip-state state-{{ lst.status }}">{{ lst.get_status_display }}</span></li>
+  {% empty %}
+  <li><div class="empty-state py-4">{% icon "list-checks" %}<strong>Nenhuma lista ainda</strong><span>Use “Nova lista”. Dá para colar a lista do ano passado e ajustar.</span></div></li>
+  {% endfor %}
+</ul></div>
+{% include "partials/_pager.html" %}
+
+{% else %}
+{% for row in mine %}
+<section class="card mb-3" aria-labelledby="h-s{{ row.s.pk }}"><div class="card-body">
+  <h2 id="h-s{{ row.s.pk }}" class="h6">{{ row.s.full_name }}</h2>
+  {% if row.lists %}<ul class="list-unstyled mb-0">{% for e in row.lists %}<li class="py-1 d-flex flex-wrap gap-2 align-items-center">
+    <a href="{% url 'supplies:detail' e.lst.pk %}?estudante={{ row.s.pk }}" class="flex-grow-1">{{ e.lst.title }}</a>
+    {% if e.lst.deliver_by %}<span class="small text-body-secondary">entregar até {{ e.lst.deliver_by|date:"d/m/Y" }}</span>{% endif %}
+    <span class="chip chip-state {% if e.done == e.required %}text-success{% endif %}">{{ e.done }} de {{ e.required }}</span>
+  </li>{% endfor %}</ul>
+  {% else %}<p class="mb-0 text-body-secondary">Nenhuma lista publicada para a turma de {{ row.s.first_name }} ainda.</p>{% endif %}
+</div></section>
+{% endfor %}
+
+<section class="card" aria-labelledby="h-outras"><div class="card-body">
+  <h2 id="h-outras" class="h6">{% if mine %}Outras listas da escola{% else %}Listas da escola{% endif %}</h2>
+  <p class="small text-body-secondary">Também as do próximo ano, quando a escola publicar.</p>
+  <ul class="list-unstyled mb-0">{% for lst in others %}<li class="py-1"><a href="{% url 'supplies:detail' lst.pk %}">{{ lst.title }}</a> <span class="small text-body-secondary">· {{ lst.school_year }}{% if lst.grade %} · {{ lst.grade }}{% endif %}</span></li>
+  {% empty %}<li class="text-body-secondary">Nenhuma outra lista publicada.</li>{% endfor %}</ul>
+</div></section>
+{% endif %}
+{% endblock %}

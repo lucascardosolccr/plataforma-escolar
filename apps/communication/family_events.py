@@ -50,6 +50,7 @@ EVENTS = {
     "biblioteca": ("Biblioteca: livro emprestado, lembrete de devolução, atraso e livro reservado separado",
                    K.LIBRARY, True),
     "achados": ("Achados e perdidos: objeto com o nome do estudante encontrado na escola", K.LIBRARY, True),
+    "lista_materiais": ("Lista de materiais da turma publicada ou atualizada", K.ANNOUNCEMENT, True),
 }
 #: Tipos que a família não pode silenciar (segurança e vínculo).
 ESSENTIAL_KINDS = {K.OCCURRENCE, K.LINK, K.REGISTRATION}

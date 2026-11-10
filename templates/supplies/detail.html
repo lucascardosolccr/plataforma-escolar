@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{{ lst.title }} — Lista de materiais — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'supplies:index' %}" class="back-link no-print">{% icon "arrow-left" %}Lista de materiais</a>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">{{ lst.school_year }}{% if staff %} · {{ lst.get_status_display }}{% endif %}</span>
+    <h1>{{ lst.title }}</h1>
+    <p>{% if lst.grade %}{{ lst.grade }}{% endif %}{% for c in classes %}{% if forloop.first %}{% if lst.grade %} · {% endif %}{% else %}, {% endif %}{{ c.name }}{% endfor %}{% if lst.deliver_by %}{% if lst.grade or classes %} · {% endif %}<strong>entregar até {{ lst.deliver_by|date:"d/m/Y" }}</strong>{% endif %}{% if staff and lst.created_by %} · montada por {{ lst.created_by.get_full_name|default:lst.created_by.username }}{% endif %}</p>
+  </div>
+  <div class="page-actions no-print">
+    <button type="button" class="btn btn-outline-secondary" data-print>{% icon "printer" %}Imprimir</button>
+    <a href="{% url 'supplies:text' lst.pk %}" class="btn btn-outline-secondary">{% icon "file-text" %}Texto</a>
+    {% if can_edit %}<a href="{% url 'supplies:edit' lst.pk %}" class="btn btn-outline-secondary">{% icon "pencil" %}Editar</a>{% endif %}
+  </div>
+</div>
+
+{% if staff %}
+{% if lst.review_note and lst.status == "rascunho" %}<div class="alert alert-warning" role="status">{% icon "triangle-alert" %}<div><strong>Devolvida pela coordenação:</strong> {{ lst.review_note }}</div></div>{% endif %}
+{% if n_warnings %}<div class="alert alert-warning no-print" role="status">{% icon "triangle-alert" %}<div><strong>{{ n_warnings }} materia{{ n_warnings|pluralize:"l,is" }} com alerta.</strong> Confira antes de publicar: o alerta aparece embaixo de cada um.</div></div>{% endif %}
+
+<section class="card mb-3 no-print" aria-labelledby="h-sit"><div class="card-body">
+  <h2 id="h-sit" class="h6">Situação: {{ lst.get_status_display }}{% if lst.status == "publicada" and lst.published_at %} em {{ lst.published_at|date:"d/m/Y" }}{% endif %}</h2>
+  <p class="small text-body-secondary">{% if classes %}{% if n_students %}Turmas vinculadas com {{ n_students }} estudante{{ n_students|pluralize }}: as famílias recebem o aviso ao publicar.{% else %}As turmas vinculadas ainda não têm estudantes matriculados.{% endif %}{% else %}Nenhuma turma vinculada: publicada, a lista aparece para todas as famílias, mas ninguém recebe aviso.{% endif %}</p>
+  <div class="d-flex flex-wrap gap-2">
+    {% if can_submit %}<form method="post" action="{% url 'supplies:submit' lst.pk %}">{% csrf_token %}<button type="submit" class="btn btn-primary btn-sm">{% icon "send" %}Enviar para a coordenação</button></form>{% endif %}
+    {% if manager and lst.status != "publicada" %}<form method="post" action="{% url 'supplies:publish' lst.pk %}">{% csrf_token %}<button type="submit" class="btn btn-primary btn-sm" data-confirm="{% if n_students %}As famílias de {{ n_students }} estudante{{ n_students|pluralize }} recebem o aviso.{% else %}A lista aparece para todas as famílias da escola.{% endif %}{% if n_warnings %} Ainda há {{ n_warnings }} alerta{{ n_warnings|pluralize }}.{% endif %}" data-confirm-title="Publicar a lista?" data-confirm-ok="Publicar">{% icon "check" %}Publicar</button></form>{% endif %}
+    {% if manager and lst.status == "publicada" %}
+      <form method="post" action="{% url 'supplies:notify' lst.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary btn-sm" data-confirm="Use depois de mudar a lista ou vincular turmas novas." data-confirm-title="Avisar as famílias?" data-confirm-ok="Avisar">{% icon "bell" %}Avisar as famílias</button></form>
+      <form method="post" action="{% url 'supplies:unpublish' lst.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary btn-sm" data-confirm="As famílias deixam de ver a lista até nova publicação." data-confirm-title="Recolher a lista?" data-confirm-ok="Recolher">Recolher</button></form>
+    {% endif %}
+    <form method="post" action="{% url 'supplies:duplicate' lst.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary btn-sm">Copiar para outra série</button></form>
+    {% if can_edit and lst.status != "publicada" %}<form method="post" action="{% url 'supplies:delete' lst.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Os materiais desta lista também são apagados." data-confirm-title="Apagar a lista?" data-confirm-ok="Apagar" data-confirm-tone="danger">Apagar</button></form>{% endif %}
+  </div>
+  {% if manager and lst.status == "revisao" %}<form method="post" action="{% url 'supplies:return' lst.pk %}" class="mt-3">{% csrf_token %}
+    <label for="observacao" class="form-label">Devolver com observação</label>
+    <div class="d-flex flex-wrap gap-2"><input id="observacao" name="observacao" class="form-control flex-grow-1 w-auto" maxlength="300" placeholder="Ex.: tirar o papel higiênico; marca só como sugestão"><button type="submit" class="btn btn-outline-secondary btn-sm">Devolver</button></div>
+  </form>{% endif %}
+</div></section>
+{% endif %}
+
+{% if lst.intro %}<div class="callout mb-3">{% icon "info" %}<div>{{ lst.intro|linebreaksbr }}</div></div>{% endif %}
+
+{% if not staff and kids|length > 1 %}<form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3 no-print">
+  <div><label for="estudante" class="form-label">Anotações de</label><select id="estudante" name="estudante" class="form-select">{% for s in kids %}<option value="{{ s.pk }}"{% if s.pk == chosen.pk %} selected{% endif %}>{{ s.full_name }}</option>{% endfor %}</select></div>
+  <button type="submit" class="btn btn-outline-secondary">Mostrar</button>
+</form>{% endif %}
+
+<section class="card mb-3" id="materiais" aria-labelledby="h-mat"><div class="card-body">
+  <h2 id="h-mat" class="h6">Materiais{% if not staff and chosen %} · {{ n_done }} de {{ n_required }} obrigatório{{ n_required|pluralize }} providenciado{{ n_required|pluralize }}{% endif %}</h2>
+  {% if not staff and chosen %}<form method="post" action="{% url 'supplies:checks' lst.pk %}">{% csrf_token %}<input type="hidden" name="estudante" value="{{ chosen.pk }}">{% endif %}
+  <ul class="list-unstyled mb-0 supply-list">
+    {% for r in rows %}<li id="item-{{ r.item.pk }}" class="py-2 border-bottom d-flex flex-wrap flex-md-nowrap gap-2 align-items-start">
+      <div class="flex-grow-1">
+        {% if not staff and chosen %}<div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="item" value="{{ r.item.pk }}" id="it{{ r.item.pk }}"{% if r.done %} checked{% endif %}><label class="form-check-label" for="it{{ r.item.pk }}">{% endif %}
+        <strong>{{ r.item.quantity }}{% if r.unit %} {{ r.unit }}{% endif %}</strong> {{ r.item.name }}{% if r.item.optional %} <span class="chip">opcional</span>{% endif %}
+        {% if not staff and chosen %}</label></div>{% endif %}
+        {% if r.item.notes %}<div class="small text-body-secondary">{{ r.item.notes }}</div>{% endif %}
+        {% for w in r.warnings %}<div class="small text-danger no-print">{% icon "triangle-alert" %}{{ w }}</div>{% endfor %}
+      </div>
+      {% if can_edit %}<div class="d-flex gap-1 no-print">
+        {% if not forloop.first %}<form method="post" action="{% url 'supplies:item_move' r.item.pk %}">{% csrf_token %}<input type="hidden" name="para" value="cima"><button type="submit" class="btn btn-outline-secondary btn-sm" aria-label="Subir {{ r.item.name }}">↑</button></form>{% endif %}
+        {% if not forloop.last %}<form method="post" action="{% url 'supplies:item_move' r.item.pk %}">{% csrf_token %}<input type="hidden" name="para" value="baixo"><button type="submit" class="btn btn-outline-secondary btn-sm" aria-label="Descer {{ r.item.name }}">↓</button></form>{% endif %}
+        <a href="{% url 'supplies:item_edit' r.item.pk %}" class="btn btn-outline-secondary btn-sm" aria-label="Editar {{ r.item.name }}">{% icon "pencil" %}</a>
+        <form method="post" action="{% url 'supplies:item_delete' r.item.pk %}">{% csrf_token %}<button type="submit" class="btn btn-outline-danger btn-sm" aria-label="Retirar {{ r.item.name }}">{% icon "x" %}</button></form>
+      </div>{% endif %}
+    </li>
+    {% empty %}<li><div class="empty-state py-4">{% icon "list-checks" %}<strong>Nenhum material ainda</strong>{% if can_edit %}<span>Inclua um a um aqui embaixo ou cole a lista inteira.</span>{% endif %}</div></li>{% endfor %}
+  </ul>
+  {% if not staff and chosen %}{% if rows %}<div class="d-flex flex-wrap gap-2 mt-3 no-print"><button type="submit" class="btn btn-primary">Salvar o que já tenho</button><button type="submit" name="tudo" value="1" class="btn btn-outline-secondary">Tenho tudo</button></div>{% endif %}</form>
+  <p class="small text-body-secondary mt-2 mb-0 no-print">A anotação é só sua: a escola não vê.</p>{% endif %}
+</div></section>
+
+{% if can_edit %}
+<div class="row g-3 no-print">
+  <div class="col-lg-6"><form method="post" action="{% url 'supplies:item_add' lst.pk %}" class="card h-100" novalidate><div class="card-body">
+    {% csrf_token %}
+    <h2 class="h6">Incluir um material</h2>
+    {% include "partials/_form_fields.html" with f=item_form %}
+    <button type="submit" class="btn btn-primary btn-sm">{% icon "plus" %}Incluir</button>
+  </div></form></div>
+  <div class="col-lg-6"><form method="post" action="{% url 'supplies:paste' lst.pk %}" class="card h-100" id="colar" novalidate><div class="card-body">
+    {% csrf_token %}
+    <h2 class="h6">Colar a lista inteira</h2>
+    {% include "partials/_form_fields.html" with f=paste_form %}
+    <button type="submit" class="btn btn-outline-secondary btn-sm">Incluir todos</button>
+  </div></form></div>
+</div>
+{% endif %}
+{% endblock %}

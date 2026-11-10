@@ -33,6 +33,9 @@ def for_user(user):
         items += _active_search(user)
     if role == Role.RESPONSAVEL.value:
         items += _family(user)
+    if role in (Role.PROFESSOR.value, Role.SECRETARIA.value, Role.COORDENACAO.value, Role.DIRECAO.value,
+                Role.ADMIN.value) and user.school_id:
+        items += _supplies_staff(user)
     if role in (Role.DIRECAO.value, Role.SECRETARIA.value, Role.ADMIN.value):
         items += _lgpd(user)
     if role in (Role.DIRECAO.value, Role.SECRETARIA.value, Role.COORDENACAO.value, Role.ADMIN.value) and user.school_id:
@@ -372,7 +375,28 @@ def _family(user):
         _item("Consultas da escola aguardando sua opinião", _polls_pending(user),
               reverse("communication:poll_list"), "Um voto por família.", "info"),
         *_library_family(child_ids),
+        _item("Listas de materiais com itens a providenciar", _supplies_family(user),
+              reverse("supplies:index"), "Marque o que já tem: a anotação é só sua.", "info"),
     ]
+
+
+def _supplies_family(user):
+    from apps.supplies.services import pending_for_family
+
+    return pending_for_family(user)
+
+
+def _supplies_staff(user):
+    from apps.supplies.models import SupplyList
+    from apps.supplies.services import MANAGERS
+
+    if user.role in MANAGERS:
+        return [_item("Listas de materiais para revisar", SupplyList.objects.filter(
+            school=user.school, status=SupplyList.Status.REVIEW).count(),
+            reverse("supplies:index") + "?situacao=revisao")]
+    return [_item("Listas de materiais devolvidas com observação", SupplyList.objects.filter(
+        school=user.school, status=SupplyList.Status.DRAFT, created_by=user).exclude(review_note="").count(),
+        reverse("supplies:index") + "?situacao=rascunho")]
 
 
 def _library_family(child_ids):

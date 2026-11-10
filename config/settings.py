@@ -100,6 +100,7 @@ INSTALLED_APPS = [
     "apps.booking",
     "apps.library",
     "apps.lostfound",
+    "apps.supplies",
 ]
 
 MIDDLEWARE = [

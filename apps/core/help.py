@@ -376,6 +376,20 @@ GUIDES = [
         ("Quando a família diz “é meu”, confira a descrição antes de entregar. Depois de 60 dias, os objetos "
          "guardados podem ser marcados como doados; as fotos são apagadas.", "lostfound:list"),
     ]),
+    # Lista de materiais
+    ("Montar e publicar a lista de materiais", "list-checks", (PROFESSOR, COORDENACAO, DIRECAO, SECRETARIA, ADMIN), [
+        ("Em Lista de materiais → Nova lista: título, ano letivo, série e as turmas que vão usar.", "supplies:create"),
+        ("Inclua os materiais um a um ou cole a lista inteira (uma linha por material, quantidade no começo). "
+         "A plataforma avisa quando um item é de uso coletivo ou exige marca, o que a lei não permite.", None),
+        ("O professor envia para a coordenação; a coordenação, a direção ou a secretaria publica (ou devolve com "
+         "observação). Publicada, as famílias das turmas recebem o aviso. “Copiar para outra série” "
+         "reaproveita a lista.", "supplies:index"),
+    ]),
+    ("Ver a lista de materiais", "list-checks", (RESPONSAVEL, ESTUDANTE), [
+        ("Em Lista de materiais aparece a lista da turma de cada filho, e também as das outras séries.",
+         "supplies:index"),
+        ("Marque o que já providenciou (a escola não vê), imprima ou use “Texto” para mandar por mensagem.", None),
+    ]),
     ("Procurar um objeto perdido na escola", "package", (RESPONSAVEL, ESTUDANTE), [
         ("Em Achados e perdidos aparece o que foi encontrado nos últimos 90 dias.", "lostfound:list"),
         ("Reconheceu? Abra e use “É meu”, com um detalhe que só o dono sabe. A escola confere e avisa. Celular, "

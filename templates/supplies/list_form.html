@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}{% if lst %}Editar lista{% else %}Nova lista de materiais{% endif %} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+{% if lst %}{% url "supplies:detail" lst.pk as back %}{% else %}{% url "supplies:index" as back %}{% endif %}
+<div class="form-page">
+  {% include "partials/_form_head.html" with back_url=back back_label="Voltar" heading=lst|yesno:"Editar lista de materiais,Nova lista de materiais" %}
+  <p class="form-lead">Uma lista por série (ou por turma, se mudar de uma para outra). Escola particular não pode pedir material de uso coletivo, como papel higiênico, copos descartáveis, giz e material de limpeza (Lei 12.886/2013), nem exigir marca ou loja: a plataforma avisa quando encontra um desses itens.</p>
+  <form method="post" novalidate class="card form-card">
+    {% csrf_token %}
+    <div class="card-body">{% include "partials/_form_fields.html" with f=form %}</div>
+    {% include "partials/_form_actions.html" with cancel_url=back submit_label=lst|yesno:"Salvar,Criar e incluir materiais" hint="" %}
+  </form>
+</div>
+{% endblock %}

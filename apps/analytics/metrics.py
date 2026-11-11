@@ -389,6 +389,19 @@ _M = [
         "O alfa é só um limite inferior da confiabilidade e cresce com o número de questões (Cronbach, 1951; "
         "Sijtsma, 2009, Psychometrika 74(1)).",
     ),
+    Metric(
+        "spaced_practice", "Revisão espaçada dos exercícios", "Métodos estatísticos",
+        "Quando cada exercício de prática volta para o estudante revisar antes da prova.",
+        "Caixas de Leitner: acerto na primeira resposta do dia sobe uma caixa (próxima revisão em 2, 4, 7 e 14 dias); "
+        "erro volta à primeira (amanhã). O intervalo nunca passa da véspera da prova. \"Para revisar hoje\" "
+        "intercala os tópicos. Na revisão, a resposta anterior e a explicação ficam escondidas até conferir.",
+        "Tentativas nos exercícios de prática de cada prova.",
+        "Exercício nunca respondido aparece como novo.",
+        "Prática distribuída (professor): estudantes que responderam em 2 dias ou mais, entre os que praticaram.",
+        "É organização do estudo, não avaliação. Dunlosky et al. (2013), Psychological Science in the Public Interest "
+        "14(1); Cepeda et al. (2006), Psychological Bulletin 132(3); Cepeda et al. (2008), Psychological Science "
+        "19(11); Rohrer, Dedrick & Stershic (2015), Journal of Educational Psychology 107(3).",
+    ),
 ]
 
 METRICS = {m.key: m for m in _M}

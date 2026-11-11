@@ -83,6 +83,7 @@
         {% if can_manage %}<a href="{% url 'study:practice_add' guide.pk %}" class="btn btn-sm btn-outline-primary">{% icon "plus" %}Novo exercício</a>{% endif %}
       </div>
       {% if practice %}
+        {% if spaced_stats.practiced %}<p class="small mb-1"><strong>Prática distribuída:</strong> dos {{ spaced_stats.practiced }} estudante{{ spaced_stats.practiced|pluralize }} que já praticaram, {{ spaced_stats.spaced }} respondeu{{ spaced_stats.spaced|pluralize:"eram" }} em 2 dias ou mais. Revisar em dias diferentes fixa mais do que concentrar tudo num dia (Cepeda et al., 2006; Dunlosky et al., 2013); a tela do estudante mostra o que revisar a cada dia.</p>{% endif %}
         <p class="small text-body-secondary">Ordenados pelos que mais erram na primeira tentativa. É treino: o estudante vê a resposta e pode refazer. Só a primeira tentativa, nos exercícios ligados a habilidades, entra no EIA-Cognitio, com peso baixo (0,3; uma questão de prova pesa 1,0).</p>
         <ol class="d-grid gap-3 mb-0">
           {% for r in practice %}

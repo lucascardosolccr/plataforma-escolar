@@ -202,3 +202,6 @@ rect.bar.st-insuf, rect.bar.st-none { fill: var(--ds-line); }
 /* Achados e perdidos: foto do objeto sem ocupar a tela inteira */
 .reenroll-terms { max-height: 16rem; overflow-y: auto; background: var(--ds-surface-2); }
 .found-photo { max-height: 320px; object-fit: contain; }
+
+/* Revisão espaçada dos exercícios (study/spacing.py) */
+.study-spaced { background: var(--ds-surface-2); border: 1px solid var(--ds-line); border-radius: var(--ds-radius, .5rem); padding: .75rem 1rem; }

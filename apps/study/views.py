@@ -17,7 +17,7 @@ from apps.core.params import digits, id_param
 from apps.core.uploads import attachment_content_type
 from apps.registry.models import Student
 
-from . import access, plan, services
+from . import access, plan, services, spacing
 from .forms import AnswerForm, GuideForm, MaterialForm, PracticeForm, QuestionForm, TopicForm
 from .models import (ExamGuide, ExamTopic, GuideUpdate, PracticeAttempt, PracticeQuestion, StudyMaterial,
                      StudyQuestion, TopicCheck)
@@ -486,11 +486,14 @@ def _family_context(user, guide, topics):
             p["note"] = ("Plano geral: segue a prioridade indicada pelo professor. A escola não ativou a "
                          "personalização pelos registros de aprendizagem.")
         attempts = _practice_rows(guide, [s.pk])
+        spaced = spacing.plan(practice_qs, PracticeAttempt.objects.filter(question__guide=guide, student=s)
+                              .order_by("created_at", "pk"), guide.exam_date)
         practice = [{"q": q, "first": attempts.get(q.pk, {}).get(s.pk, (None, None))[0],
-                     "last": attempts.get(q.pk, {}).get(s.pk, (None, None))[1]} for q in practice_qs]
+                     "last": attempts.get(q.pk, {}).get(s.pk, (None, None))[1],
+                     "spaced": spaced["states"][q.pk]} for q in practice_qs]
         questions = list(StudyQuestion.objects.filter(guide=guide, student=s).select_related("topic"))
         per_student.append({
-            "student": s, "plan": p, "practice": practice,
+            "student": s, "plan": p, "practice": practice, "spaced": spaced,
             "practice_done": sum(1 for r in practice if r["last"]),
             "practice_right": sum(1 for r in practice if r["first"] and r["first"].is_correct),
             "checks": {t.pk: checks.get(t.pk) for t in topics},
@@ -542,6 +545,7 @@ def _staff_context(user, guide, topics):
     practice.sort(key=lambda r: (-(r["answered"] - r["right_first"]), r["q"].order, r["q"].pk))
     return {
         "practice": practice,
+        "spaced_stats": spacing.spaced_students(guide, [s.pk for s in students]) if practice else None,
         "can_manage": can_manage,
         # Reutilizar copia para uma turma do próprio professor: a gestão abre a
         # prova, mas não tem para onde copiar (o link levava a 403).

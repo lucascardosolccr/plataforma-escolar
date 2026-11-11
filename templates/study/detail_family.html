@@ -90,11 +90,18 @@
   <h2 class="h5" id="h-pra">4. Pratique</h2>
   <p class="small text-body-secondary">Exercícios de treino feitos pelo professor. Você vê a resposta certa e a explicação logo depois de responder, e pode tentar de novo. Não vale nota.</p>
   {% for ps in per_student %}
+    <div class="study-spaced mb-3" role="status">
+      <p class="mb-1"><strong>{% if is_student %}Para revisar hoje{% else %}{{ ps.student.first_name }}: para revisar hoje{% endif %}:</strong>
+        {% if ps.spaced.today or ps.spaced.new %}{% for q in ps.spaced.today %}<a href="#ex-{{ q.pk }}" class="chip">{{ q.topic.title|default:"Exercício" }} · revisão</a> {% endfor %}{% for q in ps.spaced.new %}<a href="#ex-{{ q.pk }}" class="chip">{{ q.topic.title|default:"Exercício" }} · novo</a> {% endfor %}
+        {% elif ps.spaced.next %}nada hoje; próxima revisão em {{ ps.spaced.next|date:"d/m" }}.{% else %}nada pendente antes da prova.{% endif %}</p>
+      <p class="small text-body-secondary mb-0">Revisão espaçada: cada exercício volta depois de 1, 2, 4, 7 e 14 dias conforme você acerta, e volta amanhã se errar; a última revisão cai antes da prova. Responder de cabeça, em dias diferentes e misturando assuntos, fixa mais do que estudar tudo na véspera. Conta a primeira resposta de cada dia.</p>
+    </div>
     {% if not is_student %}<h3 class="h6">{{ ps.student.full_name }} · respondeu {{ ps.practice_done }} de {{ ps.practice|length }}, acertou {{ ps.practice_right }} na primeira tentativa</h3>{% endif %}
     <ol class="d-grid gap-3">
       {% for r in ps.practice %}
         <li id="ex-{{ r.q.pk }}">
           {% if r.q.topic %}<span class="small text-body-secondary">{{ r.q.topic.title }}</span>{% endif %}
+          {% if r.spaced.state == "hoje" %}<span class="chip chip-state state-a_vencer">revisar hoje</span>{% elif r.spaced.state == "agendado" %}<span class="chip chip-state state-pendente">próxima revisão {{ r.spaced.due|date:"d/m" }}</span>{% elif r.spaced.state == "concluido" and r.last %}<span class="chip chip-state state-aprovado">revisões concluídas</span>{% endif %}
           <div class="activity-instructions mb-1">{{ r.q.statement }}</div>
           {% if is_student %}
             <form method="post" action="{% url 'study:practice_answer' guide.pk r.q.pk %}">
@@ -103,7 +110,7 @@
                 <legend class="visually-hidden">Alternativas</legend>
                 {% for opt in r.q.options %}
                   <div class="form-check">
-                    <input class="form-check-input" type="radio" name="alternativa" value="{{ forloop.counter0 }}" id="ex{{ r.q.pk }}-{{ forloop.counter0 }}"{% if r.last and r.last.chosen == forloop.counter0 %} checked{% endif %}>
+                    <input class="form-check-input" type="radio" name="alternativa" value="{{ forloop.counter0 }}" id="ex{{ r.q.pk }}-{{ forloop.counter0 }}"{% if r.last and r.last.chosen == forloop.counter0 and r.spaced.state != "hoje" %} checked{% endif %}>
                     <label class="form-check-label" for="ex{{ r.q.pk }}-{{ forloop.counter0 }}">{{ opt }}</label>
                   </div>
                 {% endfor %}
@@ -111,7 +118,9 @@
               <button type="submit" class="btn btn-sm btn-outline-primary mt-1">{% if r.last %}Responder de novo{% else %}Conferir{% endif %}</button>
             </form>
           {% endif %}
-          {% if r.last %}
+          {% if r.last and is_student and r.spaced.state == "hoje" %}
+            <p class="small mt-1 mb-0 text-body-secondary">Hora de revisar: responda de cabeça. A resposta anterior e a explicação voltam depois que você conferir.</p>
+          {% elif r.last %}
             <div class="small mt-1" role="status">
               {% if r.last.is_correct %}<span class="text-success fw-semibold">✓ Resposta certa.</span>
               {% else %}<span class="fw-semibold">Ainda não.</span> A resposta certa é: <strong>{% for opt in r.q.options %}{% if forloop.counter0 == r.q.correct %}{{ opt }}{% endif %}{% endfor %}</strong>.{% endif %}

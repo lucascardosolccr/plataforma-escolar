@@ -42,7 +42,7 @@
     <div class="col-lg-6"><div class="card h-100 bi-chart-card"><div class="card-header">Distribuição das médias {% metric_info "grade_distribution" %}</div><div class="card-body">{{ distribution_chart }}</div></div></div>
   </div>
   <div class="card mt-3"><div class="table-responsive"><table class="table align-middle mb-0" data-sortable>
-    <thead><tr><th>Turma</th><th class="text-end">Estudantes</th><th class="text-end">Média</th><th class="text-end">Mediana</th><th class="text-end">Desvio</th><th class="text-end">Abaixo da aprovação</th><th class="text-end">Atividades</th><th class="text-end">Taxa de entrega</th></tr></thead>
+    <thead><tr><th>Turma</th><th class="text-end">Estudantes</th><th class="text-end">Média</th><th class="text-end">Mediana</th><th class="text-end">Desvio</th><th class="text-end">Abaixo da aprovação</th><th class="text-end">Atividades</th><th class="text-end">Taxa de entrega</th><th class="text-end">Comparada às outras turmas {% metric_info "class_difference" %}</th></tr></thead>
     <tbody>{% for c in r.classes %}<tr>
       <th scope="row"><a href="{% url 'analytics:class_dashboard' c.class_group.pk %}?{{ period.querystring }}">{{ c.class_group.name }}</a></th>
       <td class="text-end">{{ c.students }}</td>
@@ -50,7 +50,8 @@
       <td class="text-end fw-bold">{{ c.mean|num:2 }}</td><td class="text-end">{{ c.median|num:2 }}</td><td class="text-end">{{ c.stdev|num:2 }}</td>{% endif %}
       <td class="text-end">{{ c.below_count }}</td><td class="text-end">{{ c.activities }}</td>
       <td class="text-end">{{ c.delivery_rate|num:1 }}{% if c.delivery_rate is not None %}%{% endif %}</td>
-    </tr>{% empty %}<tr><td colspan="8" class="text-center text-body-secondary py-3">Nenhuma turma com esta disciplina no seu acesso.</td></tr>{% endfor %}</tbody>
+      <td class="text-end small">{% if c.cmp %}{% if c.cmp.likely %}<strong>{{ c.cmp.direction }}</strong> · efeito {{ c.cmp.size }}{% else %}compatível com o acaso{% endif %}<span class="d-block text-body-secondary">g = {{ c.cmp.g|num:2 }} (IC {{ c.cmp.low|num:2 }} a {{ c.cmp.high|num:2 }})</span>{% else %}—{% endif %}</td>
+    </tr>{% empty %}<tr><td colspan="9" class="text-center text-body-secondary py-3">Nenhuma turma com esta disciplina no seu acesso.</td></tr>{% endfor %}</tbody>
   </table></div></div>
   <div class="card mt-3 bi-chart-card"><div class="card-header">Evolução mensal</div><div class="card-body">{{ monthly_chart }}</div></div>
 </section>

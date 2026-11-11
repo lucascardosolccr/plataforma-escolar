@@ -57,7 +57,7 @@
   {% if a.errors %}<p class="small">Erros mais registrados na prova: {% for label, n in a.errors %}<span class="chip">{{ label }}: {{ n }}</span>{% endfor %}</p>{% endif %}
   <div class="table-responsive"><table class="table table-sm align-middle mb-0">
     <caption class="visually-hidden">Acerto médio e erros por questão</caption>
-    <thead><tr><th scope="col">Questão</th><th scope="col" class="text-end">Com resultado</th><th scope="col" class="text-end">Acerto médio</th><th scope="col" class="text-end">Abaixo do corte</th><th scope="col">Erros mais comuns</th></tr></thead>
+    <thead><tr><th scope="col">Questão</th><th scope="col" class="text-end">Com resultado</th><th scope="col" class="text-end">Acerto médio</th><th scope="col" class="text-end">Abaixo do corte</th><th scope="col">Erros mais comuns</th>{% if a.quality.enough %}<th scope="col" class="text-end">Discriminação</th>{% endif %}</tr></thead>
     <tbody>{% for r in a.questions %}
       <tr>
         <th scope="row" class="fw-normal">Q{{ r.q.number }}. {{ r.q.label|truncatechars:70 }}
@@ -66,10 +66,29 @@
         <td class="text-end">{% if r.facility is not None %}{% widthratio r.facility 1 100 %}%{% else %}—{% endif %}</td>
         <td class="text-end">{{ r.low }}</td>
         <td class="small">{% for label, n in r.errors %}{{ label }} ({{ n }}){% if not forloop.last %}; {% endif %}{% empty %}—{% endfor %}</td>
+        {% if a.quality.enough %}<td class="text-end">{% if r.discrimination is not None %}{{ r.discrimination|floatformat:2 }}{% else %}—{% endif %}{% if r.disc_flag == "negativa" %} <span class="chip chip-state state-encerrada">negativa</span>{% elif r.disc_flag == "baixa" %} <span class="chip chip-state state-a_vencer">baixa</span>{% endif %}</td>{% endif %}
       </tr>{% endfor %}
     </tbody>
   </table></div>
   <p class="small text-body-secondary mt-2 mb-0">Acerto médio: média, entre os estudantes com resultado, da fração dos pontos da questão (em branco conta como zero).</p>
+</div></section>
+
+<section class="card mb-3" aria-labelledby="h-qual"><div class="card-body">
+  <h2 class="h5" id="h-qual">Qualidade da prova</h2>
+  {% if a.quality.enough %}
+  <p class="mb-1">Consistência (alfa de Cronbach): <strong>{{ a.quality.alpha|floatformat:2 }}</strong>{% if a.quality.sem10 is not None %} · erro-padrão de medida: <strong>± {{ a.quality.sem10|floatformat:1 }}</strong> ponto na escala de 0 a 10{% endif %} ({{ a.quality.complete }} estudantes com todas as questões).</p>
+  {% if a.quality.negative_alpha %}<div class="alert alert-warning" role="note"><div><strong>Alfa negativo:</strong> as questões variam em sentidos opostos (quem vai bem numa vai mal noutra). Antes de usar esta prova para decidir, confira o lançamento dos pontos e se as questões medem o mesmo conteúdo.</div></div>{% endif %}
+  <p class="small text-body-secondary">O alfa é um piso da confiabilidade: quanto mais perto de 1, mais as questões medem a mesma coisa. Provas curtas e turmas homogêneas têm alfa menor sem que a prova seja ruim. O erro-padrão diz quanto a nota de um estudante variaria, tipicamente, numa prova parecida: notas a menos de um erro-padrão da média de aprovação merecem um segundo olhar antes de qualquer decisão.</p>
+  {% if a.quality.flagged %}
+  <p class="mb-1"><strong>Questões para revisar</strong> (separam pouco quem foi bem de quem foi mal na prova):</p>
+  <ul class="mb-1">{% for r in a.quality.flagged %}<li>Q{{ r.q.number }}. {{ r.q.label|truncatechars:60 }}: discriminação {{ r.discrimination|floatformat:2 }}{% if r.disc_flag == "negativa" %}. Negativa: quem foi bem na prova errou mais esta. Confira o gabarito e o enunciado.{% else %}.{% endif %}{% if r.better_without %} A prova ficaria mais consistente sem ela.{% endif %}</li>{% endfor %}</ul>
+  {% else %}<p class="mb-1">Nenhuma questão com discriminação baixa.</p>{% endif %}
+  <p class="small text-body-secondary mb-0">Discriminação: correlação da questão com o total das outras questões. Convenção: 0,30 ou mais boa, 0,20 a 0,29 aceitável, abaixo de 0,20 revisar; abaixo de −0,10, separa ao contrário (Cronbach, 1951; Sijtsma, 2009).</p>
+  {% elif a.quality.constant %}
+  <p class="mb-0 text-body-secondary">Todos os estudantes tiveram o mesmo total: não há variação para calcular a consistência.</p>
+  {% else %}
+  <p class="mb-0 text-body-secondary">A análise das questões precisa de {{ a.quality.need_items }} questões ou mais e de {{ a.quality.need_students }} estudantes com resultado em todas elas (há {{ a.quality.complete }}). Com menos, os números oscilam demais para orientar a revisão.</p>
+  {% endif %}
 </div></section>
 
 <section class="mb-3" aria-labelledby="h-at">

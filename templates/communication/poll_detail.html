@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% load ui %}
+{% load static ui bi_tags %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/bi.css' %}">{% endblock %}
 {% block title %}{{ poll.question }} — Consultas — Plataforma Escolar{% endblock %}
 
 {% block content %}
@@ -31,10 +32,13 @@
 {% if results %}
 <section class="card mb-3" aria-labelledby="h-res"><div class="card-body">
   <h2 id="h-res" class="h6">Resultado{% if poll.status == "aberta" %} parcial{% endif %}</h2>
-  <p class="small text-body-secondary">{{ total }} família{{ total|pluralize }} respond{{ total|pluralize:"eu,eram" }}{% if audience is not None %} de {{ audience }} com acesso{% endif %}. Ninguém vê quem votou em quê.</p>
+  <p class="small text-body-secondary">{{ total }} família{{ total|pluralize }} respond{{ total|pluralize:"eu,eram" }}{% if audience is not None %} de {{ audience }} com acesso{% if margin.rate is not None %} ({% widthratio margin.rate 1 100 %}%){% endif %}{% endif %}. Ninguém vê quem votou em quê.</p>
+  {% if staff and total %}
+  <p class="small mb-2">{% if margin.tie %}<strong>Empate técnico</strong> entre as duas opções mais votadas: a diferença cabe na margem de erro.{% elif margin.leader is not None %}A opção mais votada está à frente além da margem de erro.{% endif %}{% if margin.low_response %} <strong>Menos da metade das famílias respondeu:</strong> a margem cobre só o acaso, não quem deixou de responder, que pode pensar diferente.{% endif %} {% metric_info "poll_margin" %}</p>
+  {% endif %}
   <ul class="list-unstyled mb-0 poll-results">
     {% for r in results %}
-    <li class="mb-2"><div class="d-flex justify-content-between small"><span>{{ r.label }}</span><span class="fw-semibold">{{ r.n }} ({{ r.pct }}%)</span></div>
+    <li class="mb-2"><div class="d-flex justify-content-between small"><span>{{ r.label }}</span><span class="fw-semibold">{{ r.n }} ({{ r.pct }}%){% if staff and r.low is not None and r.low != r.high %} <span class="fw-normal text-body-secondary">IC 95%: {{ r.low }}–{{ r.high }}%</span>{% endif %}</span></div>
       <progress class="poll-bar" max="100" value="{{ r.pct }}" aria-label="{{ r.label }}: {{ r.pct }}%">{{ r.pct }}%</progress></li>
     {% endfor %}
   </ul>

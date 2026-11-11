@@ -165,6 +165,37 @@ def poll_create(request):
     return render(request, "communication/poll_form.html", {"form": form})
 
 
+LOW_RESPONSE = 0.5
+
+
+def poll_margins(counts, audience=None):
+    """Percentual de cada opção com IC 95% de Wilson e a leitura da diferença entre as duas mais votadas.
+
+    Com o total de famílias conhecido (``audience``), a margem usa a correção de população finita: se todas
+    responderam, não há margem. A margem cobre só o acaso; quem não respondeu pode pensar diferente, e com resposta
+    abaixo de 50% a tela avisa (Groves, 2006, Public Opinion Quarterly 70(5), 646–675). Ver
+    ``analytics.metrics`` → "poll_margin".
+    """
+    from apps.core.stats import diff_of_shares, wilson
+
+    total = sum(counts)
+    population = audience if audience and audience >= total else None
+    rows = []
+    for k in counts:
+        p, lo, hi = wilson(k, total, population=population) if total else (None, None, None)
+        rows.append({"n": k, "pct": round(100 * k / total) if total else 0,
+                     "low": round(100 * lo) if lo is not None else None,
+                     "high": round(100 * hi) if hi is not None else None})
+    margin = {"total": total, "rate": (total / audience) if audience else None}
+    margin["low_response"] = margin["rate"] is not None and margin["rate"] < LOW_RESPONSE
+    ranked = sorted(range(len(counts)), key=lambda i: -counts[i])
+    if total and len(ranked) >= 2:
+        d = diff_of_shares(counts[ranked[0]], counts[ranked[1]], total, population=population)
+        margin["tie"] = d["low"] <= 0
+        margin["leader"] = ranked[0] if counts[ranked[0]] > counts[ranked[1]] else None
+    return rows, margin
+
+
 def poll_detail(request, pk):
     user = request.user
     qs = visible(user)
@@ -174,13 +205,15 @@ def poll_detail(request, pk):
     staff = staff_class_ids(user) is not None
     counts = dict(poll.votes.values_list("option").annotate(n=Count("pk")))
     total = sum(counts.values())
-    results = [{"label": o, "n": counts.get(i, 0), "pct": round(100 * counts.get(i, 0) / total) if total else 0}
-               for i, o in enumerate(poll.options)]
+    audience = _audience(poll).count() if staff else None
+    results, margin = poll_margins([counts.get(i, 0) for i in range(len(poll.options))], audience)
+    for r, o in zip(results, poll.options):
+        r["label"] = o
     mine = PollVote.objects.filter(poll=poll, user=user).first()
     show = staff or (poll.status == Poll.Status.CLOSED and poll.show_results)
     return render(request, "communication/poll_detail.html", {
         "poll": poll, "staff": staff, "results": results if show else None, "total": total,
-        "audience": _audience(poll).count() if staff else None, "mine": mine,
+        "margin": margin if show else None, "audience": audience, "mine": mine,
         "can_vote": can_vote(user, poll) and poll.accepts_votes(),
         "can_manage": poll.school_id == user.school_id and (user.role in MANAGERS or poll.created_by_id == user.pk),
         "options": list(enumerate(poll.options)),

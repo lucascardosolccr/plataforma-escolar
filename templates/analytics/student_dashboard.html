@@ -105,7 +105,7 @@
     <div class="table-responsive">
       <table class="table table-hover align-middle" data-sortable>
         <caption class="visually-hidden">Médias por disciplina no período</caption>
-        <thead><tr><th>Disciplina</th><th class="text-end">Média</th><th class="text-end">Aprovação</th><th class="text-end">Variação</th>{% if acad.class_comparison %}<th class="text-end">Média da turma {% metric_info "class_comparison" %}</th>{% endif %}<th class="text-end">Notas</th><th>Regra</th><th data-nosort>Situação</th></tr></thead>
+        <thead><tr><th>Disciplina</th><th class="text-end">Média</th><th class="text-end">Aprovação</th><th class="text-end">Variação</th>{% if acad.class_comparison %}<th class="text-end">Média da turma {% metric_info "class_comparison" %}</th>{% endif %}<th class="text-end">Notas</th><th>Regra</th><th data-nosort>Situação {% metric_info "average_precision" %}</th></tr></thead>
         <tbody>
           {% for s in acad.subjects %}
           <tr>
@@ -116,7 +116,7 @@
             {% if acad.class_comparison %}<td class="text-end">{{ s.class_mean|num:2 }}</td>{% endif %}
             <td class="text-end">{{ s.count }}</td>
             <td class="small text-body-secondary">{{ s.formula_label }}</td>
-            <td>{% if s.below %}<span class="chip chip-state state-a_vencer">Abaixo da aprovação</span>{% else %}<span class="chip chip-state state-pendente">Na média</span>{% endif %}</td>
+            <td>{% if s.below %}<span class="chip chip-state state-a_vencer">Abaixo da aprovação</span>{% else %}<span class="chip chip-state state-pendente">Na média</span>{% endif %}{% if s.near_cut %} <span class="chip">perto do corte</span><span class="d-block small text-body-secondary">± {{ s.se|num:1 }}: uma nota a mais ou a menos muda o lado</span>{% endif %}</td>
           </tr>
           {% empty %}
           <tr><td colspan="8"><div class="empty-state py-4">{% icon "graduation-cap" %}<strong>Sem notas publicadas no período</strong>Escolha outro período nos filtros acima.</div></td></tr>

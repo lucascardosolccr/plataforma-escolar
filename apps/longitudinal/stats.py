@@ -16,18 +16,7 @@
 import math
 from statistics import mean
 
-Z95 = 1.959964
-
-
-def wilson(k, n, z=Z95):
-    """(proporção, limite inferior, limite superior) ou (None, None, None) sem casos."""
-    if not n:
-        return None, None, None
-    p = k / n
-    den = 1 + z * z / n
-    centre = (p + z * z / (2 * n)) / den
-    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / den
-    return p, max(0.0, centre - half), min(1.0, centre + half)
+from apps.core.stats import Z95, pearson, wilson  # noqa: F401 (wilson é usado por cohort e pela calibração)
 
 
 def risk_ratio(a, n1, c, n0, z=Z95):
@@ -54,18 +43,6 @@ def _ranks(values):
             ranks[order[k]] = (i + j) / 2 + 1
         i = j + 1
     return ranks
-
-
-def pearson(xs, ys):
-    if len(xs) < 3:
-        return None
-    mx, my = mean(xs), mean(ys)
-    sxy = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
-    sxx = sum((x - mx) ** 2 for x in xs)
-    syy = sum((y - my) ** 2 for y in ys)
-    if not sxx or not syy:
-        return None
-    return sxy / math.sqrt(sxx * syy)
 
 
 def spearman(xs, ys):

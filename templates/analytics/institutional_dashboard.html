@@ -36,7 +36,7 @@
 <section class="bi-section" id="turmas" aria-labelledby="h-t">
   <h2 id="h-t">Comparação entre turmas {% metric_info "small_group" %}</h2>
   <p class="bi-lead">Turmas diferem em composição e contexto: a comparação orienta onde olhar, não ranqueia. Clique numa barra para o painel da turma. Barras em laranja: frequência abaixo de {{ min_attendance|num:0 }}% (limite de faltas da escola).</p>
-  <div class="card mb-3 bi-chart-card"><div class="card-header">Frequência por turma</div><div class="card-body">{{ class_chart }}
+  <div class="card mb-3 bi-chart-card"><div class="card-header d-flex justify-content-between flex-wrap gap-2"><span>Frequência por turma</span><a href="{% url 'analytics:attendance_control' %}" class="small">Semana a semana, com limites de controle</a></div><div class="card-body">{{ class_chart }}
     <div class="chart-legend"><span><i class="l-main"></i>Frequência da turma</span><span><i class="l-alert"></i>Abaixo de {{ min_attendance|num:0 }}%</span></div></div></div>
   <div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0" data-sortable>
     <thead><tr><th>Turma</th><th>Ano letivo</th><th>Série</th><th>Turno</th><th class="text-end">Estudantes</th><th class="text-end">Média</th><th class="text-end">Frequência</th><th class="text-end">Entrega</th></tr></thead>

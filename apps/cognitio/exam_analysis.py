@@ -25,6 +25,19 @@ Regras que evitam conclusões indevidas:
   demonstrou"; de t1 a t2, "demonstrou em parte"; a partir de t2, "demonstrou".
 - Habilidade só secundária nas questões não é classificada: o peso dela na evidência
   também é menor.
+
+Qualidade da prova (análise clássica de itens, ``quality``):
+
+- **Discriminação** de cada questão: correlação entre a questão e o total das outras questões (item-total
+  corrigida). Perto de zero, a questão não separa quem foi bem na prova de quem foi mal; negativa, quem foi bem
+  errou mais, o que costuma ser gabarito trocado, enunciado ambíguo ou "pegadinha". Faixas convencionais dos
+  manuais de análise de itens: 0,30 ou mais boa; 0,20 a 0,29 aceitável; abaixo de 0,20 revisar. São convenção,
+  não lei: numa prova curta ou numa turma homogênea as correlações caem.
+- **Consistência da prova:** alfa de Cronbach (Cronbach, 1951), lido como limite inferior da confiabilidade
+  (Sijtsma, 2009), com o erro-padrão de medida em pontos de 0 a 10: a nota de um estudante, numa prova parecida,
+  variaria tipicamente esse tanto para mais ou para menos.
+- Só com ``MIN_ITEM_STUDENTS`` estudantes com resultado em todas as questões e ``MIN_ITEMS`` questões ou mais.
+  Com menos, a correlação de cada questão é instável demais e a tela não mostra.
 """
 
 from collections import Counter
@@ -46,6 +59,10 @@ LEVELS = (  # rótulos curtos: a tela avisa que tudo se refere a esta prova
 REVIEW_FACILITY = 0.2  # média de acerto abaixo disto: revisar a questão antes de concluir
 MIN_FOR_REVIEW = 5  # com poucos estudantes, a média de uma questão oscila demais
 MIN_GROUP = 2  # pequeno grupo: pelo menos dois estudantes na mesma habilidade
+MIN_ITEM_STUDENTS = 10  # análise de itens: estudantes com todas as questões
+MIN_ITEMS = 3
+LOW_DISCRIMINATION = 0.20
+NEGATIVE_DISCRIMINATION = -0.10  # perto de zero é "não separa"; só abaixo disto é "separa ao contrário"
 
 
 def _ratio(r, q):
@@ -67,6 +84,37 @@ def _level(ratio, t1, t2):
     if ratio < t2:
         return "parcial"
     return "demonstrou"
+
+
+def _item_quality(questions, students, responses, q_rows):
+    from apps.core.stats import item_analysis
+
+    complete = []
+    for s in students:
+        row = [_ratio(responses.get((q.pk, s.pk)), q) for q in questions]
+        if all(x is not None for x in row):
+            complete.append(row)
+    if len(questions) < MIN_ITEMS or len(complete) < MIN_ITEM_STUDENTS:
+        return {"enough": False, "complete": len(complete), "need_students": MIN_ITEM_STUDENTS,
+                "need_items": MIN_ITEMS}
+    res = item_analysis(complete)
+    if res is None or res["alpha"] is None:
+        return {"enough": False, "complete": len(complete), "need_students": MIN_ITEM_STUDENTS,
+                "need_items": MIN_ITEMS, "constant": True}
+    for row, it in zip(q_rows, res["items"]):
+        r = it["r_rest"]
+        row["discrimination"] = r
+        row["disc_flag"] = (None if r is None else "negativa" if r < NEGATIVE_DISCRIMINATION
+                            else "baixa" if r < LOW_DISCRIMINATION
+                            else None)
+        row["better_without"] = (it["alpha_without"] is not None and res["alpha"] is not None
+                                 and it["alpha_without"] > res["alpha"] + 0.03)
+    # Alfa negativo: as questões variam em sentidos opostos (quem vai bem numa vai mal noutra). Não é um piso de
+    # confiabilidade e o erro-padrão de medida (DP·√(1 − α)) perde o sentido, então não é mostrado.
+    negative = res["alpha"] < 0
+    return {"enough": True, "complete": len(complete), "alpha": res["alpha"], "negative_alpha": negative,
+            "sem10": res["sem"] * 10 if res["sem"] is not None and not negative else None,
+            "flagged": [r for r in q_rows if r.get("disc_flag")]}
 
 
 def analyze(ev, students, school):
@@ -101,6 +149,9 @@ def analyze(ev, students, school):
             "review": facility is not None and len(ratios) >= MIN_FOR_REVIEW and facility < REVIEW_FACILITY,
             "skills": [qs.item for qs in q.questionskill_set.all()],
         })
+
+    # --- qualidade da prova (análise de itens)
+    quality = _item_quality(questions, students, responses, q_rows)
 
     # --- habilidades
     skills = {}
@@ -176,5 +227,6 @@ def analyze(ev, students, school):
         "retake": retake,
         "support": support,
         "has_results": any(r["n"] for r in q_rows),
+        "quality": quality,
         "t1": t1, "t2": t2,
     }

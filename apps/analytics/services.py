@@ -102,6 +102,29 @@ def subject_averages(student, start=None, end=None):
     )
 
 
+MIN_FOR_PRECISION = 3
+
+
+def _precision(values_weights, formula, average, passing):
+    """(erro-padrão da média, perto do corte?) — só para média aritmética ou ponderada com 3+ notas.
+
+    Perto do corte: |média − aprovação| < 1,96 × erro-padrão. A diferença cabe na variação entre as próprias
+    notas: uma avaliação a mais ou a menos mudaria o lado (precisão perto de pontos de corte, Standards for
+    Educational and Psychological Testing, AERA/APA/NCME, 2014). Ver ``metrics.average_precision``.
+    """
+    from apps.core.stats import Z95, weighted_mean_se
+
+    if average is None or len(values_weights) < MIN_FOR_PRECISION or formula not in (
+            AcademicRule.Formula.ARITHMETIC, AcademicRule.Formula.WEIGHTED):
+        return None, False
+    values = [float(v) for v, _ in values_weights]
+    weights = ([float(w or 1) for _, w in values_weights] if formula == AcademicRule.Formula.WEIGHTED else None)
+    _, se = weighted_mean_se(values, weights)
+    if se is None:
+        return None, False
+    return round(se, 2), abs(float(average) - float(passing)) < Z95 * se
+
+
 def _averages_from_grades(grades, rules):
     """Médias por disciplina a partir de notas já carregadas (com
     ``evaluation__subject``), para o cálculo individual e o da turma inteira
@@ -119,6 +142,7 @@ def _averages_from_grades(grades, rules):
         formula = rule.formula if rule else AcademicRule.Formula.ARITHMETIC
         passing = rule.passing_grade if rule else Decimal("6.0")
         average = _apply_formula(vw, formula)
+        se, near = _precision(vw, formula, average, passing)
         result.append(
             {
                 "subject": subject,
@@ -126,6 +150,8 @@ def _averages_from_grades(grades, rules):
                 "passing": float(passing),
                 "count": len(vw),
                 "below": average is not None and average < passing,
+                "se": se,
+                "near_cut": near,
                 "formula_label": (
                     rule.get_formula_display()
                     if rule

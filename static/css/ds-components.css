@@ -600,6 +600,7 @@ hr { border-color: var(--ds-line); opacity: 1; }
 .chart-area { fill: var(--ds-chart-1); opacity: .09; }
 .chart-dot { fill: var(--ds-surface); stroke: var(--ds-chart-1); stroke-width: 2; }
 .chart-limit { stroke: var(--ds-chart-alert); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.chart-dot.is-signal { fill: var(--ds-chart-alert); stroke: var(--ds-chart-alert); }
 /* Trajetória (cognitio.trajectory): tendência, projeção com faixa, média de aprovação e início da queda. */
 .chart-trend { stroke: var(--ds-chart-1); stroke-width: 2; }
 .chart-proj { stroke: var(--ds-chart-1); stroke-width: 2; stroke-dasharray: 4 4; }

@@ -1,11 +1,12 @@
 from django.urls import path
 
-from . import views, views_report_cards
+from . import views, views_report_cards, views_spc
 
 app_name = "analytics"
 
 urlpatterns = [
     path("paineis/", views.institutional_dashboard, name="institutional_dashboard"),
+    path("paineis/frequencia-semanal/", views_spc.attendance_control, name="attendance_control"),
     path(
         "paineis/secretaria/",
         views.secretaria_panel,

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load static ui bi_tags %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/bi.css' %}">{% endblock %}
+{% block title %}Frequência semanal — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Controle estatístico de processo</span>
+    <h1>Frequência semana a semana {% metric_info "attendance_control" %}</h1>
+    <p>A frequência sempre oscila um pouco. Os limites mostram até onde vai a oscilação comum desta {% if chosen %}turma{% else %}escola{% endif %}: dentro deles, não há o que perseguir semana a semana; fora deles, algo diferente aconteceu e vale descobrir o quê. De {{ start|date:"d/m/Y" }} a {{ end|date:"d/m/Y" }}.</p>
+  </div>
+</div>
+
+{% if classes %}
+<form method="get" class="filter-bar mb-3">
+  {% if whole %}{% include "partials/_filter_select.html" with name="turma" label="Turma" options=classes selected=class_id all_label="Escola toda" %}
+  {% else %}{% include "partials/_filter_select.html" with name="turma" label="Turma" options=classes selected=class_id all_label="Escolha" %}{% endif %}
+  <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Filtrar</button></noscript>
+</form>
+{% endif %}
+
+{% if not result %}
+<div class="empty-state py-5">{% icon "chart-line" %}<strong>Nenhuma turma no seu acesso</strong><span>A carta aparece para as turmas que você acompanha.</span></div>
+{% elif not result.chart %}
+<div class="empty-state py-5">{% icon "calendar-check" %}<strong>Sem chamada suficiente</strong><span>É preciso ter chamada em pelo menos duas semanas.</span></div>
+{% else %}
+<section class="card mb-3" aria-labelledby="carta"><div class="card-body">
+  <h2 class="h5" id="carta">{% if chosen %}{{ chosen.name }}{% else %}Escola toda{% endif %}: presença média de {% widthratio result.chart.center 1 100 %}% em {{ result.weeks }} semana{{ result.weeks|pluralize }}</h2>
+  {{ chart }}
+  <div class="chart-legend"><span><i class="l-main"></i>Presença na semana</span><span><i class="l-alert"></i>Limites de controle e semanas fora deles</span></div>
+</div></section>
+
+<section class="card mb-3" aria-labelledby="leitura"><div class="card-body">
+  <h2 class="h5" id="leitura">Leitura</h2>
+  {% if result.sparse %}<p class="small">Fora da carta, por terem poucos registros (uma semana típica tem {{ result.typical|floatformat:0 }}): {% for w in result.sparse %}semana de {{ w.label|date:"d/m" }} ({{ w.n }}){% if not forloop.last %}, {% endif %}{% endfor %}. Confira se a chamada foi lançada.</p>{% endif %}
+  {% if not result.enough %}
+  <p class="mb-0">Com {{ result.weeks }} semana{{ result.weeks|pluralize }} de chamada, ainda não dá para separar oscilação de mudança: a carta tira conclusões a partir de {{ min_weeks }} semanas.</p>
+  {% else %}
+  <ul class="mb-2">
+    {% for p in result.signals %}<li><strong>Semana de {{ p.label|date:"d/m/Y" }}</strong>: {% widthratio p.p 1 100 %}% de presença, {% if p.signal == "abaixo" %}abaixo{% else %}acima{% endif %} do limite ({% widthratio p.low 1 100 %}% a {% widthratio p.high 1 100 %}%). Causa especial provável: chuva forte, surto de doença, problema de transporte, evento, feriado mal registrado?</li>{% endfor %}
+    {% if result.runs.shift %}<li><strong>Mudança de patamar:</strong> {{ result.runs.longest }} semanas seguidas do mesmo lado da mediana (o acaso explicaria até {{ result.runs.run_limit }}). A frequência mudou de nível; veja quando começou a sequência.</li>{% endif %}
+    {% if result.runs.few_crossings %}<li><strong>Poucos cruzamentos da mediana</strong> ({{ result.runs.crossings }}; o acaso daria pelo menos {{ result.runs.min_crossings }}): a série não oscila ao acaso, há tendência ou mudança.</li>{% endif %}
+    {% if not result.signals and not result.runs.shift and not result.runs.few_crossings %}<li>Só variação comum: nenhuma semana fora dos limites e nenhuma sequência fora do acaso. Melhorar a frequência aqui pede mudar o processo (busca ativa, contato com as famílias, horário), não reagir a uma semana isolada.</li>{% endif %}
+  </ul>
+  <p class="small text-body-secondary mb-0">Dispersão entre semanas (σz de Laney): {{ result.chart.sigma_z|num:2 }}{% if result.chart.sigma_z > 1.5 %}: bem acima de 1, ou seja, as semanas variam muito mais do que o acaso puro; por isso os limites são mais largos que os de uma carta p comum{% endif %}. Métodos: carta p′ de Laney (2002) e regras de sequência de Anhøj & Olesen (2014).</p>
+  {% endif %}
+</div></section>
+{% endif %}
+{% endblock %}

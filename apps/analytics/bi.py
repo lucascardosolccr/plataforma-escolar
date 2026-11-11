@@ -1075,6 +1075,33 @@ def class_report(class_group, period, *, min_subjects_below=1, min_delivery=60, 
 # --------------------------------------------------------------------------- #
 # Painel por disciplina
 # --------------------------------------------------------------------------- #
+def compare_classes(classes, alpha=0.05):
+    """Cada turma contra as outras turmas juntas, na mesma disciplina e período.
+
+    Tamanho de efeito g de Hedges com IC 95% (Hedges, 1981), teste de Welch (Welch, 1947) e correção de
+    Benjamini–Hochberg (1995) pelo número de turmas comparadas: só é "diferença provável" com q < 0,05 e |g| ≥ 0,2.
+    Mesmo assim pode ser diferença de critério de correção entre professores, não de aprendizagem (Brookhart et al.,
+    2016). Grupos pequenos ficam de fora (proteção contra identificação). Grava ``c["cmp"]`` em cada turma.
+    """
+    from apps.core.stats import benjamini_hochberg, effect_label, hedges_g, welch
+
+    eligible = [c for c in classes if not c.get("small") and len(c.get("_vals") or []) >= 2]
+    tests = []
+    for c in eligible:
+        others = [v for o in eligible if o is not c for v in o["_vals"]]
+        w, g = welch(c["_vals"], others), hedges_g(c["_vals"], others)
+        tests.append((c, w["p"] if w else None, g))
+    qs = benjamini_hochberg([p for _, p, _ in tests]) if len(eligible) >= 2 else []
+    for (c, p, g), q in zip(tests, qs):
+        if g is None or q is None:
+            continue
+        likely = q < alpha and abs(g["g"]) >= 0.2
+        c["cmp"] = {**g, "q": q, "size": effect_label(g["g"]), "likely": likely,
+                    "direction": "acima" if g["g"] > 0 else "abaixo"}
+    for c in classes:
+        c.pop("_vals", None)
+
+
 def subject_report(subject, class_groups, period):
     from apps.registry.models import Student
 
@@ -1123,13 +1150,14 @@ def subject_report(subject, class_groups, period):
         done, total = subs_by_class[cg.pk]
         d = describe(vals)
         classes.append({
-            "class_group": cg, "students": len(ids), **d,
+            "class_group": cg, "students": len(ids), **d, "_vals": vals,
             "below_count": sum(1 for r in rows if r["below"]),
             "delivery_rate": pct(done, total),
             "activities": len(act_ids_by_class.get(cg.pk, ())),
             "small": d["n"] < SMALL_GROUP,
         })
         all_rows.extend(rows)
+    compare_classes(classes)
     evals = list(
         Evaluation.objects.filter(subject=subject, class_group__in=class_groups, status=PUBLISHED,
                                   date__gte=period.start, date__lte=period.end)

@@ -10,7 +10,10 @@ Distinção usada em toda a plataforma (Prompt 13, §8):
 - **observado**: registro lançado por alguém (nota, presença, entrega);
 - **calculado**: indicador derivado por fórmula fixa a partir dos observados;
 - **sugestão**: regra transparente que aponta algo para avaliação humana.
-Não há projeções nem modelos preditivos (ver ``docs/BI_METODOLOGIA.md``).
+Os painéis de BI não têm projeções nem modelos preditivos (ver ``docs/BI_METODOLOGIA.md``). As únicas
+previsões da plataforma ficam na Trajetória escolar, validadas com os dados da escola e aprovadas pela direção.
+O grupo "Métodos estatísticos" descreve os testes usados para não confundir acaso com diferença real
+(``apps/core/stats.py``).
 """
 
 from dataclasses import dataclass
@@ -319,6 +322,72 @@ _M = [
         "Sem registro, o módulo aparece com 0: aqui zero é a contagem real, não falta de dado.",
         "Mostra adoção da plataforma. Não mede a qualidade do trabalho de nenhum profissional.",
         "Registro feito fora da plataforma (papel, outro sistema) não aparece.",
+    ),
+    # ---------------- Métodos estatísticos ----------------
+    Metric(
+        "class_difference", "Diferença entre turmas", "Métodos estatísticos",
+        "Se a média de uma turma numa disciplina difere das outras turmas além do que o acaso explicaria.",
+        "Tamanho de efeito g de Hedges (diferença de médias em desvios-padrão, com correção para amostras "
+        "pequenas) e IC 95%; teste de Welch; correção de Benjamini–Hochberg pelo número de turmas comparadas. "
+        "\"Diferença provável\" só com q < 0,05 e |g| ≥ 0,2.",
+        "Médias por disciplina dos estudantes de cada turma no período.",
+        "Turma com menos de 5 estudantes com média não entra (grupo pequeno).",
+        "g de 0,2, 0,5 e 0,8 são os marcos convencionais de efeito pequeno, médio e grande (Cohen, 1988). "
+        "\"Compatível com o acaso\" não prova que as turmas são iguais: diz que os dados não mostram diferença.",
+        "Professores corrigem com critérios diferentes: diferença entre turmas pode ser de critério, não de "
+        "aprendizagem (Brookhart et al., 2016). Hedges (1981); Welch (1947); Benjamini & Hochberg (1995).",
+    ),
+    Metric(
+        "attendance_control", "Frequência semanal com limites de controle", "Métodos estatísticos",
+        "Se a variação da frequência de uma semana para outra é a de sempre ou tem uma causa especial.",
+        "Carta p′ de Laney: linha central = presença média; limites = média ± 3 desvios binomiais multiplicados "
+        "por σz (dispersão extra entre semanas, pela amplitude móvel). Regras de Anhøj na série: sequência do "
+        "mesmo lado da mediana maior que log2(n) + 3, ou cruzamentos abaixo do 5º percentil binomial.",
+        "Registros de chamada por semana (presente e atraso contam presença).",
+        "Semana sem chamada não aparece; com menos de 8 semanas a tela não tira conclusão.",
+        "Ponto fora do limite: algo diferente aconteceu naquela semana (chuva, surto, transporte, evento). "
+        "Sequência longa: a frequência mudou de patamar. Dentro dos limites: variação comum, não persiga cada "
+        "semana.",
+        "Laney (2002), Quality Engineering 14(4); Anhøj & Olesen (2014), PLoS ONE 9(11): e113825. Semanas com "
+        "feriado têm menos registros e limites mais largos.",
+    ),
+    Metric(
+        "average_precision", "Média perto do corte", "Métodos estatísticos",
+        "Se a média de uma disciplina está tão perto da média de aprovação que a diferença cabe na variação "
+        "entre as próprias notas.",
+        "Erro-padrão da média (ponderada pelo peso das avaliações): s/√n com pesos iguais. Perto do corte quando "
+        "|média − aprovação| < 1,96 × erro-padrão, com 3 notas ou mais e fórmula aritmética ou ponderada.",
+        "Notas das avaliações publicadas no período.",
+        "Com menos de 3 notas, ou fórmula de melhor nota ou soma, não se calcula.",
+        "\"Perto do corte\" pede olhar as avaliações uma a uma antes de decidir recuperação ou conselho: uma "
+        "nota a mais ou a menos mudaria o lado.",
+        "As avaliações medem conteúdos diferentes, então o erro-padrão mistura erro de medida com variação real "
+        "entre conteúdos. Precisão perto de pontos de corte: Standards for Educational and Psychological Testing "
+        "(AERA, APA & NCME, 2014), padrão 2.14.",
+    ),
+    Metric(
+        "poll_margin", "Margem de erro das consultas", "Métodos estatísticos",
+        "Quanto o resultado de uma consulta às famílias pode variar só porque nem todas responderam.",
+        "IC 95% de Wilson para cada opção, com correção de população finita (o total de famílias é conhecido); "
+        "diferença entre as duas mais votadas com o IC da diferença multinomial.",
+        "Votos e famílias com acesso à consulta.",
+        "Sem votos, sem margem.",
+        "Se o IC da diferença entre as duas mais votadas inclui zero, é empate técnico.",
+        "A margem cobre só o acaso. Quem não respondeu pode pensar diferente de quem respondeu, e nenhuma "
+        "margem corrige isso (Groves, 2006, Public Opinion Quarterly 70(5)); com resposta abaixo de 50% a tela "
+        "avisa.",
+    ),
+    Metric(
+        "item_quality", "Qualidade da prova (análise de itens)", "Métodos estatísticos",
+        "Se cada questão separa quem foi bem na prova de quem foi mal, e o quanto a prova é consistente.",
+        "Discriminação = correlação da questão com o total das outras questões; alfa de Cronbach; erro-padrão de "
+        "medida = DP × √(1 − α), em pontos de 0 a 10.",
+        "Pontos por questão lançados em \"Questões e habilidades\".",
+        "Só com 3 questões ou mais e 10 estudantes com resultado em todas.",
+        "Discriminação negativa costuma ser gabarito trocado ou enunciado ambíguo. Convenção: 0,30 ou mais boa; "
+        "0,20 a 0,29 aceitável; abaixo de 0,20 revisar.",
+        "O alfa é só um limite inferior da confiabilidade e cresce com o número de questões (Cronbach, 1951; "
+        "Sijtsma, 2009, Psychometrika 74(1)).",
     ),
 ]
 

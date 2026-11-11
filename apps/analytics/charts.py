@@ -305,3 +305,59 @@ def trend_chart(points, *, line=None, projection=None, reference=None, mark=None
                   + (f"; queda em curso desde {mark:%d/%m/%Y}" if mark else ""))
     return mark_safe(f'<svg viewBox="0 0 {width} {height}" class="chart-svg" role="img" aria-label="{nome}">'
                      + "".join(out) + "</svg>")
+
+
+def control_chart(chart, *, width=640, height=240):
+    """Carta de controle (``core.stats.laney_p``): proporção semanal, linha central e limites por semana.
+
+    Pontos fora dos limites ficam destacados; cada ponto traz a semana, o percentual e os limites no ``<title>``."""
+    pts = chart["points"] if chart else []
+    if len(pts) < 2:
+        return _empty("Poucas semanas com chamada para desenhar a carta.")
+    lo_all = min(min(p["low"], p["p"]) for p in pts)
+    hi_all = max(max(p["high"], p["p"]) for p in pts)
+    y_min, y_max = max(0.0, lo_all - 0.02), min(1.0, hi_all + 0.02)
+    if y_max - y_min < 0.05:
+        y_max = min(1.0, y_min + 0.05)
+    pad_l, pad_r, pad_t, pad_b = 44, 16, 16, 34
+    plot_w, plot_h = width - pad_l - pad_r, height - pad_t - pad_b
+    n = len(pts)
+
+    def x(i):
+        return pad_l + plot_w * i / (n - 1)
+
+    def y(v):
+        return pad_t + plot_h - plot_h * (v - y_min) / (y_max - y_min)
+
+    def pc(v):
+        return _fmt(round(100 * v, 1)) + "%"
+
+    out = [_grid_lines(pad_l, pad_t, plot_w, plot_h),
+           f'<line x1="{pad_l}" y1="{pad_t}" x2="{pad_l}" y2="{pad_t + plot_h}" class="chart-axis"/>',
+           f'<line x1="{pad_l}" y1="{pad_t + plot_h}" x2="{pad_l + plot_w}" y2="{pad_t + plot_h}" class="chart-axis"/>',
+           f'<text x="{pad_l - 6}" y="{pad_t + 4}" class="chart-tick" text-anchor="end">{pc(y_max)}</text>',
+           f'<text x="{pad_l - 6}" y="{pad_t + plot_h}" class="chart-tick" text-anchor="end">{pc(y_min)}</text>']
+    for key in ("low", "high"):
+        coords = " ".join(f"{x(i):.1f},{y(p[key]):.1f}" for i, p in enumerate(pts))
+        out.append(f'<polyline points="{coords}" class="chart-limit" fill="none">'
+                   f'<title>Limite {"inferior" if key == "low" else "superior"} de controle</title></polyline>')
+    cy = y(chart["center"])
+    out.append(f'<line x1="{pad_l}" y1="{cy:.1f}" x2="{pad_l + plot_w}" y2="{cy:.1f}" class="chart-ref">'
+               f'<title>Média: {pc(chart["center"])}</title></line>')
+    out.append('<polyline points="' + " ".join(f"{x(i):.1f},{y(p['p']):.1f}" for i, p in enumerate(pts))
+               + '" class="chart-line" fill="none"/>')
+    for i, p in enumerate(pts):
+        cls = "chart-dot is-signal" if p["signal"] else "chart-dot"
+        label = p["label"].strftime("%d/%m/%Y") if hasattr(p["label"], "strftime") else str(p["label"])
+        out.append(f'<circle cx="{x(i):.1f}" cy="{y(p["p"]):.1f}" r="{4 if p["signal"] else 3}" class="{cls}">'
+                   f'<title>Semana de {escape(label)}: {pc(p["p"])} (limites {pc(p["low"])} a {pc(p["high"])}; '
+                   f'{p["n"]} registros){" — fora dos limites" if p["signal"] else ""}</title></circle>')
+    first, last = pts[0]["label"], pts[-1]["label"]
+    fmt = (lambda d: d.strftime("%d/%m")) if hasattr(first, "strftime") else str
+    out.append(f'<text x="{pad_l}" y="{height - 12}" class="chart-tick" text-anchor="start">{escape(fmt(first))}</text>'
+               f'<text x="{pad_l + plot_w}" y="{height - 12}" class="chart-tick" text-anchor="end">{escape(fmt(last))}</text>')
+    fora = sum(1 for p in pts if p["signal"])
+    nome = escape(f"Carta de controle da frequência em {n} semanas; média {pc(chart['center'])}; "
+                  f"{fora} semana(s) fora dos limites")
+    return mark_safe(f'<svg viewBox="0 0 {width} {height}" class="chart-svg" role="img" aria-label="{nome}">'
+                     + "".join(out) + "</svg>")

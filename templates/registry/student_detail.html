@@ -24,7 +24,8 @@
   </div>
   <div class="page-actions record-actions">
     <a href="{% url 'analytics:student_dashboard' student.pk %}" class="btn btn-primary">{% icon "chart-column" %}Painel do estudante</a>
-    {% if can_view_record %}<a href="{% url 'school_record' student.pk %}" class="btn btn-outline-secondary">{% icon "file-text" %}Histórico escolar</a>{% endif %}
+    {% if can_view_record %}<a href="{% url 'school_record' student.pk %}" class="btn btn-outline-secondary">{% icon "file-text" %}Histórico escolar</a>
+    <a href="{% url 'longitudinal:student' student.pk %}" class="btn btn-outline-secondary">{% icon "history" %}Trajetória escolar</a>{% endif %}
     {% if can_gate %}<a href="{% url 'gate:card' student.pk %}" class="btn btn-outline-secondary">{% icon "id-card" %}Carteirinha</a>{% endif %}
     {% if can_inventory %}<a href="{% url 'student_data_inventory' student.pk %}" class="btn btn-outline-secondary">{% icon "shield" %}Dados guardados (LGPD)</a>{% endif %}
     {% if can_issue_document %}<a href="{% url 'document_new' student.pk %}" class="btn btn-outline-secondary">{% icon "file-text" %}Emitir declaração</a>{% endif %}

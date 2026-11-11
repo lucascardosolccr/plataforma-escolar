@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load ui traj %}
+{% block title %}Resultado final — {{ cg.name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'longitudinal:results' %}?ano={{ cg.school_year.pk }}" class="back-link">{% icon "arrow-left" %}Resultados do ano</a>
+<div class="page-head">
+  <div>
+    <h1>Resultado final · {{ cg.name }}</h1>
+    <p>Já vem marcada uma sugestão quando as médias e a frequência indicam aprovação ou quando a matrícula já diz transferido ou desistente. Confira cada linha com a ata do conselho de classe antes de salvar; deixe "—" para não lançar.</p>
+  </div>
+</div>
+<form method="post" class="card">{% csrf_token %}
+  <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+    <thead><tr><th scope="col">Estudante</th><th scope="col" class="text-end">Média</th><th scope="col" class="text-end">Abaixo</th><th scope="col" class="text-end">Frequência</th><th scope="col">Resultado final</th><th scope="col">Observação</th></tr></thead>
+    <tbody>{% for it in items %}<tr>
+      <td>{{ it.e.student.full_name }}{% if it.e.status != "ativo" %} <span class="small text-body-secondary">({{ it.e.get_status_display|lower }})</span>{% endif %}</td>
+      <td class="text-end">{{ it.row.average|dec:1 }}</td>
+      <td class="text-end">{% if it.row.subjects %}{{ it.row.n_below }}{% else %}—{% endif %}</td>
+      <td class="text-end">{% if it.row.attendance is not None %}{{ it.row.attendance|dec:1 }}%{% else %}—{% endif %}</td>
+      <td><label class="visually-hidden" for="r-{{ it.e.pk }}">Resultado de {{ it.e.student.full_name }}</label>
+        <select id="r-{{ it.e.pk }}" name="r-{{ it.e.pk }}" class="form-select form-select-sm">
+          <option value="">—</option>
+          {% for v, label in outcomes %}<option value="{{ v }}"{% if it.current %}{% if it.current.outcome == v %} selected{% endif %}{% elif it.suggestion == v %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>{% if not it.current and it.suggestion != "nao_informado" %}<span class="small text-body-secondary">sugestão</span>{% endif %}</td>
+      <td><label class="visually-hidden" for="n-{{ it.e.pk }}">Observação sobre {{ it.e.student.full_name }}</label><input id="n-{{ it.e.pk }}" name="n-{{ it.e.pk }}" maxlength="300" class="form-control form-control-sm" value="{{ it.current.note|default:'' }}"></td>
+    </tr>{% empty %}<tr><td colspan="6" class="text-body-secondary">Nenhuma matrícula nesta turma.</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% if items %}<div class="card-body"><button type="submit" class="btn btn-primary">{% icon "check" %}Salvar resultados</button></div>{% endif %}
+</form>
+{% endblock %}

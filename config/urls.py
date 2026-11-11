@@ -32,6 +32,7 @@ urlpatterns = [
     path("", include("apps.reenroll.urls")),
     path("", include("apps.paperwork.urls")),
     path("", include("apps.workshops.urls")),
+    path("", include("apps.longitudinal.urls")),
 ]
 
 # O servidor de desenvolvimento (runserver) só serve arquivos estáticos quando

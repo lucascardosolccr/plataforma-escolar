@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Resultados do ano — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'longitudinal:index' %}" class="back-link">{% icon "arrow-left" %}Trajetória escolar</a>
+<div class="page-head">
+  <div>
+    <h1>Resultado final do ano</h1>
+    <p>Lance o resultado oficial de cada estudante (aprovado, retido...) quando o ano fechar. Sem ele, a trajetória deduz ou estima o resultado e avisa que deduziu.</p>
+  </div>
+</div>
+<form method="get" class="filter-bar mb-3">
+  {% include "partials/_filter_select.html" with name="ano" label="Ano letivo" options=years_options selected=year.pk all_label="Ano atual" %}
+  <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Filtrar</button></noscript>
+</form>
+{% if classes %}
+<div class="card"><ul class="feed">
+  {% for c in classes %}
+  <li class="feed-item"><div class="feed-body flex-grow-1"><p class="feed-title"><a href="{% url 'longitudinal:results_class' c.c.pk %}">{{ c.c.name }}</a></p>
+  <p class="feed-meta">{{ c.done }} de {{ c.total }} com resultado lançado</p></div>
+  {% if c.total and c.done >= c.total %}<span class="chip chip-state state-aprovado">completo</span>{% elif c.done %}<span class="chip chip-state state-pendente">em andamento</span>{% endif %}</li>
+  {% endfor %}
+</ul></div>
+{% else %}
+<div class="empty-state py-5">{% icon "layers" %}<strong>Nenhuma turma neste ano letivo</strong></div>
+{% endif %}
+{% endblock %}

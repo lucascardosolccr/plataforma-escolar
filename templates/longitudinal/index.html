@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% load ui traj %}
+{% block title %}Trajetória escolar — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Histórico, diagnóstico e previsão</span>
+    <h1>Trajetória escolar</h1>
+    <p>Os anos de cada estudante, os de antes da plataforma e os cursados nela, lidos em conjunto: o que se repete, o que mudou e quem precisa de apoio desde o começo do ano.{% if scoped %} Mostrando os estudantes da sua designação.{% endif %}</p>
+  </div>
+  <div class="page-actions">
+    {% if can_edit %}<a class="btn btn-primary" href="{% url 'longitudinal:import' %}">{% icon "download" %}Importar anos anteriores</a>{% endif %}
+    {% if can_results %}<a class="btn btn-outline-secondary" href="{% url 'longitudinal:results' %}">{% icon "clipboard-check" %}Resultados do ano</a>{% endif %}
+    {% if is_analyst %}<a class="btn btn-outline-secondary" href="{% url 'longitudinal:model' %}">{% icon "chart-line" %}Previsão</a>
+    <a class="btn btn-outline-secondary" href="{% url 'longitudinal:export' %}">{% icon "download" %}Planilha</a>{% endif %}
+  </div>
+</div>
+
+<div class="kpi-grid mb-3">
+  <div class="kpi"><div class="kpi-label">{% icon "users" %}<span>Estudantes</span></div><div class="kpi-value">{{ coverage.students }}</div></div>
+  <div class="kpi{% if coverage.students and not coverage.with_prior %} is-attention{% endif %}"><div class="kpi-label">{% icon "history" %}<span>Com anos anteriores lançados</span></div><div class="kpi-value">{{ coverage.with_prior }}</div>{% if can_edit and not coverage.with_prior %}<div class="kpi-hint"><a href="{% url 'longitudinal:import' %}">Importar do histórico</a></div>{% endif %}</div>
+  <div class="kpi"><div class="kpi-label">{% icon "calendar-days" %}<span>Anos com registro</span></div><div class="kpi-value">{% if coverage.years %}{{ coverage.years.0.0 }}–{{ coverage.years|last|first }}{% else %}—{% endif %}</div><div class="kpi-hint">{{ coverage.years|length }} ano{{ coverage.years|length|pluralize }}</div></div>
+</div>
+
+{% if not is_analyst %}
+<section class="card"><div class="card-body">
+  <h2 class="h5">Como lançar</h2>
+  <ol class="mb-0">
+    <li>Para muitos estudantes de uma vez: <a href="{% url 'longitudinal:import' %}">importe a planilha</a> dos anos anteriores.</li>
+    <li>Para um estudante: abra a ficha dele, entre em <strong>Trajetória escolar</strong> e use <strong>Lançar ano anterior</strong>.</li>
+    {% if can_results %}<li>No fim do ano: lance o <a href="{% url 'longitudinal:results' %}">resultado final</a> de cada turma.</li>{% endif %}
+  </ol>
+  <p class="small text-body-secondary mt-2 mb-0">O diagnóstico e a previsão são vistos só pela direção e pela coordenação.</p>
+</div></section>
+{% else %}
+
+<section class="card mb-3" aria-labelledby="sinais">
+  <div class="card-body">
+    <h2 class="h5" id="sinais">Começo de ano: quem chega com sinais</h2>
+    <p class="text-body-secondary small">Estudantes do ano atual com sinais que pedem atenção na trajetória (retenção, distorção idade-série, ausência crônica, dificuldade persistente, queda){% if run %} e a previsão do modelo aprovado{% endif %}. Ordem: {% if run %}previsão, depois {% endif %}número de sinais.</p>
+    <form method="get" class="filter-bar mb-2">
+      {% include "partials/_filter_select.html" with name="turma" label="Turma" options=classes selected=class_id %}
+      <div class="filter-field"><label for="f-todos">Mostrar</label><select id="f-todos" name="todos" class="form-select form-select-sm" data-autosubmit><option value="">Só com sinais</option><option value="1"{% if show_all %} selected{% endif %}>Todos</option></select></div>
+      <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Filtrar</button></noscript>
+    </form>
+    {% if page %}
+    <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+      <thead><tr><th scope="col">Estudante</th><th scope="col">Turma</th><th scope="col" class="text-end">Anos</th><th scope="col">Sinais que pedem atenção</th>{% if run %}<th scope="col" class="text-end">Previsão</th>{% endif %}</tr></thead>
+      <tbody>{% for d in page %}<tr>
+        <td><a href="{% url 'longitudinal:student' d.s.pk %}">{{ d.s.full_name }}</a></td>
+        <td class="small">{% if d.row.class_group %}{{ d.row.class_group.name }}{% else %}{{ d.row.grade_label }}{% endif %}</td>
+        <td class="text-end">{{ d.years }}</td>
+        <td class="small">{% for f in d.findings %}<span class="chip chip-wrap me-1 mb-1">{{ f.title }}</span>{% empty %}<span class="text-body-secondary">—</span>{% endfor %}</td>
+        {% if run %}<td class="text-end fw-semibold">{{ d.prediction.probability|prob }}</td>{% endif %}
+      </tr>{% endfor %}</tbody>
+    </table></div>
+    {% include "partials/_pager.html" with page=page %}
+    {% else %}
+    <p class="mb-0 text-body-secondary">Ninguém com sinais{% if class_id %} nesta turma{% endif %}. {% if not coverage.with_prior %}Sem anos anteriores lançados, os sinais dependem só do ano atual.{% endif %}</p>
+    {% endif %}
+  </div>
+</section>
+
+<div class="row g-3 mb-3">
+  <div class="col-xxl-6"><section class="card h-100" aria-labelledby="rend"><div class="card-body">
+    <h2 class="h5" id="rend">Taxas de rendimento</h2>
+    <p class="text-body-secondary small">Sobre quem terminou o ano (aprovados + retidos + abandono), como no Censo Escolar; transferidos ficam fora.</p>
+    {% if flow %}<div class="table-responsive"><table class="table table-sm mb-0">
+      <thead><tr><th scope="col">Ano</th><th scope="col" class="text-end">Aprovação</th><th scope="col" class="text-end">Retenção</th><th scope="col" class="text-end">Abandono</th><th scope="col" class="text-end">Base</th><th scope="col" class="text-end">Oficial</th></tr></thead>
+      <tbody>{% for f in flow %}<tr><td>{{ f.year }}</td>{% if f.hidden %}<td colspan="3" class="text-body-secondary small">menos de 5 estudantes</td>{% else %}<td class="text-end">{{ f.aprovado|dec:1 }}%</td><td class="text-end">{{ f.retido|dec:1 }}%</td><td class="text-end">{{ f.abandono|dec:1 }}%</td>{% endif %}<td class="text-end">{{ f.base }}</td><td class="text-end">{{ f.official }}/{{ f.total }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+    <p class="small text-body-secondary mt-2 mb-0">"Oficial": resultados lançados; os demais são deduzidos ou estimados. Sem resultado definido: {% for f in flow %}{{ f.undefined }}{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+    {% else %}<p class="mb-0 text-body-secondary">Nenhum ano encerrado registrado.</p>{% endif %}
+  </div></section></div>
+  <div class="col-xxl-6"><section class="card h-100" aria-labelledby="dist"><div class="card-body">
+    <h2 class="h5" id="dist">Distorção idade-série no ano atual</h2>
+    <p class="text-body-secondary small">Estudantes com 2 anos ou mais acima da idade esperada em 31/03 (definição do INEP), por etapa, com IC 95%.</p>
+    {% if distortion %}<div class="table-responsive"><table class="table table-sm mb-0">
+      <thead><tr><th scope="col">Etapa</th><th scope="col" class="text-end">Em distorção</th><th scope="col" class="text-end">IC 95%</th><th scope="col" class="text-end">Sem nascimento</th></tr></thead>
+      <tbody>{% for d in distortion %}<tr><td>{{ d.label }}</td>{% if d.hidden %}<td colspan="2" class="small text-body-secondary">menos de 5 com idade</td>{% else %}<td class="text-end">{{ d.pct|dec:1 }}% ({{ d.k }}/{{ d.n }})</td><td class="text-end small">{{ d.low|dec:1 }}–{{ d.high|dec:1 }}%</td>{% endif %}<td class="text-end">{{ d.missing }}</td></tr>{% endfor %}</tbody>
+    </table></div>{% else %}<p class="mb-0 text-body-secondary">Sem turmas do ano atual com série reconhecida.</p>{% endif %}
+  </div></section></div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-xxl-6"><section class="card h-100" aria-labelledby="trans"><div class="card-body">
+    <h2 class="h5" id="trans">De um ano para o outro</h2>
+    <p class="text-body-secondary small">Faixa da média geral num ano (linhas) e no ano seguinte (colunas), em {{ transitions.n }} pares de anos seguidos.</p>
+    {% if transitions.n %}<div class="table-responsive"><table class="table table-sm mb-2">
+      <thead><tr><th scope="col">Ano t \ t+1</th>{% for k, label in transitions.bands %}<th scope="col" class="text-end">{{ label }}</th>{% endfor %}<th scope="col" class="text-end">n</th></tr></thead>
+      <tbody>{% for r in transitions.rows %}<tr><th scope="row" class="fw-normal">{{ r.label }}</th>{% for c in r.cells %}<td class="text-end">{% if c.pct is not None %}{{ c.pct|dec:0 }}%{% else %}—{% endif %}</td>{% endfor %}<td class="text-end">{{ r.total }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% if transitions.persist %}<p class="mb-0 small">De quem terminou um ano abaixo da média, <strong>{{ transitions.persist.pct|dec:0 }}%</strong> continuou abaixo no ano seguinte (IC 95%: {{ transitions.persist.low|dec:0 }}–{{ transitions.persist.high|dec:0 }}%; {{ transitions.persist.n }} estudantes).</p>{% endif %}
+    {% if stability.rho is not None %}<p class="mb-0 small">Correlação de Spearman entre a média de um ano e a do seguinte: <strong>{{ stability.rho|dec:2 }}</strong> ({{ stability.n }} pares). Perto de 1: o ano passado diz muito sobre este.</p>{% endif %}
+    {% else %}<p class="mb-0 text-body-secondary">Precisa de estudantes com dois anos seguidos registrados.</p>{% endif %}
+  </div></section></div>
+  <div class="col-xxl-6"><section class="card h-100" aria-labelledby="val"><div class="card-body">
+    <h2 class="h5" id="val">Os sinais valem nesta escola?</h2>
+    <p class="text-body-secondary small">Para cada sinal num ano: quantos terminaram o ano seguinte com retenção, abandono ou componente abaixo da média, com e sem o sinal ({{ signals.pairs }} pares de anos). Risco relativo acima de 1 com o IC inteiro acima de 1 = o sinal funciona aqui.</p>
+    <div class="table-responsive"><table class="table table-sm mb-0">
+      <thead><tr><th scope="col">Sinal no ano t</th><th scope="col" class="text-end">Com</th><th scope="col" class="text-end">Sem</th><th scope="col" class="text-end">Risco relativo (IC 95%)</th></tr></thead>
+      <tbody>{% for s in signals.rows %}<tr><td class="small">{{ s.label }}</td>
+        {% if s.hidden %}<td colspan="3" class="small text-body-secondary">poucos casos ({{ s.n_with }} com, {{ s.n_without }} sem)</td>
+        {% else %}<td class="text-end small">{{ s.with.0|dec:0 }}% <span class="text-body-secondary">de {{ s.n_with }}</span></td><td class="text-end small">{{ s.without.0|dec:0 }}% <span class="text-body-secondary">de {{ s.n_without }}</span></td>
+        <td class="text-end small{% if s.clear %} fw-semibold{% endif %}">{{ s.rr.rr|dec:2 }} ({{ s.rr.low|dec:2 }}–{{ s.rr.high|dec:2 }})</td>{% endif %}</tr>{% endfor %}</tbody>
+    </table></div>
+  </div></section></div>
+</div>
+
+<section class="card" aria-labelledby="mod"><div class="card-body">
+  <h2 class="h5" id="mod">Previsão</h2>
+  {% if run %}<p class="mb-0">Modelo em uso, aprovado pela direção em {{ run.decided_at|date:"d/m/Y" }} (AUC {{ run.metrics.auc|dec:2 }} no ano de teste {{ run.metrics.test_year }}). <a href="{% url 'longitudinal:model' %}">Ver a validação</a></p>
+  {% elif latest %}<p class="mb-0">Última validação: {{ latest.get_status_display }} ({{ latest.created_at|date:"d/m/Y" }}). Nenhum modelo em uso. <a href="{% url 'longitudinal:model' %}">Ver detalhes</a></p>
+  {% else %}<p class="mb-0">Nenhuma validação feita ainda. A previsão só aparece depois de validada com os dados da escola e aprovada pela direção. <a href="{% url 'longitudinal:model' %}">Validar</a></p>{% endif %}
+</div></section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% load ui traj %}
+{% block title %}Trajetória escolar — {{ student.full_name }} — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'student_detail' student.pk %}" class="back-link d-print-none">{% icon "arrow-left" %}Ficha do estudante</a>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Trajetória escolar</span>
+    <h1>{{ student.full_name }}</h1>
+    <p>Todos os anos do estudante: os anteriores, copiados do histórico escolar, e os cursados nesta plataforma.{% if student.birth_date and can_diagnose %} Nascimento: {{ student.birth_date|date:"d/m/Y" }}.{% endif %}</p>
+  </div>
+  <div class="page-actions d-print-none">
+    {% if can_edit %}<a class="btn btn-primary" href="{% url 'longitudinal:prior_create' student.pk %}">{% icon "plus" %}Lançar ano anterior</a>{% endif %}
+    <button type="button" class="btn btn-outline-secondary" data-print>{% icon "printer" %}Imprimir</button>
+  </div>
+</div>
+
+{% if not rows %}
+<div class="empty-state py-5">{% icon "history" %}<strong>Nenhum ano registrado</strong><span>{% if can_edit %}Lance os anos anteriores a partir do histórico escolar ou importe uma planilha.{% else %}A trajetória aparece quando houver matrícula ou ano anterior lançado.{% endif %}</span></div>
+{% else %}
+
+{% if can_diagnose %}
+<section class="card mb-3" aria-labelledby="diag">
+  <div class="card-body">
+    <h2 class="h5" id="diag">Diagnóstico da trajetória</h2>
+    <p class="text-body-secondary small">Sinais lidos nos anos do estudante, cada um com a regra e a pesquisa que o sustentam. Não é nota, nem classificação, nem laudo: são pontos de partida para conversa e planejamento. Visível só à direção e à coordenação.</p>
+    {% if findings %}
+    <ul class="feed">
+      {% for f in findings %}
+      <li class="feed-item"><div class="feed-body flex-grow-1">
+        <p class="feed-title">{{ f.title }}</p>
+        <p class="mb-1">{{ f.evidence }}</p>
+        {% if f.action %}<p class="mb-1"><strong>Sugestão:</strong> {{ f.action }}</p>{% endif %}
+        <p class="feed-meta">Regra: {{ f.rule }}{% if f.ref %} · Fonte: {{ f.ref }}{% endif %}</p>
+      </div><span class="chip chip-state {% if f.level == 'atencao' %}state-a_vencer{% elif f.level == 'positivo' %}state-aprovado{% elif f.level == 'dados' %}state-rascunho{% else %}state-pendente{% endif %}">{{ f.level_label }}</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="mb-0">Nenhum sinal nos anos registrados.</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card mb-3" aria-labelledby="prev">
+  <div class="card-body">
+    <h2 class="h5" id="prev">Previsão para o ano</h2>
+    {% if prediction %}
+    <p class="mb-1">Chance de terminar {{ prediction.year }} com retenção, abandono ou algum componente abaixo da média: <strong class="fs-4">{{ prediction.probability|prob }}</strong>{% if prediction.base_rate is not None %} <span class="text-body-secondary">(média da escola no último ano: {{ prediction.base_rate|prob }})</span>{% endif %}.</p>
+    {% if prediction.bin %}<p class="small mb-2">Na validação, entre estudantes com previsão de {{ prediction.bin.from|prob }} a {{ prediction.bin.to|prob }}, {{ prediction.bin.observed|prob }} tiveram esse desfecho (IC 95%: {{ prediction.bin.low|prob }} a {{ prediction.bin.high|prob }}; {{ prediction.bin.n }} estudantes).</p>{% endif %}
+    <p class="mb-1"><strong>O que mais pesou</strong> (dados de {{ prediction.from_year }}):</p>
+    <ul class="mb-2">{% for c in prediction.factors %}<li>{{ c.label }}: {% if c.key == "attendance" %}{{ c.value|dec:1 }}%{% elif c.value is None %}sem dado (usada a média){% else %}{{ c.value|dec:1 }}{% endif %} — {% if c.effect > 0 %}aumenta{% else %}reduz{% endif %} a chance.</li>{% endfor %}</ul>
+    <p class="small text-body-secondary mb-0">Modelo validado com os dados da escola e aprovado pela direção em {{ run.decided_at|date:"d/m/Y" }}. Probabilidade não é destino: serve para começar o apoio mais cedo, nunca para rotular. A família e o estudante não veem esta previsão. <a href="{% url 'longitudinal:model' %}">Como foi validado</a></p>
+    {% elif run %}
+    <p class="mb-0 text-body-secondary">Sem previsão para este estudante: ela usa o ano anterior completo, com notas, e ele não está registrado.</p>
+    {% else %}
+    <p class="mb-0 text-body-secondary">Desligada: a escola ainda não tem um modelo validado com os próprios dados e aprovado pela direção. <a href="{% url 'longitudinal:model' %}">Ver a validação</a></p>
+    {% endif %}
+  </div>
+</section>
+
+{% if needed %}
+<section class="card mb-3" aria-labelledby="falta">
+  <div class="card-body">
+    <h2 class="h5" id="falta">Quanto falta neste ano</h2>
+    <p class="text-body-secondary small">Média necessária no restante do ano para chegar à média de aprovação, supondo que o restante pese o que ainda falta do calendário ({{ needed.0.done|prob }} do ano já passou). Não considera recuperação nem conselho de classe.</p>
+    <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+      <thead><tr><th scope="col">Componente</th><th scope="col" class="text-end">Média até agora</th><th scope="col" class="text-end">Aprovação</th><th scope="col" class="text-end">Necessária no restante</th><th scope="col">Leitura</th></tr></thead>
+      <tbody>{% for s in needed %}<tr>
+        <td>{{ s.name }}</td><td class="text-end">{{ s.value|dec:1 }}</td><td class="text-end">{{ s.passing|dec:1 }}</td>
+        <td class="text-end fw-semibold">{% if s.status == "folga" %}—{% else %}{{ s.need|dec:1 }}{% endif %}</td>
+        <td class="small">{% if s.status == "impossivel" %}<span class="chip chip-state state-encerrada">acima de 10: depende de recuperação</span>{% elif s.status == "atencao" %}<span class="chip chip-state state-a_vencer">precisa subir mais de 1 ponto</span>{% elif s.status == "folga" %}<span class="chip chip-state state-aprovado">com folga</span>{% else %}ao alcance mantendo o ritmo{% endif %}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+</section>
+{% endif %}
+{% endif %}
+
+{% if chart_avg or chart_att %}
+<div class="row g-3 mb-3">
+  {% if chart_avg %}<div class="col-lg-6"><section class="card h-100"><div class="card-body"><h2 class="h6">Média geral por ano (0 a 10)</h2>{{ chart_avg }}<p class="small text-body-secondary mb-0">* ano em andamento (média parcial).</p></div></section></div>{% endif %}
+  {% if chart_att %}<div class="col-lg-6"><section class="card h-100"><div class="card-body"><h2 class="h6">Frequência por ano (%)</h2>{{ chart_att }}</div></section></div>{% endif %}
+</div>
+{% endif %}
+
+<section class="card mb-3" aria-labelledby="anos">
+  <div class="card-body">
+    <h2 class="h5" id="anos">Ano a ano</h2>
+    <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+      <thead><tr><th scope="col">Ano</th><th scope="col">Série</th><th scope="col">Escola</th><th scope="col">Resultado</th><th scope="col" class="text-end">Média</th><th scope="col" class="text-end">Abaixo</th><th scope="col" class="text-end">Frequência</th>{% if can_diagnose %}<th scope="col" class="text-end">Idade em 31/03</th><th scope="col" class="text-end">Posição na turma</th>{% endif %}{% if can_edit %}<th scope="col" class="no-print"><span class="visually-hidden">Ações</span></th>{% endif %}</tr></thead>
+      <tbody>{% for r in rows %}<tr>
+        <td class="fw-semibold">{{ r.year }}</td>
+        <td>{{ r.grade_label }}</td>
+        <td class="small">{{ r.school_name }}{% if r.source == "historico" %} <span class="text-body-secondary">(histórico)</span>{% endif %}</td>
+        <td>{% if r.basis == "cursando" %}<span class="chip chip-state state-pendente">cursando</span>{% else %}{{ r.outcome_label }}{% if r.basis and r.basis != "oficial" %} <span class="chip chip-state state-rascunho" title="Resultado {{ r.basis }}, não lançado oficialmente">{{ r.basis }}</span>{% endif %}{% endif %}</td>
+        <td class="text-end">{{ r.average|dec:1 }}</td>
+        <td class="text-end">{% if r.subjects %}{{ r.n_below }}{% else %}—{% endif %}</td>
+        <td class="text-end">{% if r.attendance is not None %}{{ r.attendance|dec:1 }}%{% else %}—{% endif %}</td>
+        {% if can_diagnose %}<td class="text-end">{% if r.age is not None %}{{ r.age }}{% if r.distortion %} <span class="chip chip-state {% if r.distortion >= 2 %}state-a_vencer{% else %}state-rascunho{% endif %}">+{{ r.distortion }}</span>{% endif %}{% else %}—{% endif %}</td>
+        <td class="text-end">{% if r.percentile is not None %}percentil {{ r.percentile }}{% else %}—{% endif %}</td>{% endif %}
+        {% if can_edit %}<td class="no-print text-end">{% if r.source == "historico" %}<a href="{% url 'longitudinal:prior_edit' student.pk r.record.pk %}" class="btn btn-link btn-sm p-0">Editar</a>{% endif %}</td>{% endif %}
+      </tr>{% endfor %}</tbody>
+    </table></div>
+    <p class="small text-body-secondary mt-2 mb-0">Resultado <strong>deduzido</strong>: pela série do ano seguinte ou pela situação da matrícula. <strong>Estimado</strong>: pelas médias e pela frequência, sem considerar recuperação nem conselho. Ausência de nota não é nota zero.{% if can_diagnose %} Idade: "+2" ou mais é distorção idade-série (INEP). Posição na turma: percentil da média geral entre os colegas (só com 5 ou mais).{% endif %}</p>
+  </div>
+</section>
+
+{% if matrix %}
+<section class="card mb-3" aria-labelledby="comp">
+  <div class="card-body">
+    <h2 class="h5" id="comp">Componentes ao longo dos anos</h2>
+    <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+      <thead><tr><th scope="col">Componente</th>{% for y in years %}<th scope="col" class="text-end">{{ y }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for m in matrix %}<tr><th scope="row" class="fw-normal">{{ m.key }}</th>{% for s in m.cells %}<td class="text-end">{% if s %}{% if s.value is not None %}<span{% if s.below %} class="fw-semibold text-danger"{% endif %}>{{ s.value|dec:1 }}</span>{% if s.below %}<span class="visually-hidden"> (abaixo da média)</span>{% endif %}{% else %}{{ s.concept|default:"—" }}{% endif %}{% else %}<span class="text-body-secondary">·</span>{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody>
+    </table></div>
+    <p class="small text-body-secondary mt-2 mb-0">Notas na escala de 0 a 10 (convertidas quando o histórico usa outra escala). Em vermelho: abaixo da média de aprovação daquele ano.</p>
+  </div>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

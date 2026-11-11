@@ -104,6 +104,7 @@ INSTALLED_APPS = [
     "apps.reenroll",
     "apps.paperwork",
     "apps.workshops",
+    "apps.longitudinal",
 ]
 
 MIDDLEWARE = [

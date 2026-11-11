@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Importar anos anteriores — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<a href="{% url 'longitudinal:index' %}" class="back-link">{% icon "arrow-left" %}Trajetória escolar</a>
+<div class="page-head">
+  <div>
+    <h1>Importar anos anteriores</h1>
+    <p>Para trazer de uma vez o histórico dos anos antes da plataforma: planilhas antigas da secretaria ou a exportação do sistema da rede. Primeiro a plataforma confere, depois você confirma.</p>
+  </div>
+  <div class="page-actions"><a class="btn btn-outline-secondary" href="{% url 'longitudinal:import_template' %}">{% icon "download" %}Baixar modelo</a></div>
+</div>
+
+{% if rows %}
+<section class="card mb-3" aria-labelledby="conf">
+  <div class="card-body">
+    <h2 class="h5" id="conf">Conferência: {{ ok }} linha{{ ok|pluralize }} pronta{{ ok|pluralize }}{% if bad %}, {{ bad }} com erro{% endif %}</h2>
+    {% for w in warnings %}<div class="alert alert-warning" role="note"><div>{{ w }}</div></div>{% endfor %}
+    <div class="table-responsive"><table class="table table-sm align-middle">
+      <thead><tr><th scope="col">Linha</th><th scope="col">Estudante</th><th scope="col">Ano</th><th scope="col">Série</th><th scope="col">Escola</th><th scope="col">Resultado</th><th scope="col" class="text-end">Notas</th><th scope="col">Situação</th></tr></thead>
+      <tbody>{% for r in rows %}<tr>
+        <td>{{ r.n }}</td><td>{{ r.student.full_name|default:"—" }}</td><td>{{ r.data.year|default:"—" }}</td>
+        <td>{{ r.data.grade_label }}</td><td class="small">{{ r.data.school_name }}</td><td class="small">{{ r.data.outcome }}</td>
+        <td class="text-end">{{ r.grades|length }}</td>
+        <td class="small">{% if r.errors %}<span class="text-danger">{{ r.errors|join:" " }}</span>{% else %}<span class="chip chip-state state-aprovado">pronta</span>{% endif %}{% for w in r.warnings %}<br><span class="text-body-secondary">{{ w }}</span>{% endfor %}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+    {% if ok %}
+    <form method="post">{% csrf_token %}<input type="hidden" name="dados" value="{{ token }}">
+      <button type="submit" class="btn btn-primary">{% icon "check" %}Importar {{ ok }} linha{{ ok|pluralize }}</button>
+      {% if bad %}<span class="small text-body-secondary ms-2">As linhas com erro ficam de fora; corrija e envie de novo depois (o que já entrou não duplica).</span>{% endif %}
+    </form>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+<section class="card" aria-labelledby="env">
+  <div class="card-body">
+    <h2 class="h5" id="env">Enviar planilha</h2>
+    <form method="post" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 align-items-end mb-3">{% csrf_token %}
+      <div><label class="form-label" for="arquivo">Planilha (.xlsx ou .csv)</label><input type="file" id="arquivo" name="arquivo" accept=".xlsx,.csv" class="form-control" required></div>
+      <button type="submit" class="btn btn-primary">Conferir</button>
+    </form>
+    <p class="mb-1"><strong>Uma linha por estudante e ano.</strong> Colunas:</p>
+    <ul class="small mb-1">
+      <li><code>codigo</code> (código do aluno na escola) ou <code>estudante</code> (nome completo; <code>nascimento</code> desfaz homônimos);</li>
+      <li><code>ano</code>, <code>serie</code> e <code>escola</code>, obrigatórias;</li>
+      <li><code>resultado</code> (aprovado, aprovado pelo conselho, dependência, reprovado, reprovado por falta, transferido, abandono), <code>frequencia</code> (%), <code>media_aprovacao</code>, <code>escala</code> (nota máxima; 10 se em branco) e <code>observacao</code>, opcionais;</li>
+      <li><strong>qualquer outra coluna é um componente</strong> ({{ headers|slice:"8:"|join:", " }}…), com a nota final ou o conceito.</li>
+    </ul>
+    <p class="small text-body-secondary mb-0">Reenviar a mesma linha (estudante, ano e escola) atualiza o registro em vez de duplicar.</p>
+  </div>
+</section>
+{% endblock %}

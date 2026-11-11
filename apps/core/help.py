@@ -433,6 +433,20 @@ GUIDES = [
          "entra na lista de espera e você recebe um aviso se abrir vaga. Cancele se não puder participar.",
          "workshops:index"),
     ]),
+    ("Lançar os anos anteriores de um estudante", "history", (SECRETARIA, DIRECAO, ADMIN), [
+        ("Em Trajetória escolar → Importar anos anteriores, envie a planilha (modelo na própria tela): uma linha "
+         "por estudante e ano, com série, escola, resultado, frequência e as notas finais. Confira e confirme.",
+         "longitudinal:import"),
+        ("Para um estudante só: ficha → Trajetória escolar → Lançar ano anterior. No fim do ano, lance o "
+         "resultado final de cada turma em Trajetória escolar → Resultados do ano.", "longitudinal:index"),
+    ]),
+    ("Ler a trajetória e a previsão", "history", (DIRECAO, COORDENACAO), [
+        ("Em Trajetória escolar aparecem, no começo do ano, os estudantes que chegam com sinais (retenção, "
+         "distorção idade-série, ausência crônica, dificuldade persistente) e a validação de cada sinal com os "
+         "dados da própria escola.", "longitudinal:index"),
+        ("A previsão só aparece depois de validada com os dados da escola e aprovada pela direção em "
+         "Trajetória escolar → Previsão. Família e estudante não a veem.", "longitudinal:model"),
+    ]),
     # Rematrícula
     ("Confirmar a rematrícula com as famílias", "calendar-check", (SECRETARIA, DIRECAO, ADMIN), [
         ("Crie o ano letivo seguinte em Acadêmico → Anos letivos e abra a campanha em Confirmação de "

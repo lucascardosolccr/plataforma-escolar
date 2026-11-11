@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Trajetória escolar — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Trajetória escolar</h1>
+    <p>Os anos escolares registrados: série, escola, resultado, frequência e notas finais. Se algum ano estiver faltando ou errado, peça à secretaria para conferir com o histórico escolar.</p>
+  </div>
+</div>
+{% if children %}
+<div class="card"><ul class="feed">
+  {% for s in children %}<li class="feed-item"><div class="feed-body"><p class="feed-title"><a href="{% url 'longitudinal:student' s.pk %}">{{ s.full_name }}</a></p></div></li>{% endfor %}
+</ul></div>
+{% else %}
+<div class="empty-state py-5">{% icon "users" %}<strong>Nenhum estudante vinculado</strong></div>
+{% endif %}
+{% endblock %}

@@ -28,6 +28,7 @@ from apps.academics.permissions import pairs_q, teacher_class_ids, teacher_pairs
 from apps.core.params import id_param, name_q
 from apps.core.models import Role, audit_trail, create_audit_log
 from apps.core.pagination import Sort, paginate
+from apps.core.readability import analyze as readability_analyze
 from apps.core.uploads import attachment_content_type
 from apps.registry.models import Enrollment, GuardianLink, Student
 
@@ -926,6 +927,8 @@ def activity_detail(request, pk):
             "is_staff_view": user.role not in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value),
             "print_requests": act.print_requests.order_by("-created_at")[:5]
             if user.role not in (Role.RESPONSAVEL.value, Role.ESTUDANTE.value) else [],
+            # Legibilidade do enunciado: ajuda só para a equipe, nunca mostrada à família.
+            "readability": readability_analyze(act.description) if not is_family else None,
         },
     )
 

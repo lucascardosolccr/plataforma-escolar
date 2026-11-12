@@ -22,9 +22,10 @@ Cada função cita o método. Quem chama decide o que mostrar; aqui só a conta.
 """
 
 import math
-from statistics import mean, median
+from statistics import mean, median, quantiles
 
 Z95 = 1.959964
+MIN_OUTLIER_N = 8
 
 
 # ---------------------------------------------------------------- proporções
@@ -56,6 +57,83 @@ def diff_of_shares(k1, k2, n, z=Z95, population=None):
         var *= max(population - n, 0) / (population - 1)
     half = z * math.sqrt(max(var, 0))
     return {"diff": p1 - p2, "low": p1 - p2 - half, "high": p1 - p2 + half}
+
+
+# ---------------------------------------------------------------- associação entre categorias
+
+def chi_square(table):
+    """Qui-quadrado de independência (Pearson, 1900) de uma tabela de contingência (lista de listas de
+    contagens). Devolve o qui-quadrado, os graus de liberdade, as contagens esperadas e a menor delas —
+    a suposição clássica pede contagem esperada ≥ 5 em cada célula. Sem valor-p (para 2×2 use o exato de
+    Fisher, que não depende dessa suposição)."""
+    rows = len(table)
+    cols = len(table[0]) if rows else 0
+    if rows < 2 or cols < 2:
+        return None
+    row_tot = [sum(r) for r in table]
+    col_tot = [sum(table[i][j] for i in range(rows)) for j in range(cols)]
+    n = sum(row_tot)
+    if n == 0:
+        return None
+    expected = [[row_tot[i] * col_tot[j] / n for j in range(cols)] for i in range(rows)]
+    chi2 = sum((table[i][j] - expected[i][j]) ** 2 / expected[i][j]
+               for i in range(rows) for j in range(cols) if expected[i][j] > 0)
+    min_exp = min(expected[i][j] for i in range(rows) for j in range(cols))
+    return {"chi2": chi2, "dof": (rows - 1) * (cols - 1), "expected": expected, "min_expected": min_exp, "n": n}
+
+
+def cramers_v(table):
+    """V de Cramér (Cramér, 1946): tamanho de efeito da associação entre duas variáveis categóricas, de 0
+    (nenhuma) a 1 (total). V = √(χ² / (n · min(linhas−1, colunas−1)))."""
+    cs = chi_square(table)
+    if cs is None:
+        return None
+    k = min(len(table) - 1, len(table[0]) - 1)
+    if k == 0:
+        return None
+    return math.sqrt(cs["chi2"] / (cs["n"] * k))
+
+
+def fisher_exact_2x2(a, b, c, d):
+    """Valor-p bicaudal do teste exato de Fisher para uma tabela 2×2 (Fisher, 1922; 1935). Soma as
+    probabilidades hipergeométricas de todas as tabelas com as mesmas margens cuja probabilidade não
+    excede a da tabela observada. Exato: não supõe contagens esperadas grandes."""
+    n = a + b + c + d
+    if n == 0:
+        return None
+    r1, r2, c1 = a + b, c + d, a + c
+
+    def p_hyper(x):
+        return math.comb(r1, x) * math.comb(r2, c1 - x) / math.comb(n, c1)
+
+    p_obs = p_hyper(a)
+    total = sum(px for x in range(max(0, c1 - r2), min(c1, r1) + 1)
+                if (px := p_hyper(x)) <= p_obs + 1e-12)
+    return min(1.0, total)
+
+
+# ---------------------------------------------------------------- notas atípicas (cercas de Tukey)
+
+def tukey_outliers(values, k=1.5):
+    """Notas fora das cercas de Tukey: Q1 − k·IQR e Q3 + k·IQR, com k=1,5 (Tukey, 1977, Exploratory Data
+    Analysis). Serve para apontar uma nota que destoa do conjunto — pode ser erro de lançamento ou um
+    estudante que merece um olhar —, não para julgar ninguém.
+
+    Quartis por interpolação linear (``statistics.quantiles``, método inclusivo). Precisa de ``MIN_OUTLIER_N``
+    valores; abaixo disso devolve ``None`` (com poucos pontos, o IQR e as cercas são instáveis demais). Devolve
+    ``q1``, ``q3``, ``iqr``, as cercas ``low``/``high`` e a contagem de atípicas abaixo/acima e no total.
+    """
+    vals = sorted(float(v) for v in values if v is not None)
+    if len(vals) < MIN_OUTLIER_N:
+        return None
+    q1, _q2, q3 = quantiles(vals, n=4, method="inclusive")
+    iqr = q3 - q1
+    low, high = q1 - k * iqr, q3 + k * iqr
+    n_low = sum(1 for v in vals if v < low)
+    n_high = sum(1 for v in vals if v > high)
+    return {"q1": round(q1, 2), "q3": round(q3, 2), "iqr": round(iqr, 2),
+            "low": round(low, 2), "high": round(high, 2),
+            "n_low": n_low, "n_high": n_high, "n_out": n_low + n_high}
 
 
 # ---------------------------------------------------------------- distribuição t (beta incompleta)
@@ -267,3 +345,90 @@ def anhoej(values):
             break
     return {"median": med, "n": n, "longest": longest, "run_limit": run_limit, "crossings": crossings,
             "min_crossings": min_cross, "shift": longest > run_limit, "few_crossings": crossings < min_cross}
+
+
+# ---------------------------------------------------------------- concordância entre avaliadores
+
+def _agreement_weights(categories):
+    """Pesos de concordância quadráticos: 1 na diagonal, caindo com o quadrado da distância ordinal (Cohen, 1968,
+    Psychological Bulletin 70(4), 213–220, doi:10.1037/h0026256). Níveis vizinhos ainda contam como concordância
+    parcial; níveis distantes, quase nada. Com uma única categoria, tudo concorda."""
+    lo, hi = min(categories), max(categories)
+    rng = hi - lo
+    if not rng:
+        return lambda a, b: 1.0
+    return lambda a, b: 1.0 - ((a - b) / rng) ** 2
+
+
+def percent_agreement(pairs):
+    """Concordância bruta de pares ordinais (a, b): fração no MESMO nível e fração dentro de 1 nível."""
+    n = len(pairs)
+    if not n:
+        return None
+    exact = sum(1 for a, b in pairs if a == b) / n
+    within1 = sum(1 for a, b in pairs if abs(a - b) <= 1) / n
+    return {"exact": exact, "within1": within1, "pairs": n}
+
+
+def _prevalence(pairs, categories):
+    """Prevalência geral de cada categoria nas duas posições dos pares (marginal simétrica, pois a concordância
+    entre dois avaliadores não tem posição privilegiada)."""
+    counts = {c: 0 for c in categories}
+    for a, b in pairs:
+        counts[a] += 1
+        counts[b] += 1
+    total = 2 * len(pairs)
+    return {c: counts[c] / total for c in categories} if total else None
+
+
+def weighted_kappa(pairs, categories, weight=None):
+    """Kappa ponderado quadrático (Cohen, 1968) para pares ordinais (a, b), tratados como não ordenados: a
+    concordância esperada usa a mesma marginal nas duas posições. None quando indefinido (um único nível em tudo:
+    a concordância esperada já é 1)."""
+    n = len(pairs)
+    if not n:
+        return None
+    w = weight or _agreement_weights(categories)
+    pi = _prevalence(pairs, categories)
+    po = sum(w(a, b) for a, b in pairs) / n
+    pe = sum(w(i, j) * pi[i] * pi[j] for i in categories for j in categories)
+    if pe >= 1:
+        return None
+    return (po - pe) / (1 - pe)
+
+
+def gwet_ac2(pairs, categories, weight=None):
+    """AC2 de Gwet (Gwet, 2008, British Journal of Mathematical and Statistical Psychology 61(1), 29–48,
+    doi:10.1348/000711006X126600), a versão ponderada do AC1. Robusto ao "paradoxo do kappa": quando quase tudo
+    cai num nível só, o kappa despenca mesmo com concordância alta; o AC2, não. Mostre os dois lado a lado."""
+    n = len(pairs)
+    if not n:
+        return None
+    q = len(categories)
+    if q < 2:
+        return None
+    w = weight or _agreement_weights(categories)
+    pi = _prevalence(pairs, categories)
+    po = sum(w(a, b) for a, b in pairs) / n
+    tw = sum(w(i, j) for i in categories for j in categories)
+    pe = tw / (q * (q - 1)) * sum(pi[c] * (1 - pi[c]) for c in categories)
+    if pe >= 1:
+        return None
+    return (po - pe) / (1 - pe)
+
+
+def agreement_label(value):
+    """Banda convencional de Landis & Koch (1977, Biometrics 33(1), 159–174) para kappa/AC: só referência."""
+    if value is None:
+        return None
+    if value < 0.0:
+        return "pior que o acaso"
+    if value < 0.20:
+        return "ligeira"
+    if value < 0.40:
+        return "razoável"
+    if value < 0.60:
+        return "moderada"
+    if value < 0.80:
+        return "substancial"
+    return "quase perfeita"

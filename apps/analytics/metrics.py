@@ -84,6 +84,20 @@ _M = [
         "Exibida somente à equipe e ao professor. Não aparece para família e estudante.",
     ),
     Metric(
+        "approval_rate", "Taxa de aprovação (com margem)", "Desempenho",
+        "A proporção de estudantes com média igual ou acima da aprovação na disciplina, e o quanto esse "
+        "percentual pode variar só pelo número de estudantes.",
+        "Aprovados ÷ estudantes com média na disciplina, com intervalo de confiança de 95% de Wilson "
+        "(Wilson, 1927).",
+        "Médias por disciplina dos estudantes da turma no período.",
+        "Disciplina sem nenhuma média no período não tem taxa (—).",
+        "Em turma pequena o intervalo é largo: uma taxa de 70% com 10 estudantes pode ir de ~40% a ~90%. "
+        "Uma diferença entre disciplinas só é consistente se os intervalos quase não se sobrepõem.",
+        "O intervalo cobre só a variação por acaso dado o número de estudantes; não corrige diferença de "
+        "dificuldade ou de critério entre disciplinas. Todos os estudantes da turma entram (não é amostra de "
+        "uma população maior): o intervalo é uma medida de confiabilidade estatística, não de erro amostral.",
+    ),
+    Metric(
         "grade_distribution", "Distribuição das notas", "Desempenho",
         "Como as notas se espalham por faixas.",
         "Contagem de notas em faixas de 2 pontos (0–2, 2–4, …, 8–10; acima de 10 em faixa própria).",
@@ -101,6 +115,19 @@ _M = [
         "Sem notas lançadas, estatísticas —. Pendência é diferente de nota zero.",
         "Média baixa com desvio pequeno indica dificuldade coletiva; desvio grande, heterogeneidade.",
         "Desvio padrão populacional; com menos de 3 notas não é exibido.",
+    ),
+    Metric(
+        "score_outliers", "Notas atípicas na avaliação", "Desempenho",
+        "Notas que destoam muito do conjunto da avaliação — podem ser erro de lançamento ou um estudante a "
+        "observar.",
+        "Cercas de Tukey: abaixo de Q1 − 1,5×IQR ou acima de Q3 + 1,5×IQR, onde IQR = Q3 − Q1 "
+        "(intervalo interquartil). A tela mostra quantas notas da avaliação caem fora das cercas.",
+        "Notas lançadas da avaliação.",
+        "Só com 8 notas ou mais; abaixo disso o intervalo interquartil é instável e nada é sinalizado.",
+        "Uma nota atípica merece conferência antes de qualquer conclusão: pode ser digitação, uma questão mal "
+        "pontuada ou um desempenho realmente fora do padrão. Não é erro por si só.",
+        "Método exploratório (Tukey, 1977, Exploratory Data Analysis); as cercas pressupõem distribuição "
+        "aproximadamente simétrica e podem sinalizar demais em turmas muito heterogêneas.",
     ),
     Metric(
         "recovery", "Resultado de recuperação", "Desempenho",
@@ -401,6 +428,37 @@ _M = [
         "É organização do estudo, não avaliação. Dunlosky et al. (2013), Psychological Science in the Public Interest "
         "14(1); Cepeda et al. (2006), Psychological Bulletin 132(3); Cepeda et al. (2008), Psychological Science "
         "19(11); Rohrer, Dedrick & Stershic (2015), Journal of Educational Psychology 107(3).",
+    ),
+    Metric(
+        "freq_performance_assoc", "Relação entre frequência e desempenho", "Métodos estatísticos",
+        "Se, na escola e no período, estar com frequência abaixo do mínimo anda junto com ter alguma "
+        "disciplina abaixo da aprovação.",
+        "Tabela 2×2 (frequência abaixo do mínimo sim/não × alguma disciplina abaixo sim/não) com o V de "
+        "Cramér como tamanho de efeito (0 a 1) e o valor-p do teste exato de Fisher.",
+        "Frequência e médias por estudante no período (só quem tem 5+ registros de chamada e ao menos uma "
+        "média).",
+        "Com menos de 20 casos, ou quando alguma margem da tabela é zero, a tela mostra \"dados "
+        "insuficientes\".",
+        "V de Cramér perto de 0,1 é associação fraca; 0,3 moderada; 0,5 forte (convenção). O valor-p diz se a "
+        "associação é maior do que o acaso explicaria.",
+        "Mede associação, NÃO causa: baixa frequência e baixo desempenho podem andar juntos por um terceiro "
+        "fator, e a direção não é determinada. Pearson (1900); Cramér (1946); Fisher (1935).",
+    ),
+    Metric(
+        "grade_comparability", "Comparabilidade das notas entre disciplinas", "Métodos estatísticos",
+        "Se as notas de uma disciplina correm sistematicamente acima ou abaixo do que os mesmos estudantes "
+        "obtêm nas demais disciplinas.",
+        "Cada estudante com média em 2 disciplinas ou mais vira sua própria referência (centragem na pessoa): "
+        "desvio = média da disciplina − média do próprio estudante nas suas disciplinas. A tela mostra o desvio "
+        "médio de cada disciplina na turma.",
+        "Médias por disciplina dos estudantes da turma no período.",
+        "Disciplina com menos de 5 estudantes com média não entra (proteção de grupos pequenos). Só para a "
+        "coordenação e a direção, na visão com todas as disciplinas.",
+        "Desvio positivo: notas acima do que os mesmos estudantes obtêm nas outras disciplinas; negativo: abaixo. "
+        "Apoio à calibração no conselho de classe, nunca avaliação de professor.",
+        "O desvio pode ser diferença real de dificuldade ou de conteúdo entre as disciplinas, não de critério de "
+        "correção (Brookhart et al., 2016, Review of Educational Research 86(4)). Usa cada estudante como seu "
+        "próprio controle, mas disciplinas cursadas por grupos diferentes não são diretamente comparáveis.",
     ),
 ]
 

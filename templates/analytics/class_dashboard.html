@@ -48,9 +48,9 @@
     <div class="col-lg-5"><div class="card h-100 bi-chart-card"><div class="card-header">Distribuição das médias dos estudantes {% metric_info "grade_distribution" %}</div><div class="card-body">{{ distribution_chart }}</div></div></div>
   </div>
   <div class="card mt-3"><div class="table-responsive"><table class="table align-middle mb-0" data-sortable>
-    <thead><tr><th>Disciplina</th><th class="text-end">Média</th><th class="text-end">Mediana</th><th class="text-end">Mín.</th><th class="text-end">Máx.</th><th class="text-end">Desvio</th><th class="text-end">Estudantes</th><th class="text-end">Abaixo da aprovação</th></tr></thead>
-    <tbody>{% for s in r.subject_summary %}<tr><th scope="row">{{ s.subject.name }}</th><td class="text-end fw-bold">{{ s.mean|num:2 }}</td><td class="text-end">{{ s.median|num:2 }}</td><td class="text-end">{{ s.min|num:1 }}</td><td class="text-end">{{ s.max|num:1 }}</td><td class="text-end">{{ s.stdev|num:2 }}</td><td class="text-end">{{ s.n }}</td><td class="text-end">{{ s.below_count }}</td></tr>
-    {% empty %}<tr><td colspan="8"><div class="empty-state py-4">{% icon "graduation-cap" %}<strong>Sem notas publicadas no período</strong></div></td></tr>{% endfor %}</tbody>
+    <thead><tr><th>Disciplina</th><th class="text-end">Média</th><th class="text-end">Mediana</th><th class="text-end">Mín.</th><th class="text-end">Máx.</th><th class="text-end">Desvio</th><th class="text-end">Estudantes</th><th class="text-end">Abaixo da aprovação</th><th class="text-end">Aprovação (IC 95%) {% metric_info "approval_rate" %}</th></tr></thead>
+    <tbody>{% for s in r.subject_summary %}<tr><th scope="row">{{ s.subject.name }}</th><td class="text-end fw-bold">{{ s.mean|num:2 }}</td><td class="text-end">{{ s.median|num:2 }}</td><td class="text-end">{{ s.min|num:1 }}</td><td class="text-end">{{ s.max|num:1 }}</td><td class="text-end">{{ s.stdev|num:2 }}</td><td class="text-end">{{ s.n }}</td><td class="text-end">{{ s.below_count }}</td><td class="text-end"{% if s.approval %} data-value="{{ s.approval.rate }}"{% endif %}>{% if s.approval %}{{ s.approval.rate|num:0 }}% <span class="text-body-secondary small">[{{ s.approval.low|num:0 }}–{{ s.approval.high|num:0 }}]</span>{% else %}—{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="9"><div class="empty-state py-4">{% icon "graduation-cap" %}<strong>Sem notas publicadas no período</strong></div></td></tr>{% endfor %}</tbody>
   </table></div></div>
 </section>
 
@@ -65,11 +65,55 @@
 <section class="bi-section" id="avaliacoes" aria-labelledby="h-a">
   <h2 id="h-a">Resultado por avaliação {% metric_info "evaluation_stats" %}</h2>
   <div class="card"><div class="table-responsive"><table class="table align-middle mb-0" data-sortable>
-    <thead><tr><th>Data</th><th>Disciplina</th><th>Avaliação</th><th>Tipo</th><th class="text-end">Notas</th><th class="text-end">Pendentes</th><th class="text-end">Média</th><th class="text-end">Mediana</th><th class="text-end">Mín.</th><th class="text-end">Máx.</th></tr></thead>
-    <tbody>{% for e in r.evaluations %}<tr><td data-value="{{ e.evaluation.date|date:'Ymd' }}">{{ e.evaluation.date|date:"d/m/Y" }}</td><td>{{ e.evaluation.subject.name }}</td><td>{{ e.evaluation.title }}</td><td class="small">{{ e.evaluation.get_kind_display }}</td><td class="text-end">{{ e.n }}</td><td class="text-end">{{ e.missing }}</td><td class="text-end fw-bold">{{ e.mean|num:2 }}</td><td class="text-end">{{ e.median|num:2 }}</td><td class="text-end">{{ e.min|num:1 }}</td><td class="text-end">{{ e.max|num:1 }}</td></tr>
-    {% empty %}<tr><td colspan="10" class="text-center text-body-secondary py-3">Nenhuma avaliação publicada no período.</td></tr>{% endfor %}</tbody>
+    <thead><tr><th>Data</th><th>Disciplina</th><th>Avaliação</th><th>Tipo</th><th class="text-end">Notas</th><th class="text-end">Pendentes</th><th class="text-end">Média</th><th class="text-end">Mediana</th><th class="text-end">Mín.</th><th class="text-end">Máx.</th><th class="text-end">Atípicas {% metric_info "score_outliers" %}</th></tr></thead>
+    <tbody>{% for e in r.evaluations %}<tr><td data-value="{{ e.evaluation.date|date:'Ymd' }}">{{ e.evaluation.date|date:"d/m/Y" }}</td><td>{{ e.evaluation.subject.name }}</td><td>{{ e.evaluation.title }}</td><td class="small">{{ e.evaluation.get_kind_display }}</td><td class="text-end">{{ e.n }}</td><td class="text-end">{{ e.missing }}</td><td class="text-end fw-bold">{{ e.mean|num:2 }}</td><td class="text-end">{{ e.median|num:2 }}</td><td class="text-end">{{ e.min|num:1 }}</td><td class="text-end">{{ e.max|num:1 }}</td><td class="text-end"{% if e.outliers %} data-value="{{ e.outliers.n_out }}"{% endif %}>{% if e.outliers and e.outliers.n_out %}<span class="chip chip-state state-ajustes" title="Fora das cercas de Tukey ({{ e.outliers.low|num:1 }} a {{ e.outliers.high|num:1 }}). Confira antes de concluir.">{% icon "triangle-alert" %}{{ e.outliers.n_out }}</span>{% elif e.outliers %}0{% else %}—{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="11" class="text-center text-body-secondary py-3">Nenhuma avaliação publicada no período.</td></tr>{% endfor %}</tbody>
   </table></div></div>
 </section>
+
+<section class="bi-section" id="decisoes" aria-labelledby="h-dec">
+  <h2 id="h-dec">Decisões perto do corte {% metric_info "average_precision" %}</h2>
+  <p class="bi-lead">Decisões de aprovação/não aprovação em que a média está tão perto do corte que uma avaliação a mais ou a menos mudaria o lado (|média − aprovação| &lt; 1,96 × erro-padrão). São as que mais merecem um olhar no conselho de classe. Apoio à conversa, não reclassificação automática. Base: precisão perto de pontos de corte (Standards AERA/APA/NCME, 2014).</p>
+  {% if r.decision_reliability.assessable %}
+    <p>{% if r.decision_reliability.fragile %}<strong>{{ r.decision_reliability.fragile }}</strong> de {{ r.decision_reliability.assessable }} decisão(ões) com erro-padrão calculável estão perto do corte ({{ r.decision_reliability.share|num:0 }}%).{% else %}Nenhuma das {{ r.decision_reliability.assessable }} decisões avaliáveis está perto do corte.{% endif %}</p>
+    {% if r.decision_reliability.rows %}
+    <div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0" data-sortable>
+      <thead><tr><th>Estudante</th><th>Disciplina</th><th class="text-end">Média</th><th class="text-end">Aprovação</th><th class="text-end">Erro-padrão</th><th class="text-end">Notas</th><th>Situação</th></tr></thead>
+      <tbody>{% for d in r.decision_reliability.rows %}<tr>
+        <th scope="row"><a href="{% url 'analytics:student_dashboard' d.student.pk %}?{{ period.querystring }}">{{ d.student.full_name }}</a></th>
+        <td>{{ d.subject.name }}</td>
+        <td class="text-end fw-bold">{{ d.average|num:2 }}</td>
+        <td class="text-end">{{ d.passing|num:1 }}</td>
+        <td class="text-end">± {{ d.se|num:2 }}</td>
+        <td class="text-end">{{ d.count }}</td>
+        <td>{% if d.below %}<span class="chip chip-state state-ajustes">abaixo · poderia passar</span>{% else %}<span class="chip chip-state state-aguardando">aprovado · poderia cair</span>{% endif %}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div></div>
+    {% endif %}
+  {% else %}
+    <p class="text-body-secondary">Sem decisões com erro-padrão calculável: é preciso ao menos 3 notas na disciplina e fórmula aritmética ou ponderada.</p>
+  {% endif %}
+</section>
+
+{% if not subject_limited and r.grade_comparability %}
+<section class="bi-section" id="comparabilidade" aria-labelledby="h-comp">
+  <h2 id="h-comp">Comparabilidade das notas entre disciplinas {% metric_info "grade_comparability" %}</h2>
+  <p class="bi-lead">Usando cada estudante como sua própria referência, mostra se as notas de uma disciplina correm acima ou abaixo do que os mesmos estudantes obtêm nas demais. É apoio à calibração no conselho de classe — <strong>não é avaliação de professor</strong>. O desvio pode vir de diferença real de dificuldade ou de conteúdo entre as disciplinas, não só do critério de correção (Brookhart et al., 2016). Disciplinas com menos de {{ r.grade_comparability.min_students }} estudantes ficam de fora.</p>
+  {% if r.grade_comparability.enough %}
+  <div class="card"><div class="table-responsive"><table class="table align-middle mb-0" data-sortable>
+    <thead><tr><th>Disciplina</th><th class="text-end">Desvio médio</th><th class="text-end">Estudantes</th><th>Leitura</th></tr></thead>
+    <tbody>{% for s in r.grade_comparability.subjects %}<tr>
+      <th scope="row">{{ s.subject.name }}</th>
+      <td class="text-end fw-bold" data-value="{{ s.mean_dev }}">{{ s.mean_dev|signed:2 }}</td>
+      <td class="text-end">{{ s.n }}</td>
+      <td>{% if s.mean_dev >= 0.3 %}<span class="chip chip-state state-aguardando">notas mais altas que as demais</span>{% elif s.mean_dev <= -0.3 %}<span class="chip chip-state state-ajustes">notas mais baixas que as demais</span>{% else %}<span class="chip chip-state state-publicada">alinhada</span>{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div></div>
+  {% else %}
+    <p class="text-body-secondary">Dados insuficientes: são precisas ao menos 2 disciplinas com {{ r.grade_comparability.min_students }}+ estudantes com média no período.</p>
+  {% endif %}
+</section>
+{% endif %}
 
 <section class="bi-section" id="mapa" aria-labelledby="h-m">
   <h2 id="h-m">Mapa de acompanhamento {% metric_info "follow_up" %}</h2>

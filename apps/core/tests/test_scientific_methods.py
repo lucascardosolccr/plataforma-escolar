@@ -38,12 +38,63 @@ class KnownValuesTests(TestCase):
         q = stats.benjamini_hochberg([0.01, 0.04, 0.03, None, 0.2])
         self.assertEqual([round(v, 4) if v is not None else None for v in q], [0.04, 0.0533, 0.0533, None, 0.2])
 
+    def test_inter_rater_agreement(self):
+        cats = [1, 2, 3, 4, 5]
+        # Concordância perfeita: tudo 1, qualquer coeficiente definido vale 1.
+        perfeito = [(3, 3), (4, 4), (2, 2), (5, 5), (3, 3)]
+        self.assertEqual(stats.percent_agreement(perfeito), {"exact": 1.0, "within1": 1.0, "pairs": 5})
+        self.assertAlmostEqual(stats.weighted_kappa(perfeito, cats), 1.0, places=6)
+        self.assertAlmostEqual(stats.gwet_ac2(perfeito, cats), 1.0, places=6)
+
+        # Duas categorias, dados "ao acaso": kappa e AC2 = 0 (calculado à mão).
+        acaso = [(0, 0), (1, 1), (0, 1), (1, 0)]
+        self.assertAlmostEqual(stats.weighted_kappa(acaso, [0, 1]), 0.0, places=6)
+        self.assertAlmostEqual(stats.gwet_ac2(acaso, [0, 1]), 0.0, places=6)
+
+        # Paradoxo do kappa: 90% de concordância, mas quase tudo num nível só.
+        paradoxo = [(1, 1)] * 18 + [(1, 2), (2, 1)]
+        pa = stats.percent_agreement(paradoxo)
+        self.assertAlmostEqual(pa["exact"], 0.9, places=6)
+        self.assertAlmostEqual(stats.weighted_kappa(paradoxo, [1, 2]), -0.0526, places=3)  # despenca
+        self.assertAlmostEqual(stats.gwet_ac2(paradoxo, [1, 2]), 0.8895, places=3)         # robusto
+
+        # Peso quadrático: discordância de 1 nível conta como concordância parcial, não some.
+        um_nivel = [(3, 4)] * 10
+        self.assertEqual(stats.percent_agreement(um_nivel)["within1"], 1.0)
+        self.assertGreater(stats.weighted_kappa([(3, 3)] * 9 + [(3, 4)], cats),
+                           stats.weighted_kappa([(3, 3)] * 9 + [(3, 1)], cats))  # longe pune mais
+
+        # Casos de guarda: sem pares, e uma única categoria (concordância esperada já é 1 → indefinido).
+        self.assertIsNone(stats.weighted_kappa([], cats))
+        self.assertIsNone(stats.weighted_kappa([(3, 3)] * 5, cats))
+        self.assertEqual(stats.agreement_label(0.9), "quase perfeita")
+        self.assertEqual(stats.agreement_label(-0.1), "pior que o acaso")
+
     def test_proportions(self):
         p, lo, hi = stats.wilson(37, 74, population=120)
         self.assertLess(hi - lo, stats.wilson(37, 74)[2] - stats.wilson(37, 74)[1])  # população finita estreita
         self.assertEqual(stats.wilson(120, 120, population=120), (1.0, 1.0, 1.0))
         d = stats.diff_of_shares(40, 35, 100)
         self.assertLess(d["low"], 0)  # 40% × 35% com 100 votos: empate técnico
+
+    def test_categorical_association(self):
+        table = [[3, 1], [1, 3]]  # "chá de senhora" de Fisher
+        cs = stats.chi_square(table)
+        self.assertEqual((round(cs["chi2"], 4), cs["dof"], cs["n"]), (2.0, 1, 8))
+        self.assertAlmostEqual(cs["min_expected"], 2.0)
+        self.assertAlmostEqual(stats.cramers_v(table), 0.5)  # V = √(2/8)
+        self.assertAlmostEqual(stats.fisher_exact_2x2(3, 1, 1, 3), 34 / 70, places=4)  # p bicaudal ≈ 0,486
+        # Independência perfeita: V = 0 e p = 1.
+        self.assertAlmostEqual(stats.cramers_v([[2, 2], [2, 2]]), 0.0)
+        self.assertAlmostEqual(stats.fisher_exact_2x2(2, 2, 2, 2), 1.0, places=6)
+
+    def test_tukey_outliers(self):
+        # [1,10,11,...,17]: Q1=11, Q3=15, IQR=4, cercas 5 e 21 → só o 1 é atípico (abaixo).
+        out = stats.tukey_outliers([1, 10, 11, 12, 13, 14, 15, 16, 17])
+        self.assertEqual((out["q1"], out["q3"], out["iqr"]), (11.0, 15.0, 4.0))
+        self.assertEqual((out["low"], out["high"]), (5.0, 21.0))
+        self.assertEqual((out["n_low"], out["n_high"], out["n_out"]), (1, 0, 1))
+        self.assertIsNone(stats.tukey_outliers([5, 6, 7]))  # poucos dados → None
 
     def test_item_analysis_and_precision(self):
         res = stats.item_analysis([[1, 1, 0], [1, 0, 0], [1, 1, 1], [0, 0, 0], [1, 1, 1]])

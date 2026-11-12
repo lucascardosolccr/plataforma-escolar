@@ -1,6 +1,7 @@
 from django.urls import path
 
-from . import views, views_active_search, views_diary, views_outlook, views_planning, views_reuse, views_rubrics
+from . import (views, views_active_search, views_diary, views_outlook, views_planning, views_reuse, views_rubrics,
+               views_workload)
 
 app_name = "pedagogy"
 
@@ -13,6 +14,7 @@ urlpatterns = [
     path("avaliacoes/<int:pk>/editar/", views.evaluation_edit, name="evaluation_edit"),
     path("avaliacoes/<int:pk>/lancar/", views.evaluation_grade, name="evaluation_grade"),
     path("avaliacoes/<int:pk>/publicar/", views.evaluation_publish, name="evaluation_publish"),
+    path("atividades/concentracao-de-prazos/", views_workload.deadline_load, name="deadline_load"),
     path("atividades/", views.activity_list, name="activity_list"),
     path("atividades/nova/", views.activity_create, name="activity_create"),
     path("atividades/anteriores/", views_reuse.activity_bank, name="activity_bank"),

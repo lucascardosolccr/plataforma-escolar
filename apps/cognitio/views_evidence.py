@@ -64,16 +64,17 @@ def questions(request, evaluation_id):
                              detail=f"{'Atualizou' if instance else 'Criou'} a questão {q.number} de {ev.title}")
         messages.success(request, "Questão salva.")
         return redirect("cognitio:questions", evaluation_id=ev.pk)
-    qs = ev.questions.prefetch_related("questionskill_set__item")
+    qs = list(ev.questions.prefetch_related("questionskill_set__item"))
     from apps.curriculum.models import component_for, year_for
 
+    from .blueprint import blueprint_check
     from .nlp import suggest_skills
 
     basis = " ".join([ev.title, ev.description] + [q.label + " " + q.criteria for q in qs])
     suggestions = suggest_skills(basis, user.school, component_for(ev.subject), year_for(ev.class_group))
     return render(request, "cognitio/questions.html", {
         "ev": ev, "questions": qs, "form": form, "editing": instance, "suggestions": suggestions,
-        "total": sum((q.max_points for q in qs), Decimal("0")),
+        "total": sum((q.max_points for q in qs), Decimal("0")), "blueprint": blueprint_check(ev, qs),
     })
 
 

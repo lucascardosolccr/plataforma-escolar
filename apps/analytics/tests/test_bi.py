@@ -283,6 +283,91 @@ class ClassMatrixTests(BIBase):
         r2 = bi.class_report(self.turma, P, min_subjects_below=2)  # critério ajustado
         self.assertEqual(len(r2["follow_up"]), 0)
 
+    def test_decision_reliability_flags_near_cut(self):
+        # Ana: 5,9 / 6,0 / 6,1 → média 6,0, bem no corte (decisão frágil).
+        # Bia: 9 / 9 / 9 → média 9,0, longe do corte (avaliável, não frágil).
+        # Caio: só 1 nota → erro-padrão não calculável, fora do denominador.
+        days = [date(2026, 3, 10), date(2026, 4, 10), date(2026, 5, 10)]
+        evs = [self.evaluation(self.mat, d) for d in days]
+        for e, v in zip(evs, ("5.9", "6.0", "6.1")):
+            self.grade(e, self.ana, v)
+        for e in evs:
+            self.grade(e, self.alunos[1], 9)   # Bia
+        self.grade(evs[0], self.alunos[2], 6)  # Caio, nota única
+        dr = bi.class_report(self.turma, P)["decision_reliability"]
+        self.assertEqual((dr["assessable"], dr["fragile"], dr["share"]), (2, 1, 50.0))
+        self.assertEqual(len(dr["rows"]), 1)
+        row = dr["rows"][0]
+        self.assertEqual((row["student"], row["subject"], row["below"], row["count"], row["gap"]),
+                         (self.ana, self.mat, False, 3, 0.0))
+
+    def test_grade_comparability_person_centered(self):
+        # 5 estudantes, Matemática sempre 1 ponto acima de Português para o mesmo estudante.
+        # Cada estudante: desvio_mat = +0,5 e desvio_por = −0,5 → desvio médio mat +0,5, por −0,5.
+        em = self.evaluation(self.mat, date(2026, 3, 10))
+        ep = self.evaluation(self.por, date(2026, 3, 11))
+        for s, por in zip(self.alunos[:5], (5, 5, 5, 6, 6)):
+            self.grade(ep, s, por)
+            self.grade(em, s, por + 1)
+        # Fábio só tem Português (1 disciplina) → fora da comparação (min_subjects=2).
+        self.grade(ep, self.alunos[5], 7)
+        gc = bi.class_report(self.turma, P)["grade_comparability"]
+        self.assertTrue(gc["enough"])
+        rows = {row["subject"]: row for row in gc["subjects"]}
+        self.assertEqual((rows[self.mat]["mean_dev"], rows[self.mat]["n"]), (0.5, 5))
+        self.assertEqual((rows[self.por]["mean_dev"], rows[self.por]["n"]), (-0.5, 5))
+        self.assertEqual(gc["subjects"][0]["subject"], self.mat)  # mais branda no topo
+
+    def test_grade_comparability_only_full_view(self):
+        em = self.evaluation(self.mat, date(2026, 3, 10))
+        for s in self.alunos:
+            self.grade(em, s, 7)
+        # Visão limitada a uma disciplina (professor) não calcula comparabilidade.
+        self.assertIsNone(bi.class_report(self.turma, P, only_subjects={self.mat.pk})["grade_comparability"])
+
+    def test_approval_rate_with_wilson_interval(self):
+        from apps.core.stats import wilson
+
+        e = self.evaluation(self.mat, date(2026, 3, 10))
+        for s, v in zip(self.alunos[:4], (8, 7, 6, 3)):  # 3 aprovados (>=6), 1 abaixo → 75%
+            self.grade(e, s, v)
+        summary = {s["subject"]: s for s in bi.class_report(self.turma, P)["subject_summary"]}
+        ap = summary[self.mat]["approval"]
+        p, lo, hi = wilson(3, 4)
+        self.assertEqual((ap["approved"], ap["n"], ap["rate"]), (3, 4, round(p * 100, 1)))
+        self.assertEqual((ap["low"], ap["high"]), (round(lo * 100, 1), round(hi * 100, 1)))
+        self.assertLess(ap["low"], 75.0)  # intervalo largo com poucos estudantes
+        self.assertGreater(ap["high"], 75.0)
+
+    def test_evaluation_outliers_tukey(self):
+        # 8 notas agrupadas em ~7 e uma em 1 → a nota 1 cai fora da cerca inferior de Tukey.
+        e = self.evaluation(self.mat, date(2026, 3, 10))
+        for i in range(8):
+            st = Student.objects.create(school=self.school, first_name=f"Aluno{i}")
+            Enrollment.objects.create(school=self.school, student=st, class_group=self.turma, school_year=self.year)
+            self.grade(e, st, 7 if i else 1)  # o primeiro recebe 1
+        row = next(x for x in bi.class_report(self.turma, P)["evaluations"] if x["evaluation"] == e)
+        self.assertIsNotNone(row["outliers"])
+        self.assertGreaterEqual(row["outliers"]["n_low"], 1)
+        self.assertEqual(row["outliers"]["n_high"], 0)
+
+    def test_freq_performance_association(self):
+        att, rows = {}, {}
+        for sid in range(24):  # 12 freq baixa+abaixo, 12 freq ok+ok → associação perfeita
+            low = sid < 12
+            att[sid] = [5, 10] if low else [9, 10]  # 50% vs 90% (mínimo da escola = 75%)
+            rows[sid] = {1: {"average": 5.0 if low else 7.0, "below": low}}
+        fp = bi._freq_performance(list(range(24)), att, rows, limit=25)
+        self.assertEqual(fp["table"], [[12, 0], [0, 12]])
+        self.assertTrue(fp["enough"])
+        self.assertEqual(fp["cramers_v"], 1.0)
+        self.assertLess(fp["p"], 0.01)
+
+    def test_freq_performance_insufficient(self):
+        fp = bi._freq_performance([0], {0: [5, 10]}, {0: {1: {"average": 5.0, "below": True}}}, limit=25)
+        self.assertFalse(fp["enough"])
+        self.assertIsNone(fp["cramers_v"])
+
     def test_evaluation_missing_grades(self):
         e = self.evaluation(self.mat, date(2026, 3, 10))
         for s in self.alunos[:4]:

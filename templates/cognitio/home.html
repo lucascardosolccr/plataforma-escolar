@@ -16,6 +16,7 @@
     <a class="btn btn-outline-secondary" href="{% url 'cognitio:interventions' %}">{% icon "heart-handshake" %}Intervenções</a>
     <a class="btn btn-outline-secondary" href="{% url 'cognitio:strategies' %}">{% icon "book-open" %}Estratégias</a>
     <a class="btn btn-outline-secondary" href="{% url 'cognitio:texts' %}">{% icon "file-text" %}Produções escritas</a>
+    {% if user.role == "coordenacao" or user.role == "direcao" %}<a class="btn btn-outline-secondary" href="{% url 'cognitio:agreement' %}">{% icon "users" %}Concordância entre observadores</a>{% endif %}
     {% if can_configure %}<a class="btn btn-outline-secondary" href="{% url 'cognitio:models' %}">{% icon "chart-line" %}Modelos e validação</a>{% endif %}
     {% if can_configure %}<a class="btn btn-outline-secondary" href="{% url 'cognitio:scale' %}">{% icon "sliders-horizontal" %}Critérios da escala</a>{% endif %}
   </div>

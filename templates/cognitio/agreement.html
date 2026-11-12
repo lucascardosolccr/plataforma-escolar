@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load ui %}
+{% block title %}Concordância entre observadores — Plataforma Escolar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <a href="{% url 'cognitio:home' %}" class="back-link">{% icon "arrow-left" %}EIA-Cognitio</a>
+    <h1>Concordância entre observadores</h1>
+    <p>Quando dois professores observam a <strong>mesma habilidade do mesmo estudante</strong>, na mesma época, registram o mesmo nível? Concordância baixa não é erro de ninguém: é sinal de que a rubrica precisa de calibração e o olhar avaliativo, de alinhamento. É instrumento de coordenação, não avaliação de professor. Compara observações do mesmo par estudante+habilidade feitas em até {{ data.window }} dias; observações mais distantes mediriam crescimento, não concordância.</p>
+  </div>
+</div>
+
+<form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+  <label class="small">Período
+    <select name="periodo" class="form-select form-select-sm">
+      <option value="">{{ period_label }}</option>
+      {% for value, label in period_options %}<option value="{{ value }}" {% if value == periodo %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </label>
+  <label class="small">Turma
+    <select name="turma" class="form-select form-select-sm">
+      <option value="">Todas</option>
+      {% for c in classes %}<option value="{{ c.pk }}" {% if turma and c.pk == turma.pk %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+    </select>
+  </label>
+  <label class="small">Disciplina
+    <select name="disciplina" class="form-select form-select-sm">
+      <option value="">Todas</option>
+      {% for s in subjects %}<option value="{{ s.pk }}" {% if disciplina and s.pk == disciplina.pk %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+    </select>
+  </label>
+  <button class="btn btn-sm btn-outline-primary" type="submit">{% icon "filter" %}Filtrar</button>
+</form>
+
+{% if not data.enough %}
+<section class="card"><div class="card-body">
+  <h2 class="h6">Dados insuficientes</h2>
+  <p class="small mb-0">São precisos pelo menos {{ data.min_pairs }} pares (duas observações de professores diferentes sobre a mesma habilidade do mesmo estudante, na mesma época) para um coeficiente estável. No recorte atual há <strong>{{ data.pairs }}</strong> {{ data.pairs|pluralize:"par,pares" }} em {{ data.occasions }} {{ data.occasions|pluralize:"ocasião,ocasiões" }}, de {{ data.observations }} observações. Conforme os professores registrarem observações da mesma habilidade, esta tela ganha base.</p>
+</div></section>
+{% else %}
+
+<section class="card mb-3" aria-labelledby="coef"><div class="card-body">
+  <h2 id="coef" class="h6">Concordância geral</h2>
+  <p class="small text-secondary mb-3">{{ data.pairs }} pares em {{ data.occasions }} ocasiões, de {{ data.observations }} observações no período.</p>
+  <div class="row g-3">
+    <div class="col-6 col-md-3"><div class="border rounded p-2 h-100"><div class="h4 mb-0">{% widthratio data.percent.exact 1 100 %}%</div><div class="small text-secondary">mesmo nível</div></div></div>
+    <div class="col-6 col-md-3"><div class="border rounded p-2 h-100"><div class="h4 mb-0">{% widthratio data.percent.within1 1 100 %}%</div><div class="small text-secondary">dentro de 1 nível</div></div></div>
+    <div class="col-6 col-md-3"><div class="border rounded p-2 h-100"><div class="h4 mb-0">{{ data.kappa|floatformat:2 }}</div><div class="small text-secondary">kappa ponderado {% if data.labels.kappa %}<span class="chip chip-state state-aguardando">{{ data.labels.kappa }}</span>{% endif %}</div></div></div>
+    <div class="col-6 col-md-3"><div class="border rounded p-2 h-100"><div class="h4 mb-0">{{ data.ac2|floatformat:2 }}</div><div class="small text-secondary">AC2 de Gwet {% if data.labels.ac2 %}<span class="chip chip-state state-aguardando">{{ data.labels.ac2 }}</span>{% endif %}</div></div></div>
+  </div>
+  <p class="small text-secondary mt-3 mb-0"><strong>Por que dois coeficientes.</strong> O <strong>kappa ponderado quadrático</strong> (Cohen, 1968) desconta a concordância que viria do acaso e dá crédito parcial a níveis vizinhos. Mas quando quase todas as observações caem num nível só, o kappa despenca mesmo com concordância alta — é o "paradoxo do kappa". O <strong>AC2 de Gwet</strong> (2008) é robusto a isso. Leia os dois juntos, nunca um só. Bandas de Landis &amp; Koch (1977), por convenção. É medida descritiva, não teste de hipótese.</p>
+</div></section>
+
+<section class="card mb-3" aria-labelledby="skills"><div class="card-body">
+  <h2 id="skills" class="h6">Onde o olhar mais diverge</h2>
+  <p class="small text-secondary">Habilidades com menor concordância primeiro: boa pauta para a próxima reunião de calibração.</p>
+  <div class="table-responsive"><table class="table table-sm">
+    <thead><tr><th scope="col">Habilidade</th><th scope="col">Pares</th><th scope="col">Mesmo nível</th><th scope="col">Dentro de 1</th><th scope="col">Kappa pond.</th></tr></thead>
+    <tbody>{% for s in data.by_skill %}<tr>
+      <td>{{ s.item.code }}{% if s.item.description %} <span class="text-secondary">— {{ s.item.description|truncatechars:70 }}</span>{% endif %}</td>
+      <td>{{ s.pairs }}</td>
+      <td>{% widthratio s.percent.exact 1 100 %}%</td>
+      <td>{% widthratio s.percent.within1 1 100 %}%</td>
+      <td>{% if s.kappa != None %}{{ s.kappa|floatformat:2 }}{% else %}<span class="text-secondary">—</span>{% endif %}</td>
+    </tr>{% empty %}<tr><td colspan="5" class="text-secondary">Sem pares no recorte.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div></section>
+
+<section class="card" aria-labelledby="disc"><div class="card-body">
+  <h2 id="disc" class="h6">Ocasiões mais discordantes</h2>
+  <p class="small text-secondary">Pares com diferença de 2 níveis ou mais. Útil para conversar caso a caso: o que cada professor viu?</p>
+  <div class="table-responsive"><table class="table table-sm">
+    <thead><tr><th scope="col">Habilidade</th><th scope="col">Estudante</th><th scope="col">Disciplina</th><th scope="col">Data</th><th scope="col">Registros</th><th scope="col">Dif.</th></tr></thead>
+    <tbody>{% for d in data.discordant|slice:":50" %}<tr>
+      <td>{{ d.item.code }}</td>
+      <td>{{ d.student }}</td>
+      <td>{{ d.subject.name }}</td>
+      <td>{{ d.on|date:"d/m/Y" }}</td>
+      <td class="small">{% for rt in d.ratings %}{{ rt.teacher.get_full_name|default:rt.teacher.username }}: <strong>{{ rt.level }}</strong> ({{ rt.label }}){% if not forloop.last %} · {% endif %}{% endfor %}</td>
+      <td>{{ d.gap }}</td>
+    </tr>{% empty %}<tr><td colspan="6" class="text-secondary">Nenhuma discordância forte no recorte.</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <p class="small text-secondary mt-2 mb-0">Escala: {% for value, label in scale %}{{ value }} = {{ label }}{% if not forloop.last %} · {% endif %}{% endfor %}.</p>
+</div></section>
+{% endif %}
+{% endblock %}

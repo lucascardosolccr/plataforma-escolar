@@ -1,7 +1,7 @@
 from django.urls import path
 
-from . import (views, views_dash, views_evidence, views_family, views_intel, views_prescriptive, views_projection,
-               views_text, views_trajectory)
+from . import (views, views_agreement, views_dash, views_evidence, views_family, views_intel, views_prescriptive,
+               views_projection, views_text, views_trajectory)
 
 app_name = "cognitio"
 
@@ -9,6 +9,7 @@ urlpatterns = [
     path("cognitio/", views.home, name="home"),
     path("cognitio/escala/", views.scale_settings, name="scale"),
     path("cognitio/painel/", views_dash.dashboard, name="dashboard"),
+    path("cognitio/concordancia/", views_agreement.observer_agreement, name="agreement"),
     path("cognitio/turma/<int:class_id>/trajetorias/", views_trajectory.class_trajectories, name="class_trajectories"),
     path("cognitio/estudante/<int:student_id>/trajetoria/", views_trajectory.student_trajectory,
          name="student_trajectory"),

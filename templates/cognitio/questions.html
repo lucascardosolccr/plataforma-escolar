@@ -31,6 +31,33 @@
         {% empty %}<li class="small text-secondary">Nenhuma questão. Comece pelo formulário ao lado.</li>{% endfor %}
       </ul>
     </div></section>
+
+    {% if blueprint.has_data %}
+    <section class="card mt-3" aria-labelledby="blueprint"><div class="card-body">
+      <h2 id="blueprint" class="h6">{% icon "layers" %}Validade de conteúdo da prova</h2>
+      <p class="small text-secondary">Confere o desenho da prova (não as respostas): quanto cada habilidade declarada pesa e se há habilidade declarada sem questão ou medida fora da etiqueta. Uma prova que diz cobrir várias habilidades mas concentra os pontos em poucas sub-representa as demais (tabela de especificações — AERA, APA & NCME, 2014; Messick, 1995). O peso soma os pontos de cada questão a todas as habilidades que ela mede, então, com questões de mais de uma habilidade, os percentuais somam mais de 100%.</p>
+      <div class="table-responsive"><table class="table table-sm align-middle mb-2 table-stack">
+        <thead><tr><th>Habilidade</th><th class="text-end">Questões</th><th class="text-end">Pontos</th><th class="text-end">Peso</th><th>Situação</th></tr></thead>
+        <tbody>
+        {% for r in blueprint.rows %}
+          <tr>
+            <td data-label="Habilidade"><span title="{{ r.item.text }}"><strong>{{ r.item.code }}</strong> <span class="text-secondary">{{ r.item.text|truncatechars:70 }}</span></span></td>
+            <td data-label="Questões" class="text-end">{{ r.questions }}</td>
+            <td data-label="Pontos" class="text-end">{{ r.points|floatformat:"-2" }}</td>
+            <td data-label="Peso" class="text-end">{% if r.share is not None %}{{ r.share|floatformat:0 }}%{% else %}—{% endif %}</td>
+            <td data-label="Situação">
+              {% if not r.declared %}<span class="chip chip-state state-aguardando" title="Nenhuma questão desta prova a declara na etiqueta.">{% icon "triangle-alert" %}fora da etiqueta</span>
+              {% elif not r.measured %}<span class="chip chip-state state-ajustes" title="Declarada na avaliação, mas nenhuma questão a mede.">{% icon "triangle-alert" %}sem questão</span>
+              {% else %}<span class="chip chip-state state-publicada">{% icon "check" %}no blueprint</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      {% if blueprint.not_measured %}<p class="small mb-1"><strong>Declaradas sem nenhuma questão:</strong> {% for r in blueprint.not_measured %}{{ r.item.code }}{% if not forloop.last %}, {% endif %}{% endfor %}. Acrescente uma questão que as verifique ou tire-as da etiqueta da avaliação.</p>{% endif %}
+      {% if blueprint.not_declared %}<p class="small mb-0 text-secondary"><strong>Medidas fora da etiqueta:</strong> {% for r in blueprint.not_declared %}{{ r.item.code }}{% if not forloop.last %}, {% endif %}{% endfor %}. Salvar a questão normalmente inclui a habilidade na etiqueta; estas podem vir de uma edição manual da avaliação.</p>{% endif %}
+    </div></section>
+    {% endif %}
   </div>
   <div class="col-lg-5">
     <form method="post" class="card form-card" novalidate>

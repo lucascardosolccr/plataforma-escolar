@@ -114,6 +114,19 @@
         {% else %}
           <p class="text-body-secondary mb-0">Sem instruções registradas.</p>
         {% endif %}
+        {% if is_staff_view and readability %}
+          <div class="small text-body-secondary mt-2" aria-label="Legibilidade do enunciado">
+            {% if readability.enough %}
+              {% icon "file-text" %} Legibilidade:
+              <span class="chip chip-state {% if readability.band == 'muito difícil' %}state-ajustes{% elif readability.band == 'difícil' %}state-aguardando{% else %}state-validado{% endif %}">{{ readability.band }}</span>
+              IFL {{ readability.score }} · leitura ~{{ readability.grade }} · {{ readability.words_per_sentence }} palavras/frase, {{ readability.syllables_per_word }} sílabas/palavra.
+              {% if readability.long_count %}<br>{% icon "triangle-alert" %} {{ readability.long_count }} frase{{ readability.long_count|pluralize }} com mais de 25 palavras: dividir costuma deixar o enunciado mais claro.{% endif %}
+              <br><span class="text-body-secondary">Estimativa de referência (Flesch adaptado ao português, Martins et al. 1996); só a equipe vê, e não substitui o seu julgamento.</span>
+            {% else %}
+              {% icon "file-text" %} Legibilidade: enunciado curto demais para medir.
+            {% endif %}
+          </div>
+        {% endif %}
 
         {% if activity.materials %}
           <hr>

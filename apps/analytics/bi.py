@@ -933,6 +933,61 @@ def preload_classes(class_groups, period, only_subjects=None):
     return out
 
 
+def _decision_reliability(rows):
+    """Quantas decisões aprovado/não aprovado da turma são frágeis: a média está tão perto da
+    aprovação que uma avaliação a mais ou a menos mudaria o lado (|média − aprovação| < 1,96·EP).
+
+    Reúne, por estudante e disciplina, o ``near_cut`` que o painel individual já calcula
+    (``services._precision``; precisão perto de pontos de corte, Standards for Educational and
+    Psychological Testing, AERA/APA/NCME, 2014). O denominador são as decisões com erro-padrão
+    calculável (média aritmética ou ponderada, com 3 notas ou mais). A lista vem ordenada pela
+    menor distância ao corte — as mais frágeis primeiro —, para priorizar o conselho de classe.
+    É apoio à conversa, não reclassificação automática de ninguém.
+    """
+    fragile, assessable = [], 0
+    for r in rows:
+        for s in r["subjects"].values():
+            if s.get("se") is None:
+                continue
+            assessable += 1
+            if s.get("near_cut"):
+                gap = round(abs(float(s["average"]) - float(s["passing"])), 2)
+                fragile.append({"student": r["student"], "subject": s["subject"], "average": s["average"],
+                                "passing": s["passing"], "se": s["se"], "below": s["below"],
+                                "count": s["count"], "gap": gap})
+    fragile.sort(key=lambda d: d["gap"])
+    return {"assessable": assessable, "fragile": len(fragile), "share": pct(len(fragile), assessable),
+            "rows": fragile}
+
+
+def _grade_comparability(rows, min_students=5, min_subjects=2):
+    """Comparabilidade das notas entre disciplinas, usando cada estudante como sua própria referência.
+
+    Para cada estudante com média em ``min_subjects`` disciplinas ou mais, calcula o desvio da média de
+    cada disciplina em relação à média do próprio estudante nas suas disciplinas (centragem na pessoa).
+    O desvio médio de uma disciplina na turma indica se as notas dela correm sistematicamente acima
+    (mais brandas) ou abaixo (mais severas) do que os mesmos estudantes obtêm nas demais — apoio à
+    calibração no conselho de classe.
+
+    CUIDADO (declarado na tela): o desvio pode refletir diferença real de dificuldade ou de conteúdo
+    entre as disciplinas, não necessariamente o critério de correção (Brookhart et al., 2016). NÃO é
+    avaliação de professor. Disciplinas com menos de ``min_students`` estudantes ficam de fora (proteção
+    de grupos pequenos).
+    """
+    by_subject = defaultdict(list)
+    for r in rows:
+        avgs = {s["subject"]: float(s["average"]) for s in r["subjects"].values() if s["average"] is not None}
+        if len(avgs) < min_subjects:
+            continue
+        person_mean = statistics.fmean(avgs.values())
+        for subj, a in avgs.items():
+            by_subject[subj].append(a - person_mean)
+    out = [{"subject": subj, "mean_dev": round(statistics.fmean(devs), 2), "n": len(devs)}
+           for subj, devs in by_subject.items() if len(devs) >= min_students]
+    out.sort(key=lambda d: d["mean_dev"], reverse=True)
+    return {"enough": len(out) >= 2, "subjects": out, "min_students": min_students, "min_subjects": min_subjects}
+
+
 def class_report(class_group, period, *, min_subjects_below=1, min_delivery=60, only_subjects=None, rules=None,
                  preload=None):
     """``preload``: dados de ``preload_classes`` (mesmo período e disciplinas) para não consultar por turma."""
@@ -1000,15 +1055,24 @@ def class_report(class_group, period, *, min_subjects_below=1, min_delivery=60, 
         })
 
     subjects = sorted(subject_names.values(), key=lambda s: s.name)
+    from apps.core.stats import wilson
+
     subject_summary = []
     for subj in subjects:
         vals = [float(r["subjects"][subj.pk]["average"]) for r in rows
                 if subj.pk in r["subjects"] and r["subjects"][subj.pk]["average"] is not None]
         passing = next((r["subjects"][subj.pk]["passing"] for r in rows if subj.pk in r["subjects"]), 6.0)
         d = describe(vals)
+        below_count = sum(1 for v in vals if v < passing)
+        approval = None
+        if vals:
+            approved = len(vals) - below_count
+            p, lo, hi = wilson(approved, len(vals))
+            approval = {"approved": approved, "n": len(vals), "rate": round(p * 100, 1),
+                        "low": round(lo * 100, 1), "high": round(hi * 100, 1)}
         subject_summary.append({
             "subject": subj, **d, "passing": passing,
-            "below_count": sum(1 for v in vals if v < passing),
+            "below_count": below_count, "approval": approval,
         })
     # Matriz: cada linha um estudante, cada coluna uma disciplina + indicadores.
     for r in rows:
@@ -1039,9 +1103,12 @@ def class_report(class_group, period, *, min_subjects_below=1, min_delivery=60, 
     by_eval = defaultdict(list)
     for g in all_grades:
         by_eval[g.evaluation_id].append(float(g.value))
+    from apps.core.stats import tukey_outliers
+
     eval_rows = [
         {"evaluation": e, **describe(by_eval.get(e.pk, [])),
-         "missing": max(len(active_ids) - len(by_eval.get(e.pk, [])), 0)}
+         "missing": max(len(active_ids) - len(by_eval.get(e.pk, [])), 0),
+         "outliers": tukey_outliers(by_eval.get(e.pk, []))}
         for e in evals
     ]
     overall_vals = [r["overall"] for r in rows if r["overall"] is not None]
@@ -1056,6 +1123,8 @@ def class_report(class_group, period, *, min_subjects_below=1, min_delivery=60, 
         "delivery_rate": pct(delivered_total, registered_total),
         "registered": registered_total,
         "rows": rows,
+        "decision_reliability": _decision_reliability(rows),
+        "grade_comparability": _grade_comparability(rows) if only_subjects is None else None,
         "follow_up": [r for r in rows if r["reasons"]],
         "evolved": sum(1 for r in rows if (r["evolution"] or 0) >= 0.5),
         "evolution_base": sum(1 for r in rows if r["evolution"] is not None),
@@ -1265,6 +1334,44 @@ def teacher_report(teacher, period, assignments):
 # --------------------------------------------------------------------------- #
 # Painel institucional
 # --------------------------------------------------------------------------- #
+MIN_ATT_FOR_ASSOC = 5   # registros de chamada mínimos para classificar a frequência do estudante
+MIN_ASSOC = 20          # casos mínimos para testar a associação
+
+
+def _freq_performance(ids, att_by_student, rows_by_student, limit):
+    """Associação frequência × desempenho na escola, com tabela 2×2 e teste exato de Fisher.
+
+    Cada estudante com ``MIN_ATT_FOR_ASSOC`` registros de chamada e ao menos uma média entra como:
+    frequência abaixo do mínimo da escola (sim/não) × alguma disciplina abaixo da aprovação (sim/não).
+    Mede associação, NÃO causa: baixa frequência e baixo desempenho podem andar juntos por um terceiro
+    fator, e a direção da relação não é determinada aqui (Pearson, 1900; Cramér, 1946; Fisher, 1935).
+    """
+    from apps.core.stats import chi_square, cramers_v, fisher_exact_2x2
+
+    min_att_frac = (100 - limit) / 100
+    a = b = c = d = 0  # a: freq baixa & abaixo | b: freq baixa & ok | c: freq ok & abaixo | d: freq ok & ok
+    for sid in ids:
+        pt = att_by_student.get(sid)
+        srows = rows_by_student.get(sid, {})
+        if not pt or pt[1] < MIN_ATT_FOR_ASSOC or not any(r["average"] is not None for r in srows.values()):
+            continue
+        low_att = pt[0] / pt[1] < min_att_frac
+        below = any(r["below"] for r in srows.values())
+        a, b, c, d = (a + (low_att and below), b + (low_att and not below),
+                      c + (not low_att and below), d + (not low_att and not below))
+    table = [[a, b], [c, d]]
+    n = a + b + c + d
+    margins_ok = (a + b) and (c + d) and (a + c) and (b + d)
+    out = {"table": table, "n": n, "low_below": a, "low_ok": b, "ok_below": c, "ok_ok": d,
+           "enough": n >= MIN_ASSOC and bool(margins_ok), "cramers_v": None, "p": None,
+           "chi2": None, "min_expected": None, "min_cases": MIN_ASSOC}
+    if out["enough"]:
+        cs = chi_square(table)
+        out.update({"cramers_v": round(cramers_v(table), 3), "p": round(fisher_exact_2x2(a, b, c, d), 4),
+                    "chi2": round(cs["chi2"], 3), "min_expected": round(cs["min_expected"], 1)})
+    return out
+
+
 def institutional_report(school, period):
     from apps.academics.models import ClassGroup
 
@@ -1279,12 +1386,15 @@ def institutional_report(school, period):
     grades = load_grades_light(ids, period.start, period.end)
     att = AttendanceRecord.objects.filter(school=school, date__gte=period.start, date__lte=period.end)
     att_by_class = defaultdict(lambda: [0, 0, 0])  # presença, total, faltas
+    att_by_student = defaultdict(lambda: [0, 0])  # presença, total
     month_att = defaultdict(lambda: [0, 0])
-    for cid, d, s in att.values_list("class_group_id", "date", "status"):
+    for cid, sid, d, s in att.values_list("class_group_id", "student_id", "date", "status"):
         att_by_class[cid][1] += 1
+        att_by_student[sid][1] += 1
         month_att[month_key(d)][1] += 1
         if s in PRESENCE:
             att_by_class[cid][0] += 1
+            att_by_student[sid][0] += 1
             month_att[month_key(d)][0] += 1
         else:
             att_by_class[cid][2] += 1
@@ -1362,6 +1472,7 @@ def institutional_report(school, period):
         "by_turn": group_by("turn", turns),
         "attendance": pct(total_p, total_t),
         "absence_rate": pct(total_t - total_p, total_t),
+        "freq_perf": _freq_performance(ids, att_by_student, rows_by_student, limit),
         "overall": describe([v for v in overall.values() if v is not None]),
         "subjects": sorted(
             [{"subject": subj_names[k], **describe([v for v, _ in vals]),

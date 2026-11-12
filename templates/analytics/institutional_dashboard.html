@@ -80,6 +80,29 @@
   </div>
 </section>
 
+<section class="bi-section" id="freq-desempenho" aria-labelledby="h-fd">
+  <h2 id="h-fd">Relação entre frequência e desempenho {% metric_info "freq_performance_assoc" %}</h2>
+  <p class="bi-chart-note">Na escola e no período, estar com frequência abaixo do mínimo anda junto com ter alguma disciplina abaixo da aprovação? Mede <strong>associação, não causa</strong>: pode haver um terceiro fator, e a direção não é determinada aqui. Só entram estudantes com 5+ registros de chamada e ao menos uma média.</p>
+  {% if r.freq_perf.enough %}
+  <div class="row g-3 align-items-start">
+    <div class="col-lg-7"><div class="card"><div class="table-responsive"><table class="table align-middle mb-0">
+      <thead><tr><th></th><th class="text-end">Alguma disciplina abaixo</th><th class="text-end">Todas na média ou acima</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Frequência abaixo do mínimo</th><td class="text-end fw-bold">{{ r.freq_perf.low_below }}</td><td class="text-end">{{ r.freq_perf.low_ok }}</td></tr>
+        <tr><th scope="row">Frequência no mínimo ou acima</th><td class="text-end">{{ r.freq_perf.ok_below }}</td><td class="text-end fw-bold">{{ r.freq_perf.ok_ok }}</td></tr>
+      </tbody>
+    </table></div></div></div>
+    <div class="col-lg-5"><div class="card h-100"><div class="card-body">
+      <p class="mb-1"><strong>V de Cramér:</strong> {{ r.freq_perf.cramers_v|num:2 }} <span class="text-body-secondary small">(0 = nenhuma associação; 0,1 fraca · 0,3 moderada · 0,5 forte)</span></p>
+      <p class="mb-1"><strong>Teste exato de Fisher:</strong> p = {{ r.freq_perf.p|num:3 }}</p>
+      <p class="mb-0 text-body-secondary small">{{ r.freq_perf.n }} estudantes. {% if r.freq_perf.cramers_v >= 0.1 and r.freq_perf.p < 0.05 %}Há associação acima do acaso — investigar causas, sem supor direção.{% else %}Sem associação clara acima do acaso neste período.{% endif %}</p>
+    </div></div></div>
+  </div>
+  {% else %}
+    <p class="text-body-secondary">Dados insuficientes: menos de {{ r.freq_perf.min_cases }} casos ou alguma categoria vazia no período.</p>
+  {% endif %}
+</section>
+
 <section class="bi-section" id="gestao" aria-labelledby="h-g">
   <h2 id="h-g">Indicadores de gestão</h2>
   <div class="kpi-grid">

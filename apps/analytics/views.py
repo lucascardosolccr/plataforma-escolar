@@ -549,7 +549,9 @@ def class_dashboard(request, class_group_id):
             [{"label": m["label"], "value": m["attendance"]} for m in report["monthly"]],
             y_min=0, y_max=100, suffix="%"),
         "sections": [("visao-geral", "Visão geral"), ("disciplinas", "Disciplinas"), ("evolucao", "Evolução"),
-                     ("avaliacoes", "Avaliações"), ("mapa", "Mapa de acompanhamento")],
+                     ("avaliacoes", "Avaliações"), ("decisoes", "Decisões perto do corte")]
+                    + ([("comparabilidade", "Comparabilidade")] if only_subjects is None else [])
+                    + [("mapa", "Mapa de acompanhamento")],
         "generated_at": timezone.now(),
     })
 
@@ -627,7 +629,8 @@ def institutional_dashboard(request):
         "grade_trend_chart": charts.line_chart(
             [{"label": m["label"], "value": m["grade"]} for m in r["monthly"]], y_min=0, y_max=10),
         "sections": [("visao-geral", "Visão geral"), ("turmas", "Turmas"), ("disciplinas", "Disciplinas"),
-                     ("composicao", "Série e turno"), ("evolucao", "Evolução"), ("gestao", "Gestão"),
+                     ("composicao", "Série e turno"), ("evolucao", "Evolução"),
+                     ("freq-desempenho", "Frequência × desempenho"), ("gestao", "Gestão"),
                      ("uso", "Utilização")],
         "generated_at": timezone.now(),
     })

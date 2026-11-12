@@ -1,0 +1,8 @@
+{% load ui %}
+{# Legenda das cores de estado usadas nos chips desta página. Convenção única em toda a plataforma. #}
+<p class="small text-body-secondary d-flex flex-wrap align-items-center gap-2 mb-2">
+  <span>Como ler as cores:</span>
+  <span class="chip chip-state state-validado">{% icon "check" %}ok / alinhado</span>
+  <span class="chip chip-state state-aguardando">informativo</span>
+  <span class="chip chip-state state-ajustes">{% icon "triangle-alert" %}requer atenção</span>
+</p>

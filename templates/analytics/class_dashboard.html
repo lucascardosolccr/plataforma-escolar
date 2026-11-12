@@ -27,6 +27,7 @@
 <h2 class="h4 mt-2 mb-2" id="relatorio-detalhado">Relatório detalhado</h2>
 <p class="text-body-secondary small">Os mesmos dados do período, com textos, metodologia e registros de cada seção.</p>
 {% include "analytics/bi/_subnav.html" with sections=sections %}
+{% include "partials/_state_legend.html" %}
 
 <section class="bi-section" id="visao-geral" aria-labelledby="h-v">
   <h2 id="h-v">Visão geral</h2>
@@ -91,7 +92,7 @@
     </table></div></div>
     {% endif %}
   {% else %}
-    <p class="text-body-secondary">Sem decisões com erro-padrão calculável: é preciso ao menos 3 notas na disciplina e fórmula aritmética ou ponderada.</p>
+    <p class="text-body-secondary">Sem decisões com erro-padrão calculável: é preciso ao menos 3 notas por disciplina e fórmula aritmética ou ponderada. <a href="{% url 'pedagogy:evaluation_list' %}">Ver avaliações</a> para lançar mais notas.</p>
   {% endif %}
 </section>
 
@@ -106,11 +107,11 @@
       <th scope="row">{{ s.subject.name }}</th>
       <td class="text-end fw-bold" data-value="{{ s.mean_dev }}">{{ s.mean_dev|signed:2 }}</td>
       <td class="text-end">{{ s.n }}</td>
-      <td>{% if s.mean_dev >= 0.3 %}<span class="chip chip-state state-aguardando">notas mais altas que as demais</span>{% elif s.mean_dev <= -0.3 %}<span class="chip chip-state state-ajustes">notas mais baixas que as demais</span>{% else %}<span class="chip chip-state state-publicada">alinhada</span>{% endif %}</td>
+      <td>{% if s.mean_dev >= 0.3 %}<span class="chip chip-state state-aguardando">notas mais altas que as demais</span>{% elif s.mean_dev <= -0.3 %}<span class="chip chip-state state-ajustes">notas mais baixas que as demais</span>{% else %}<span class="chip chip-state state-validado">alinhada</span>{% endif %}</td>
     </tr>{% endfor %}</tbody>
   </table></div></div>
   {% else %}
-    <p class="text-body-secondary">Dados insuficientes: são precisas ao menos 2 disciplinas com {{ r.grade_comparability.min_students }}+ estudantes com média no período.</p>
+    <p class="text-body-secondary">Dados insuficientes: são precisas ao menos 2 disciplinas com {{ r.grade_comparability.min_students }}+ estudantes com média no período. <a href="{% url 'pedagogy:evaluation_list' %}">Ver avaliações</a>.</p>
   {% endif %}
 </section>
 {% endif %}

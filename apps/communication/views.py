@@ -602,10 +602,14 @@ def notification_rules(request):
                  target_type="NotificationRule", target_id="escola")
         messages.success(request, "Regras de aviso salvas. A nova antecedência vale a partir do próximo processamento.")
         return redirect("communication:notification_rules")
-    from .family_events import event_enabled
-
+    # Uma consulta só para todas as regras da escola, em vez de uma por evento
+    # (event_enabled consultava o banco a cada um dos ~29 eventos: N+1 clássico).
+    enabled_by_event = dict(
+        NotificationRule.objects.filter(school=user.school).values_list("event", "enabled")
+    )
     return render(request, "communication/notification_rules.html", {
-        "events": [(k, label, event_enabled(user.school, k)) for k, (label, _kind, _d) in EVENTS.items()],
+        "events": [(k, label, enabled_by_event.get(k, default))
+                   for k, (label, _kind, default) in EVENTS.items()],
         "form": form,
         "runs": ReminderRun.objects.all()[:7],
     })

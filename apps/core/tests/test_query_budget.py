@@ -42,6 +42,14 @@ class QueryBudgetTests(CommunicationBase):
         # 12 grupos novos (2 componentes × 6 anos): no máximo uma consulta a mais por componente novo.
         self.assertLessEqual(self._count(self.prof, url) - few, 2)
 
+    def test_notification_rules_does_not_query_per_event(self):
+        # A tela lia o estado de cada evento com uma consulta por evento (~29: N+1).
+        # Agora todas as regras da escola vêm numa consulta só.
+        from apps.communication.family_events import EVENTS
+
+        url = reverse("communication:notification_rules")
+        self.assertLess(self._count(self.direc, url), len(EVENTS))
+
     def test_student_history_reads_authors_in_one_query(self):
         url = reverse("student_detail", args=[self.ana.pk])
         few = self._count(self.sec, url)

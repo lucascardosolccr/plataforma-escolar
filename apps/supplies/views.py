@@ -41,8 +41,13 @@ def _managed(user, pk, *statuses):
 def index(request):
     user = request.user
     if sv.is_staff(user):
+        # annotate(Count) introduz GROUP BY e faz o Django descartar a ordenação
+        # padrão do Meta (que usa school_year__name, um campo de join). Sem ORDER BY
+        # a paginação pode repetir ou pular listas entre as páginas; reafirmamos a
+        # mesma ordem do Meta explicitamente.
         qs = (sv.staff_lists(user).select_related("school_year", "created_by").prefetch_related("class_groups")
-              .annotate(n_items=Count("items")))
+              .annotate(n_items=Count("items"))
+              .order_by("-school_year__name", "grade", "title"))
         status = request.GET.get("situacao", "")
         if status in S.values:
             qs = qs.filter(status=status)

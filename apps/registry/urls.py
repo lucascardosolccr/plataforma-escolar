@@ -8,6 +8,7 @@ urlpatterns = [
     path("estudantes/novo/", views.student_create, name="student_create"),
     path("estudantes/<int:student_id>/dados-guardados/", views_data_inventory.student_data_inventory,
          name="student_data_inventory"),
+    path("estudantes/<int:student_id>/dossie/", views_data_inventory.student_dossier, name="student_dossier"),
     path("estudantes/importar/", views_import.import_home, name="student_import"),
     path("estudantes/importar/modelo.xlsx", views_import.import_template, name="student_import_template"),
     path("estudantes/importar/<int:batch_id>/", views_import.import_detail, name="student_import_detail"),

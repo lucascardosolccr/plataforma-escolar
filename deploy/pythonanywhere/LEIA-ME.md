@@ -63,7 +63,19 @@ algum deles entrar.
    o nome da escola).
 4. Use um e-mail institucional da escola, não o pessoal, e confirme o e-mail.
 
-## Passo 3: enviar e descompactar o código
+## Passo 3: trazer o código
+
+Dois caminhos. O **A (GitHub)** é recomendado: atualizar depois é um `git pull`.
+
+**Caminho A — clonar do GitHub.** Aba **Consoles** → **Bash** e rode (troque pela URL do seu
+repositório):
+
+    git clone https://github.com/SEU_USUARIO/plataforma-escolar.git
+
+Repositório privado: o clone pede login; use um **token de acesso** do GitHub no lugar da senha, ou
+deixe o repositório público (o código não tem segredos nem dados).
+
+**Caminho B — enviar o zip.**
 
 1. Aba **Files** → **Upload a file** → escolha o `plataforma-escolar.zip`.
 2. Aba **Consoles** → **Bash**. Na tela preta, digite:
@@ -152,6 +164,13 @@ Só se a direção decidir; são dados reais de estudantes.
    (pendrive ou drive da escola). Se a conta for perdida, é ele que recupera a escola.
 
 ## Atualizar para uma versão nova
+
+**Se clonou do GitHub (caminho A):** um comando no console puxa o código novo, aplica as migrações e
+recarrega o site (backup do banco antes; banco, `.env`, chave e fotos ficam):
+
+    bash ~/plataforma-escolar/deploy/pythonanywhere/atualizar-git.sh
+
+**Se enviou o zip (caminho B):**
 
 1. Gere o pacote de novo (passo 1) e envie o zip para a pasta inicial pela aba **Files**.
 2. No console:

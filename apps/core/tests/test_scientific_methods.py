@@ -96,6 +96,25 @@ class KnownValuesTests(TestCase):
         self.assertEqual((out["n_low"], out["n_high"], out["n_out"]), (1, 0, 1))
         self.assertIsNone(stats.tukey_outliers([5, 6, 7]))  # poucos dados → None
 
+    def test_reliable_change_index(self):
+        import math
+        from statistics import mean, stdev
+        # Mesma queda de 1 ponto, históricos com flutuação diferente: o RCI separa sinal de ruído.
+        estavel = [8.0, 7.6, 8.4]                           # DP = 0,4
+        se = stdev(estavel) * math.sqrt(1 + 1 / len(estavel))
+        rc = stats.reliable_change(mean(estavel), 7.0, se)  # queda contra histórico estável
+        self.assertEqual(rc["rci"], -2.17)
+        self.assertTrue(rc["reliable"])                     # |RCI| ≥ 1,96 → mudança confiável
+        self.assertEqual(rc["direction"], "caiu")
+        oscilante = [9.0, 5.0, 7.0]                         # DP = 2,0: o estudante sempre oscilou
+        se2 = stdev(oscilante) * math.sqrt(1 + 1 / len(oscilante))
+        rc2 = stats.reliable_change(mean(oscilante), 6.0, se2)
+        self.assertEqual(rc2["rci"], -0.43)
+        self.assertFalse(rc2["reliable"])                   # a mesma queda cabe na flutuação do estudante
+        # Sem erro-padrão calculável: None (quem chama cai no limiar fixo).
+        self.assertIsNone(stats.reliable_change(7.0, 6.0, 0))
+        self.assertIsNone(stats.reliable_change(7.0, 6.0, None))
+
     def test_item_analysis_and_precision(self):
         res = stats.item_analysis([[1, 1, 0], [1, 0, 0], [1, 1, 1], [0, 0, 0], [1, 1, 1]])
         self.assertAlmostEqual(res["alpha"], 0.7941, places=3)  # KR-20 calculado à mão

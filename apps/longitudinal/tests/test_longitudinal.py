@@ -345,3 +345,40 @@ class MenuTests(Base):
             self.assertIn("trajectory", items, role)
         self.assertNotIn("trajectory", [i for _, g in LAYOUT[Role.PROFESSOR.value] for i in g])
         self.assertTrue(User.objects.filter(role=Role.PROFESSOR).exists())
+
+
+class ReliableChangeDiagnosisTests(TestCase):
+    """O sinal 'ano atual diferente do próprio histórico' agora usa o Índice de Mudança
+    Confiável (Jacobson & Truax, 1991), não um limiar fixo de 1 ponto."""
+
+    def row(self, year, average, in_progress=False):
+        return {"year": year, "in_progress": in_progress,
+                "retained": False, "basis": "cursando" if in_progress else "oficial",
+                "chronic": False, "attendance": None, "attendance_records": 0,
+                "subjects": [], "average": average, "delta": None, "percentile": None,
+                "distortion": None, "school_changes": 0, "stage": 1,
+                "age": 8, "stage_label": "1º ano", "expected_age": 8}
+
+    def keys(self, rows):
+        return {f.key for f in diagnosis.diagnose(rows)}
+
+    def test_reliable_drop_against_stable_history_fires(self):
+        # Histórico estável (8,0; 7,6; 8,4) e queda para 6,5: RCI ≈ -3,25 → confiável.
+        rows = [self.row(2022, 8.0), self.row(2023, 7.6), self.row(2024, 8.4),
+                self.row(2025, 6.5, in_progress=True)]
+        self.assertIn("proprio", self.keys(rows))
+
+    def test_drop_within_noisy_history_does_not_fire(self):
+        # Mesmo tipo de queda, mas o estudante sempre oscilou muito (9; 5; 7): a queda cabe
+        # na flutuação dele (RCI ≈ -0,43) → nenhum falso alarme, ao contrário do limiar fixo.
+        rows = [self.row(2022, 9.0), self.row(2023, 5.0), self.row(2024, 7.0),
+                self.row(2025, 6.0, in_progress=True)]
+        ks = self.keys(rows)
+        self.assertNotIn("proprio", ks)
+        self.assertNotIn("proprio_acima", ks)
+
+    def test_flat_history_falls_back_to_point_threshold(self):
+        # DP = 0 (8,0; 8,0; 8,0): sem RCI calculável, volta ao limiar de 1 ponto; 6,5 dispara.
+        rows = [self.row(2022, 8.0), self.row(2023, 8.0), self.row(2024, 8.0),
+                self.row(2025, 6.5, in_progress=True)]
+        self.assertIn("proprio", self.keys(rows))

@@ -12,6 +12,10 @@ Cada função cita o método. Quem chama decide o que mostrar; aqui só a conta.
 - **Confiabilidade de uma prova:** alfa de Cronbach (Cronbach, 1951, Psychometrika 16(3), 297–334), lido como
   limite inferior da confiabilidade e nada além disso (Sijtsma, 2009, Psychometrika 74(1), 107–120,
   doi:10.1007/s11336-008-9101-0); erro-padrão de medida = DP·√(1 − α).
+- **A mudança é real ou é ruído?** Índice de Mudança Confiável (RCI; Jacobson & Truax, 1991, Journal of
+  Consulting and Clinical Psychology 59(1), 12–19, doi:10.1037/0022-006X.59.1.12): a diferença dividida pelo
+  erro-padrão da diferença. |RCI| ≥ 1,96 indica mudança maior do que a flutuação esperada — em vez de um
+  limiar fixo arbitrário como "1 ponto".
 - **Discriminação de uma questão:** correlação questão × total das OUTRAS questões (correlação item-total
   corrigida), para a questão não se correlacionar consigo mesma.
 - **Controle estatístico de processo:** carta p′ de Laney (2002, Quality Engineering 14(4), 531–537), que alarga
@@ -57,6 +61,21 @@ def diff_of_shares(k1, k2, n, z=Z95, population=None):
         var *= max(population - n, 0) / (population - 1)
     half = z * math.sqrt(max(var, 0))
     return {"diff": p1 - p2, "low": p1 - p2 - half, "high": p1 - p2 + half}
+
+
+def reliable_change(before, after, se_diff, z=Z95):
+    """Índice de Mudança Confiável (RCI; Jacobson & Truax, 1991).
+
+    Diz se a diferença ``after − before`` supera o erro de medida, em vez de depender de um
+    limiar fixo e arbitrário: RCI = (after − before) / se_diff. |RCI| ≥ ``z`` (1,96 a 95%)
+    indica uma mudança confiável — maior do que a flutuação esperada. ``se_diff`` é o
+    erro-padrão da diferença (quem chama decide como estimá-lo a partir dos dados que tem).
+    Devolve None quando ``se_diff`` não é positivo (não há base para comparar)."""
+    if se_diff is None or se_diff <= 0:
+        return None
+    rci = (after - before) / se_diff
+    return {"rci": round(rci, 2), "reliable": abs(rci) >= z, "z": z,
+            "direction": "subiu" if rci > 0 else "caiu" if rci < 0 else "estável"}
 
 
 # ---------------------------------------------------------------- associação entre categorias

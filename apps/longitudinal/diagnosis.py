@@ -29,17 +29,22 @@ Sinais e fundamentos:
   72(1), 6–21). Mudança no 5º→6º ano e no 9º ano→médio é estrutural e não conta.
 - **Transição de etapa:** 6º ano e 1ª série do médio costumam ter queda de desempenho (Alspaugh, 1998, Journal
   of Educational Research 92(1), 20–25). Sinal de contexto, para acolhimento.
-- **Ano atual abaixo do próprio histórico:** média parcial do ano 1 ponto ou mais abaixo da média dos anos
-  anteriores do próprio estudante (comparação com ele mesmo, não com a turma).
+- **Ano atual diferente do próprio histórico:** a média parcial do ano se afasta da média dos anos anteriores
+  do próprio estudante além da flutuação habitual dele — Índice de Mudança Confiável (Jacobson & Truax, 1991,
+  Journal of Consulting and Clinical Psychology 59(1), 12–19), |RCI| ≥ 1,96 —, em vez de um limiar fixo de
+  "1 ponto" que puniria quem oscila pouco e perdoaria quem oscila muito (comparação com ele mesmo, não com a
+  turma). Sem flutuação histórica calculável, volta ao limiar de 1 ponto.
 
 Nada aqui usa dado de inclusão, saúde, cor, renda ou família.
 """
 
 from dataclasses import dataclass, field
-from statistics import mean
+from math import sqrt
+from statistics import mean, stdev
 
 from apps.cognitio.trajectory import mann_kendall, theil_sen
 from apps.core.fmt import dec
+from apps.core.stats import reliable_change
 
 from . import stages as st
 
@@ -61,7 +66,7 @@ REF = {
     "tendencia": "Sen (1968); Mann (1945)",
     "mobilidade": "Rumberger (2003)",
     "transicao": "Alspaugh (1998)",
-    "proprio": "Comparação com o próprio histórico",
+    "proprio": "Jacobson & Truax (1991); comparação com o próprio histórico",
     "dados": "Qualidade dos dados",
 }
 
@@ -223,20 +228,32 @@ def diagnose(rows):
 
     history = [r["average"] for r in done if r["average"] is not None]
     if current and current["average"] is not None and len(history) >= 2:
-        diff = current["average"] - mean(history)
-        if diff <= -DROP:
+        baseline = mean(history)
+        diff = current["average"] - baseline
+        # Índice de Mudança Confiável (Jacobson & Truax, 1991): o sinal só acende quando a mudança
+        # supera o erro de medida, não um limiar fixo. O erro-padrão da diferença entre o ano atual e
+        # a linha de base é estimado pela flutuação ano a ano do próprio estudante (DP do histórico):
+        # var(atual − média) = s²·(1 + 1/n). Sem flutuação calculável (DP = 0), volta ao limiar de 1 ponto.
+        s = stdev(history)
+        se_diff = s * sqrt(1 + 1 / len(history)) if s > 0 else None
+        rc = reliable_change(baseline, current["average"], se_diff)
+        reliable = rc["reliable"] if rc else abs(diff) >= DROP
+        rci_txt = (f" Índice de Mudança Confiável {dec(rc['rci'], 2)} (|RCI| ≥ 1,96 indica mudança confiável)."
+                   if rc else " Flutuação histórica nula: aplicado o limiar de 1 ponto.")
+        if reliable and diff < 0:
             found.append(Finding(
                 "proprio", "Ano atual abaixo do próprio histórico", "observar",
                 f"Média parcial {dec(current['average'], 1)} em {current['year']}; média dos anos anteriores "
-                f"{dec(mean(history), 1)}.",
-                "Média parcial 1 ponto ou mais abaixo da média dos anos anteriores do próprio estudante.",
+                f"{dec(baseline, 1)}.{rci_txt}",
+                "A queda em relação à média dos anos anteriores supera o erro de medida (RCI), não a flutuação "
+                "normal do próprio estudante.",
                 "Conversar cedo: o estudante já mostrou que consegue mais.", REF["proprio"], [current["year"]]))
-        elif diff >= DROP:
+        elif reliable and diff > 0:
             found.append(Finding(
                 "proprio_acima", "Ano atual acima do próprio histórico", "positivo",
-                f"Média parcial {dec(current['average'], 1)}; média dos anos anteriores {dec(mean(history), 1)}.",
-                "Média parcial 1 ponto ou mais acima da média dos anos anteriores.", "Reconhecer o avanço.",
-                REF["proprio"], [current["year"]]))
+                f"Média parcial {dec(current['average'], 1)}; média dos anos anteriores {dec(baseline, 1)}.{rci_txt}",
+                "A alta em relação à média dos anos anteriores supera o erro de medida (RCI).",
+                "Reconhecer o avanço.", REF["proprio"], [current["year"]]))
 
     strong = [s for s in (rows[-1]["subjects"] if rows else []) if s["value"] is not None and s["value"] >= 8]
     if strong:

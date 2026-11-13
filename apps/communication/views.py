@@ -2,12 +2,13 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Q
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.core.params import digits, id_param, safe_next
+from apps.core.readability import analyze as readability_analyze
 from apps.core.models import Role, audit_trail, create_audit_log
 from apps.core.pagination import Sort, paginate
 from apps.core.uploads import attachment_content_type
@@ -209,6 +210,21 @@ def thread_list(request):
         {"threads": threads, "page": page, "student_id": student_id, "q": q, "leitura": leitura,
          "leitura_choices": [("nao_lidas", "Com mensagens não lidas")], "filtered": bool(q or leitura)},
     )
+
+
+@require_POST
+def readability_check(request):
+    """Legibilidade, ao vivo, do texto que a equipe está escrevendo num comunicado ou numa
+    mensagem à família. Analisa apenas o texto enviado no formulário — não lê nem grava
+    nenhum dado de aluno. O cálculo tem fonte única em ``apps.core.readability``.
+
+    Serve para que recados a responsáveis de escolaridades variadas sejam de fato
+    compreendidos (equidade na informação). Restrito à equipe; para quem não é da equipe
+    o formulário simplesmente não pede a análise.
+    """
+    acc.require(getattr(request.user, "is_staff_role", False))
+    text = (request.POST.get("text") or "")[:20000]
+    return JsonResponse({"readability": readability_analyze(text) or {"empty": True}})
 
 
 def thread_create(request):

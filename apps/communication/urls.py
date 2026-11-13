@@ -23,6 +23,7 @@ urlpatterns = [
         views.notification_read_all,
         name="notification_read_all",
     ),
+    path("legibilidade/", views.readability_check, name="readability_check"),
     path("mensagens/", views.thread_list, name="thread_list"),
     path("mensagens/nova/", views.thread_create, name="thread_create"),
     path("mensagens/<int:pk>/", views.thread_detail, name="thread_detail"),

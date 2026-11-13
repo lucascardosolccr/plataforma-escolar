@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load ui %}
+{% load ui static %}
 {% block title %}Nova mensagem — Plataforma Escolar{% endblock %}
 
 {% block content %}
@@ -13,10 +13,13 @@
     
     <div class="card-body">
       {% include "partials/_form_fields.html" with f=form %}
+      {% if user.is_staff_role %}<div class="mt-1 mb-2" data-readability data-url="{% url 'communication:readability_check' %}" data-csrf="{{ csrf_token }}" data-target="id_body" aria-live="polite"></div>{% endif %}
       <p class="small text-body-secondary mb-0"><span class="required-mark" aria-hidden="true">*</span> campo obrigatório</p>
     </div>
     {% include "partials/_form_actions.html" with cancel_url=back submit_label="Iniciar conversa" hint="" %}
   </form>
-  
+
 </div>
 {% endblock %}
+
+{% block extra_js %}{% if user.is_staff_role %}<script defer src="{% static 'js/readability.js' %}"></script>{% endif %}{% endblock %}

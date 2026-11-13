@@ -7,6 +7,11 @@
   <meta name="color-scheme" content="light dark">
   <title>{% block title %}Plataforma Escolar{% endblock %}</title>
   <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+  {# PWA: app instalável no celular (ícone na tela inicial, tela cheia) e página offline. #}
+  <link rel="manifest" href="{% url 'manifest' %}">
+  <meta name="theme-color" content="#2b45a6">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="{% static 'img/icon-192.png' %}">
   {% comment %}
     Nada é carregado de fora do servidor da escola: fontes, ícones e scripts de
     terceiros entregariam o IP de famílias e estudantes a outras empresas
@@ -197,6 +202,7 @@
 <script src="{% static 'vendor/bootstrap.bundle.min.js' %}"></script>
 <script src="{% static 'js/theme.js' %}"></script>
 <script src="{% static 'js/ds.js' %}"></script>
+<script src="{% static 'js/pwa.js' %}" defer></script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

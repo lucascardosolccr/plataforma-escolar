@@ -1,11 +1,16 @@
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
-from . import views, views_followup, views_photo, views_prefs, views_privacy, views_recovery, views_schools
+from . import (views, views_followup, views_photo, views_prefs, views_privacy, views_pwa, views_recovery,
+               views_schools)
 from .forms import ThrottledAuthenticationForm
 
 urlpatterns = [
     path("", views.home, name="home"),
+    # PWA: app instalável no celular + página offline (recursos públicos, servidos da raiz).
+    path("manifest.webmanifest", views_pwa.manifest, name="manifest"),
+    path("sw.js", views_pwa.service_worker, name="service_worker"),
+    path("offline/", views_pwa.offline, name="offline"),
     path("busca/", views.global_search, name="global_search"),
     path("ajuda/", views.help_page, name="help"),
     path("privacidade/", views_privacy.privacy_page, name="privacy"),

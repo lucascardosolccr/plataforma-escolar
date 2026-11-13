@@ -1,0 +1,26 @@
+{% load static %}<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="{{ theme_color }}">
+  <title>Sem conexão — Plataforma Escolar</title>
+  <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+  {# Só arquivos do próprio servidor (CSP). Estes ficam guardados pelo service worker, então a página abre sem internet. #}
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/ds-tokens.css' %}">
+  <link rel="stylesheet" href="{% static 'css/ds-components.css' %}">
+</head>
+<body class="d-flex align-items-center justify-content-center min-vh-100 p-4">
+  <main class="text-center col-12 col-sm-10 col-md-8 col-lg-6">
+    <img src="{% static 'img/icon-192.png' %}" alt="" width="96" height="96" class="mb-4 rounded-4">
+    <h1 class="h3 mb-3">Sem conexão com a internet</h1>
+    <p class="lead mb-4">
+      A Plataforma Escolar precisa de internet para mostrar seus dados com segurança.
+      Verifique a conexão e tente de novo.
+    </p>
+    <a href="/" class="btn btn-primary btn-lg">Tentar de novo</a>
+  </main>
+</body>
+</html>

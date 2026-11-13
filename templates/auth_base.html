@@ -7,6 +7,11 @@
   <meta name="color-scheme" content="light dark">
   <title>{% block title %}Plataforma Escolar{% endblock %}</title>
   <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+  {# PWA: a plataforma pode ser instalada no celular já a partir da tela de entrada. #}
+  <link rel="manifest" href="{% url 'manifest' %}">
+  <meta name="theme-color" content="#2b45a6">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="{% static 'img/icon-192.png' %}">
   <link rel="preload" href="{% static 'fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="{% static 'fonts/fraunces-latin-opsz-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'vendor/bootstrap.min.css' %}">
@@ -36,5 +41,6 @@
     </main>
   </div>
   <script src="{% static 'js/theme.js' %}"></script>
+  <script src="{% static 'js/pwa.js' %}" defer></script>
 </body>
 </html>

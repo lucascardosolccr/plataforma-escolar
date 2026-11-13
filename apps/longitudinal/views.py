@@ -355,6 +355,7 @@ def index(request):
             signal = [d for d in signal if d["findings"] or d["prediction"]]
         ctx.update({
             "flow": cohort.flow_rates(timelines), "distortion": cohort.distortion_by_stage(timelines),
+            "retention": cohort.survival_curve(timelines),
             "transitions": cohort.transitions(timelines), "signals": cohort.signal_validation(timelines),
             "stability": cohort.stability(timelines), "run": run, "latest": forecast.runs(school).first(),
             "page": paginate(request, signal), "classes": [(c.pk, c.name) for c in classes],

@@ -372,6 +372,51 @@ def kruskal_wallis(groups):
     return {"h": h, "p": chi2_sf(h, k - 1), "df": k - 1, "epsilon_sq": eps2, "k": k, "n": n}
 
 
+# ------------------------------------------------- análise de sobrevivência
+
+def kaplan_meier(observations, z=Z95):
+    """Estimador de Kaplan–Meier (1958) da função de sobrevivência S(t).
+
+    ``observations``: lista de ``(tempo, evento)``. ``evento`` é verdadeiro quando o desfecho
+    ocorreu no tempo (ex.: abandono) e falso quando a observação é censurada (ainda na escola,
+    transferido ou concluído — saiu sem ter o desfecho). Responde "qual a probabilidade de o
+    estudante ainda estar na escola depois de t anos", sem supor forma de distribuição e usando
+    quem saiu sem desfecho até onde foi observado (Kaplan & Meier, 1958, JASA 53(282), 457–481).
+
+    Devolve os degraus da curva (tempo, em risco, eventos, S(t)) com IC 95% de Greenwood na escala
+    log-log (fica em 0..1), o tempo mediano de sobrevivência (ou ``None`` se a curva não chega a
+    0,5) e o total de eventos. ``None`` sem observações.
+    """
+    obs = [(t, bool(e)) for t, e in observations if t is not None and t >= 0]
+    if not obs:
+        return None
+    n = len(obs)
+    event_times = sorted({t for t, e in obs if e})
+    s = 1.0
+    greenwood = 0.0  # Σ d / (n·(n−d))
+    steps = [{"t": 0, "n_risk": n, "events": 0, "survival": 1.0, "low": 1.0, "high": 1.0}]
+    median = None
+    for t in event_times:
+        n_risk = sum(1 for tt, _ in obs if tt >= t)
+        d = sum(1 for tt, e in obs if tt == t and e)
+        if n_risk == 0:
+            continue
+        s *= 1.0 - d / n_risk
+        if n_risk > d:
+            greenwood += d / (n_risk * (n_risk - d))
+        if 0.0 < s < 1.0:
+            se_ll = math.sqrt(greenwood) / abs(math.log(s))  # IC log-log
+            low = s ** math.exp(z * se_ll)
+            high = s ** math.exp(-z * se_ll)
+        else:
+            low = high = s
+        steps.append({"t": t, "n_risk": n_risk, "events": d, "survival": s,
+                      "low": max(0.0, low), "high": min(1.0, high)})
+        if median is None and s <= 0.5:
+            median = t
+    return {"steps": steps, "median": median, "events": sum(1 for _, e in obs if e), "n": n}
+
+
 def benjamini_hochberg(pvalues):
     """Valores q (p ajustados pela taxa de falsas descobertas), na mesma ordem; None continua None."""
     order = sorted((i for i, p in enumerate(pvalues) if p is not None), key=lambda i: pvalues[i])

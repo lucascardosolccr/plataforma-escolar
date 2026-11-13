@@ -11,12 +11,14 @@
 - **AUC com erro-padrão de Hanley & McNeil** (1982, Radiology 143(1), 29–36).
 - **Brier** (1950, Monthly Weather Review 78(1), 1–3) e **calibração** pelo intercepto e pela inclinação da
   recalibração logística (Van Calster et al., 2019, BMC Medicine 17:230, doi:10.1186/s12916-019-1466-7).
+- **Curva de retenção de Kaplan–Meier** (1958) para o tempo até o abandono: ver ``core.stats.kaplan_meier``,
+  reexportada aqui para ``cohort.survival_curve``.
 """
 
 import math
 from statistics import mean
 
-from apps.core.stats import Z95, pearson, wilson  # noqa: F401 (wilson é usado por cohort e pela calibração)
+from apps.core.stats import Z95, kaplan_meier, pearson, wilson  # noqa: F401 (reexportados para cohort)
 
 
 def risk_ratio(a, n1, c, n0, z=Z95):

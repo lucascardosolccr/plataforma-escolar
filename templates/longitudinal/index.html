@@ -83,6 +83,20 @@
   </div></section></div>
 </div>
 
+{% if retention %}
+<div class="row g-3 mb-3">
+  <div class="col-12"><section class="card h-100" aria-labelledby="reten"><div class="card-body">
+    <h2 class="h5" id="reten">Retenção ao longo da vida escolar (Kaplan–Meier)</h2>
+    <p class="text-body-secondary small">Probabilidade de o estudante ainda estar na escola a cada ano de permanência (1º, 2º, …), tratando o abandono como evento e quem segue, transfere ou conclui como censura. Coortes diferentes entram na mesma curva. Complementa as taxas de rendimento, que são por ano letivo.</p>
+    <div class="table-responsive"><table class="table table-sm mb-0">
+      <thead><tr><th scope="col">Ano de permanência</th><th scope="col" class="text-end">Em risco no início</th><th scope="col" class="text-end">Abandonos</th><th scope="col" class="text-end">Retenção acumulada</th><th scope="col" class="text-end">IC 95%</th></tr></thead>
+      <tbody>{% for s in retention.steps %}{% if s.t %}<tr><td>{{ s.t }}º ano</td><td class="text-end">{{ s.n_risk }}</td><td class="text-end">{{ s.events }}</td><td class="text-end fw-semibold">{{ s.pct|dec:1 }}%</td><td class="text-end small">{{ s.pct_low|dec:1 }}–{{ s.pct_high|dec:1 }}%</td></tr>{% endif %}{% endfor %}</tbody>
+    </table></div>
+    <p class="small text-body-secondary mt-2 mb-0">{{ retention.events }} abandono(s) em {{ retention.n }} estudante(s).{% if retention.median %} Metade dos estudantes que abandonam já tinha saído até o {{ retention.median }}º ano de permanência (mediana de sobrevivência).{% else %} A retenção não chega a cair abaixo de 50%: sem mediana de sobrevivência estimável.{% endif %} Censura = quem seguiu, transferiu ou concluiu.</p>
+  </div></section></div>
+</div>
+{% endif %}
+
 <div class="row g-3 mb-3">
   <div class="col-xxl-6"><section class="card h-100" aria-labelledby="trans"><div class="card-body">
     <h2 class="h5" id="trans">De um ano para o outro</h2>

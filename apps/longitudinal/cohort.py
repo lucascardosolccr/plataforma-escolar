@@ -63,6 +63,35 @@ def flow_rates(timelines):
     return out
 
 
+def survival_curve(timelines):
+    """Curva de retenção de Kaplan–Meier: a probabilidade de o estudante ainda estar na escola a cada
+    ano de permanência, tratando o abandono como evento e quem segue, transfere ou conclui como censura.
+
+    O tempo é o ano de permanência (1º, 2º, ...), não o ano letivo, então coortes diferentes entram na
+    mesma curva. Complementa as taxas de rendimento (que são por ano letivo): mostra onde, ao longo da
+    vida escolar, o risco de abandono se concentra. Grupo com menos de ``MIN_GROUP`` fica de fora.
+    """
+    obs = []
+    for rows in timelines.values():
+        t, event = 0, False
+        for r in rows:
+            t += 1
+            if r["outcome"] == Outcome.DROPOUT:
+                event = True
+                break
+            if r["outcome"] == Outcome.TRANSFERRED or r["in_progress"]:
+                break  # censura: saiu sem abandono, ou ainda está na escola neste ano
+        if t:
+            obs.append((t, event))
+    if len(obs) < MIN_GROUP:
+        return None
+    res = stats.kaplan_meier(obs)
+    if res:
+        for st in res["steps"]:  # versão em porcentagem para a tabela
+            st["pct"], st["pct_low"], st["pct_high"] = 100 * st["survival"], 100 * st["low"], 100 * st["high"]
+    return res
+
+
 def distortion_by_stage(timelines):
     groups = defaultdict(lambda: [0, 0, 0])  # etapa -> [com idade, em distorção, sem data de nascimento]
     labels = {}

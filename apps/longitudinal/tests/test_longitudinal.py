@@ -382,3 +382,31 @@ class ReliableChangeDiagnosisTests(TestCase):
         rows = [self.row(2022, 8.0), self.row(2023, 8.0), self.row(2024, 8.0),
                 self.row(2025, 6.5, in_progress=True)]
         self.assertIn("proprio", self.keys(rows))
+
+
+class SurvivalCurveTests(TestCase):
+    """Kaplan-Meier de retencao sobre timelines sinteticas (a funcao so le outcome/in_progress)."""
+
+    def tl(self, *outcomes_list):
+        return {i: rows for i, rows in enumerate(outcomes_list)}
+
+    def yr(self, outcome=Outcome.APPROVED, in_progress=False):
+        return {"outcome": outcome, "in_progress": in_progress}
+
+    def test_curve_treats_dropout_as_event_and_the_rest_as_censored(self):
+        A = [self.yr(Outcome.DROPOUT)]                                           # abandono no 1 ano
+        B = [self.yr(), self.yr(Outcome.DROPOUT)]                                # abandono no 2 ano
+        C = [self.yr(), self.yr(), self.yr(Outcome.UNKNOWN, in_progress=True)]   # ainda na escola (censura)
+        D = [self.yr(Outcome.TRANSFERRED)]                                       # transferido (censura)
+        E = [self.yr(), self.yr(Outcome.UNKNOWN, in_progress=True)]              # censura no 2 ano
+        F = [self.yr(), self.yr(), self.yr()]                                    # concluiu os anos observados
+        km = cohort.survival_curve(self.tl(A, B, C, D, E, F))
+        self.assertEqual((km["n"], km["events"]), (6, 2))
+        surv = {s["t"]: round(s["survival"], 4) for s in km["steps"]}
+        self.assertEqual(surv[1], round(5 / 6, 4))          # 1 abandono em 6 em risco
+        self.assertEqual(surv[2], round(5 / 6 * 3 / 4, 4))  # +1 abandono em 4 em risco (censurados sairam)
+        self.assertIsNone(km["median"])                     # retencao nunca cai abaixo de 50%
+
+    def test_small_group_is_hidden(self):
+        rows = [self.yr(Outcome.DROPOUT)]
+        self.assertIsNone(cohort.survival_curve(self.tl(rows, rows, rows, rows)))  # menos de 5

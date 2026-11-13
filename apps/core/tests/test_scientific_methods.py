@@ -147,6 +147,23 @@ class KnownValuesTests(TestCase):
         self.assertEqual(flat["p"], 1.0)
         self.assertIsNone(stats.kruskal_wallis([[1, 2, 3]]))  # um grupo só
 
+    def test_kaplan_meier(self):
+        # Exemplo conferido à mão: eventos em 1, 2 e 4; censuras em 3 e 5.
+        km = stats.kaplan_meier([(1, True), (2, True), (3, False), (4, True), (5, False)])
+        surv = {s["t"]: round(s["survival"], 4) for s in km["steps"]}
+        self.assertEqual(surv[1], 0.8)      # 4/5
+        self.assertEqual(surv[2], 0.6)      # 0,8 · 3/4
+        self.assertEqual(surv[4], 0.3)      # 0,6 · 1/2
+        self.assertEqual(km["events"], 3)
+        self.assertEqual(km["median"], 4)   # primeiro tempo com S ≤ 0,5
+        # A censura conta no "em risco": em t=4 ainda há 2 em risco (o censurado em t=3 já saiu).
+        self.assertEqual(next(s["n_risk"] for s in km["steps"] if s["t"] == 4), 2)
+        # Só censuras: curva fica em 1, sem mediana. Vazio: None.
+        allc = stats.kaplan_meier([(2, False), (3, False)])
+        self.assertEqual(allc["events"], 0)
+        self.assertIsNone(allc["median"])
+        self.assertIsNone(stats.kaplan_meier([]))
+
     def test_item_analysis_and_precision(self):
         res = stats.item_analysis([[1, 1, 0], [1, 0, 0], [1, 1, 1], [0, 0, 0], [1, 1, 1]])
         self.assertAlmostEqual(res["alpha"], 0.7941, places=3)  # KR-20 calculado à mão

@@ -37,6 +37,7 @@
 <section class="bi-section" id="turmas" aria-labelledby="h-t">
   <h2 id="h-t">Resultados por turma {% metric_info "small_group" %}</h2>
   <p class="bi-lead">Clique numa barra para abrir o painel da turma. Turmas com menos de 5 estudantes com média não exibem estatísticas (proteção contra identificação).</p>
+  {% if r.comparison %}<p class="bi-lead small text-body-secondary">Diferença geral entre as turmas (Kruskal–Wallis, sem supor normalidade): {% if r.comparison.p < 0.05 %}<strong>há diferença provável</strong>{% else %}compatível com o acaso{% endif %} — H = {{ r.comparison.h|num:2 }}, p = {{ r.comparison.p|num:3 }}, ε² = {{ r.comparison.epsilon_sq|num:2 }} ({{ r.comparison.k }} turmas).</p>{% endif %}
   <div class="row g-3">
     <div class="col-lg-6"><div class="card h-100 bi-chart-card"><div class="card-header">Média por turma</div><div class="card-body">{{ class_chart }}</div></div></div>
     <div class="col-lg-6"><div class="card h-100 bi-chart-card"><div class="card-header">Distribuição das médias {% metric_info "grade_distribution" %}</div><div class="card-body">{{ distribution_chart }}</div></div></div>
@@ -50,7 +51,7 @@
       <td class="text-end fw-bold">{{ c.mean|num:2 }}</td><td class="text-end">{{ c.median|num:2 }}</td><td class="text-end">{{ c.stdev|num:2 }}</td>{% endif %}
       <td class="text-end">{{ c.below_count }}</td><td class="text-end">{{ c.activities }}</td>
       <td class="text-end">{{ c.delivery_rate|num:1 }}{% if c.delivery_rate is not None %}%{% endif %}</td>
-      <td class="text-end small">{% if c.cmp %}{% if c.cmp.likely %}<strong>{{ c.cmp.direction }}</strong> · efeito {{ c.cmp.size }}{% else %}compatível com o acaso{% endif %}<span class="d-block text-body-secondary">g = {{ c.cmp.g|num:2 }} (IC {{ c.cmp.low|num:2 }} a {{ c.cmp.high|num:2 }})</span>{% else %}—{% endif %}</td>
+      <td class="text-end small">{% if c.cmp %}{% if c.cmp.likely %}<strong>{{ c.cmp.direction }}</strong> · efeito {{ c.cmp.size }}{% else %}compatível com o acaso{% endif %}<span class="d-block text-body-secondary">g = {{ c.cmp.g|num:2 }} (IC {{ c.cmp.low|num:2 }} a {{ c.cmp.high|num:2 }})</span>{% if c.cmp.robusto %}{% if c.cmp.likely %}<span class="d-block text-body-secondary">confirmado por postos (r = {{ c.cmp.rank_biserial|num:2 }})</span>{% endif %}{% else %}<span class="d-block chip-state state-ajustes">teste por postos diverge — cautela</span>{% endif %}{% else %}—{% endif %}</td>
     </tr>{% empty %}<tr><td colspan="9" class="text-center text-body-secondary py-3">Nenhuma turma com esta disciplina no seu acesso.</td></tr>{% endfor %}</tbody>
   </table></div></div>
   <div class="card mt-3 bi-chart-card"><div class="card-header">Evolução mensal</div><div class="card-body">{{ monthly_chart }}</div></div>

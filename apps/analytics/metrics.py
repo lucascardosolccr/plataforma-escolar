@@ -356,13 +356,17 @@ _M = [
         "Se a média de uma turma numa disciplina difere das outras turmas além do que o acaso explicaria.",
         "Tamanho de efeito g de Hedges (diferença de médias em desvios-padrão, com correção para amostras "
         "pequenas) e IC 95%; teste de Welch; correção de Benjamini–Hochberg pelo número de turmas comparadas. "
-        "\"Diferença provável\" só com q < 0,05 e |g| ≥ 0,2.",
+        "\"Diferença provável\" só com q < 0,05 e |g| ≥ 0,2. Como notas de turma costumam ser pequenas e "
+        "assimétricas, o mesmo confronto passa pelo teste por postos de Mann–Whitney (sem supor normalidade) e "
+        "a visão geral entre as turmas, pelo de Kruskal–Wallis; \"teste por postos diverge\" avisa quando o "
+        "resultado por postos não acompanha o paramétrico, sinal de conclusão frágil.",
         "Médias por disciplina dos estudantes de cada turma no período.",
         "Turma com menos de 5 estudantes com média não entra (grupo pequeno).",
         "g de 0,2, 0,5 e 0,8 são os marcos convencionais de efeito pequeno, médio e grande (Cohen, 1988). "
         "\"Compatível com o acaso\" não prova que as turmas são iguais: diz que os dados não mostram diferença.",
         "Professores corrigem com critérios diferentes: diferença entre turmas pode ser de critério, não de "
-        "aprendizagem (Brookhart et al., 2016). Hedges (1981); Welch (1947); Benjamini & Hochberg (1995).",
+        "aprendizagem (Brookhart et al., 2016). Hedges (1981); Welch (1947); Benjamini & Hochberg (1995); "
+        "Mann & Whitney (1947); Kruskal & Wallis (1952).",
     ),
     Metric(
         "attendance_control", "Frequência semanal com limites de controle", "Métodos estatísticos",

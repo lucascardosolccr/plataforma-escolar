@@ -1149,26 +1149,38 @@ def compare_classes(classes, alpha=0.05):
 
     Tamanho de efeito g de Hedges com IC 95% (Hedges, 1981), teste de Welch (Welch, 1947) e correção de
     Benjamini–Hochberg (1995) pelo número de turmas comparadas: só é "diferença provável" com q < 0,05 e |g| ≥ 0,2.
-    Mesmo assim pode ser diferença de critério de correção entre professores, não de aprendizagem (Brookhart et al.,
-    2016). Grupos pequenos ficam de fora (proteção contra identificação). Grava ``c["cmp"]`` em cada turma.
+    Como notas de turma costumam ser pequenas e assimétricas, cada turma também passa pelo teste não-paramétrico
+    de Mann–Whitney U por postos (Mann & Whitney, 1947), igualmente corrigido por Benjamini–Hochberg: ``robusto``
+    marca quando o resultado paramétrico e o por postos concordam. Mesmo assim pode ser diferença de critério de
+    correção entre professores, não de aprendizagem (Brookhart et al., 2016). Grupos pequenos ficam de fora
+    (proteção contra identificação). Grava ``c["cmp"]`` em cada turma e devolve o teste geral de Kruskal–Wallis
+    (``None`` com menos de duas turmas elegíveis).
     """
-    from apps.core.stats import benjamini_hochberg, effect_label, hedges_g, welch
+    from apps.core.stats import (benjamini_hochberg, effect_label, hedges_g, kruskal_wallis, mann_whitney_u,
+                                 welch)
 
     eligible = [c for c in classes if not c.get("small") and len(c.get("_vals") or []) >= 2]
+    overall = kruskal_wallis([c["_vals"] for c in eligible]) if len(eligible) >= 2 else None
     tests = []
     for c in eligible:
         others = [v for o in eligible if o is not c for v in o["_vals"]]
         w, g = welch(c["_vals"], others), hedges_g(c["_vals"], others)
-        tests.append((c, w["p"] if w else None, g))
-    qs = benjamini_hochberg([p for _, p, _ in tests]) if len(eligible) >= 2 else []
-    for (c, p, g), q in zip(tests, qs):
+        mw = mann_whitney_u(c["_vals"], others)
+        tests.append((c, w["p"] if w else None, g, mw))
+    np_qs = benjamini_hochberg([mw["p"] if mw else None for _, _, _, mw in tests]) if len(eligible) >= 2 else []
+    qs = benjamini_hochberg([p for _, p, _, _ in tests]) if len(eligible) >= 2 else []
+    for (c, p, g, mw), q, nq in zip(tests, qs, np_qs):
         if g is None or q is None:
             continue
         likely = q < alpha and abs(g["g"]) >= 0.2
+        np_likely = mw is not None and nq is not None and nq < alpha
         c["cmp"] = {**g, "q": q, "size": effect_label(g["g"]), "likely": likely,
-                    "direction": "acima" if g["g"] > 0 else "abaixo"}
+                    "direction": "acima" if g["g"] > 0 else "abaixo",
+                    "np_q": nq, "rank_biserial": mw["rank_biserial"] if mw else None,
+                    "np_likely": np_likely, "robusto": likely == np_likely}
     for c in classes:
         c.pop("_vals", None)
+    return overall
 
 
 def subject_report(subject, class_groups, period):
@@ -1226,7 +1238,7 @@ def subject_report(subject, class_groups, period):
             "small": d["n"] < SMALL_GROUP,
         })
         all_rows.extend(rows)
-    compare_classes(classes)
+    comparison = compare_classes(classes)
     evals = list(
         Evaluation.objects.filter(subject=subject, class_group__in=class_groups, status=PUBLISHED,
                                   date__gte=period.start, date__lte=period.end)
@@ -1243,7 +1255,7 @@ def subject_report(subject, class_groups, period):
     monthly = _monthly_grades(all_grades)
     lowest = sorted([r for r in eval_rows if r["mean"] is not None], key=lambda r: r["mean"])[:5]
     return {
-        "period": period, "classes": classes,
+        "period": period, "classes": classes, "comparison": comparison,
         "overall": describe([r["average"] for r in all_rows]),
         "distribution": bands([r["average"] for r in all_rows]),
         "follow_up": sorted([r for r in all_rows if r["below"]], key=lambda r: r["average"]),

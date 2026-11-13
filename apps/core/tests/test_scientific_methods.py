@@ -115,6 +115,38 @@ class KnownValuesTests(TestCase):
         self.assertIsNone(stats.reliable_change(7.0, 6.0, 0))
         self.assertIsNone(stats.reliable_change(7.0, 6.0, None))
 
+    def test_chi_square_survival_function(self):
+        # Valores críticos de tabela: χ²(1) e χ²(2) a 5%.
+        self.assertAlmostEqual(stats.chi2_sf(3.841, 1), 0.05, places=3)
+        self.assertAlmostEqual(stats.chi2_sf(5.991, 2), 0.05, places=3)
+        self.assertEqual(stats.chi2_sf(0, 2), 1.0)
+
+    def test_mann_whitney_u(self):
+        # Separação perfeita: U = 0 e rank-biserial = −1 (o grupo a fica todo abaixo de b).
+        sep = stats.mann_whitney_u([1, 2, 3], [4, 5, 6])
+        self.assertEqual(sep["u"], 0.0)
+        self.assertEqual(sep["rank_biserial"], -1.0)
+        # Sentido oposto: a inteiramente acima de b → r = +1.
+        self.assertEqual(stats.mann_whitney_u([5, 6, 7, 8], [1, 2, 3, 4])["rank_biserial"], 1.0)
+        # Grupos iguais: sem diferença (p alto, efeito nulo).
+        same = stats.mann_whitney_u([4, 5, 6, 7], [4, 5, 6, 7])
+        self.assertEqual(same["rank_biserial"], 0.0)
+        self.assertGreater(same["p"], 0.5)
+        self.assertIsNone(stats.mann_whitney_u([], [1, 2]))
+
+    def test_kruskal_wallis(self):
+        # Três grupos de 3 perfeitamente separados: H = 7,2 (conferido à mão), p < 0,05.
+        res = stats.kruskal_wallis([[1, 2, 3], [5, 6, 7], [9, 10, 11]])
+        self.assertAlmostEqual(res["h"], 7.2, places=3)
+        self.assertEqual(res["df"], 2)
+        self.assertLess(res["p"], 0.05)
+        self.assertGreater(res["epsilon_sq"], 0.8)
+        # Grupos idênticos: H = 0, sem diferença.
+        flat = stats.kruskal_wallis([[6, 7, 8], [6, 7, 8], [6, 7, 8]])
+        self.assertEqual(flat["h"], 0.0)
+        self.assertEqual(flat["p"], 1.0)
+        self.assertIsNone(stats.kruskal_wallis([[1, 2, 3]]))  # um grupo só
+
     def test_item_analysis_and_precision(self):
         res = stats.item_analysis([[1, 1, 0], [1, 0, 0], [1, 1, 1], [0, 0, 0], [1, 1, 1]])
         self.assertAlmostEqual(res["alpha"], 0.7941, places=3)  # KR-20 calculado à mão
@@ -218,6 +250,23 @@ class ClassComparisonTests(TestCase):
         same = [{"small": False, "_vals": [rnd.gauss(7, 1) for _ in range(25)]} for _ in range(8)]
         compare_classes(same)
         self.assertFalse(any(c["cmp"]["likely"] for c in same))  # 8 turmas iguais: nenhuma "diferença" por acaso
+
+    def test_nonparametric_companion_is_wired(self):
+        import random
+
+        rnd = random.Random(7)
+        classes = [{"small": False, "_vals": [rnd.gauss(7, 1) for _ in range(30)]} for _ in range(4)]
+        classes.append({"small": False, "_vals": [rnd.gauss(4.0, 1) for _ in range(30)]})
+        overall = compare_classes(classes)
+        # O teste geral de Kruskal–Wallis volta da função e aponta diferença entre as turmas.
+        self.assertIsNotNone(overall)
+        self.assertLess(overall["p"], 0.05)
+        # Cada turma elegível recebe o companheiro não-paramétrico e a marca de concordância.
+        low = classes[4]["cmp"]
+        self.assertIn("np_q", low)
+        self.assertIn("rank_biserial", low)
+        self.assertTrue(low["likely"] and low["np_likely"] and low["robusto"])
+        self.assertLess(low["rank_biserial"], 0)  # turma abaixo das demais
 
 
 class AveragePrecisionTests(CommunicationBase):

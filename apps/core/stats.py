@@ -9,6 +9,10 @@ Cada função cita o método. Quem chama decide o que mostrar; aqui só a conta.
   107–128).
 - **Muitas comparações ao mesmo tempo:** taxa de falsas descobertas de Benjamini & Hochberg (1995, JRSS B 57(1),
   289–300). Comparar 10 turmas a 5% cada dá, por acaso, uma "diferença" quase sempre.
+- **Comparação sem supor normalidade:** Mann–Whitney U para dois grupos (Mann & Whitney, 1947) e Kruskal–Wallis
+  para três ou mais (Kruskal & Wallis, 1952), por postos. Para notas de turmas pequenas ou assimétricas, a média
+  e o teste de Welch podem enganar; os testes por postos são o padrão apropriado, com tamanho de efeito
+  rank-biserial (Kerby, 2014) e ε² (Tomczak & Tomczak, 2014).
 - **Confiabilidade de uma prova:** alfa de Cronbach (Cronbach, 1951, Psychometrika 16(3), 297–334), lido como
   limite inferior da confiabilidade e nada além disso (Sijtsma, 2009, Psychometrika 74(1), 107–120,
   doi:10.1007/s11336-008-9101-0); erro-padrão de medida = DP·√(1 − α).
@@ -230,6 +234,142 @@ def hedges_g(a, b, z=Z95):
     g = j * d
     se = math.sqrt((n1 + n2) / (n1 * n2) + g * g / (2 * (n1 + n2)))
     return {"g": g, "low": g - z * se, "high": g + z * se}
+
+
+# ---------------------------------------------- comparação não-paramétrica
+# Para notas de grupos pequenos ou assimétricas, a média e o teste de Welch podem enganar:
+# estes testes trabalham com postos e não supõem normalidade. Mann–Whitney compara dois
+# grupos; Kruskal–Wallis, três ou mais (análogo não-paramétrico da ANOVA de um fator).
+
+def _norm_sf(z):
+    """Cauda superior da normal padrão: P(Z ≥ z)."""
+    return 0.5 * math.erfc(z / math.sqrt(2))
+
+
+def _gammq(a, x):
+    """Função gama incompleta superior regularizada Q(a, x) (Numerical Recipes, gser/gcf)."""
+    if x <= 0 or a <= 0:
+        return 1.0
+    gln = math.lgamma(a)
+    if x < a + 1.0:  # série para P(a, x); Q = 1 − P
+        total = 1.0 / a
+        delta = total
+        ap = a
+        for _ in range(300):
+            ap += 1.0
+            delta *= x / ap
+            total += delta
+            if abs(delta) < abs(total) * 1e-14:
+                break
+        return 1.0 - total * math.exp(-x + a * math.log(x) - gln)
+    b = x + 1.0 - a  # fração contínua direta para Q(a, x)
+    c, d = 1e300, 1.0 / b
+    h = d
+    for i in range(1, 300):
+        an = -i * (i - a)
+        b += 2.0
+        d = an * d + b
+        if abs(d) < 1e-300:
+            d = 1e-300
+        c = b + an / c
+        if abs(c) < 1e-300:
+            c = 1e-300
+        d = 1.0 / d
+        delta = d * c
+        h *= delta
+        if abs(delta - 1.0) < 1e-14:
+            break
+    return h * math.exp(-x + a * math.log(x) - gln)
+
+
+def chi2_sf(x, df):
+    """Cauda superior do qui-quadrado: P(χ²_df ≥ x)."""
+    if x <= 0 or df <= 0:
+        return 1.0
+    return _gammq(df / 2.0, x / 2.0)
+
+
+def _avg_ranks(values):
+    """Postos médios 1-based de ``values`` (empates recebem a média dos postos); devolve
+    (postos na ordem original, Σ(t³−t) dos empates)."""
+    order = sorted(range(len(values)), key=lambda i: values[i])
+    ranks = [0.0] * len(values)
+    tie_term = 0.0
+    i = 0
+    n = len(values)
+    while i < n:
+        j = i
+        while j + 1 < n and values[order[j + 1]] == values[order[i]]:
+            j += 1
+        avg = (i + j) / 2.0 + 1.0
+        for m in range(i, j + 1):
+            ranks[order[m]] = avg
+        t = j - i + 1
+        tie_term += t ** 3 - t
+        i = j + 1
+    return ranks, tie_term
+
+
+def mann_whitney_u(a, b):
+    """Teste de Mann–Whitney U (Wilcoxon rank-sum): compara duas amostras sem supor normalidade.
+
+    Alternativa não-paramétrica ao teste de Welch, apropriada para notas de grupos pequenos ou
+    assimétricas. p bilateral por aproximação normal com correção de empates e de continuidade
+    (Mann & Whitney, 1947, Ann. Math. Statist. 18(1), 50–60). Tamanho de efeito: correlação
+    rank-biserial r = 2U₁/(n₁·n₂) − 1, de −1 a 1, positivo quando ``a`` tende a ser maior
+    (Kerby, 2014). ``None`` sem valor em algum dos lados.
+    """
+    a = [v for v in a if v is not None]
+    b = [v for v in b if v is not None]
+    n1, n2 = len(a), len(b)
+    if n1 == 0 or n2 == 0:
+        return None
+    ranks, tie_term = _avg_ranks(a + b)
+    r1 = sum(ranks[:n1])
+    u1 = r1 - n1 * (n1 + 1) / 2.0
+    big = n1 * n2
+    r = 2.0 * u1 / big - 1.0
+    n = n1 + n2
+    mu = big / 2.0
+    var = (big / 12.0) * ((n + 1) - tie_term / (n * (n - 1))) if n > 1 else 0.0
+    if var <= 0:
+        return {"u": u1, "p": 1.0, "rank_biserial": r, "n1": n1, "n2": n2}
+    z = (abs(u1 - mu) - 0.5) / math.sqrt(var)  # correção de continuidade
+    p = 2.0 * _norm_sf(max(z, 0.0))
+    return {"u": u1, "p": min(1.0, p), "rank_biserial": r, "n1": n1, "n2": n2}
+
+
+def kruskal_wallis(groups):
+    """Teste de Kruskal–Wallis: alguma das amostras difere das demais, sem supor normalidade.
+
+    Generaliza Mann–Whitney para 3+ grupos (análogo não-paramétrico da ANOVA de um fator;
+    Kruskal & Wallis, 1952, JASA 47(260), 583–621). p por aproximação qui-quadrado com k−1 graus
+    de liberdade e correção de empates. Tamanho de efeito ε² = H/(n−1), de 0 a 1 (Tomczak &
+    Tomczak, 2014). ``None`` com menos de dois grupos não vazios ou poucos dados.
+    """
+    groups = [[v for v in g if v is not None] for g in groups]
+    groups = [g for g in groups if g]
+    k = len(groups)
+    if k < 2:
+        return None
+    flat = [v for g in groups for v in g]
+    n = len(flat)
+    if n < 3:
+        return None
+    ranks, tie_term = _avg_ranks(flat)
+    idx = 0
+    h = 0.0
+    for g in groups:
+        rs = sum(ranks[idx:idx + len(g)])
+        h += rs * rs / len(g)
+        idx += len(g)
+    h = 12.0 / (n * (n + 1)) * h - 3.0 * (n + 1)
+    correction = 1.0 - tie_term / (n ** 3 - n) if n > 1 else 1.0
+    if correction <= 0:
+        return None
+    h /= correction
+    eps2 = max(0.0, min(1.0, h / (n - 1))) if n > 1 else None
+    return {"h": h, "p": chi2_sf(h, k - 1), "df": k - 1, "epsilon_sq": eps2, "k": k, "n": n}
 
 
 def benjamini_hochberg(pvalues):

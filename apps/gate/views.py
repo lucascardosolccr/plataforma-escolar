@@ -209,8 +209,17 @@ def station(request):
         if _wants_json(request):
             return _json_result(request, ctx)
     today = timezone.localdate()
-    ctx["recent"] = GateEvent.objects.filter(school=user.school, day=today).select_related("student",
-                                                                                          "class_group")[:8]
+    recent = GateEvent.objects.filter(school=user.school, day=today).select_related("student", "class_group")
+    # A coordenação restrita só vê (e só abre o histórico de) estudantes das
+    # turmas que acompanha: a lista de leituras recentes respeita a designação,
+    # como ``history``. A leitura em si continua valendo para a escola toda.
+    if user.role == Role.COORDENACAO.value:
+        from apps.coordination.scope import class_scope
+
+        scope = class_scope(user)
+        if scope is not None:
+            recent = recent.filter(class_group_id__in=scope)
+    ctx["recent"] = recent[:8]
     ctx["manual_q"] = (request.GET.get("q") or "").strip()[:60]
     if ctx["manual_q"]:
         ctx["manual"] = Student.objects.filter(school=user.school, status="ativo").filter(

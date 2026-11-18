@@ -156,6 +156,23 @@ class SimulatorViewTests(AnalyticsBase):
         resp = self.client.get(self.url)
         self.assertEqual(len(resp.context["rows"]), 2)
 
+    def test_weighted_subject_with_blank_grade_does_not_crash(self):
+        # Disciplina com media ponderada e uma avaliacao publicada SEM nota
+        # lancada (value=None): a pagina abria com 500. Agora abre, a nota em
+        # branco nao entra na media nem na contagem.
+        AcademicRule.objects.create(school=self.school, subject=self.mat,
+                                    formula=AcademicRule.Formula.WEIGHTED, passing_grade=D(6))
+        ev = Evaluation.objects.create(school=self.school, subject=self.mat, class_group=self.turma,
+                                       title="Ainda sem nota", status=Evaluation.Status.PUBLISHED,
+                                       date=timezone.localdate() - timedelta(days=1), weight=D(3))
+        Grade.objects.create(school=self.school, evaluation=ev, student=self.ana, value=None)
+        self.client.login(username="resp", password="senha-forte-1")
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, 200)
+        row = next(r for r in resp.context["rows"] if r["subject"] == self.mat)
+        self.assertEqual(row["count"], 2)          # so as duas notas lancadas (5 e 6)
+        self.assertEqual(row["current"], D("5.5"))  # (5*1 + 6*1) / 2; a em branco (peso 3) fica de fora
+
     def test_draft_grades_are_not_used(self):
         ev = Evaluation.objects.create(school=self.school, subject=self.mat, class_group=self.turma,
                                        title="Rascunho", status=Evaluation.Status.DRAFT,

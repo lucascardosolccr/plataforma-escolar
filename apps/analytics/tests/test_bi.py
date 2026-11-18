@@ -469,3 +469,33 @@ class PeriodTests(BIBase):
         p = bi.resolve_period({"periodo": "personalizado", "inicio": "2026-04-01", "fim": "2026-04-30"}, self.school)
         self.assertEqual((p.start, p.end, p.days), (date(2026, 4, 1), date(2026, 4, 30), 30))
         self.assertEqual(bi.resolve_period({"periodo": "30d"}, self.school).days, 30)
+
+
+class NPlusOneGuardTests(BIBase):
+    """O painel da turma carrega notas, frequencia e entregas em lote: o numero
+    de consultas nao pode crescer com o numero de estudantes (sem N+1)."""
+
+    def _populate(self, ev, att_day, students):
+        for s in students:
+            self.grade(ev, s, 7)
+            self.attend(s, att_day, AttendanceRecord.Status.PRESENT)
+
+    def test_class_report_query_count_is_independent_of_student_count(self):
+        ev = self.evaluation(self.mat, date(2026, 3, 10))
+        att_day = date(2026, 3, 3)
+        self._populate(ev, att_day, self.alunos)  # 6 estudantes
+        with CaptureQueriesContext(connection) as q_small:
+            bi.class_report(self.turma, P)
+        extra = []
+        for nome in ("Gil", "Hugo", "Ivo", "Joy", "Kim", "Lia"):
+            s = Student.objects.create(school=self.school, first_name=nome)
+            Enrollment.objects.create(school=self.school, student=s, class_group=self.turma,
+                                      school_year=self.year, started_on=date(2026, 2, 1))
+            extra.append(s)
+        self._populate(ev, att_day, extra)  # agora 12 estudantes
+        with CaptureQueriesContext(connection) as q_big:
+            bi.class_report(self.turma, P)
+        self.assertEqual(
+            len(q_small.captured_queries), len(q_big.captured_queries),
+            f"N+1 no painel da turma: {len(q_small.captured_queries)} -> "
+            f"{len(q_big.captured_queries)} consultas ao dobrar os estudantes")

@@ -413,7 +413,9 @@ def student_simulator(request, student_id):
         needed = simulator.needed_grade(vw, formula, passing, weight)
         rows.append({
             "subject": subject,
-            "count": len(vw),
+            # Só as avaliações já com nota lançada contam como "nota"; uma prova
+            # publicada ainda sem nota não infla a contagem nem a média.
+            "count": sum(1 for v, _ in vw if v is not None),
             "formula": rule.get_formula_display() if rule else AcademicRule.Formula.ARITHMETIC.label,
             "uses_weight": formula == AcademicRule.Formula.WEIGHTED,
             "passing": passing,

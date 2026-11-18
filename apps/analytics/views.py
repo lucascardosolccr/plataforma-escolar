@@ -736,6 +736,46 @@ def secretaria_panel(request):
     )
 
 
+def secretaria_export(request, fmt):
+    """Exporta as listas de trabalho da secretaria (completas) em CSV/Excel.
+
+    Diferente da tela, que mostra só os 20 primeiros de cada lista, a exportação
+    traz tudo — para a secretaria trabalhar a fila inteira ou compartilhar."""
+    if not can_view_secretaria_panel(request.user):
+        raise PermissionDenied("Painel restrito à secretaria.")
+    from apps.communication.models import ServiceRequest
+    from apps.pedagogy.models import AbsenceJustification
+
+    school = request.user.school
+
+    def _dt(value):
+        return f"{timezone.localtime(value):%d/%m/%Y %H:%M}" if value else ""
+
+    vinculos = [["Responsável", "Estudante", "Relação"]]
+    for ln in GuardianLink.objects.filter(school=school, status="pendente").select_related("guardian", "student"):
+        vinculos.append([ln.guardian.get_full_name() or ln.guardian.username, ln.student.full_name, ln.relation])
+
+    sem_matricula = [["Estudante"]]
+    for s in Student.objects.filter(school=school, status="ativo").exclude(enrollments__status="ativo"):
+        sem_matricula.append([s.full_name])
+
+    justificativas = [["Estudante", "Início", "Fim", "Situação"]]
+    for j in AbsenceJustification.objects.filter(
+            school=school, status__in=["recebida", "em_analise"]).select_related("student"):
+        justificativas.append([j.student.full_name, j.start_date, j.end_date, j.get_status_display()])
+
+    solicitacoes = [["Assunto", "Categoria", "Solicitante", "Estudante", "Situação", "Criada em"]]
+    for sr in ServiceRequest.objects.filter(school=school).exclude(
+            status__in=["concluida", "recusada"]).select_related("requester", "student"):
+        solicitacoes.append([sr.title, sr.get_category_display(),
+                             sr.requester.get_full_name() or sr.requester.username,
+                             sr.student.full_name if sr.student else "", sr.get_status_display(), _dt(sr.created_at)])
+
+    return _bi_export(request, title="Secretaria — listas de trabalho", context=school.name, fmt=fmt, target=school,
+                      sheets=[("Vínculos pendentes", vinculos), ("Estudantes sem matrícula", sem_matricula),
+                              ("Justificativas pendentes", justificativas), ("Solicitações abertas", solicitacoes)])
+
+
 # --------------------------------------------------------------------------- #
 # Relatórios
 # --------------------------------------------------------------------------- #
@@ -841,11 +881,12 @@ def report_csv(request, slug):
 # --------------------------------------------------------------------------- #
 # Exportação dos painéis de BI (CSV e Excel)
 # --------------------------------------------------------------------------- #
-def _bi_export(request, *, title, context, period, sheets, fmt, target=None):
-    """Exporta as tabelas de um painel, com cabeçalho de contexto e auditoria.
+def _bi_export(request, *, title, context, sheets, fmt, period=None, target=None):
+    """Exporta as tabelas de um painel ou worklist, com cabeçalho de contexto e auditoria.
 
-    Cada arquivo diz o que é, de quem/qual turma, o período, quando foi gerado
-    e onde está a metodologia — um número solto numa planilha perde o sentido.
+    Cada arquivo diz o que é, de quem/qual turma, o período (quando houver), quando
+    foi gerado e onde está a metodologia — um número solto numa planilha perde o
+    sentido. ``period`` é opcional: listas de estado atual (ex.: secretaria) não têm.
     """
     from apps.core.models import create_audit_log
 
@@ -854,16 +895,18 @@ def _bi_export(request, *, title, context, period, sheets, fmt, target=None):
     if fmt not in ("csv", "xlsx"):
         raise PermissionDenied
     gerado = timezone.localtime().strftime("%d/%m/%Y %H:%M")
-    cabecalho = [
-        [title], [context],
-        [f"Período: {period.start:%d/%m/%Y} a {period.end:%d/%m/%Y} ({period.label})"],
+    cabecalho = [[title], [context]]
+    if period is not None:
+        cabecalho.append([f"Período: {period.start:%d/%m/%Y} a {period.end:%d/%m/%Y} ({period.label})"])
+    cabecalho += [
         [f"Gerado em {gerado} por {request.user.get_full_name() or request.user.username}"],
-        ["Ausência de dado aparece em branco (não é zero). Metodologia: Painéis > Metodologia dos indicadores."],
+        ["Ausência de dado aparece em branco (não é zero)."],
     ]
     nome = slugify(f"{title} {context}")[:80] or "painel"
+    periodo_txt = f" ({period.start:%d/%m/%Y}–{period.end:%d/%m/%Y})" if period is not None else ""
     create_audit_log(
         user=request.user, action="export", request=request, target=target,
-        detail=f"Exportou {title} — {context} ({period.start:%d/%m/%Y}–{period.end:%d/%m/%Y}) em {fmt.upper()}",
+        detail=f"Exportou {title} — {context}{periodo_txt} em {fmt.upper()}",
     )
     if fmt == "xlsx":
         data = xlsx.build([("Sobre", cabecalho)] + sheets)

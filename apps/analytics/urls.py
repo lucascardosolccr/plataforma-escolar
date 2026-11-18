@@ -13,6 +13,7 @@ urlpatterns = [
         views.secretaria_panel,
         name="secretaria_panel",
     ),
+    path("paineis/secretaria/exportar.<str:fmt>", views.secretaria_export, name="secretaria_export"),
     path(
         "paineis/estudante/<int:student_id>/",
         views.student_dashboard,

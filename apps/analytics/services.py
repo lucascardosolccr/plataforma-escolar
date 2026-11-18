@@ -53,17 +53,22 @@ def rules_by_subject(school):
 
 
 def _apply_formula(values_weights, formula):
-    """values_weights: lista de (valor Decimal, peso Decimal)."""
-    if not values_weights:
+    """values_weights: lista de (valor Decimal ou None, peso Decimal).
+
+    Notas em branco (valor ``None``) não entram em nenhuma fórmula: nem na soma,
+    nem no peso da média ponderada. Antes, só a ponderada usava a lista crua:
+    contava o peso de uma nota em branco no denominador e quebrava (None × peso)
+    quando a nota era nula — o que estourava o simulador e o painel numa
+    disciplina ponderada com avaliação ainda sem nota."""
+    pairs = [(v, w or Decimal("1")) for v, w in values_weights if v is not None]
+    if not pairs:
         return None
-    values = [v for v, _ in values_weights if v is not None]
-    if not values:
-        return None
+    values = [v for v, _ in pairs]
     if formula == AcademicRule.Formula.WEIGHTED:
-        total_w = sum((w or Decimal("1")) for _, w in values_weights)
+        total_w = sum((w for _, w in pairs), Decimal("0"))
         if total_w == 0:
             return None
-        acc = sum(v * (w or Decimal("1")) for v, w in values_weights)
+        acc = sum((v * w for v, w in pairs), Decimal("0"))
         return acc / total_w
     if formula == AcademicRule.Formula.BEST:
         return max(values)

@@ -4,6 +4,7 @@ garantia de que nada é gravado."""
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.test import SimpleTestCase
 from django.urls import reverse
 from django.utils import timezone
 
@@ -11,10 +12,38 @@ from apps.pedagogy.models import AcademicRule, AttendanceRecord, Evaluation, Gra
 from apps.registry.models import GuardianLink
 
 from .. import simulator
+from ..services import _apply_formula
 from .test_analytics import AnalyticsBase
 
 D = Decimal
 F = AcademicRule.Formula
+
+
+class ApplyFormulaBlankGradeTests(SimpleTestCase):
+    """Nota em branco (avaliação ainda sem nota) não entra em nenhuma fórmula.
+
+    Antes, a média ponderada usava a lista crua: o peso da nota em branco ia
+    para o denominador e, pior, ``None × peso`` estourava o painel e o
+    simulador numa disciplina ponderada com avaliação sem nota lançada."""
+
+    def test_weighted_ignores_blank_grade(self):
+        # (6*1 + 8*3) / (1+3) = 7,5; o par (None, 2) é descartado por inteiro.
+        vw = [(D(6), D(1)), (None, D(2)), (D(8), D(3))]
+        self.assertEqual(_apply_formula(vw, F.WEIGHTED), D("7.5"))
+
+    def test_weighted_all_blank_is_none(self):
+        self.assertIsNone(_apply_formula([(None, D(1)), (None, D(2))], F.WEIGHTED))
+
+    def test_other_formulas_ignore_blank(self):
+        self.assertEqual(_apply_formula([(D(4), D(1)), (None, D(1)), (D(8), D(1))], F.ARITHMETIC), D(6))
+        self.assertEqual(_apply_formula([(D(4), D(1)), (None, D(1))], F.BEST), D(4))
+        self.assertEqual(_apply_formula([(D(4), D(1)), (None, D(1)), (D(6), D(1))], F.SUM), D(10))
+
+    def test_simulate_weighted_with_existing_blank_does_not_crash(self):
+        # Avaliação sem nota + nota hipotética nova, disciplina ponderada.
+        self.assertEqual(
+            simulator.simulate_average([(D(4), D(1)), (None, D(2))], F.WEIGHTED, D(7), D(2)),
+            D(6))  # descarta o None: (4*1 + 7*2) / (1+2) = 18/3 = 6
 
 
 class NeededGradeTests(AnalyticsBase):

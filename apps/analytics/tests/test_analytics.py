@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.academics.models import (
     ClassGroup,
@@ -11,6 +12,7 @@ from apps.academics.models import (
     Subject,
     TeacherAssignment,
 )
+from apps.coordination.models import CoordinatorAssignment
 from apps.core.models import Role, School
 from apps.pedagogy.models import (
     AcademicRule,
@@ -37,6 +39,12 @@ class AnalyticsBase(TestCase):
         self.admin = self._user("adm", Role.ADMIN, self.school)
         self.sec = self._user("sec", Role.SECRETARIA, self.school)
         self.coord = self._user("coord", Role.COORDENACAO, self.school)
+        # Desde a designacao da coordenacao (Prompt 14), o coordenador so ve o
+        # que lhe foi designado; a migracao da aos coordenadores existentes o
+        # alcance "escola toda". Aqui o coord exerce esse papel de gestao.
+        CoordinatorAssignment.objects.create(
+            school=self.school, coordinator=self.coord,
+            starts_on=timezone.localdate(), all_school=True)
         self.direc = self._user("dir", Role.DIRECAO, self.school)
         self.prof = self._user("prof", Role.PROFESSOR, self.school)
         self.prof_b = self._user("prof_b", Role.PROFESSOR, self.school_b)

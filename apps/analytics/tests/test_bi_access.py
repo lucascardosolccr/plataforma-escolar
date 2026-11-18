@@ -13,7 +13,10 @@ from decimal import Decimal
 from django.test import TestCase
 from django.urls import reverse
 
+from django.utils import timezone
+
 from apps.academics.models import ClassGroup, SchoolYear, Subject, TeacherAssignment
+from apps.coordination.models import CoordinatorAssignment
 from apps.core.models import AuditLog, Role, School, User
 from apps.pedagogy.models import Evaluation, Grade
 from apps.registry.models import Enrollment, GuardianLink, Student
@@ -37,6 +40,11 @@ class BIAccessBase(TestCase):
             return User.objects.create_user(username=username, password=PW, role=role, school=self.school)
 
         self.users = {r: mk(r, r) for r in ("admin", "direcao", "coordenacao", "secretaria")}
+        # Coordenacao com alcance "escola toda" (como a migracao deu aos
+        # coordenadores existentes): e o papel de gestao que estes testes cobrem.
+        CoordinatorAssignment.objects.create(
+            school=self.school, coordinator=self.users["coordenacao"],
+            starts_on=timezone.localdate(), all_school=True)
         self.prof = mk("prof", Role.PROFESSOR)        # Matemática no 5º A
         self.prof_b = mk("prof_b", Role.PROFESSOR)    # Português no 5º B
         self.resp = mk("resp", Role.RESPONSAVEL)

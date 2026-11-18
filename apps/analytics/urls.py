@@ -43,6 +43,7 @@ urlpatterns = [
     path("paineis/disciplina/<int:subject_id>/", views.subject_dashboard, name="subject_dashboard"),
     path("paineis/disciplina/<int:subject_id>/exportar.<str:fmt>", views.subject_export, name="subject_export"),
     path("paineis/professor/", views.teacher_dashboard, name="teacher_dashboard"),
+    path("paineis/professor/exportar.<str:fmt>", views.teacher_export, name="teacher_export"),
     path("paineis/qualidade-dos-dados/", views.data_quality_dashboard, name="data_quality"),
     path("paineis/metas/", views.goals, name="goals"),
     path("paineis/metas/nova/", views.goal_form, name="goal_create"),

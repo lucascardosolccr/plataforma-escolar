@@ -13,7 +13,7 @@
   </div>
 </div>
 
-{% include "analytics/bi/_filters.html" with presets=presets period=period extra_filters=extra_filters %}
+{% include "analytics/bi/_filters.html" with presets=presets period=period extra_filters=extra_filters export_links=export_links %}
 
 <div class="kpi-grid mb-4">
   {% include "analytics/bi/_kpi.html" with label="Turma × disciplina" value=r.rows|length icon="school" %}

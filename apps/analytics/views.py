@@ -1060,17 +1060,7 @@ def teacher_dashboard(request):
     user = request.user
     if not can_view_teacher_dashboard(user):
         raise PermissionDenied("Painel do professor: somente o próprio professor.")
-    period = bi.resolve_period(request.GET, user.school)
-    todas = list(
-        active_assignments(user)
-        .select_related("class_group", "subject", "school_year")
-        .order_by("class_group__name", "subject__name")
-    )
-    # id_param devolve texto: sem converter, escolher uma turma esvaziava o painel.
-    turma = int(id_param(request, "turma") or 0) or None
-    disciplina = int(id_param(request, "disciplina") or 0) or None
-    escolhidas = [a for a in todas if (not turma or a.class_group_id == turma)
-                  and (not disciplina or a.subject_id == disciplina)]
+    period, todas, escolhidas, turma, disciplina = _teacher_selection(request, user)
     r = bi.teacher_report(user, period, escolhidas)
     turmas = sorted({(a.class_group_id, a.class_group.name) for a in todas}, key=lambda t: t[1])
     disciplinas = sorted({(a.subject_id, a.subject.name) for a in todas}, key=lambda t: t[1])
@@ -1095,7 +1085,48 @@ def teacher_dashboard(request):
              + f"?turma={x['class_group'].pk}&{period.querystring()}"}
             for x in r["rows"]
         ]),
+        "export_links": [
+            {"label": "CSV", "url": reverse("analytics:teacher_export", args=["csv"]) + "?" + request.GET.urlencode()},
+            {"label": "Excel", "url": reverse("analytics:teacher_export", args=["xlsx"]) + "?" + request.GET.urlencode()},
+        ],
     })
+
+
+def _teacher_selection(request, user):
+    """Período e designações do professor, com os filtros de turma/disciplina da
+    URL já aplicados. Partilhado pelo painel e pela exportação."""
+    period = bi.resolve_period(request.GET, user.school)
+    todas = list(
+        active_assignments(user)
+        .select_related("class_group", "subject", "school_year")
+        .order_by("class_group__name", "subject__name")
+    )
+    # id_param devolve texto: sem converter, escolher uma turma esvaziava o painel.
+    turma = int(id_param(request, "turma") or 0) or None
+    disciplina = int(id_param(request, "disciplina") or 0) or None
+    escolhidas = [a for a in todas if (not turma or a.class_group_id == turma)
+                  and (not disciplina or a.subject_id == disciplina)]
+    return period, todas, escolhidas, turma, disciplina
+
+
+def teacher_export(request, fmt):
+    """Exporta o painel do professor (uma linha por turma e disciplina) em CSV/Excel."""
+    user = request.user
+    if not can_view_teacher_dashboard(user):
+        raise PermissionDenied("Painel do professor: somente o próprio professor.")
+    period, _todas, escolhidas, _t, _d = _teacher_selection(request, user)
+    r = bi.teacher_report(user, period, escolhidas)
+    linhas = [["Turma", "Disciplina", "Estudantes", "Média", "Com média", "Abaixo da aprovação",
+               "Avaliações publicadas", "Rascunhos", "Atividades", "Entrega (%)",
+               "Chamadas pendentes", "Última chamada", "Observações"]]
+    for x in r["rows"]:
+        linhas.append([x["class_group"].name, x["subject"].name, x["students"], x["average"],
+                       x["n_with_average"], x["below"], x["evaluations_published"], x["evaluations_draft"],
+                       x["activities"], x["delivery_rate"], x["records_pending"], x["last_attendance"],
+                       x["observations"]])
+    nome = user.get_full_name() or user.username
+    return _bi_export(request, title="Painel do professor", context=nome, period=period, fmt=fmt,
+                      target=user, sheets=[("Turmas e disciplinas", linhas)])
 
 
 # --------------------------------------------------------------------------- #

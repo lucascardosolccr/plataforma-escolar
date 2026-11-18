@@ -556,3 +556,27 @@ class InstitutionalExportTests(AnalyticsBase):
     def test_family_cannot_export(self):
         self.login("resp")
         self.assertEqual(self.client.get(reverse("analytics:institutional_export", args=["csv"])).status_code, 403)
+
+
+class TeacherExportTests(AnalyticsBase):
+    """Exportacao do painel do professor (CSV/Excel), antes inexistente."""
+
+    def test_teacher_exports_own_panel(self):
+        self.login("prof")
+        r = self.client.get(reverse("analytics:teacher_export", args=["csv"]))
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("text/csv", r["Content-Type"])
+        body = r.content.decode("utf-8")
+        self.assertIn("Painel do professor", body)
+        self.assertIn("[Turmas e disciplinas]", body)
+        rx = self.client.get(reverse("analytics:teacher_export", args=["xlsx"]))
+        self.assertEqual(rx.status_code, 200)
+        self.assertIn("spreadsheetml", rx["Content-Type"])
+
+    def test_bad_format_is_refused(self):
+        self.login("prof")
+        self.assertEqual(self.client.get(reverse("analytics:teacher_export", args=["pdf"])).status_code, 403)
+
+    def test_family_cannot_export_teacher_panel(self):
+        self.login("resp")
+        self.assertEqual(self.client.get(reverse("analytics:teacher_export", args=["csv"])).status_code, 403)

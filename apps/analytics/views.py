@@ -630,12 +630,67 @@ def institutional_dashboard(request):
             [{"label": m["label"], "value": m["attendance"]} for m in r["monthly"]], y_min=0, y_max=100, suffix="%"),
         "grade_trend_chart": charts.line_chart(
             [{"label": m["label"], "value": m["grade"]} for m in r["monthly"]], y_min=0, y_max=10),
+        "export_links": [
+            {"label": "CSV", "url": reverse("analytics:institutional_export", args=["csv"]) + "?" + period.querystring()},
+            {"label": "Excel", "url": reverse("analytics:institutional_export", args=["xlsx"]) + "?" + period.querystring()},
+        ],
         "sections": [("visao-geral", "Visão geral"), ("turmas", "Turmas"), ("disciplinas", "Disciplinas"),
                      ("composicao", "Série e turno"), ("evolucao", "Evolução"),
                      ("freq-desempenho", "Frequência × desempenho"), ("gestao", "Gestão"),
                      ("uso", "Utilização")],
         "generated_at": timezone.now(),
     })
+
+
+def institutional_export(request, fmt):
+    """Exporta o painel institucional (visão da escola toda) em CSV/Excel.
+
+    Mesmo conteúdo do painel: visão geral, turmas, disciplinas, série, turno e
+    evolução mensal. Grupos pequenos saem sem números, como na tela."""
+    if not can_view_institutional_dashboard(request.user):
+        raise PermissionDenied("Painel restrito à coordenação e direção.")
+    school = request.user.school
+    period = bi.resolve_period(request.GET, school)
+    r = bi.institutional_report(school, period)
+    min_att = round(100 - r["limit"], 1)
+    mov, fu = r["movement"], r["follow_up"]
+
+    visao = [
+        ["Indicador", "Valor"],
+        ["Estudantes ativos", r["students_active"]],
+        ["Matrículas ativas", r["enrollments_active"]],
+        ["Turmas", len(r["classes"])],
+        ["Frequência média (%)", r["attendance"]],
+        ["Frequência mínima exigida (%)", min_att],
+        ["Taxa de entrega (%)", r["delivery_rate"]],
+        ["Média geral", r["overall"]["mean"]],
+        ["Entradas no período", mov["entries"]],
+        ["Transferências", mov["transferred"]],
+        ["Desistências", mov["dropped"]],
+        ["Conclusões", mov["concluded"]],
+        ["Ocorrências abertas", fu["occurrences_open"]],
+        ["Planos de acompanhamento ativos", fu["plans_active"]],
+    ]
+    turmas = [["Turma", "Estudantes", "Média", "Frequência (%)", "Entrega (%)"]]
+    for c in r["classes"]:
+        turmas.append([c["class_group"].name, c["students"], c["average"], c["attendance"], c["delivery_rate"]])
+    disciplinas = [["Disciplina", "Com média", "Média", "Mediana", "Mín.", "Máx.", "Desvio", "Abaixo da aprovação"]]
+    for s in r["subjects"]:
+        disciplinas.append([s["subject"].name, s["n"], s["mean"], s["median"], s["min"], s["max"], s["stdev"],
+                            s["below_count"]])
+    serie = [["Série", "Estudantes", "Média", "Frequência (%)"]]
+    for g in r["by_grade"]:
+        serie.append([g["label"], g["students"], g["average"], g["attendance"]])
+    turno = [["Turno", "Estudantes", "Média", "Frequência (%)"]]
+    for g in r["by_turn"]:
+        turno.append([g["label"], g["students"], g["average"], g["attendance"]])
+    evolucao = [["Mês", "Média", "Frequência (%)"]]
+    for m in r["monthly"]:
+        evolucao.append([m["label"], m["grade"], m["attendance"]])
+    return _bi_export(request, title="Painel institucional", context=school.name, period=period, fmt=fmt,
+                      target=school,
+                      sheets=[("Visão geral", visao), ("Turmas", turmas), ("Disciplinas", disciplinas),
+                              ("Série", serie), ("Turno", turno), ("Evolução", evolucao)])
 
 
 # --------------------------------------------------------------------------- #

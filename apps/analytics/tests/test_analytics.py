@@ -528,3 +528,31 @@ class AttendanceReportByClassTests(AnalyticsBase):
         self.assertEqual(_csv_safe("-x"), "'-x")
         self.assertEqual(_csv_safe("=1+1"), "'=1+1")
         self.assertEqual(_csv_safe("-1+1"), "'-1+1")
+
+
+class InstitutionalExportTests(AnalyticsBase):
+    """Exportacao do painel institucional (CSV/Excel), antes inexistente."""
+
+    def test_direction_exports_csv_and_xlsx(self):
+        self.login("dir")
+        url = reverse("analytics:institutional_export", args=["csv"])
+        r = self.client.get(url)
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("text/csv", r["Content-Type"])
+        self.assertIn("attachment", r["Content-Disposition"])
+        body = r.content.decode("utf-8")
+        self.assertIn("Painel institucional", body)
+        self.assertIn(self.school.name, body)
+        self.assertIn("[Turmas]", body)  # aba presente no CSV
+        rx = self.client.get(reverse("analytics:institutional_export", args=["xlsx"]))
+        self.assertEqual(rx.status_code, 200)
+        self.assertIn("spreadsheetml", rx["Content-Type"])
+        self.assertTrue(rx.content)
+
+    def test_bad_format_is_refused(self):
+        self.login("dir")
+        self.assertEqual(self.client.get(reverse("analytics:institutional_export", args=["pdf"])).status_code, 403)
+
+    def test_family_cannot_export(self):
+        self.login("resp")
+        self.assertEqual(self.client.get(reverse("analytics:institutional_export", args=["csv"])).status_code, 403)

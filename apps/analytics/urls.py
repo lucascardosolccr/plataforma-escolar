@@ -6,6 +6,7 @@ app_name = "analytics"
 
 urlpatterns = [
     path("paineis/", views.institutional_dashboard, name="institutional_dashboard"),
+    path("paineis/exportar.<str:fmt>", views.institutional_export, name="institutional_export"),
     path("paineis/frequencia-semanal/", views_spc.attendance_control, name="attendance_control"),
     path(
         "paineis/secretaria/",

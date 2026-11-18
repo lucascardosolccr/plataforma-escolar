@@ -1638,11 +1638,19 @@ def operational_indicators(school, period):
     prints = PrintRequest.objects.filter(school=school, created_at__date__gte=period.start,
                                          created_at__date__lte=period.end)
     delivered = list(prints.filter(status=PrintRequest.Status.DELIVERED))
+    # Primeiro evento de impressão de cada pedido, em UMA consulta (evita N+1:
+    # antes era uma query por pedido entregue). A ordenação segue a do modelo,
+    # então o setdefault guarda o evento mais antigo de cada pedido.
+    first_printed = {}
+    for req_id, created in (
+        PrintEvent.objects.filter(request__in=delivered, to_status__in=["impressa", "retirada", "entregue"])
+        .order_by("created_at", "pk").values_list("request_id", "created_at")
+    ):
+        first_printed.setdefault(req_id, created)
     on_time = 0
     for req in delivered:
-        ev = PrintEvent.objects.filter(request=req, to_status__in=["impressa", "retirada", "entregue"]) \
-            .order_by("created_at").first()
-        if ev and timezone.localtime(ev.created_at).date() <= req.desired_date:
+        created = first_printed.get(req.pk)
+        if created and timezone.localtime(created).date() <= req.desired_date:
             on_time += 1
     reviewed = prints.filter(status__in=["aguardando", "imprimindo", "impressa", "retirada", "entregue",
                                          "rejeitada", "correcao"]).count()

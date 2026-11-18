@@ -11,6 +11,7 @@ from decimal import Decimal
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
+from django.utils import timezone
 
 from apps.academics.models import ClassGroup, SchoolYear, Subject, TeacherAssignment
 from apps.core.models import Role, School, User
@@ -499,3 +500,35 @@ class NPlusOneGuardTests(BIBase):
             len(q_small.captured_queries), len(q_big.captured_queries),
             f"N+1 no painel da turma: {len(q_small.captured_queries)} -> "
             f"{len(q_big.captured_queries)} consultas ao dobrar os estudantes")
+
+    def _delivered_print(self, activity, today):
+        from apps.printing.models import PrintEvent, PrintRequest
+        req = PrintRequest.objects.create(
+            school=self.school, activity=activity, requested_by=self.prof,
+            application_date=today, desired_date=today, copies=10,
+            status=PrintRequest.Status.DELIVERED)
+        PrintEvent.objects.create(request=req, to_status="impressa")
+        return req
+
+    def test_operational_indicators_query_count_is_independent_of_print_count(self):
+        """O indicador "impressas no prazo" carrega o primeiro evento de cada
+        pedido em uma consulta: o numero de queries nao pode crescer com o
+        numero de pedidos entregues (sem N+1)."""
+        today = timezone.localdate()
+        per = bi.Period(today - timedelta(days=1), today + timedelta(days=1), "personalizado", "teste")
+        act = Activity.objects.create(school=self.school, class_group=self.turma, subject=self.mat,
+                                      title="Lista de exercicios", created_by=self.prof)
+        for _ in range(3):
+            self._delivered_print(act, today)
+        with CaptureQueriesContext(connection) as q_small:
+            r_small = bi.operational_indicators(self.school, per)
+        for _ in range(6):
+            self._delivered_print(act, today)
+        with CaptureQueriesContext(connection) as q_big:
+            r_big = bi.operational_indicators(self.school, per)
+        self.assertEqual(r_small["prints_on_time_pct"], 100.0)   # os 3 saem no prazo
+        self.assertEqual(r_big["prints_on_time_pct"], 100.0)     # os 9 tambem
+        self.assertEqual(
+            len(q_small.captured_queries), len(q_big.captured_queries),
+            f"N+1 em operational_indicators: {len(q_small.captured_queries)} -> "
+            f"{len(q_big.captured_queries)} consultas ao triplicar os pedidos")
